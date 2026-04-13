@@ -31,6 +31,16 @@
 - `src/core/voice-profile.js`
 - `src/core/channel-registry.js`
 - `src/core/model-registry.js`
+- `src/core/fs-loader.js`
+- `src/core/prompt-assembler.js`
+
+## Current behavior
+
+- load soul from `SOUL.md`
+- load voice guidance from `voice/README.md`
+- load memory index from `memory/`
+- discover local skill folders from `skills/`
+- assemble a prompt preview from profile, soul, voice, memory, and skills
 
 ## Development sequence
 

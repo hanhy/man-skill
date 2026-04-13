@@ -4,6 +4,14 @@ import { SkillRegistry } from './core/skill-registry.js';
 import { VoiceProfile } from './core/voice-profile.js';
 import { ChannelRegistry } from './core/channel-registry.js';
 import { ModelRegistry } from './core/model-registry.js';
+import { FileSystemLoader } from './core/fs-loader.js';
+import { PromptAssembler } from './core/prompt-assembler.js';
+
+const loader = new FileSystemLoader(process.cwd());
+const soulDocument = loader.loadSoul();
+const voiceDocument = loader.loadVoice();
+const memoryIndex = loader.loadMemoryIndex();
+const skillNames = loader.loadSkills();
 
 const profile = new AgentProfile({
   name: 'ManSkill',
@@ -15,10 +23,10 @@ const profile = new AgentProfile({
 });
 
 const memory = new MemoryStore({
-  shortTerm: ['recent conversation state'],
-  longTerm: ['stable user preferences and identity traits'],
+  shortTerm: memoryIndex.daily,
+  longTerm: memoryIndex.longTerm,
 });
-const skills = new SkillRegistry(['memory', 'skills', 'soul']);
+const skills = new SkillRegistry(skillNames);
 const voice = new VoiceProfile({
   tone: 'human',
   style: 'person-specific',
@@ -26,6 +34,13 @@ const voice = new VoiceProfile({
 });
 const channels = new ChannelRegistry();
 const models = new ModelRegistry();
+const prompt = new PromptAssembler({
+  profile: profile.summary(),
+  soul: soulDocument,
+  voice: voiceDocument,
+  memory: memoryIndex,
+  skills: skillNames,
+});
 
 console.log(
   JSON.stringify(
@@ -36,6 +51,7 @@ console.log(
       voice: voice.summary(),
       channels: channels.summary(),
       models: models.summary(),
+      promptPreview: prompt.buildSystemPrompt().slice(0, 400),
     },
     null,
     2,
