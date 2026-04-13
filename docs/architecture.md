@@ -23,6 +23,15 @@
 6. **Models**
    - provider abstraction over multiple LLM backends
 
+## Current modules
+
+- `src/core/agent-profile.js`
+- `src/core/memory-store.js`
+- `src/core/skill-registry.js`
+- `src/core/voice-profile.js`
+- `src/core/channel-registry.js`
+- `src/core/model-registry.js`
+
 ## Development sequence
 
 - Phase 1: core data model
