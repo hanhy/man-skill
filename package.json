@@ -1,0 +1,19 @@
+{
+  "name": "man-skill",
+  "version": "0.1.0",
+  "description": "A lightweight framework for constructing a person-like AI agent from text, memory, skills, soul, and voice.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "check": "node src/index.js"
+  },
+  "keywords": [
+    "agent",
+    "persona",
+    "memory",
+    "skills",
+    "voice",
+    "llm"
+  ],
+  "license": "MIT"
+}
