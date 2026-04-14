@@ -6,6 +6,9 @@ import { ChannelRegistry } from './core/channel-registry.js';
 import { ModelRegistry } from './core/model-registry.js';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { PromptAssembler } from './core/prompt-assembler.js';
+import { createDefaultChannels } from './channels/index.js';
+import { createDefaultProviders } from './models/index.js';
+import { WorkLoop } from './runtime/work-loop.js';
 
 const loader = new FileSystemLoader(process.cwd());
 const soulDocument = loader.loadSoul();
@@ -37,8 +40,17 @@ const memory = new MemoryStore({
   longTerm: memoryIndex.longTerm,
 });
 const skills = new SkillRegistry(skillNames);
-const channels = new ChannelRegistry();
-const models = new ModelRegistry();
+const channels = new ChannelRegistry(createDefaultChannels().map((channel) => channel.summary()));
+const models = new ModelRegistry(createDefaultProviders().map((provider) => provider.summary()));
+const workLoop = new WorkLoop({
+  intervalMinutes: 10,
+  objectives: [
+    'strengthen the core structure',
+    'add channel adapters',
+    'add model providers',
+    'report progress in small increments',
+  ],
+});
 const prompt = new PromptAssembler({
   profile: profile.summary(),
   soul: soulDocument,
@@ -61,6 +73,7 @@ console.log(
       voice: voice.summary(),
       channels: channels.summary(),
       models: models.summary(),
+      workLoop: workLoop.summary(),
       promptPreview: prompt.buildSystemPrompt().slice(0, 400),
     },
     null,
