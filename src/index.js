@@ -13,13 +13,23 @@ const voiceDocument = loader.loadVoice();
 const memoryIndex = loader.loadMemoryIndex();
 const skillNames = loader.loadSkills();
 
+const voice = new VoiceProfile({
+  tone: 'human',
+  style: 'person-specific',
+  constraints: ['stay faithful to learned voice'],
+  signatures: ['consistent persona', 'compact but vivid phrasing'],
+  languageHints: ['preserve bilingual or multilingual behavior when present'],
+});
+
 const profile = new AgentProfile({
   name: 'ManSkill',
   soul: 'A configurable personality core for imitating a specific person from text.',
   identity: {
     role: 'person-like AI agent',
+    architecture: 'memory + skills + soul + voice',
   },
   goals: ['imitate a specific person faithfully', 'stay practical and extensible'],
+  voice: voice.summary(),
 });
 
 const memory = new MemoryStore({
@@ -27,19 +37,19 @@ const memory = new MemoryStore({
   longTerm: memoryIndex.longTerm,
 });
 const skills = new SkillRegistry(skillNames);
-const voice = new VoiceProfile({
-  tone: 'human',
-  style: 'person-specific',
-  constraints: ['stay faithful to learned voice'],
-});
 const channels = new ChannelRegistry();
 const models = new ModelRegistry();
 const prompt = new PromptAssembler({
   profile: profile.summary(),
   soul: soulDocument,
-  voice: voiceDocument,
+  voice: {
+    ...voice.summary(),
+    document: voiceDocument,
+  },
   memory: memoryIndex,
-  skills: skillNames,
+  skills: skills.summary(),
+  channels: channels.summary(),
+  models: models.summary(),
 });
 
 console.log(

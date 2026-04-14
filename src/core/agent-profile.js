@@ -1,9 +1,10 @@
 export class AgentProfile {
-  constructor({ name, soul, identity = {}, goals = [] } = {}) {
+  constructor({ name, soul, identity = {}, goals = [], voice = {} } = {}) {
     this.name = name;
     this.soul = soul;
     this.identity = identity;
     this.goals = goals;
+    this.voice = voice;
   }
 
   summary() {
@@ -12,6 +13,7 @@ export class AgentProfile {
       soul: this.soul,
       identity: this.identity,
       goals: this.goals,
+      voice: this.voice,
     };
   }
 }

@@ -1,16 +1,64 @@
-export class ChannelRegistry {
-  constructor(channels = []) {
-    this.channels = channels;
+import { BaseRegistry } from './base-registry.js';
+
+const DEFAULT_CHANNELS = [
+  {
+    id: 'slack',
+    name: 'Slack',
+    transport: 'chat',
+    direction: ['inbound', 'outbound'],
+    status: 'planned',
+  },
+  {
+    id: 'telegram',
+    name: 'Telegram',
+    transport: 'chat',
+    direction: ['inbound', 'outbound'],
+    status: 'planned',
+  },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    transport: 'chat',
+    direction: ['inbound', 'outbound'],
+    status: 'planned',
+  },
+  {
+    id: 'feishu',
+    name: 'Feishu',
+    transport: 'chat',
+    direction: ['inbound', 'outbound'],
+    status: 'planned',
+  },
+];
+
+export class ChannelRegistry extends BaseRegistry {
+  constructor(channels = DEFAULT_CHANNELS) {
+    super(channels);
   }
 
-  register(channel) {
-    this.channels.push(channel);
+  normalize(channel) {
+    if (typeof channel === 'string') {
+      return {
+        id: channel,
+        name: channel,
+        transport: 'chat',
+        direction: ['inbound'],
+        status: 'unknown',
+      };
+    }
+
+    return {
+      transport: 'chat',
+      direction: ['inbound'],
+      status: 'unknown',
+      ...channel,
+    };
   }
 
   summary() {
     return {
-      channelCount: this.channels.length,
-      channels: this.channels,
+      channelCount: this.count(),
+      channels: this.list(),
     };
   }
 }

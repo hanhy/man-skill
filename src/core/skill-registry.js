@@ -1,16 +1,27 @@
-export class SkillRegistry {
-  constructor(skills = []) {
-    this.skills = skills;
-  }
+import { BaseRegistry } from './base-registry.js';
 
-  register(skill) {
-    this.skills.push(skill);
+export class SkillRegistry extends BaseRegistry {
+  normalize(skill) {
+    if (typeof skill === 'string') {
+      return {
+        id: skill,
+        name: skill,
+        description: null,
+        status: 'discovered',
+      };
+    }
+
+    return {
+      description: null,
+      status: 'custom',
+      ...skill,
+    };
   }
 
   summary() {
     return {
-      skillCount: this.skills.length,
-      skills: this.skills,
+      skillCount: this.count(),
+      skills: this.list(),
     };
   }
 }
