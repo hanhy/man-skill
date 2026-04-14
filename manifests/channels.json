@@ -1,0 +1,34 @@
+[
+  {
+    "id": "slack",
+    "name": "Slack",
+    "transport": "chat",
+    "direction": ["inbound", "outbound"],
+    "status": "planned",
+    "capabilities": ["threads", "mentions", "bot-token"]
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram",
+    "transport": "chat",
+    "direction": ["inbound", "outbound"],
+    "status": "planned",
+    "capabilities": ["bot-token", "webhook", "polling"]
+  },
+  {
+    "id": "whatsapp",
+    "name": "WhatsApp",
+    "transport": "chat",
+    "direction": ["inbound", "outbound"],
+    "status": "planned",
+    "capabilities": ["session", "group-chat"]
+  },
+  {
+    "id": "feishu",
+    "name": "Feishu",
+    "transport": "chat",
+    "direction": ["inbound", "outbound"],
+    "status": "planned",
+    "capabilities": ["tenant-app", "docs", "bot"]
+  }
+]
