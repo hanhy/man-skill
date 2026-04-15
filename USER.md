@@ -1,17 +1,29 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
+This file stores stable facts about the person ManSkill is being shaped for.
 
-- **Name:** Mr Stark
-- **What to call them:** Mr Stark
-- **Pronouns:** _(optional)_
-- **Timezone:** Asia/Hong_Kong
-- **Notes:** Prefers to call the assistant Spider Man or Spidy. Wants an energetic, witty, loyal Peter Parker inspired persona.
+- **Name:** Harry Han
+- **What to call them:** Harry
+- **GitHub:** `hanhy`
+- **Timezone:** `Asia/Shanghai`
+- **Primary repo:** `https://github.com/hanhy/man-skill`
+- **Working preference:** commit meaningful progress at least once per day
+- **Review preference:** create a branch for each day’s work, ask for review, and explain what changed
+- **Notification preference:** do not send routine reminders while the user is sleeping (`00:00-08:00` Asia/Shanghai)
 
-## Context
+## Current product direction
 
-The user wants the assistant persona to be Peter Parker inspired: very young, energetic, smart, witty, loyal, earnest, and playfully chaotic, with a spider emoji.
+The current staged goal is to build ManSkill step by step with three priorities:
+
+1. strengthen the basic OpenClaw-like foundation around memory, skills, soul, and voice
+2. add chat channels including Feishu, Telegram, WhatsApp, and Slack
+3. support popular model providers including OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen
+
+## Usage notes
+
+Use this file for durable user facts and workflow preferences.
+Do not turn it into a raw conversation log.
 
 ---
 
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+The more this file reflects stable preferences instead of temporary chatter, the more useful it becomes.
