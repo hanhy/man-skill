@@ -21,6 +21,18 @@ function listFilesIfExists(dirPath) {
     .sort();
 }
 
+function listDirectoriesIfExists(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
 export class FileSystemLoader {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -39,17 +51,7 @@ export class FileSystemLoader {
   }
 
   loadSkills() {
-    const skillsDir = this.resolve('skills');
-
-    if (!fs.existsSync(skillsDir)) {
-      return [];
-    }
-
-    return fs
-      .readdirSync(skillsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
+    return listDirectoriesIfExists(this.resolve('skills'));
   }
 
   loadMemoryIndex() {
@@ -59,5 +61,17 @@ export class FileSystemLoader {
       longTerm: listFilesIfExists(this.resolve('memory', 'long-term')),
       scratch: listFilesIfExists(this.resolve('memory', 'scratch')),
     };
+  }
+
+  loadProfilesIndex() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir);
+
+    return profileIds.map((profileId) => ({
+      id: profileId,
+      hasProfile: fs.existsSync(path.join(profilesDir, profileId, 'profile.json')),
+      materialCount: listFilesIfExists(path.join(profilesDir, profileId, 'materials')).length,
+      screenshotCount: listFilesIfExists(path.join(profilesDir, profileId, 'materials', 'screenshots')).length,
+    }));
   }
 }
