@@ -38,6 +38,13 @@ Manifest shape:
 
 ```json
 {
+  "profiles": [
+    {
+      "personId": "harry-han",
+      "displayName": "Harry Han",
+      "summary": "Direct operator with a bias for momentum."
+    }
+  ],
   "entries": [
     {
       "personId": "harry-han",
@@ -61,15 +68,25 @@ Manifest shape:
 }
 ```
 
+- `profiles` is optional and lets you seed target-person metadata before material import
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - manifest imports can span multiple target profiles in one pass
+
+### Update target-person profile metadata
+
+```bash
+node src/index.js update profile --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
+```
+
+This updates `profiles/<person-id>/profile.json` without requiring a new material import.
 
 ## What happens
 
 - the target person is normalized into a profile id
 - a profile folder is created under `profiles/<person-id>/`
 - a `profile.json` file is created if needed
+- `profile.json` can now hold user-facing metadata like `displayName` and `summary`
 - imported material is stored under `profiles/<person-id>/materials/`
 - screenshot files are copied into `profiles/<person-id>/materials/screenshots/`
 - each import writes a JSON material record with metadata
@@ -89,6 +106,7 @@ Manifest shape:
 
 Running `node src/index.js` now exposes per-profile ingestion summaries in the top-level repo status:
 
+- `profile.displayName` / `profile.summary` from `profile.json`
 - `materialTypes` counts by imported type
 - `latestMaterialAt` so the newest profile activity is visible
 - `foundationReadiness.memory` candidate counts and newest material types
@@ -100,7 +118,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 
-This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials. The assembled system prompt also turns these fields into compact per-profile foundation snapshots so a runtime can quickly see fresh vs stale drafts and the top extracted highlights.
+This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials. The assembled system prompt also turns these fields into compact per-profile foundation snapshots so a runtime can quickly see fresh vs stale drafts, the top extracted highlights, and the human-readable target person name when it is available.
 
 ## Foundation draft update command
 

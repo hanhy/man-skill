@@ -126,6 +126,18 @@ function runUpdateCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
   const personId = options.person;
 
+  if (subcommand === 'profile') {
+    if (!personId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return ingestion.updateProfile({
+      personId,
+      displayName: options['display-name'],
+      summary: options.summary,
+    });
+  }
+
   if (subcommand === 'foundation' && options.all) {
     const result = ingestion.refreshAllFoundationDrafts();
     return {

@@ -82,6 +82,20 @@ function resolveImportFile(baseDir, filePath) {
   return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
 }
 
+function buildProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
+  const now = new Date().toISOString();
+  const normalizedDisplayName = normalizeText(displayName);
+  const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
+
+  return {
+    id: normalizedId,
+    createdAt: existingProfile?.createdAt ?? now,
+    updatedAt: now,
+    displayName: normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId,
+    summary: normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary,
+  };
+}
+
 export class MaterialIngestion {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -91,7 +105,7 @@ export class MaterialIngestion {
     return path.join(this.rootDir, ...segments);
   }
 
-  ensureProfile(personId) {
+  ensureProfile(personId, profileUpdates = {}) {
     const normalizedId = slugifyPersonId(personId);
     if (!normalizedId) {
       throw new Error('personId is required');
@@ -102,21 +116,28 @@ export class MaterialIngestion {
     ensureDir(path.join(materialsDir, 'screenshots'));
     const profilePath = path.join(profileDir, 'profile.json');
 
-    if (!fs.existsSync(profilePath)) {
-      fs.writeFileSync(
-        profilePath,
-        JSON.stringify(
-          {
-            id: normalizedId,
-            createdAt: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-      );
+    const existingProfile = readJsonIfExists(profilePath);
+    if (!existingProfile || Object.keys(profileUpdates).length > 0) {
+      const profileDocument = buildProfileDocument({
+        existingProfile,
+        normalizedId,
+        personId,
+        displayName: profileUpdates.displayName,
+        summary: profileUpdates.summary,
+      });
+      fs.writeFileSync(profilePath, JSON.stringify(profileDocument, null, 2));
     }
 
     return { personId: normalizedId, profileDir, materialsDir, profilePath };
+  }
+
+  updateProfile({ personId, displayName, summary }) {
+    const normalized = this.ensureProfile(personId, { displayName, summary });
+    return {
+      personId: normalized.personId,
+      profilePath: normalized.profilePath,
+      profile: readJsonIfExists(normalized.profilePath),
+    };
   }
 
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
@@ -218,6 +239,23 @@ export class MaterialIngestion {
     const manifest = readJsonIfExists(resolvedManifestPath);
     if (!manifest) {
       throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
+    }
+
+    const manifestProfiles = Array.isArray(manifest?.profiles) ? manifest.profiles : [];
+    for (const [index, profile] of manifestProfiles.entries()) {
+      if (!profile || typeof profile !== 'object') {
+        throw new Error(`Manifest profile ${index} must be an object`);
+      }
+
+      if (!isNonEmptyString(profile.personId)) {
+        throw new Error(`Manifest profile ${index} is missing personId`);
+      }
+
+      this.updateProfile({
+        personId: profile.personId,
+        displayName: profile.displayName,
+        summary: profile.summary,
+      });
     }
 
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;

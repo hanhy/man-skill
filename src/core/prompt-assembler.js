@@ -23,8 +23,10 @@ function cleanHighlight(value) {
 }
 
 function formatProfileSnapshot(profile = {}) {
+  const displayName = profile.profile?.displayName;
+  const profileLabel = displayName && displayName !== profile.id ? `${displayName} (${profile.id})` : (displayName ?? profile.id);
   const lines = [
-    `- ${profile.id}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
+    `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
   ];
 
   if (profile.latestMaterialAt) {

@@ -134,6 +134,10 @@ function loadMaterialSummaries(materialsDir) {
   };
 }
 
+function loadProfileDocument(rootDir, profileId) {
+  return readJsonIfExists(path.join(rootDir, 'profiles', profileId, 'profile.json'));
+}
+
 function loadFoundationDrafts(rootDir, profileId) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
@@ -267,10 +271,12 @@ export class FileSystemLoader {
     return profileIds.map((profileId) => {
       const materialsDir = path.join(profilesDir, profileId, 'materials');
       const profileSummary = loadMaterialSummaries(materialsDir);
+      const profileDocument = loadProfileDocument(this.rootDir, profileId);
 
       return {
         id: profileId,
-        hasProfile: fs.existsSync(path.join(profilesDir, profileId, 'profile.json')),
+        profile: profileDocument,
+        hasProfile: Boolean(profileDocument),
         materialCount: listFilesIfExists(materialsDir).filter((name) => name.endsWith('.json')).length,
         screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
         materialTypes: profileSummary.materialTypes,

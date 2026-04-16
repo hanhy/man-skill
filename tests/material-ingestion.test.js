@@ -130,3 +130,23 @@ test('importManifest imports mixed material entries across profiles from a JSON 
     .filter((name) => name.endsWith('.json'));
   assert.equal(janeMaterials.length, 1);
 });
+
+test('updateProfile stores display name and summary metadata for a target person', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const result = ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.displayName, 'Harry Han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for momentum.');
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+  assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});

@@ -196,3 +196,86 @@ test('CLI import manifest ingests entries and can refresh foundation drafts in o
   assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/harry-han\/memory\/long-term\/foundation\.json$/);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md')), true);
 });
+
+test('CLI update profile writes target-person metadata into profile.json', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'profile',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for momentum.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.displayName, 'Harry Han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for momentum.');
+
+  const profilePath = path.join(rootDir, 'profiles', 'harry-han', 'profile.json');
+  const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+  assert.equal(profile.id, 'harry-han');
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+  assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('CLI import manifest can seed profile metadata before importing materials', () => {
+  const rootDir = makeTempRepo();
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        profiles: [
+          {
+            personId: 'Harry Han',
+            displayName: 'Harry Han',
+            summary: 'Direct operator with a bias for momentum.',
+          },
+        ],
+        entries: [
+          {
+            personId: 'Harry Han',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', './materials.json'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+});
