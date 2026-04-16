@@ -552,6 +552,20 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
   assert.equal(result.entryCount, 2);
   assert.deepEqual(result.profileIds, ['harry-han']);
   assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      materialCount: 2,
+      materialTypes: {
+        message: 1,
+        text: 1,
+      },
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+  ]);
 
   const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
   assert.equal(profile.displayName, 'Harry Han');

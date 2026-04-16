@@ -130,6 +130,22 @@ function buildProfileDocument({ existingProfile = null, normalizedId, personId, 
   };
 }
 
+function buildManifestImportCommand(manifestPath) {
+  return `node src/index.js import manifest --file ${manifestPath}`;
+}
+
+function buildProfileCommandSummaries({ manifestPath, personId, displayName, materialCount, materialTypes }) {
+  return {
+    personId,
+    displayName: displayName ?? personId,
+    materialCount,
+    materialTypes,
+    importCommand: buildManifestImportCommand(manifestPath),
+    updateProfileCommand: `node src/index.js update profile --person ${personId}`,
+    refreshFoundationCommand: `node src/index.js update foundation --person ${personId}`,
+  };
+}
+
 export class MaterialIngestion {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -372,10 +388,26 @@ export class MaterialIngestion {
       throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
     });
 
+    const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
+    const profileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const profileSummaries = profileIds.map((personId) => {
+      const profileDocument = readJsonIfExists(this.resolve('profiles', personId, 'profile.json'));
+      const profileResults = results.filter((entry) => entry.personId === personId);
+
+      return buildProfileCommandSummaries({
+        manifestPath: relativeManifestPath,
+        personId,
+        displayName: normalizeText(profileDocument?.displayName) ?? personId,
+        materialCount: profileResults.length,
+        materialTypes: summarizeMaterialTypes(profileResults),
+      });
+    });
+
     return {
-      manifestFile: path.relative(this.rootDir, resolvedManifestPath),
+      manifestFile: relativeManifestPath,
       entryCount: results.length,
-      profileIds: [...new Set(results.map((entry) => entry.personId))].sort(),
+      profileIds,
+      profileSummaries,
       results,
     };
   }

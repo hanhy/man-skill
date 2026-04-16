@@ -93,6 +93,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - manifest imports can span multiple target profiles in one pass
+- manifest import results now also include per-profile summaries with imported material counts/types plus direct follow-up commands for `update profile` and `update foundation`
 
 ### Update target-person profile metadata
 

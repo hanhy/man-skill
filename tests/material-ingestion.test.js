@@ -118,6 +118,31 @@ test('importManifest imports mixed material entries across profiles from a JSON 
 
   assert.equal(result.entryCount, 3);
   assert.deepEqual(result.profileIds, ['harry-han', 'jane-doe']);
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      materialCount: 2,
+      materialTypes: {
+        message: 1,
+        text: 1,
+      },
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+    {
+      personId: 'jane-doe',
+      displayName: 'Jane Doe',
+      materialCount: 1,
+      materialTypes: {
+        screenshot: 1,
+      },
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person jane-doe',
+      refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+    },
+  ]);
   assert.equal(result.results.map((entry) => entry.type).sort().join(','), 'message,screenshot,text');
 
   const harryMaterials = fs
@@ -168,6 +193,20 @@ test('importManifest supports a single-target shorthand profile and inherits per
 
   assert.equal(result.entryCount, 2);
   assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      materialCount: 2,
+      materialTypes: {
+        message: 1,
+        text: 1,
+      },
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+  ]);
   assert.equal(result.results.every((entry) => entry.personId === 'harry-han'), true);
 
   const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
