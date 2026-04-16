@@ -24,9 +24,33 @@ function extractExcerpt(document: string | null | undefined, maxLength = 160): s
   return `${normalized.slice(0, maxLength - 1)}…`;
 }
 
+function formatList(values: string[]): string {
+  if (values.length <= 1) {
+    return values[0] ?? '';
+  }
+
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`;
+  }
+
+  return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
+}
+
+function buildMemoryBucketAction(emptyBuckets: string[]): string | null {
+  const bucketPaths = emptyBuckets
+    .map((bucket) => `memory/${bucket}`)
+    .filter(Boolean);
+
+  if (bucketPaths.length === 0) {
+    return null;
+  }
+
+  return `add at least one entry under ${formatList(bucketPaths)}`;
+}
+
 function collectRecommendedActions({
   memoryHasRootDocument,
-  memoryTotalEntries,
+  memoryEmptyBuckets,
   skillsCount,
   documentedSkillCount,
   soulPresent,
@@ -35,7 +59,7 @@ function collectRecommendedActions({
   voiceLineCount,
 }: {
   memoryHasRootDocument: boolean;
-  memoryTotalEntries: number;
+  memoryEmptyBuckets: string[];
   skillsCount: number;
   documentedSkillCount: number;
   soulPresent: boolean;
@@ -49,8 +73,9 @@ function collectRecommendedActions({
     actions.push('create memory/README.md');
   }
 
-  if (memoryTotalEntries === 0) {
-    actions.push('add at least one entry under memory/daily, memory/long-term, or memory/scratch');
+  const memoryBucketAction = buildMemoryBucketAction(memoryEmptyBuckets);
+  if (memoryBucketAction) {
+    actions.push(memoryBucketAction);
   }
 
   if (skillsCount === 0) {
@@ -92,6 +117,10 @@ export interface CoreMemoryFoundationSummary {
   longTermCount: number;
   scratchCount: number;
   totalEntries: number;
+  readyBucketCount: number;
+  totalBucketCount: number;
+  populatedBuckets: string[];
+  emptyBuckets: string[];
 }
 
 export interface CoreSkillsFoundationSummary {
@@ -151,6 +180,13 @@ export function buildCoreFoundationSummary({
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
+  const memoryBuckets = [
+    { name: 'daily', count: daily.length },
+    { name: 'long-term', count: longTerm.length },
+    { name: 'scratch', count: scratch.length },
+  ];
+  const populatedBuckets = memoryBuckets.filter((bucket) => bucket.count > 0).map((bucket) => bucket.name);
+  const emptyBuckets = memoryBuckets.filter((bucket) => bucket.count === 0).map((bucket) => bucket.name);
   const safeSkillNames = Array.isArray(skillInventory?.names)
     ? [...skillInventory.names].sort((left, right) => left.localeCompare(right))
     : (Array.isArray(skillNames) ? [...skillNames].sort((left, right) => left.localeCompare(right)) : []);
@@ -166,6 +202,10 @@ export function buildCoreFoundationSummary({
     longTermCount: longTerm.length,
     scratchCount: scratch.length,
     totalEntries: daily.length + longTerm.length + scratch.length,
+    readyBucketCount: populatedBuckets.length,
+    totalBucketCount: memoryBuckets.length,
+    populatedBuckets,
+    emptyBuckets,
   };
   const skills = {
     count: safeSkillNames.length,
@@ -190,7 +230,7 @@ export function buildCoreFoundationSummary({
 
   if (!memory.hasRootDocument && memory.totalEntries === 0) {
     missingAreas.push('memory');
-  } else if (!memory.hasRootDocument || memory.totalEntries === 0) {
+  } else if (!memory.hasRootDocument || memory.emptyBuckets.length > 0) {
     thinAreas.push('memory');
   }
 
@@ -220,7 +260,7 @@ export function buildCoreFoundationSummary({
     thinAreas,
     recommendedActions: collectRecommendedActions({
       memoryHasRootDocument: memory.hasRootDocument,
-      memoryTotalEntries: memory.totalEntries,
+      memoryEmptyBuckets: memory.emptyBuckets,
       skillsCount: skills.count,
       documentedSkillCount: skills.documentedCount,
       soulPresent: soul.present,

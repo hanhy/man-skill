@@ -127,6 +127,10 @@ type FoundationCore = {
     longTermCount?: number;
     scratchCount?: number;
     totalEntries?: number;
+    readyBucketCount?: number;
+    totalBucketCount?: number;
+    populatedBuckets?: string[];
+    emptyBuckets?: string[];
   };
   skills?: {
     count?: number;
@@ -471,7 +475,7 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   return [
     coverageLine,
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}`
       : null,
     skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; placeholders: ${skills.undocumentedSample?.join(', ')}` : ''}`
