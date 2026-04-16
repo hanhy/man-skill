@@ -164,12 +164,20 @@ type ChannelSummaryRecord = {
   auth?: ChannelAuth | null;
 };
 
+type ChannelManifestSummary = {
+  path?: string;
+  status?: string;
+  entryCount?: number;
+  error?: string | null;
+};
+
 type ChannelsSummary = {
   channelCount?: number;
   activeCount?: number;
   plannedCount?: number;
   candidateCount?: number;
   authEnvVars?: string[];
+  manifest?: ChannelManifestSummary;
   channels?: ChannelSummaryRecord[];
 } | null;
 
@@ -182,6 +190,13 @@ type ModelSummaryRecord = {
   modalities?: string[];
 };
 
+type ProviderManifestSummary = {
+  path?: string;
+  status?: string;
+  entryCount?: number;
+  error?: string | null;
+};
+
 type ModelsSummary = {
   providerCount?: number;
   activeCount?: number;
@@ -189,6 +204,7 @@ type ModelsSummary = {
   candidateCount?: number;
   multimodalProviderCount?: number;
   authEnvVars?: string[];
+  manifest?: ProviderManifestSummary;
   providers?: ModelSummaryRecord[];
 } | null;
 
@@ -384,10 +400,28 @@ function formatChannelAuth(auth: ChannelAuth | null | undefined) {
   return envVars.length > 0 ? `${auth.type}: ${envVars.join(', ')}` : auth.type;
 }
 
+function formatManifestSummary(label: string, manifest: ChannelManifestSummary | ProviderManifestSummary | undefined) {
+  if (!manifest?.path) {
+    return null;
+  }
+
+  if (manifest.status === 'loaded') {
+    return `- ${label}: loaded ${manifest.entryCount ?? 0} entr${manifest.entryCount === 1 ? 'y' : 'ies'} from ${manifest.path}`;
+  }
+
+  if (manifest.status === 'invalid') {
+    return `- ${label}: invalid (${manifest.error ?? 'parse failed'}) at ${manifest.path}`;
+  }
+
+  return `- ${label}: missing (${manifest.path})`;
+}
+
 function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
-  if (channelRecords.length === 0 && providerRecords.length === 0) {
+  const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
+  const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
+  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary) {
     return null;
   }
 
@@ -399,12 +433,14 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
 
   return [
+    channelManifestSummary,
     channelRecords.length > 0
       ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
       : null,
     ...channelRecords.slice(0, 2).map((channel) =>
       `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
     ),
+    providerManifestSummary,
     providerRecords.length > 0
       ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
       : null,

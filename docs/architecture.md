@@ -78,6 +78,7 @@ The project aims to keep personal-agent construction simple:
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names
 - expose planned channel/provider registries from manifests
 - aggregate channel/provider status counts plus deduped auth env vars in the delivery summary so prompt previews can distinguish active vs planned vs candidate integrations without re-scanning raw manifests
+- treat malformed `manifests/channels.json` or `manifests/providers.json` as delivery-foundation diagnostics instead of fatal errors, so summary generation falls back to built-in defaults while still surfacing the manifest issue inline
 - expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice
 - emit `foundation.core.overview.recommendedActions` so missing/thin repo scaffolding produces concrete next-step guidance instead of only a passive status summary
 - assemble a prompt preview from profile, soul, voice, memory, and skills, including the core-foundation coverage line when the base scaffold is thin or incomplete

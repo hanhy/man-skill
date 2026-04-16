@@ -139,8 +139,39 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.channels.manifest.status, 'loaded');
+  assert.equal(summary.channels.manifest.entryCount, 2);
+  assert.equal(summary.channels.manifest.path, 'manifests/channels.json');
+  assert.equal(summary.models.manifest.status, 'loaded');
+  assert.equal(summary.models.manifest.entryCount, 2);
+  assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
+  assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
+  assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
+});
+
+test('buildSummary falls back to default delivery metadata when manifests are malformed', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), '{not-json');
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), '[1, 2');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.channels.channelCount, 4);
+  assert.equal(summary.channels.manifest.status, 'invalid');
+  assert.equal(summary.channels.manifest.entryCount, 0);
+  assert.equal(summary.channels.manifest.path, 'manifests/channels.json');
+  assert.match(summary.channels.manifest.error, /Unexpected token|Expected property name/);
+  assert.equal(summary.models.providerCount, 6);
+  assert.equal(summary.models.manifest.status, 'invalid');
+  assert.equal(summary.models.manifest.entryCount, 0);
+  assert.equal(summary.models.manifest.path, 'manifests/providers.json');
+  assert.match(summary.models.manifest.error, /Unexpected end of JSON input|Expected ',' or '\]'/);
+  assert.match(summary.promptPreview, /channel manifest: invalid .*manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /provider manifest: invalid .*manifests\/providers\.json/);
 });
 
 test('buildSummary merges channel and provider manifests onto the default foundation metadata', () => {

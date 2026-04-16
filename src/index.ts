@@ -199,8 +199,8 @@ export function buildSummary(rootDir: string) {
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
-  const channelManifest = manifestLoader.loadChannelManifest();
-  const providerManifest = manifestLoader.loadProviderManifest();
+  const channelManifest = manifestLoader.loadChannelManifestSummary();
+  const providerManifest = manifestLoader.loadProviderManifestSummary();
 
   const voice = new VoiceProfile({
     tone: 'human',
@@ -227,13 +227,13 @@ export function buildSummary(rootDir: string) {
   });
   const skills = new SkillRegistry(skillNames);
   const channels = new ChannelRegistry();
-  if (Array.isArray(channelManifest)) {
-    channelManifest.forEach((channel: unknown) => channels.register(channel as any));
+  if (Array.isArray(channelManifest.records)) {
+    channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
   }
 
   const models = new ModelRegistry();
-  if (Array.isArray(providerManifest)) {
-    providerManifest.forEach((provider: unknown) => models.register(provider as any));
+  if (Array.isArray(providerManifest.records)) {
+    providerManifest.records.forEach((provider: unknown) => models.register(provider as any));
   }
   const workLoop = new WorkLoop({
     intervalMinutes: 10,
@@ -253,6 +253,24 @@ export function buildSummary(rootDir: string) {
     skillNames,
     skillInventory,
   });
+  const channelsSummary = {
+    ...channels.summary(),
+    manifest: {
+      path: channelManifest.path,
+      status: channelManifest.status,
+      entryCount: channelManifest.entryCount,
+      error: channelManifest.error,
+    },
+  };
+  const modelsSummary = {
+    ...models.summary(),
+    manifest: {
+      path: providerManifest.path,
+      status: providerManifest.status,
+      entryCount: providerManifest.entryCount,
+      error: providerManifest.error,
+    },
+  };
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -265,8 +283,8 @@ export function buildSummary(rootDir: string) {
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
-    channels: channels.summary(),
-    models: models.summary(),
+    channels: channelsSummary,
+    models: modelsSummary,
   } as any);
 
   return {
@@ -278,8 +296,8 @@ export function buildSummary(rootDir: string) {
       ...foundation,
       core: coreFoundation,
     },
-    channels: channels.summary(),
-    models: models.summary(),
+    channels: channelsSummary,
+    models: modelsSummary,
     profiles,
     workLoop: workLoop.summary(),
     promptPreview: prompt.buildPreview(1800),
