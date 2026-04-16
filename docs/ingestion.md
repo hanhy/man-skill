@@ -131,6 +131,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `profile.displayName` / `profile.summary` from `profile.json`
 - `materialTypes` counts by imported type
 - `latestMaterialAt` so the newest profile activity is visible
+- `latestMaterialId` so the newest imported record can be tied back to stale-draft detection and draft provenance
 - `foundationReadiness.memory` candidate counts, newest material types, and lightweight text-first sample summaries
 - `foundationReadiness.voice` sample excerpts from text / message / talk materials
 - `foundationReadiness.soul` sample excerpts from text / talk materials
@@ -142,7 +143,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 - top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
 
-Generated draft files now also carry the target person's `displayName` and `summary` in both the memory JSON draft and the voice / soul / skills markdown headers, so the foundation layer keeps a direct identity anchor alongside extracted evidence. Prompt snapshots surface that summary as a one-line `profile summary:` field when it is available, and stale detection now treats profile-metadata changes as draft drift even when no new materials were imported.
+Generated draft files now also carry the target person's `displayName` and `summary` in both the memory JSON draft and the voice / soul / skills markdown headers, so the foundation layer keeps a direct identity anchor alongside extracted evidence. The memory draft also records `materialTypes`, while the markdown drafts stamp `Generated at`, `Latest material`, and `Source materials` headers for provenance. Prompt snapshots surface that summary as a one-line `profile summary:` field when it is available, and stale detection now treats profile-metadata changes as draft drift even when no new materials were imported.
 
 ## Foundation draft update command
 

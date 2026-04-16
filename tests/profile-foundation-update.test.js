@@ -61,10 +61,18 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(memoryDraft.displayName, 'Harry Han');
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for momentum.');
   assert.equal(memoryDraft.entryCount, 3);
+  assert.deepEqual(memoryDraft.materialTypes, {
+    message: 1,
+    talk: 1,
+    text: 1,
+  });
   assert.deepEqual(memoryDraft.entries.map((entry) => entry.type).sort(), ['message', 'talk', 'text']);
   assert.equal(memoryDraft.entries.some((entry) => /Cut the scope, keep the momentum/.test(entry.summary)), true);
 
   const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(voiceDraft, /Generated at: /);
+  assert.match(voiceDraft, /Latest material: .*\(.+\)/);
+  assert.match(voiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
   assert.match(voiceDraft, /Display name: Harry Han/);
   assert.match(voiceDraft, /Summary: Direct operator with a bias for momentum\./);
   assert.match(voiceDraft, /Representative voice excerpts/);

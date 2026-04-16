@@ -40,6 +40,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     text: 1,
   });
   assert.match(profile.latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(profile.latestMaterialId, /^\d{4}-\d{2}-\d{2}T.+-(message|screenshot|text)$/);
   assert.deepEqual(profile.foundationDrafts, {
     memory: 'profiles/harry-han/memory/long-term/foundation.json',
     voice: 'profiles/harry-han/voice/README.md',
@@ -54,16 +55,41 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
+  assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 3);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {
+    message: 1,
+    screenshot: 1,
+    text: 1,
+  });
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
     '- [message] Ship the first slice.',
     '- [text] Direct writing sample.',
   ]);
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: true,
+    generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
+    latestMaterialAt: profile.latestMaterialAt,
+    latestMaterialId: profile.latestMaterialId,
+    sourceCount: 3,
+    materialTypes: {
+      message: 1,
+      screenshot: 1,
+      text: 1,
+    },
     highlights: ['- [text] Direct writing sample.'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: true,
+    generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
+    latestMaterialAt: profile.latestMaterialAt,
+    latestMaterialId: profile.latestMaterialId,
+    sourceCount: 3,
+    materialTypes: {
+      message: 1,
+      screenshot: 1,
+      text: 1,
+    },
     highlights: [],
   });
   assert.deepEqual(profile.foundationReadiness.memory.latestTypes.slice().sort(), ['message', 'screenshot', 'text']);

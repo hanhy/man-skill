@@ -74,6 +74,40 @@ function sortByNewest(records) {
   );
 }
 
+function summarizeMaterialTypes(records) {
+  return records.reduce((summary, record) => {
+    if (!isNonEmptyString(record?.type)) {
+      return summary;
+    }
+
+    summary[record.type] = (summary[record.type] ?? 0) + 1;
+    return summary;
+  }, {});
+}
+
+function formatMaterialTypes(materialTypes = {}) {
+  const entries = Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) {
+    return 'none';
+  }
+
+  return entries.map(([type, count]) => `${type}:${count}`).join(', ');
+}
+
+function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
+  return [
+    `# ${title}`,
+    '',
+    `Profile: ${normalizedPersonId}`,
+    `Display name: ${profileDocument?.displayName ?? normalizedPersonId}`,
+    `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
+    `Generated at: ${generatedAt}`,
+    `Latest material: ${latestMaterialRecord?.createdAt ?? 'Not set.'} (${latestMaterialRecord?.id ?? 'none'})`,
+    `Source materials: ${materialCount} (${formatMaterialTypes(materialTypes)})`,
+    '',
+  ];
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
@@ -382,6 +416,7 @@ export class MaterialIngestion {
       sourceFile: record.sourceFile ?? null,
     }));
     const latestMaterialRecord = materialRecords[0] ?? null;
+    const materialTypes = summarizeMaterialTypes(materialRecords);
 
     const voiceSamples = materialRecords
       .filter((record) => ['text', 'message', 'talk'].includes(record.type))
@@ -419,6 +454,7 @@ export class MaterialIngestion {
           generatedAt,
           latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
           latestMaterialId: latestMaterialRecord?.id ?? null,
+          materialTypes,
           entryCount: memoryEntries.length,
           entries: memoryEntries,
         },
@@ -430,12 +466,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       voiceDraftPath,
       [
-        '# Voice draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
-        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Voice draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Representative voice excerpts:',
         ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
       ].join('\n'),
@@ -444,12 +483,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       soulDraftPath,
       [
-        '# Soul draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
-        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Soul draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Candidate soul signals:',
         ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
       ].join('\n'),
@@ -458,12 +500,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       skillsDraftPath,
       [
-        '# Skills draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
-        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Skills draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Candidate procedural skills:',
         ...skillSignals.flatMap((signal) => {
           const lines = [];
