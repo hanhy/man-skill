@@ -35,6 +35,34 @@ function countCandidateProfiles(profiles, key) {
   return profiles.filter((profile) => (profile.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
 }
 
+function buildProfileLabel(profile) {
+  const profileId = profile?.id ?? 'unknown-profile';
+  const displayName = profile?.profile?.displayName;
+  return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+}
+
+function summarizeMaintenanceQueue(profiles) {
+  const queuedProfiles = profiles
+    .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
+    .map((profile) => ({
+      id: profile.id ?? null,
+      displayName: profile.profile?.displayName ?? null,
+      summary: profile.profile?.summary ?? null,
+      label: buildProfileLabel(profile),
+      status: 'stale',
+      missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+      latestMaterialAt: profile.latestMaterialAt ?? null,
+    }));
+
+  return {
+    profileCount: profiles.length,
+    readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
+    refreshProfileCount: queuedProfiles.length,
+    incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    queuedProfiles,
+  };
+}
+
 export function buildFoundationRollup(profiles = []) {
   const safeProfiles = Array.isArray(profiles)
     ? profiles.filter((profile) => (profile?.materialCount ?? 0) > 0)
@@ -42,6 +70,7 @@ export function buildFoundationRollup(profiles = []) {
   const staleProfileCount = safeProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length;
 
   return {
+    maintenance: summarizeMaintenanceQueue(safeProfiles),
     memory: {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'memory'),

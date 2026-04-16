@@ -17,7 +17,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'harry-han',
       materialCount: 2,
-      foundationDraftStatus: { needsRefresh: false },
+      foundationDraftStatus: { needsRefresh: false, complete: true, missingDrafts: [] },
       foundationDraftSummaries: {
         memory: { generated: true, entryCount: 2, latestSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
         voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
@@ -34,7 +34,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'jane-doe',
       materialCount: 1,
-      foundationDraftStatus: { needsRefresh: true },
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory', 'skills', 'soul', 'voice'] },
       foundationDraftSummaries: {
         memory: { generated: false, entryCount: 0, latestSummaries: [] },
         voice: { generated: false, highlights: [] },
@@ -74,6 +74,23 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     generatedProfileCount: 1,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
+  });
+  assert.deepEqual(rollup.maintenance, {
+    profileCount: 2,
+    readyProfileCount: 1,
+    refreshProfileCount: 1,
+    incompleteProfileCount: 1,
+    queuedProfiles: [
+      {
+        id: 'jane-doe',
+        displayName: null,
+        summary: null,
+        label: 'jane-doe',
+        status: 'stale',
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        latestMaterialAt: null,
+      },
+    ],
   });
 });
 
@@ -124,7 +141,27 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });
-  assert.match(summary.promptPreview, /Foundation rollup:/);
+  assert.deepEqual(summary.foundation.maintenance, {
+    profileCount: 2,
+    readyProfileCount: 1,
+    refreshProfileCount: 1,
+    incompleteProfileCount: 1,
+    queuedProfiles: [
+      {
+        id: 'jane-doe',
+        displayName: 'Jane Doe',
+        summary: null,
+        label: 'Jane Doe (jane-doe)',
+        status: 'stale',
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+      },
+    ],
+  });
+  assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(summary.promptPreview, /Foundation maintenance:/);
+  assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {

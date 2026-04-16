@@ -78,7 +78,26 @@ type RollupSection = {
   highlights?: string[];
 };
 
+type MaintenanceQueueItem = {
+  id?: string | null;
+  displayName?: string | null;
+  summary?: string | null;
+  label?: string | null;
+  status?: string;
+  missingDrafts?: string[];
+  latestMaterialAt?: string | null;
+};
+
+type FoundationMaintenance = {
+  profileCount?: number;
+  readyProfileCount?: number;
+  refreshProfileCount?: number;
+  incompleteProfileCount?: number;
+  queuedProfiles?: MaintenanceQueueItem[];
+};
+
 type FoundationRollup = {
+  maintenance?: FoundationMaintenance;
   memory?: RollupSection;
   voice?: RollupSection;
   soul?: RollupSection;
@@ -260,6 +279,19 @@ function formatFoundationHighlights(highlights: string[] = []) {
   return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
 }
 
+function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = null) {
+  const maintenance = foundationRollup?.maintenance;
+  if (!maintenance || (maintenance.profileCount ?? 0) === 0) {
+    return null;
+  }
+
+  const queuedProfiles = maintenance.queuedProfiles ?? [];
+  return [
+    `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    ...queuedProfiles.map((profile) => `- ${profile.label ?? profile.id}: ${profile.status}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}`),
+  ].join('\n');
+}
+
 function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   const memory = foundationRollup?.memory;
   const voice = foundationRollup?.voice;
@@ -270,7 +302,12 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
-  const totalProfiles = [memory?.profileCount, voice?.profileCount, soul?.profileCount, skills?.profileCount]
+  const totalProfiles = [
+    memory?.profileCount,
+    voice?.profileCount,
+    soul?.profileCount,
+    skills?.profileCount,
+  ]
     .filter((value): value is number => Number.isFinite(value))
     .reduce((maxValue, value) => Math.max(maxValue, value), 0);
 
@@ -369,6 +406,7 @@ export class PromptAssembler {
 
   buildPreview(maxLength = 1200) {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const voicePreview = this.voice
@@ -390,6 +428,9 @@ export class PromptAssembler {
       coreFoundationBlock ? '' : null,
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      foundationMaintenanceBlock ? '' : null,
+      foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
+      foundationMaintenanceBlock,
       foundationRollupBlock ? '' : null,
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,
@@ -404,6 +445,7 @@ export class PromptAssembler {
 
   buildSystemPrompt() {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
@@ -429,6 +471,9 @@ export class PromptAssembler {
       '',
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      '',
+      foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
+      foundationMaintenanceBlock,
       '',
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,

@@ -142,6 +142,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationDraftSummaries.memory` generated entry counts, provenance metadata (`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`), plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 - top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
+- top-level `foundation.maintenance` queue data (`readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `queuedProfiles`) so stale or incomplete target profiles can be surfaced directly in the prompt preview before the detailed rollup
 - top-level `foundation.core` repo diagnostics for the base memory / skills / soul / voice scaffold, including an `overview` block (`readyAreaCount`, `missingAreas`, `thinAreas`) that the prompt preview mirrors as a compact coverage line
   - `foundation.core.overview.recommendedActions` now lists concrete next fixes when any repo-core area is missing or thin (for example `create voice/README.md` or `document placeholder skill folders with SKILL.md`)
 - manifest-backed `channels` / `models` summaries that keep the built-in foundation metadata while letting `manifests/channels.json` and `manifests/providers.json` override per-repo status or add extra adapters/providers
