@@ -10,8 +10,7 @@ import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
-import { createDefaultChannels } from './channels/index.js';
-import { createDefaultProviders } from './models/index.js';
+import { ManifestLoader } from './core/manifest-loader.js';
 import { WorkLoop } from './runtime/work-loop.js';
 
 type OptionValue = string | boolean | undefined;
@@ -193,10 +192,13 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
 
 export function buildSummary(rootDir: string) {
   const loader = new FileSystemLoader(rootDir);
+  const manifestLoader = new ManifestLoader(rootDir);
   const soulDocument = loader.loadSoul();
   const voiceDocument = loader.loadVoice();
   const memoryIndex = loader.loadMemoryIndex();
   const skillNames = loader.loadSkills();
+  const channelManifest = manifestLoader.loadChannelManifest();
+  const providerManifest = manifestLoader.loadProviderManifest();
 
   const voice = new VoiceProfile({
     tone: 'human',
@@ -222,8 +224,15 @@ export function buildSummary(rootDir: string) {
     longTerm: memoryIndex.longTerm,
   });
   const skills = new SkillRegistry(skillNames);
-  const channels = new ChannelRegistry(createDefaultChannels().map((channel: any) => channel.summary()) as any);
-  const models = new ModelRegistry(createDefaultProviders().map((provider: any) => provider.summary()) as any);
+  const channels = new ChannelRegistry();
+  if (Array.isArray(channelManifest)) {
+    channelManifest.forEach((channel: unknown) => channels.register(channel as any));
+  }
+
+  const models = new ModelRegistry();
+  if (Array.isArray(providerManifest)) {
+    providerManifest.forEach((provider: unknown) => models.register(provider as any));
+  }
   const workLoop = new WorkLoop({
     intervalMinutes: 10,
     objectives: [

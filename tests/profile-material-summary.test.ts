@@ -336,7 +336,8 @@ test('PromptAssembler prefers distilled generated skill highlights over sample l
 
   assert.match(prompt, /skills signals: execution heuristic/);
   assert.doesNotMatch(prompt, /skills signals: .*sample:/);
-  assert.doesNotMatch(prompt, /skills signals: .*fallback skill signal/);
+  assert.doesNotMatch(prompt, /skills signals: fallback skill signal/);
+  assert.doesNotMatch(prompt, /"sample: Tight loops beat big plans\."/);
 });
 
 test('loadProfilesIndex marks draft status as stale when new materials arrive after generation', async () => {

@@ -202,6 +202,25 @@ function buildProfileSnapshots(profiles: ProfileSnapshot[] = []) {
   return profiles.map((profile) => formatProfileSnapshot(profile)).join('\n');
 }
 
+function sanitizeProfilesForPrompt(profiles: ProfileSnapshot[] = []) {
+  return profiles.map((profile) => ({
+    ...profile,
+    foundationDraftSummaries: profile.foundationDraftSummaries
+      ? {
+          ...profile.foundationDraftSummaries,
+          skills: profile.foundationDraftSummaries.skills
+            ? {
+                ...profile.foundationDraftSummaries.skills,
+                highlights: (profile.foundationDraftSummaries.skills.highlights ?? [])
+                  .map(cleanHighlight)
+                  .filter((value) => value && !value.startsWith('sample:')),
+              }
+            : profile.foundationDraftSummaries.skills,
+        }
+      : profile.foundationDraftSummaries,
+  }));
+}
+
 function formatFoundationHighlights(highlights: string[] = []) {
   return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
 }
@@ -297,6 +316,7 @@ export class PromptAssembler {
   buildSystemPrompt() {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 
     return [
       `Name: ${this.profile.name}`,
@@ -321,7 +341,7 @@ export class PromptAssembler {
       foundationRollupBlock,
       '',
       'Profiles:',
-      JSON.stringify(this.profiles, null, 2),
+      JSON.stringify(sanitizedProfiles, null, 2),
       profileSnapshots ? '' : null,
       profileSnapshots ? 'Profile foundation snapshots:' : null,
       profileSnapshots,

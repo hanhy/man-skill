@@ -17,6 +17,28 @@ export interface ChannelRecord {
   [key: string]: unknown;
 }
 
+function mergeStringLists(...lists: Array<string[] | undefined>): string[] {
+  return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
+}
+
+function mergeChannelAuth(
+  defaultAuth: ChannelAuthRecord | null | undefined,
+  overrideAuth: ChannelAuthRecord | null | undefined,
+): ChannelAuthRecord | null {
+  if (overrideAuth === null) {
+    return null;
+  }
+
+  if (!defaultAuth && !overrideAuth) {
+    return null;
+  }
+
+  return {
+    type: overrideAuth?.type ?? defaultAuth?.type ?? 'unknown',
+    envVars: mergeStringLists(defaultAuth?.envVars, overrideAuth?.envVars),
+  };
+}
+
 const DEFAULT_CHANNELS: ChannelRecord[] = [
   {
     id: 'slack',
@@ -72,6 +94,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
   },
 ];
 
+const DEFAULT_CHANNELS_BY_ID = new Map(DEFAULT_CHANNELS.map((channel) => [channel.id, channel]));
+
 export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
   constructor(channels: Array<string | ChannelRecord> = DEFAULT_CHANNELS) {
     super(channels);
@@ -91,14 +115,24 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
       };
     }
 
-    return {
+    const defaultChannel = typeof channel.id === 'string' ? DEFAULT_CHANNELS_BY_ID.get(channel.id) : undefined;
+    const normalizedChannel = {
       transport: 'chat',
       direction: ['inbound'],
       status: 'unknown',
       capabilities: [],
       auth: null,
       deliveryModes: [],
+      ...defaultChannel,
       ...channel,
+    };
+
+    return {
+      ...normalizedChannel,
+      direction: mergeStringLists(defaultChannel?.direction, channel.direction),
+      capabilities: mergeStringLists(defaultChannel?.capabilities, channel.capabilities),
+      deliveryModes: mergeStringLists(defaultChannel?.deliveryModes, channel.deliveryModes),
+      auth: mergeChannelAuth(defaultChannel?.auth, channel.auth),
     };
   }
 
