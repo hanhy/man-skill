@@ -61,8 +61,24 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 
 This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials.
 
+## Foundation draft update command
+
+After importing materials, derive draft updates for the target person's memory / voice / soul / skills foundation:
+
+```bash
+node src/index.js update foundation --person harry-han
+```
+
+This writes:
+
+- `profiles/<person-id>/memory/long-term/foundation.json`
+- `profiles/<person-id>/voice/README.md`
+- `profiles/<person-id>/soul/README.md`
+- `profiles/<person-id>/skills/README.md`
+
+Running `node src/index.js` will also expose these generated draft paths under `profiles[].foundationDrafts`.
+
 ## Current limitation
 
-This is still the first ingestion entrance only.
-It stores raw materials cleanly and now surfaces profile material summaries, but it does not yet extract voice, soul, or memory updates automatically.
-That learning layer comes next.
+The update command now creates first-pass drafts from imported materials, but the outputs are still heuristic draft artifacts.
+They are not yet merged into a richer learned memory store, reusable skill schema, or production channel/provider runtime.

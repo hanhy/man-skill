@@ -57,6 +57,7 @@ The project aims to keep personal-agent construction simple:
 - load memory index from `memory/`
 - discover local skill folders from `skills/`
 - summarize per-profile material counts plus foundation-readiness signals for memory / voice / soul / skills
+- derive first-pass per-profile foundation drafts under `profiles/<person-id>/memory|voice|soul|skills/`
 - expose planned channel/provider registries from manifests and factories
 - assemble a prompt preview from profile, soul, voice, memory, and skills
 

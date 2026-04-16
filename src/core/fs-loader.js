@@ -38,7 +38,11 @@ function readJsonIfExists(filePath) {
     return null;
   }
 
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function isNonEmptyString(value) {
@@ -59,7 +63,10 @@ function buildExcerpt(value, maxLength = 160) {
 }
 
 function sortByNewest(records) {
-  return [...records].sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
+  return [...records].sort(
+    (left, right) =>
+      (right.createdAt ?? '').localeCompare(left.createdAt ?? '') || (right.id ?? '').localeCompare(left.id ?? ''),
+  );
 }
 
 function summarizeFoundationReadiness(materialRecords) {
@@ -127,6 +134,21 @@ function loadMaterialSummaries(materialsDir) {
   };
 }
 
+function loadFoundationDrafts(rootDir, profileId) {
+  const candidates = {
+    memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
+    voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
+    soul: path.join(rootDir, 'profiles', profileId, 'soul', 'README.md'),
+    skills: path.join(rootDir, 'profiles', profileId, 'skills', 'README.md'),
+  };
+
+  return Object.fromEntries(
+    Object.entries(candidates)
+      .filter(([, candidatePath]) => fs.existsSync(candidatePath))
+      .map(([key, candidatePath]) => [key, path.relative(rootDir, candidatePath)]),
+  );
+}
+
 export class FileSystemLoader {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -172,6 +194,7 @@ export class FileSystemLoader {
         screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
+        foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
       };
     });

@@ -26,6 +26,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   ingestion.importTextDocument({ personId: 'Harry Han', sourceFile: sourceTextPath });
   ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
   ingestion.importScreenshotSource({ personId: 'Harry Han', sourceFile: screenshotPath });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   const [profile] = loader.loadProfilesIndex();
 
@@ -38,26 +39,25 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     text: 1,
   });
   assert.match(profile.latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
-  assert.deepEqual(profile.foundationReadiness, {
-    memory: {
-      candidateCount: 3,
-      latestTypes: ['screenshot', 'message', 'text'],
-    },
-    voice: {
-      candidateCount: 2,
-      sampleTypes: ['message', 'text'],
-      sampleExcerpts: ['Ship the first slice.', 'Direct writing sample.'],
-    },
-    soul: {
-      candidateCount: 1,
-      sampleTypes: ['text'],
-      sampleExcerpts: ['Direct writing sample.'],
-    },
-    skills: {
-      candidateCount: 0,
-      sampleTypes: [],
-      sampleExcerpts: [],
-    },
+  assert.deepEqual(profile.foundationDrafts, {
+    memory: 'profiles/harry-han/memory/long-term/foundation.json',
+    voice: 'profiles/harry-han/voice/README.md',
+    soul: 'profiles/harry-han/soul/README.md',
+    skills: 'profiles/harry-han/skills/README.md',
+  });
+  assert.deepEqual(profile.foundationReadiness.memory.latestTypes.slice().sort(), ['message', 'screenshot', 'text']);
+  assert.equal(profile.foundationReadiness.memory.candidateCount, 3);
+  assert.deepEqual(profile.foundationReadiness.voice.sampleTypes.slice().sort(), ['message', 'text']);
+  assert.deepEqual(profile.foundationReadiness.voice.sampleExcerpts.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
+  assert.deepEqual(profile.foundationReadiness.soul, {
+    candidateCount: 1,
+    sampleTypes: ['text'],
+    sampleExcerpts: ['Direct writing sample.'],
+  });
+  assert.deepEqual(profile.foundationReadiness.skills, {
+    candidateCount: 0,
+    sampleTypes: [],
+    sampleExcerpts: [],
   });
 });
 
@@ -90,4 +90,22 @@ test('PromptAssembler includes profile material summaries when provided', () => 
   assert.match(prompt, /"screenshot": 1/);
   assert.match(prompt, /foundationReadiness/);
   assert.match(prompt, /Direct writing sample\./);
+});
+
+test('loadProfilesIndex skips malformed material records while keeping valid summaries', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+
+  const brokenRecordPath = path.join(rootDir, 'profiles', 'harry-han', 'materials', 'broken.json');
+  fs.writeFileSync(brokenRecordPath, '{not-json');
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.id, 'harry-han');
+  assert.equal(profile.materialCount, 2);
+  assert.deepEqual(profile.materialTypes, { message: 1 });
+  assert.equal(profile.foundationReadiness.memory.candidateCount, 1);
 });

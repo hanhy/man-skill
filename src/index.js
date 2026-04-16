@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { AgentProfile } from './core/agent-profile.js';
 import { MemoryStore } from './core/memory-store.js';
 import { SkillRegistry } from './core/skill-registry.js';
@@ -71,6 +72,28 @@ function runImportCommand(rootDir, subcommand, options) {
   }
 
   throw new Error(`Unsupported import type: ${subcommand}`);
+}
+
+function runUpdateCommand(rootDir, subcommand, options) {
+  const ingestion = new MaterialIngestion(rootDir);
+  const personId = options.person;
+
+  if (!personId) {
+    throw new Error('Missing required --person argument');
+  }
+
+  if (subcommand === 'foundation') {
+    const result = ingestion.refreshFoundationDrafts({ personId });
+    return {
+      ...result,
+      memoryDraftPath: result.memoryDraftPath ? path.relative(rootDir, result.memoryDraftPath) : null,
+      voiceDraftPath: result.voiceDraftPath ? path.relative(rootDir, result.voiceDraftPath) : null,
+      soulDraftPath: result.soulDraftPath ? path.relative(rootDir, result.soulDraftPath) : null,
+      skillsDraftPath: result.skillsDraftPath ? path.relative(rootDir, result.skillsDraftPath) : null,
+    };
+  }
+
+  throw new Error(`Unsupported update type: ${subcommand}`);
 }
 
 function buildSummary(rootDir) {
@@ -148,6 +171,9 @@ const { command, subcommand, options } = parseArgs(process.argv.slice(2));
 
 if (command === 'import') {
   const result = runImportCommand(rootDir, subcommand, options);
+  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+} else if (command === 'update') {
+  const result = runUpdateCommand(rootDir, subcommand, options);
   console.log(JSON.stringify({ ok: true, ...result }, null, 2));
 } else {
   console.log(JSON.stringify(buildSummary(rootDir), null, 2));
