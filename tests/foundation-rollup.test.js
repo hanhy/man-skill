@@ -221,6 +221,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
 
   assert.deepEqual(summary.foundation.core.memory, {
     hasRootDocument: true,
+    rootPath: 'memory/README.md',
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 1,
@@ -229,6 +230,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term', 'scratch'],
     emptyBuckets: [],
+    sampleEntries: ['daily/2026-04-16.md', 'long-term/operator.json', 'scratch/draft.txt'],
   });
   assert.deepEqual(summary.foundation.core.skills, {
     count: 2,
@@ -239,11 +241,13 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   });
   assert.deepEqual(summary.foundation.core.soul, {
     present: true,
+    path: 'SOUL.md',
     lineCount: 2,
     excerpt: 'Build a faithful operator core.',
   });
   assert.deepEqual(summary.foundation.core.voice, {
     present: true,
+    path: 'voice/README.md',
     lineCount: 2,
     excerpt: 'Keep replies direct.',
   });
@@ -264,10 +268,10 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   assert.match(summary.promptPreview, /Core foundation:/);
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt/);
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\)/);
-  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\./);
-  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\./);
+  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
+  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
 });
 
 test('buildSummary flags missing and thin core foundation areas in the prompt preview', () => {
@@ -355,6 +359,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
 
   assert.deepEqual(summary.foundation.core.memory, {
     hasRootDocument: true,
+    rootPath: 'memory/README.md',
     dailyCount: 1,
     longTermCount: 0,
     scratchCount: 0,
@@ -363,6 +368,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
     emptyBuckets: ['long-term', 'scratch'],
+    sampleEntries: ['daily/2026-04-16.md'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -372,7 +378,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     recommendedActions: ['add at least one entry under memory/long-term and memory/scratch'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
 

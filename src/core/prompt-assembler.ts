@@ -108,6 +108,7 @@ type FoundationRollup = {
 
 type CoreDocumentFoundationSummary = {
   present?: boolean;
+  path?: string;
   lineCount?: number;
   excerpt?: string | null;
 };
@@ -139,6 +140,7 @@ type FoundationCoreMaintenance = {
 type FoundationCore = {
   memory?: {
     hasRootDocument?: boolean;
+    rootPath?: string;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -147,6 +149,7 @@ type FoundationCore = {
     totalBucketCount?: number;
     populatedBuckets?: string[];
     emptyBuckets?: string[];
+    sampleEntries?: string[];
   };
   skills?: {
     count?: number;
@@ -648,16 +651,16 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}`,
     ),
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
       : null,
     skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; placeholders: ${skills.undocumentedSample?.join(', ')}` : ''}`
       : null,
     soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}`
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`
       : null,
     voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}`
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}`
       : null,
     recommendedActions.length > 0
       ? `- next actions: ${recommendedActions.join(' | ')}`

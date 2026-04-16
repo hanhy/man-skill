@@ -66,6 +66,7 @@ The project aims to keep personal-agent construction simple:
 - mirror memory-draft provenance (`generatedAt`, latest material id/timestamp, source counts, material types) back into `foundationDraftSummaries.memory` so prompt/runtime consumers can inspect freshness without reopening raw draft files
 - aggregate per-profile draft state into a repo-level `foundation` rollup so memory / voice / soul / skills progress is visible without manually scanning every profile
 - expose `foundation.core` diagnostics for the repo's own memory / skills / soul / voice assets so the prompt/runtime layer can quickly audit whether the base agent scaffolding is actually populated
+- include compact source references in `foundation.core` (`memory/README.md`, sample bucket entries, `SOUL.md`, `voice/README.md`) so the prompt preview can point operators at the exact files backing the current foundation state
 - require repo-core memory coverage to consider `memory/daily`, `memory/long-term`, and `memory/scratch` separately, so partial memory scaffolds stay thin until all three buckets contain at least one entry
 - expose a repo-core `foundation.core.maintenance` queue with per-area (`memory`, `skills`, `soul`, `voice`) `missing` vs `thin` status, expected file paths, and the next concrete action so operators can fix scaffold drift without inferring it from aggregate counts alone
 - detect stale drafts with both `latestMaterialAt` and `latestMaterialId` so same-timestamp imports do not get hidden by timestamp collisions

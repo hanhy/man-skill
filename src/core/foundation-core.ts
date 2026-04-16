@@ -136,6 +136,22 @@ function countContentLines(document: string | null | undefined): number {
     .length;
 }
 
+function collectMemorySampleEntries({
+  daily,
+  longTerm,
+  scratch,
+}: {
+  daily: string[];
+  longTerm: string[];
+  scratch: string[];
+}): string[] {
+  return [
+    ...daily.slice(0, 1).map((entry) => `daily/${entry}`),
+    ...longTerm.slice(0, 1).map((entry) => `long-term/${entry}`),
+    ...scratch.slice(0, 1).map((entry) => `scratch/${entry}`),
+  ];
+}
+
 function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
   return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}`;
 }
@@ -223,6 +239,7 @@ function buildCoreFoundationMaintenance({
 
 export interface CoreMemoryFoundationSummary {
   hasRootDocument: boolean;
+  rootPath: string;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -231,6 +248,7 @@ export interface CoreMemoryFoundationSummary {
   totalBucketCount: number;
   populatedBuckets: string[];
   emptyBuckets: string[];
+  sampleEntries: string[];
 }
 
 export interface CoreSkillsFoundationSummary {
@@ -243,6 +261,7 @@ export interface CoreSkillsFoundationSummary {
 
 export interface CoreDocumentFoundationSummary {
   present: boolean;
+  path: string;
   lineCount: number;
   excerpt: string | null;
 }
@@ -325,6 +344,7 @@ export function buildCoreFoundationSummary({
     : safeSkillNames.filter((skillName) => !documentedSkillNames.includes(skillName));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
+    rootPath: 'memory/README.md',
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,
@@ -333,6 +353,7 @@ export function buildCoreFoundationSummary({
     totalBucketCount: memoryBuckets.length,
     populatedBuckets,
     emptyBuckets,
+    sampleEntries: collectMemorySampleEntries({ daily, longTerm, scratch }),
   };
   const skills = {
     count: safeSkillNames.length,
@@ -343,11 +364,13 @@ export function buildCoreFoundationSummary({
   };
   const soul = {
     present: isNonEmptyString(soulDocument),
+    path: 'SOUL.md',
     lineCount: countContentLines(soulDocument),
     excerpt: extractExcerpt(soulDocument),
   };
   const voice = {
     present: isNonEmptyString(voiceDocument),
+    path: 'voice/README.md',
     lineCount: countContentLines(voiceDocument),
     excerpt: extractExcerpt(voiceDocument),
   };
