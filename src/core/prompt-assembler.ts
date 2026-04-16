@@ -120,6 +120,22 @@ type FoundationCoreOverview = {
   recommendedActions?: string[];
 };
 
+type FoundationCoreMaintenanceQueueItem = {
+  area?: string;
+  status?: 'ready' | 'thin' | 'missing' | string;
+  summary?: string;
+  action?: string | null;
+  paths?: string[];
+};
+
+type FoundationCoreMaintenance = {
+  areaCount?: number;
+  readyAreaCount?: number;
+  missingAreaCount?: number;
+  thinAreaCount?: number;
+  queuedAreas?: FoundationCoreMaintenanceQueueItem[];
+};
+
 type FoundationCore = {
   memory?: {
     hasRootDocument?: boolean;
@@ -142,6 +158,7 @@ type FoundationCore = {
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
   overview?: FoundationCoreOverview;
+  maintenance?: FoundationCoreMaintenance;
 } | null;
 
 type AgentSummary = {
@@ -597,6 +614,7 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const soul = foundationCore.soul;
   const voice = foundationCore.voice;
   const overview = foundationCore.overview;
+  const maintenance = foundationCore.maintenance;
   const missingAreas = (overview?.missingAreas ?? []).filter(Boolean);
   const thinAreas = (overview?.thinAreas ?? []).filter(Boolean);
   const recommendedActions = (overview?.recommendedActions ?? []).filter(Boolean);
@@ -606,6 +624,12 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
 
   return [
     coverageLine,
+    maintenance
+      ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
+      : null,
+    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) =>
+      `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}`,
+    ),
     memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}`
       : null,

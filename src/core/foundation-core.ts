@@ -48,6 +48,31 @@ function buildMemoryBucketAction(emptyBuckets: string[]): string | null {
   return `add at least one entry under ${formatList(bucketPaths)}`;
 }
 
+function buildMemoryMaintenanceAction({
+  hasRootDocument,
+  emptyBuckets,
+}: {
+  hasRootDocument: boolean;
+  emptyBuckets: string[];
+}): string | null {
+  const actions: string[] = [];
+
+  if (!hasRootDocument) {
+    actions.push('create memory/README.md');
+  }
+
+  const bucketAction = buildMemoryBucketAction(emptyBuckets);
+  if (bucketAction) {
+    actions.push(bucketAction);
+  }
+
+  if (actions.length === 0) {
+    return null;
+  }
+
+  return actions.join(' | ');
+}
+
 function collectRecommendedActions({
   memoryHasRootDocument,
   memoryEmptyBuckets,
@@ -111,6 +136,91 @@ function countContentLines(document: string | null | undefined): number {
     .length;
 }
 
+function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
+  return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}`;
+}
+
+function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
+  return `${skills.count} registered, ${skills.documentedCount} documented`;
+}
+
+function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
+  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines`;
+}
+
+function buildCoreFoundationMaintenance({
+  memory,
+  skills,
+  soul,
+  voice,
+}: {
+  memory: CoreMemoryFoundationSummary;
+  skills: CoreSkillsFoundationSummary;
+  soul: CoreDocumentFoundationSummary;
+  voice: CoreDocumentFoundationSummary;
+}): CoreFoundationMaintenanceSummary {
+  const queue: CoreFoundationMaintenanceQueueItem[] = [];
+  const skillsAction = skills.count === 0
+    ? 'create skills/<name>/SKILL.md for at least one repo skill'
+    : (skills.documentedCount < skills.count ? 'document placeholder skill folders with SKILL.md' : null);
+  const soulAction = !soul.present
+    ? 'create SOUL.md'
+    : (soul.lineCount === 0 ? 'add non-heading guidance to SOUL.md' : null);
+  const voiceAction = !voice.present
+    ? 'create voice/README.md'
+    : (voice.lineCount === 0 ? 'add non-heading guidance to voice/README.md' : null);
+
+  const areas: CoreFoundationMaintenanceQueueItem[] = [
+    {
+      area: 'memory',
+      status: (!memory.hasRootDocument && memory.totalEntries === 0)
+        ? 'missing'
+        : ((!memory.hasRootDocument || memory.emptyBuckets.length > 0) ? 'thin' : 'ready'),
+      summary: summarizeMemoryFoundation(memory),
+      action: buildMemoryMaintenanceAction({
+        hasRootDocument: memory.hasRootDocument,
+        emptyBuckets: memory.emptyBuckets,
+      }),
+      paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+    },
+    {
+      area: 'skills',
+      status: skills.count === 0 ? 'missing' : (skills.documentedCount < skills.count ? 'thin' : 'ready'),
+      summary: summarizeSkillsFoundation(skills),
+      action: skillsAction,
+      paths: ['skills/'],
+    },
+    {
+      area: 'soul',
+      status: !soul.present ? 'missing' : (soul.lineCount === 0 ? 'thin' : 'ready'),
+      summary: summarizeDocumentFoundation(soul),
+      action: soulAction,
+      paths: ['SOUL.md'],
+    },
+    {
+      area: 'voice',
+      status: !voice.present ? 'missing' : (voice.lineCount === 0 ? 'thin' : 'ready'),
+      summary: summarizeDocumentFoundation(voice),
+      action: voiceAction,
+      paths: ['voice/README.md'],
+    },
+  ];
+
+  areas.forEach((area) => {
+    if (area.status !== 'ready') {
+      queue.push(area);
+    }
+  });
+
+  return {
+    areaCount: areas.length,
+    readyAreaCount: areas.filter((area) => area.status === 'ready').length,
+    missingAreaCount: areas.filter((area) => area.status === 'missing').length,
+    thinAreaCount: areas.filter((area) => area.status === 'thin').length,
+    queuedAreas: queue,
+  };
+}
+
 export interface CoreMemoryFoundationSummary {
   hasRootDocument: boolean;
   dailyCount: number;
@@ -145,12 +255,29 @@ export interface CoreFoundationOverview {
   recommendedActions: string[];
 }
 
+export interface CoreFoundationMaintenanceQueueItem {
+  area: 'memory' | 'skills' | 'soul' | 'voice';
+  status: 'ready' | 'thin' | 'missing';
+  summary: string;
+  action: string | null;
+  paths: string[];
+}
+
+export interface CoreFoundationMaintenanceSummary {
+  areaCount: number;
+  readyAreaCount: number;
+  missingAreaCount: number;
+  thinAreaCount: number;
+  queuedAreas: CoreFoundationMaintenanceQueueItem[];
+}
+
 export interface CoreFoundationSummary {
   memory: CoreMemoryFoundationSummary;
   skills: CoreSkillsFoundationSummary;
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
   overview: CoreFoundationOverview;
+  maintenance: CoreFoundationMaintenanceSummary;
 }
 
 export interface BuildCoreFoundationSummaryOptions {
@@ -269,6 +396,12 @@ export function buildCoreFoundationSummary({
       voiceLineCount: voice.lineCount,
     }),
   };
+  const maintenance = buildCoreFoundationMaintenance({
+    memory,
+    skills,
+    soul,
+    voice,
+  });
 
   return {
     memory,
@@ -276,5 +409,6 @@ export function buildCoreFoundationSummary({
     soul,
     voice,
     overview,
+    maintenance,
   };
 }

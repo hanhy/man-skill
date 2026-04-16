@@ -67,6 +67,7 @@ The project aims to keep personal-agent construction simple:
 - aggregate per-profile draft state into a repo-level `foundation` rollup so memory / voice / soul / skills progress is visible without manually scanning every profile
 - expose `foundation.core` diagnostics for the repo's own memory / skills / soul / voice assets so the prompt/runtime layer can quickly audit whether the base agent scaffolding is actually populated
 - require repo-core memory coverage to consider `memory/daily`, `memory/long-term`, and `memory/scratch` separately, so partial memory scaffolds stay thin until all three buckets contain at least one entry
+- expose a repo-core `foundation.core.maintenance` queue with per-area (`memory`, `skills`, `soul`, `voice`) `missing` vs `thin` status, expected file paths, and the next concrete action so operators can fix scaffold drift without inferring it from aggregate counts alone
 - detect stale drafts with both `latestMaterialAt` and `latestMaterialId` so same-timestamp imports do not get hidden by timestamp collisions
 - treat target-person metadata changes (`displayName`, `summary`) as foundation-draft drift so stale-only refreshes also regenerate identity-bearing drafts after profile updates
 - render compact per-profile foundation snapshots in `PromptAssembler` so the runtime can see stale drafts, missing pieces, key highlights, and a short target summary without parsing the full profile JSON blob

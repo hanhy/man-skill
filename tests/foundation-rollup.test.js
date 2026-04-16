@@ -254,8 +254,16 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     thinAreas: [],
     recommendedActions: [],
   });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 4,
+    missingAreaCount: 0,
+    thinAreaCount: 0,
+    queuedAreas: [],
+  });
   assert.match(summary.promptPreview, /Core foundation:/);
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
+  assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\)/);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\./);
@@ -285,7 +293,46 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
       'create voice/README.md',
     ],
   });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 0,
+    missingAreaCount: 2,
+    thinAreaCount: 2,
+    queuedAreas: [
+      {
+        area: 'memory',
+        status: 'thin',
+        summary: 'README yes, daily 0, long-term 0, scratch 0',
+        action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+        paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+      },
+      {
+        area: 'skills',
+        status: 'missing',
+        summary: '0 registered, 0 documented',
+        action: 'create skills/<name>/SKILL.md for at least one repo skill',
+        paths: ['skills/'],
+      },
+      {
+        area: 'soul',
+        status: 'thin',
+        summary: 'present, 0 lines',
+        action: 'add non-heading guidance to SOUL.md',
+        paths: ['SOUL.md'],
+      },
+      {
+        area: 'voice',
+        status: 'missing',
+        summary: 'missing, 0 lines',
+        action: 'create voice/README.md',
+        paths: ['voice/README.md'],
+      },
+    ],
+  });
   assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
+  assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch/);
+  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill/);
   assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
 });
@@ -327,6 +374,42 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
+});
+
+test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'memory',
+        status: 'thin',
+        summary: 'README no, daily 1, long-term 1, scratch 1',
+        action: 'create memory/README.md',
+        paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+      },
+    ],
+  });
+  assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
