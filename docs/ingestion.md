@@ -69,6 +69,12 @@ After importing materials, derive draft updates for the target person's memory /
 node src/index.js update foundation --person harry-han
 ```
 
+To refresh every profile that already has imported materials:
+
+```bash
+node src/index.js update foundation --all
+```
+
 This writes:
 
 - `profiles/<person-id>/memory/long-term/foundation.json`

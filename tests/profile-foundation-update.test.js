@@ -102,3 +102,52 @@ test('refreshFoundationDrafts rejects empty profiles without imported materials'
     /No imported materials found for profile harry-han/,
   );
 });
+
+test('refreshAllFoundationDrafts updates every profile with imported materials', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.importTalkSnippet({
+    personId: 'Jane Doe',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const result = ingestion.refreshAllFoundationDrafts();
+
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['harry-han', 'jane-doe']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe', 'skills', 'README.md')), true);
+});
+
+test('CLI update foundation --all writes derived drafts for every profile with imported materials', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  const janeSourcePath = path.join(rootDir, 'jane.txt');
+  fs.writeFileSync(janeSourcePath, 'Write the brief, then tighten the edges.');
+  ingestion.importTextDocument({
+    personId: 'Jane Doe',
+    sourceFile: janeSourcePath,
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'foundation', '--all'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['harry-han', 'jane-doe']);
+  assert.equal(result.results.every((entry) => /profiles\/.+\/voice\/README\.md$/.test(entry.voiceDraftPath)), true);
+});

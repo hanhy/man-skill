@@ -32,6 +32,8 @@
 node src/index.js import text --person harry-han --file ./samples/post.txt
 node src/index.js import message --person harry-han --text "I’ll be there in 10 minutes."
 node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png
+node src/index.js update foundation --person harry-han
+node src/index.js update foundation --all
 node src/index.js
 ```
 

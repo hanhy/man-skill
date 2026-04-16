@@ -23,12 +23,27 @@ function parseArgs(argv) {
     }
 
     const key = token.slice(2);
-    const value = rest[index + 1];
-    options[key] = value;
+    const nextToken = rest[index + 1];
+    if (!nextToken || nextToken.startsWith('--')) {
+      options[key] = true;
+      continue;
+    }
+
+    options[key] = nextToken;
     index += 1;
   }
 
   return { command, subcommand, options };
+}
+
+function relativizeDraftPaths(rootDir, result) {
+  return {
+    ...result,
+    memoryDraftPath: result.memoryDraftPath ? path.relative(rootDir, result.memoryDraftPath) : null,
+    voiceDraftPath: result.voiceDraftPath ? path.relative(rootDir, result.voiceDraftPath) : null,
+    soulDraftPath: result.soulDraftPath ? path.relative(rootDir, result.soulDraftPath) : null,
+    skillsDraftPath: result.skillsDraftPath ? path.relative(rootDir, result.skillsDraftPath) : null,
+  };
 }
 
 function runImportCommand(rootDir, subcommand, options) {
@@ -78,19 +93,20 @@ function runUpdateCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
   const personId = options.person;
 
+  if (subcommand === 'foundation' && options.all) {
+    const result = ingestion.refreshAllFoundationDrafts();
+    return {
+      ...result,
+      results: result.results.map((entry) => relativizeDraftPaths(rootDir, entry)),
+    };
+  }
+
   if (!personId) {
     throw new Error('Missing required --person argument');
   }
 
   if (subcommand === 'foundation') {
-    const result = ingestion.refreshFoundationDrafts({ personId });
-    return {
-      ...result,
-      memoryDraftPath: result.memoryDraftPath ? path.relative(rootDir, result.memoryDraftPath) : null,
-      voiceDraftPath: result.voiceDraftPath ? path.relative(rootDir, result.voiceDraftPath) : null,
-      soulDraftPath: result.soulDraftPath ? path.relative(rootDir, result.soulDraftPath) : null,
-      skillsDraftPath: result.skillsDraftPath ? path.relative(rootDir, result.skillsDraftPath) : null,
-    };
+    return relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId }));
   }
 
   throw new Error(`Unsupported update type: ${subcommand}`);

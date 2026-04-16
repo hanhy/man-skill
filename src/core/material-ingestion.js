@@ -26,6 +26,18 @@ function ensureDir(dirPath) {
   return dirPath;
 }
 
+function listDirectoriesIfExists(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
 function timestampId() {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
@@ -315,6 +327,17 @@ export class MaterialIngestion {
       soulDraftPath,
       skillsDraftPath,
       generatedAt: new Date().toISOString(),
+    };
+  }
+
+  refreshAllFoundationDrafts() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir)
+      .filter((profileId) => this.loadMaterialRecords(profileId).length > 0);
+
+    return {
+      profileCount: profileIds.length,
+      results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
     };
   }
 }
