@@ -10,6 +10,9 @@ This file stores stable facts about the person ManSkill is being shaped for.
 - **Working preference:** commit meaningful progress at least once per day
 - **Review preference:** create a branch for each day’s work, ask for review, and explain what changed
 - **Notification preference:** do not send routine reminders while the user is sleeping (`00:00-08:00` Asia/Shanghai)
+- **Code preference:** prefer TypeScript-first for new and migrated runtime code; keep JavaScript only as thin compatibility shims when needed
+- **Docs preference:** README beautification is still wanted, but it is not urgent; fit it in when it makes sense
+- **Attribution rule:** if any open source code is reused or referred to directly, make a proper announcement/disclosure
 
 ## Current product direction
 
