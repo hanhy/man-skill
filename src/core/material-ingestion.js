@@ -345,6 +345,7 @@ export class MaterialIngestion {
 
   refreshFoundationDrafts({ personId }) {
     const normalized = this.ensureProfile(personId);
+    const profileDocument = readJsonIfExists(normalized.profilePath);
     const materialRecords = sortByNewest(this.loadMaterialRecords(normalized.personId));
 
     if (materialRecords.length === 0) {
@@ -401,6 +402,8 @@ export class MaterialIngestion {
       JSON.stringify(
         {
           personId: normalized.personId,
+          displayName: profileDocument?.displayName ?? normalized.personId,
+          summary: profileDocument?.summary ?? null,
           generatedAt,
           latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
           latestMaterialId: latestMaterialRecord?.id ?? null,
@@ -418,6 +421,8 @@ export class MaterialIngestion {
         '# Voice draft',
         '',
         `Profile: ${normalized.personId}`,
+        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
+        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
         '',
         'Representative voice excerpts:',
         ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
@@ -430,6 +435,8 @@ export class MaterialIngestion {
         '# Soul draft',
         '',
         `Profile: ${normalized.personId}`,
+        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
+        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
         '',
         'Candidate soul signals:',
         ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
@@ -442,6 +449,8 @@ export class MaterialIngestion {
         '# Skills draft',
         '',
         `Profile: ${normalized.personId}`,
+        `Display name: ${profileDocument?.displayName ?? normalized.personId}`,
+        `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
         '',
         'Candidate procedural skills:',
         ...skillSignals.flatMap((signal) => {
@@ -489,6 +498,7 @@ export class MaterialIngestion {
 
         const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
         const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+        const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
 
         const memoryDraftPath = this.resolve('profiles', profileId, 'memory', 'long-term', 'foundation.json');
         const voiceDraftPath = this.resolve('profiles', profileId, 'voice', 'README.md');
@@ -501,6 +511,14 @@ export class MaterialIngestion {
 
         const memoryDraft = readJsonIfExists(memoryDraftPath);
         if (!memoryDraft?.generatedAt) {
+          return true;
+        }
+
+        if ((memoryDraft.displayName ?? profileId) !== (profileDocument?.displayName ?? profileId)) {
+          return true;
+        }
+
+        if ((memoryDraft.summary ?? null) !== (profileDocument?.summary ?? null)) {
           return true;
         }
 

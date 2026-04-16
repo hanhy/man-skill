@@ -33,6 +33,10 @@ function formatProfileSnapshot(profile = {}) {
     lines.push(`  latest material: ${profile.latestMaterialAt}`);
   }
 
+  if (profile.profile?.summary) {
+    lines.push(`  profile summary: ${profile.profile.summary}`);
+  }
+
   if (profile.foundationDraftStatus) {
     lines.push(`  drafts: ${formatDraftStatus(profile.foundationDraftStatus)}`);
   }

@@ -162,7 +162,7 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
-function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null) {
+function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -179,10 +179,17 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
     missingDrafts.add('memory');
   }
   const generatedAt = memoryDraft?.generatedAt ?? null;
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+  const hasProfileMetadataMismatch = Boolean(memoryDraft)
+    && (
+      (memoryDraft.displayName ?? profileId) !== expectedDisplayName
+      || (memoryDraft.summary ?? null) !== expectedSummary
+    );
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
-  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial;
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch;
 
   return {
     generatedAt,
@@ -286,6 +293,7 @@ export class FileSystemLoader {
           profileId,
           profileSummary.latestMaterialAt,
           profileSummary.latestMaterialId,
+          profileDocument,
         ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
