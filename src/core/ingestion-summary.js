@@ -8,6 +8,22 @@ function normalizeRelativePath(value) {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
+  const normalizedPath = normalizeRelativePath(sampleManifestPath);
+  const normalizedProfileIds = Array.isArray(sampleManifest?.profileIds)
+    ? sampleManifest.profileIds.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    : [];
+
+  return {
+    path: normalizedPath,
+    present: Boolean(normalizedPath),
+    status: sampleManifest?.status ?? (normalizedPath ? 'loaded' : 'missing'),
+    entryCount: Number.isFinite(sampleManifest?.entryCount) ? sampleManifest.entryCount : 0,
+    profileIds: normalizedProfileIds,
+    error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
+  };
+}
+
 function buildProfileCommands(profile) {
   if (!profile?.id) {
     return null;
@@ -29,8 +45,9 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const safeProfiles = Array.isArray(profiles) ? profiles : [];
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
   const metadataOnlyProfileCount = safeProfiles.length - importedProfiles.length;
-  const sampleManifestPath = normalizeRelativePath(options?.sampleManifestPath);
-  const sampleManifestPresent = Boolean(sampleManifestPath);
+  const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
+  const sampleManifestPath = sampleManifest.path;
+  const sampleManifestPresent = sampleManifest.present;
   const orderedProfileCommands = importedProfiles
     .slice()
     .sort((left, right) => {
@@ -58,7 +75,13 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     sampleManifestPath,
     sampleManifestPresent,
-    sampleManifestCommand: sampleManifestPresent ? `node src/index.js import manifest --file ${sampleManifestPath} --refresh-foundation` : null,
+    sampleManifestStatus: sampleManifest.status,
+    sampleManifestEntryCount: sampleManifest.entryCount,
+    sampleManifestProfileIds: sampleManifest.profileIds,
+    sampleManifestError: sampleManifest.error,
+    sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${sampleManifestPath} --refresh-foundation`
+      : null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: orderedProfileCommands,
   };

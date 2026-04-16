@@ -34,6 +34,131 @@ interface DraftRefreshResult {
   [key: string]: unknown;
 }
 
+interface SampleManifestSummary {
+  status: 'loaded' | 'missing' | 'invalid';
+  entryCount: number;
+  profileIds: string[];
+  error: string | null;
+}
+
+function slugifyPersonId(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function readSampleManifestSummary(rootDir: string, relativePath: string | null): SampleManifestSummary {
+  if (!relativePath) {
+    return {
+      status: 'missing',
+      entryCount: 0,
+      profileIds: [],
+      error: null,
+    };
+  }
+
+  const absolutePath = path.join(rootDir, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    return {
+      status: 'missing',
+      entryCount: 0,
+      profileIds: [],
+      error: null,
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+  } catch (error) {
+    return {
+      status: 'invalid',
+      entryCount: 0,
+      profileIds: [],
+      error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
+    };
+  }
+
+  try {
+    const profileIds = new Set<string>();
+    const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
+
+    const registerPersonId = (value: unknown) => {
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        return null;
+      }
+
+      const normalized = slugifyPersonId(value);
+      if (!normalized) {
+        return null;
+      }
+
+      profileIds.add(normalized);
+      return normalized;
+    };
+
+    const manifest = Array.isArray(parsed)
+      ? { entries: parsed }
+      : (parsed && typeof parsed === 'object' ? parsed as { entries?: unknown; profiles?: unknown; personId?: unknown } : null);
+
+    if (!manifest) {
+      throw new Error('Sample manifest must be an array or object');
+    }
+
+    const fallbackPersonId = registerPersonId(manifest.personId);
+
+    if (Array.isArray(manifest.profiles)) {
+      manifest.profiles.forEach((profileEntry, index) => {
+        if (!profileEntry || typeof profileEntry !== 'object') {
+          throw new Error(`Manifest profile ${index} must be an object`);
+        }
+
+        const profilePersonId = registerPersonId((profileEntry as { personId?: unknown }).personId);
+        if (!profilePersonId) {
+          throw new Error(`Manifest profile ${index} is missing personId`);
+        }
+      });
+    }
+
+    const entries = manifest.entries;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error('Manifest must contain a non-empty entries array');
+    }
+
+    entries.forEach((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(`Manifest entry ${index} must be an object`);
+      }
+
+      const entryRecord = entry as { personId?: unknown; type?: unknown };
+      const resolvedPersonId = entryRecord.personId ?? fallbackPersonId;
+      if (!registerPersonId(resolvedPersonId)) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      if (typeof entryRecord.type !== 'string' || !supportedEntryTypes.has(entryRecord.type)) {
+        throw new Error(`Unsupported manifest entry type at index ${index}: ${entryRecord.type}`);
+      }
+    });
+
+    return {
+      status: 'loaded',
+      entryCount: entries.length,
+      profileIds: [...profileIds].sort(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      status: 'invalid',
+      entryCount: 0,
+      profileIds: [],
+      error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
+    };
+  }
+}
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const [command, subcommand, ...rest] = argv;
   const options: ParsedOptions = {};
@@ -255,8 +380,12 @@ export function buildSummary(rootDir: string) {
   const sampleManifestRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-materials.json'))
     ? 'samples/harry-materials.json'
     : null;
+  const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
   const foundation = buildFoundationRollup(profiles) as any;
-  const ingestionSummary = buildIngestionSummary(profiles, { sampleManifestPath: sampleManifestRelativePath }) as any;
+  const ingestionSummary = buildIngestionSummary(profiles, {
+    sampleManifestPath: sampleManifestRelativePath,
+    sampleManifest,
+  }) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,
     voiceDocument,

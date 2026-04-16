@@ -301,6 +301,10 @@ type IngestionSummary = {
   importManifestCommand?: string | null;
   sampleManifestPath?: string | null;
   sampleManifestPresent?: boolean;
+  sampleManifestStatus?: 'loaded' | 'missing' | 'invalid' | string;
+  sampleManifestEntryCount?: number;
+  sampleManifestProfileIds?: string[];
+  sampleManifestError?: string | null;
   sampleManifestCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
@@ -638,7 +642,10 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- sample import: ${ingestion.sampleImportCommand}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
-      ? `- sample manifest: ${ingestion.sampleManifestCommand}`
+      ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${(ingestion.sampleManifestProfileIds ?? []).length > 0 ? ` for ${(ingestion.sampleManifestProfileIds ?? []).join(', ')}` : ''} -> ${ingestion.sampleManifestCommand}`
+      : null,
+    ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
+      ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
     ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) =>
       `- ${profile.label ?? profile.personId}: refresh ${profile.refreshFoundationCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`,

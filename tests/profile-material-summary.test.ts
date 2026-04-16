@@ -663,6 +663,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     sampleManifestPath: 'samples/harry-materials.json',
     sampleManifestPresent: true,
+    sampleManifestStatus: 'loaded',
+    sampleManifestEntryCount: 2,
+    sampleManifestProfileIds: ['harry-han'],
+    sampleManifestError: null,
     sampleManifestCommand: 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [
@@ -696,7 +700,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
-  assert.match(summary.promptPreview, /sample manifest: node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
 });
 
@@ -718,6 +722,10 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     sampleManifestPath: null,
     sampleManifestPresent: false,
+    sampleManifestStatus: 'missing',
+    sampleManifestEntryCount: 0,
+    sampleManifestProfileIds: [],
+    sampleManifestError: null,
     sampleManifestCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [],
@@ -728,4 +736,45 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
+});
+
+test('buildSummary reports invalid sample manifests without advertising a broken sample import command', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-materials.json'), '{not valid json');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestPath, 'samples/harry-materials.json');
+  assert.equal(summary.ingestion.sampleManifestPresent, true);
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleManifestEntryCount, 0);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
+  assert.equal(typeof summary.ingestion.sampleManifestError, 'string');
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.promptPreview, /sample manifest invalid: .* @ samples\/harry-materials\.json/);
+  assert.doesNotMatch(summary.promptPreview, /sample manifest: 0 entries/);
+});
+
+test('buildSummary treats parseable but semantically invalid sample manifests as invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      profiles: [{ personId: 'Harry Han' }],
+      entries: [{ type: 'message', text: 'Ship the thin slice first.' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleManifestEntryCount, 0);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 is missing personId/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 is missing personId @ samples\/harry-materials\.json/);
 });
