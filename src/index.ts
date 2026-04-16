@@ -8,7 +8,7 @@ import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
-import { PromptAssembler } from './core/prompt-assembler.js';
+import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { createDefaultChannels } from './channels/index.js';
 import { createDefaultProviders } from './models/index.js';
