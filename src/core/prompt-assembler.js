@@ -1,5 +1,5 @@
 export class PromptAssembler {
-  constructor({ profile, soul, voice, memory, skills, channels, models } = {}) {
+  constructor({ profile, soul, voice, memory, skills, channels, models, profiles = [] } = {}) {
     this.profile = profile;
     this.soul = soul;
     this.voice = voice;
@@ -7,6 +7,7 @@ export class PromptAssembler {
     this.skills = skills;
     this.channels = channels;
     this.models = models;
+    this.profiles = profiles;
   }
 
   buildSystemPrompt() {
@@ -28,6 +29,9 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      'Profiles:',
+      JSON.stringify(this.profiles, null, 2),
       '',
       'Channels:',
       JSON.stringify(this.channels, null, 2),

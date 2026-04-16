@@ -115,6 +115,7 @@ function buildSummary(rootDir) {
       'report progress in small increments',
     ],
   });
+  const profiles = loader.loadProfilesIndex();
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -124,6 +125,7 @@ function buildSummary(rootDir) {
     },
     memory: memoryIndex,
     skills: skills.summary(),
+    profiles,
     channels: channels.summary(),
     models: models.summary(),
   });
@@ -135,7 +137,7 @@ function buildSummary(rootDir) {
     voice: voice.summary(),
     channels: channels.summary(),
     models: models.summary(),
-    profiles: loader.loadProfilesIndex(),
+    profiles,
     workLoop: workLoop.summary(),
     promptPreview: prompt.buildSystemPrompt().slice(0, 400),
   };

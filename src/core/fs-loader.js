@@ -33,6 +33,38 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function loadMaterialSummaries(materialsDir) {
+  const materialFiles = listFilesIfExists(materialsDir)
+    .filter((name) => name.endsWith('.json'));
+  const materialRecords = materialFiles
+    .map((name) => readJsonIfExists(path.join(materialsDir, name)))
+    .filter(Boolean);
+
+  const materialTypes = {};
+  for (const record of materialRecords) {
+    materialTypes[record.type] = (materialTypes[record.type] ?? 0) + 1;
+  }
+
+  const latestMaterialAt = materialRecords
+    .map((record) => record.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null;
+
+  return {
+    materialTypes,
+    latestMaterialAt,
+  };
+}
+
 export class FileSystemLoader {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -67,11 +99,18 @@ export class FileSystemLoader {
     const profilesDir = this.resolve('profiles');
     const profileIds = listDirectoriesIfExists(profilesDir);
 
-    return profileIds.map((profileId) => ({
-      id: profileId,
-      hasProfile: fs.existsSync(path.join(profilesDir, profileId, 'profile.json')),
-      materialCount: listFilesIfExists(path.join(profilesDir, profileId, 'materials')).length,
-      screenshotCount: listFilesIfExists(path.join(profilesDir, profileId, 'materials', 'screenshots')).length,
-    }));
+    return profileIds.map((profileId) => {
+      const materialsDir = path.join(profilesDir, profileId, 'materials');
+      const profileSummary = loadMaterialSummaries(materialsDir);
+
+      return {
+        id: profileId,
+        hasProfile: fs.existsSync(path.join(profilesDir, profileId, 'profile.json')),
+        materialCount: listFilesIfExists(materialsDir).filter((name) => name.endsWith('.json')).length,
+        screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
+        materialTypes: profileSummary.materialTypes,
+        latestMaterialAt: profileSummary.latestMaterialAt,
+      };
+    });
   }
 }

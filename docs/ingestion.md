@@ -48,8 +48,17 @@ node src/index.js import screenshot --person harry-han --file ./screenshots/chat
 - `assetPath` for copied screenshot assets
 - `content` for text and message materials
 
+## Current profile summary exposure
+
+Running `node src/index.js` now exposes per-profile ingestion summaries in the top-level repo status:
+
+- `materialTypes` counts by imported type
+- `latestMaterialAt` so the newest profile activity is visible
+
+This makes ingestion state visible to the next learning/update layer.
+
 ## Current limitation
 
-This is the first ingestion entrance only.
-It stores raw materials cleanly, but it does not yet extract voice, soul, or memory updates automatically.
+This is still the first ingestion entrance only.
+It stores raw materials cleanly and now surfaces profile material summaries, but it does not yet extract voice, soul, or memory updates automatically.
 That learning layer comes next.
