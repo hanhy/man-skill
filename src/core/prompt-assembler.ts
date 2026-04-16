@@ -187,6 +187,8 @@ type ChannelSummaryRecord = {
   name?: string;
   status?: string;
   deliveryModes?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
   auth?: ChannelAuth | null;
 };
 
@@ -214,6 +216,8 @@ type ModelSummaryRecord = {
   defaultModel?: string | null;
   authEnvVar?: string | null;
   modalities?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
 };
 
 type ProviderManifestSummary = {
@@ -243,10 +247,13 @@ type DeliveryQueueItem = {
   defaultModel?: string | null;
   authEnvVar?: string | null;
   modalities?: string[];
+  implementationPath?: string | null;
+  implementationPresent?: boolean;
   configured?: boolean;
   missingEnvVars?: string[];
   manifestPath?: string;
   setupHint?: string;
+  nextStep?: string | null;
 };
 
 type DeliverySummary = {
@@ -254,6 +261,10 @@ type DeliverySummary = {
   pendingProviderCount?: number;
   configuredChannelCount?: number;
   configuredProviderCount?: number;
+  readyChannelScaffoldCount?: number;
+  readyProviderScaffoldCount?: number;
+  missingChannelScaffoldCount?: number;
+  missingProviderScaffoldCount?: number;
   missingChannelEnvVars?: string[];
   missingProviderEnvVars?: string[];
   requiredEnvVars?: string[];
@@ -517,9 +528,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       id: channel.id,
       status: channel.status ?? 'unknown',
       deliveryModes: channel.deliveryModes ?? [],
+      implementationPath: channel.implementationPath ?? null,
+      implementationPresent: false,
       setupHint: (channel.auth?.envVars ?? []).length > 0
         ? `set ${(channel.auth?.envVars ?? []).join(', ')}`
         : 'define channel credentials',
+      nextStep: channel.nextStep ?? null,
     }));
   const providerQueue = delivery?.providerQueue ?? providerRecords
     .filter((provider) => provider?.status !== 'active')
@@ -528,6 +542,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       id: provider.id,
       status: provider.status ?? 'unknown',
       modalities: provider.modalities ?? [],
+      implementationPath: provider.implementationPath ?? null,
+      implementationPresent: false,
       setupHint: provider.authEnvVar && provider.defaultModel
         ? `set ${provider.authEnvVar} for ${provider.defaultModel}`
         : provider.authEnvVar
@@ -535,6 +551,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
           : provider.defaultModel
             ? `choose auth for ${provider.defaultModel}`
             : 'choose auth and default model',
+      nextStep: provider.nextStep ?? null,
     }));
   if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && channelQueue.length === 0 && providerQueue.length === 0) {
     return null;
@@ -558,6 +575,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     delivery?.envTemplatePresent && delivery.envTemplateCommand
       ? `- env bootstrap: ${delivery.envTemplateCommand}`
       : null,
+    (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
+      ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
+      : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
@@ -568,7 +588,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
       : null,
     ...channelQueue.slice(0, 1).map((channel) =>
-      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}`,
+      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`,
     ),
     providerManifestSummary,
     providerRecords.length > 0
@@ -582,7 +602,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
       : null,
     ...providerQueue.slice(0, 1).map((provider) =>
-      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}`,
+      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`,
     ),
   ].filter(Boolean).join('\n');
 }

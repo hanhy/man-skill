@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 type DeliveryManifestSummary = {
   path?: string;
   status?: string;
@@ -8,6 +11,8 @@ type ChannelSummaryRecord = {
   name?: string;
   status?: string;
   deliveryModes?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
   auth?: {
     envVars?: string[];
   } | null;
@@ -25,6 +30,8 @@ type ProviderSummaryRecord = {
   defaultModel?: string | null;
   authEnvVar?: string | null;
   modalities?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
 };
 
 type ModelsSummary = {
@@ -38,10 +45,13 @@ export type DeliveryChannelQueueItem = {
   status: string;
   authEnvVars: string[];
   deliveryModes: string[];
+  implementationPath: string | null;
+  implementationPresent: boolean;
   configured: boolean;
   missingEnvVars: string[];
   manifestPath: string;
   setupHint: string;
+  nextStep: string | null;
 };
 
 export type DeliveryProviderQueueItem = {
@@ -51,10 +61,13 @@ export type DeliveryProviderQueueItem = {
   defaultModel: string | null;
   authEnvVar: string | null;
   modalities: string[];
+  implementationPath: string | null;
+  implementationPresent: boolean;
   configured: boolean;
   missingEnvVars: string[];
   manifestPath: string;
   setupHint: string;
+  nextStep: string | null;
 };
 
 export type DeliverySummary = {
@@ -62,6 +75,10 @@ export type DeliverySummary = {
   pendingProviderCount: number;
   configuredChannelCount: number;
   configuredProviderCount: number;
+  readyChannelScaffoldCount: number;
+  readyProviderScaffoldCount: number;
+  missingChannelScaffoldCount: number;
+  missingProviderScaffoldCount: number;
   missingChannelEnvVars: string[];
   missingProviderEnvVars: string[];
   requiredEnvVars: string[];
@@ -74,8 +91,28 @@ export type DeliverySummary = {
   providerQueue: DeliveryProviderQueueItem[];
 };
 
+type DeliverySummaryOptions = {
+  rootDir?: string | null;
+};
+
 function collectMissingEnvVars(envVars: string[], environment: NodeJS.ProcessEnv): string[] {
   return envVars.filter((envVar) => !environment[envVar]);
+}
+
+function isImplementationPresent(implementationPath: string | null | undefined, rootDir?: string | null): boolean {
+  if (!implementationPath || !rootDir) {
+    return false;
+  }
+
+  const resolvedRootDir = path.resolve(rootDir);
+  const resolvedImplementationPath = path.resolve(rootDir, implementationPath);
+  const relativeImplementationPath = path.relative(resolvedRootDir, resolvedImplementationPath);
+
+  if (relativeImplementationPath.startsWith('..') || path.isAbsolute(relativeImplementationPath)) {
+    return false;
+  }
+
+  return fs.existsSync(resolvedImplementationPath);
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
@@ -119,30 +156,39 @@ export function buildDeliverySummary(
   channels: ChannelsSummary = null,
   models: ModelsSummary = null,
   environment: NodeJS.ProcessEnv = process.env,
+  options: DeliverySummaryOptions = {},
 ): DeliverySummary {
+  const rootDir = options.rootDir ?? null;
   const channelManifestPath = channels?.manifest?.path ?? 'manifests/channels.json';
   const providerManifestPath = models?.manifest?.path ?? 'manifests/providers.json';
+  const allChannelRecords = channels?.channels ?? [];
+  const allProviderRecords = models?.providers ?? [];
   const channelQueue = (channels?.channels ?? [])
     .filter((channel) => channel?.status !== 'active')
     .map((channel) => {
       const authEnvVars = (channel.auth?.envVars ?? []).filter(Boolean);
       const missingEnvVars = collectMissingEnvVars(authEnvVars, environment);
+      const implementationPath = channel.implementationPath ?? null;
       return {
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
         status: channel.status ?? 'unknown',
         authEnvVars,
         deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
+        implementationPath,
+        implementationPresent: isImplementationPresent(implementationPath, rootDir),
         configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
         missingEnvVars,
         manifestPath: channelManifestPath,
         setupHint: buildChannelSetupHint(channel, environment),
+        nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
       };
     });
   const providerQueue = (models?.providers ?? [])
     .filter((provider) => provider?.status !== 'active')
     .map((provider) => {
       const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
+      const implementationPath = provider.implementationPath ?? null;
       return {
         id: provider.id ?? null,
         name: provider.name ?? provider.id ?? null,
@@ -150,10 +196,13 @@ export function buildDeliverySummary(
         defaultModel: provider.defaultModel ?? null,
         authEnvVar: provider.authEnvVar ?? null,
         modalities: (provider.modalities ?? []).filter(Boolean),
+        implementationPath,
+        implementationPresent: isImplementationPresent(implementationPath, rootDir),
         configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
         missingEnvVars,
         manifestPath: providerManifestPath,
         setupHint: buildProviderSetupHint(provider, environment),
+        nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
       };
     });
 
@@ -161,12 +210,18 @@ export function buildDeliverySummary(
     ...(channels?.channels ?? []).flatMap((channel) => (channel.auth?.envVars ?? []).filter(Boolean)),
     ...(models?.providers ?? []).flatMap((provider) => (provider.authEnvVar ? [provider.authEnvVar] : [])),
   ].filter(Boolean);
+  const channelScaffoldCoverage = allChannelRecords.map((channel) => isImplementationPresent(channel.implementationPath ?? null, rootDir));
+  const providerScaffoldCoverage = allProviderRecords.map((provider) => isImplementationPresent(provider.implementationPath ?? null, rootDir));
 
   return {
     pendingChannelCount: channelQueue.length,
     pendingProviderCount: providerQueue.length,
     configuredChannelCount: channelQueue.filter((channel) => channel.configured).length,
     configuredProviderCount: providerQueue.filter((provider) => provider.configured).length,
+    readyChannelScaffoldCount: channelScaffoldCoverage.filter(Boolean).length,
+    readyProviderScaffoldCount: providerScaffoldCoverage.filter(Boolean).length,
+    missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,
+    missingProviderScaffoldCount: providerScaffoldCoverage.filter((present) => !present).length,
     missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
     missingProviderEnvVars: [...new Set(providerQueue.flatMap((provider) => provider.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
     requiredEnvVars: [...new Set(requiredEnvVars)].sort((left, right) => left.localeCompare(right)),

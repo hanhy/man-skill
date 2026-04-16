@@ -8,6 +8,8 @@ export class BaseProvider {
     defaultModel = null,
     authEnvVar = null,
     modalities = [],
+    implementationPath = null,
+    nextStep = null,
   } = {}) {
     this.id = id;
     this.name = name;
@@ -17,6 +19,8 @@ export class BaseProvider {
     this.defaultModel = defaultModel;
     this.authEnvVar = authEnvVar;
     this.modalities = modalities;
+    this.implementationPath = implementationPath;
+    this.nextStep = nextStep;
   }
 
   summary() {
@@ -29,6 +33,8 @@ export class BaseProvider {
       defaultModel: this.defaultModel,
       authEnvVar: this.authEnvVar,
       modalities: this.modalities,
+      implementationPath: this.implementationPath,
+      nextStep: this.nextStep,
     };
   }
 }

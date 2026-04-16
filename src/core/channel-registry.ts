@@ -14,6 +14,8 @@ export interface ChannelRecord {
   capabilities: string[];
   auth: ChannelAuthRecord | null;
   deliveryModes: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
   [key: string]: unknown;
 }
 
@@ -56,6 +58,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
     },
     deliveryModes: ['events-api', 'web-api'],
+    implementationPath: 'src/channels/slack.js',
+    nextStep: 'implement inbound event handling and outbound thread replies',
   },
   {
     id: 'telegram',
@@ -69,6 +73,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['TELEGRAM_BOT_TOKEN'],
     },
     deliveryModes: ['polling', 'webhook'],
+    implementationPath: 'src/channels/telegram.js',
+    nextStep: 'wire bot webhook intake and outbound chat sends',
   },
   {
     id: 'whatsapp',
@@ -82,6 +88,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
     },
     deliveryModes: ['cloud-api', 'session-bridge'],
+    implementationPath: 'src/channels/whatsapp.js',
+    nextStep: 'map business-api webhooks and outbound message delivery',
   },
   {
     id: 'feishu',
@@ -95,6 +103,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
     },
     deliveryModes: ['event-subscription', 'webhook'],
+    implementationPath: 'src/channels/feishu.js',
+    nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
   },
 ];
 
@@ -116,6 +126,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
         capabilities: [],
         auth: null,
         deliveryModes: [],
+        implementationPath: null,
+        nextStep: null,
       };
     }
 
@@ -127,6 +139,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
       capabilities: [],
       auth: null,
       deliveryModes: [],
+      implementationPath: null,
+      nextStep: null,
       ...defaultChannel,
       ...channel,
     };

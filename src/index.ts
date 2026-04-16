@@ -286,7 +286,7 @@ export function buildSummary(rootDir: string) {
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
   const deliverySummary = {
-    ...buildDeliverySummary(channelsSummary, modelsSummary),
+    ...buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir }),
     envTemplatePath: envTemplateRelativePath,
     envTemplatePresent,
     envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
@@ -324,7 +324,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(3000),
+    promptPreview: prompt.buildPreview(3400),
   };
 }
 

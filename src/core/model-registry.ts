@@ -9,6 +9,8 @@ export interface ProviderRecord {
   defaultModel: string | null;
   authEnvVar: string | null;
   modalities: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
   [key: string]: unknown;
 }
 
@@ -31,6 +33,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'gpt-5',
     authEnvVar: 'OPENAI_API_KEY',
     modalities: ['chat', 'reasoning', 'vision'],
+    implementationPath: 'src/models/openai.js',
+    nextStep: 'implement chat/tool request translation and response normalization',
   },
   {
     id: 'anthropic',
@@ -41,6 +45,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'claude-3.7-sonnet',
     authEnvVar: 'ANTHROPIC_API_KEY',
     modalities: ['chat', 'long-context', 'vision'],
+    implementationPath: 'src/models/anthropic.js',
+    nextStep: 'implement messages api wrapper with long-context defaults',
   },
   {
     id: 'kimi',
@@ -51,6 +57,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'moonshot-v1-32k',
     authEnvVar: 'KIMI_API_KEY',
     modalities: ['chat', 'long-context'],
+    implementationPath: 'src/models/kimi.js',
+    nextStep: 'implement moonshot-compatible client setup and model selection',
   },
   {
     id: 'minimax',
@@ -61,6 +69,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'minimax-text-01',
     authEnvVar: 'MINIMAX_API_KEY',
     modalities: ['chat'],
+    implementationPath: 'src/models/minimax.js',
+    nextStep: 'implement minimax request signing and chat completion mapping',
   },
   {
     id: 'glm',
@@ -71,6 +81,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'glm-4-plus',
     authEnvVar: 'GLM_API_KEY',
     modalities: ['chat', 'tools', 'vision'],
+    implementationPath: 'src/models/glm.js',
+    nextStep: 'implement glm request payload translation with tool support',
   },
   {
     id: 'qwen',
@@ -81,6 +93,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
     defaultModel: 'qwen-max',
     authEnvVar: 'QWEN_API_KEY',
     modalities: ['chat', 'tools', 'vision'],
+    implementationPath: 'src/models/qwen.js',
+    nextStep: 'implement qwen chat wrapper and multimodal request mapping',
   },
 ];
 
@@ -102,6 +116,8 @@ export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
         defaultModel: null,
         authEnvVar: null,
         modalities: [],
+        implementationPath: null,
+        nextStep: null,
       };
     }
 
@@ -113,6 +129,8 @@ export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
       defaultModel: null,
       authEnvVar: null,
       modalities: [],
+      implementationPath: null,
+      nextStep: null,
       ...defaultProvider,
       ...provider,
     };

@@ -1,5 +1,9 @@
 import { BaseRegistry } from './base-registry.js';
 
+function mergeStringLists(...lists) {
+  return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
+}
+
 function collectProviderAuthEnvVars(providers) {
   return [...new Set(providers.map((provider) => provider.authEnvVar).filter((value) => typeof value === 'string' && value.length > 0))]
     .sort((left, right) => left.localeCompare(right));
@@ -15,6 +19,8 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'gpt-5',
     authEnvVar: 'OPENAI_API_KEY',
     modalities: ['chat', 'reasoning', 'vision'],
+    implementationPath: 'src/models/openai.js',
+    nextStep: 'implement chat/tool request translation and response normalization',
   },
   {
     id: 'anthropic',
@@ -25,6 +31,8 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'claude-3.7-sonnet',
     authEnvVar: 'ANTHROPIC_API_KEY',
     modalities: ['chat', 'long-context', 'vision'],
+    implementationPath: 'src/models/anthropic.js',
+    nextStep: 'implement messages api wrapper with long-context defaults',
   },
   {
     id: 'kimi',
@@ -35,6 +43,8 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'moonshot-v1-32k',
     authEnvVar: 'KIMI_API_KEY',
     modalities: ['chat', 'long-context'],
+    implementationPath: 'src/models/kimi.js',
+    nextStep: 'implement moonshot-compatible client setup and model selection',
   },
   {
     id: 'minimax',
@@ -45,6 +55,8 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'minimax-text-01',
     authEnvVar: 'MINIMAX_API_KEY',
     modalities: ['chat'],
+    implementationPath: 'src/models/minimax.js',
+    nextStep: 'implement minimax request signing and chat completion mapping',
   },
   {
     id: 'glm',
@@ -55,6 +67,8 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'glm-4-plus',
     authEnvVar: 'GLM_API_KEY',
     modalities: ['chat', 'tools', 'vision'],
+    implementationPath: 'src/models/glm.js',
+    nextStep: 'implement glm request payload translation with tool support',
   },
   {
     id: 'qwen',
@@ -65,8 +79,12 @@ const DEFAULT_PROVIDERS = [
     defaultModel: 'qwen-max',
     authEnvVar: 'QWEN_API_KEY',
     modalities: ['chat', 'tools', 'vision'],
+    implementationPath: 'src/models/qwen.js',
+    nextStep: 'implement qwen chat wrapper and multimodal request mapping',
   },
 ];
+
+const DEFAULT_PROVIDERS_BY_ID = new Map(DEFAULT_PROVIDERS.map((provider) => [provider.id, provider]));
 
 export class ModelRegistry extends BaseRegistry {
   constructor(providers = DEFAULT_PROVIDERS) {
@@ -84,17 +102,30 @@ export class ModelRegistry extends BaseRegistry {
         defaultModel: null,
         authEnvVar: null,
         modalities: [],
+        implementationPath: null,
+        nextStep: null,
       };
     }
 
-    return {
+    const defaultProvider = typeof provider.id === 'string' ? DEFAULT_PROVIDERS_BY_ID.get(provider.id) : undefined;
+    const normalizedProvider = {
       models: [],
       status: 'unknown',
       features: [],
       defaultModel: null,
       authEnvVar: null,
       modalities: [],
+      implementationPath: null,
+      nextStep: null,
+      ...defaultProvider,
       ...provider,
+    };
+
+    return {
+      ...normalizedProvider,
+      models: mergeStringLists(defaultProvider?.models, provider.models),
+      features: mergeStringLists(defaultProvider?.features, provider.features),
+      modalities: mergeStringLists(defaultProvider?.modalities, provider.modalities),
     };
   }
 
