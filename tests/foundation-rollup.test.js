@@ -206,6 +206,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: [],
+    recommendedActions: [],
   });
   assert.match(summary.promptPreview, /Core foundation:/);
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
@@ -231,8 +232,15 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     totalAreaCount: 4,
     missingAreas: ['skills', 'voice'],
     thinAreas: ['memory', 'soul'],
+    recommendedActions: [
+      'add at least one entry under memory/daily, memory/long-term, or memory/scratch',
+      'create skills/<name>/SKILL.md for at least one repo skill',
+      'add non-heading guidance to SOUL.md',
+      'create voice/README.md',
+    ],
   });
   assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
+  assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, or memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
@@ -263,6 +271,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
+    recommendedActions: ['document placeholder skill folders with SKILL.md'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram/);
@@ -297,6 +306,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
+    recommendedActions: ['document placeholder skill folders with SKILL.md'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); placeholders: slack/);

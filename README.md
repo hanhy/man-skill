@@ -45,7 +45,7 @@ node src/index.js update foundation --all
 node src/index.js
 ```
 
-This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. You can seed target-person metadata with `update profile`, via a manifest `profiles` block, or via the single-target manifest shorthand, then regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation` or `update foundation --stale`. The repo summary now exposes per-profile draft freshness plus a repo-level `foundation` rollup, and `foundation.core` distinguishes documented skills (`skills/<name>/SKILL.md`) from placeholder skill folders so thin skill scaffolding shows up immediately in the prompt preview instead of being counted as ready coverage.
+This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. You can seed target-person metadata with `update profile`, via a manifest `profiles` block, or via the single-target manifest shorthand, then regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation` or `update foundation --stale`. The repo summary now exposes per-profile draft freshness plus a repo-level `foundation` rollup, and `foundation.core` distinguishes documented skills (`skills/<name>/SKILL.md`) from placeholder skill folders so thin skill scaffolding shows up immediately in the prompt preview instead of being counted as ready coverage. When the repo scaffold is missing or thin, `foundation.core.overview.recommendedActions` also suggests the next concrete fixes (for example creating `voice/README.md` or documenting placeholder skill folders).
 
 ---
 

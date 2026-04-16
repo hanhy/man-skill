@@ -24,6 +24,56 @@ function extractExcerpt(document: string | null | undefined, maxLength = 160): s
   return `${normalized.slice(0, maxLength - 1)}…`;
 }
 
+function collectRecommendedActions({
+  memoryHasRootDocument,
+  memoryTotalEntries,
+  skillsCount,
+  documentedSkillCount,
+  soulPresent,
+  soulLineCount,
+  voicePresent,
+  voiceLineCount,
+}: {
+  memoryHasRootDocument: boolean;
+  memoryTotalEntries: number;
+  skillsCount: number;
+  documentedSkillCount: number;
+  soulPresent: boolean;
+  soulLineCount: number;
+  voicePresent: boolean;
+  voiceLineCount: number;
+}): string[] {
+  const actions: string[] = [];
+
+  if (!memoryHasRootDocument) {
+    actions.push('create memory/README.md');
+  }
+
+  if (memoryTotalEntries === 0) {
+    actions.push('add at least one entry under memory/daily, memory/long-term, or memory/scratch');
+  }
+
+  if (skillsCount === 0) {
+    actions.push('create skills/<name>/SKILL.md for at least one repo skill');
+  } else if (documentedSkillCount < skillsCount) {
+    actions.push('document placeholder skill folders with SKILL.md');
+  }
+
+  if (!soulPresent) {
+    actions.push('create SOUL.md');
+  } else if (soulLineCount === 0) {
+    actions.push('add non-heading guidance to SOUL.md');
+  }
+
+  if (!voicePresent) {
+    actions.push('create voice/README.md');
+  } else if (voiceLineCount === 0) {
+    actions.push('add non-heading guidance to voice/README.md');
+  }
+
+  return actions;
+}
+
 function countContentLines(document: string | null | undefined): number {
   if (!isNonEmptyString(document)) {
     return 0;
@@ -63,6 +113,7 @@ export interface CoreFoundationOverview {
   totalAreaCount: number;
   missingAreas: string[];
   thinAreas: string[];
+  recommendedActions: string[];
 }
 
 export interface CoreFoundationSummary {
@@ -167,6 +218,16 @@ export function buildCoreFoundationSummary({
     totalAreaCount,
     missingAreas,
     thinAreas,
+    recommendedActions: collectRecommendedActions({
+      memoryHasRootDocument: memory.hasRootDocument,
+      memoryTotalEntries: memory.totalEntries,
+      skillsCount: skills.count,
+      documentedSkillCount: skills.documentedCount,
+      soulPresent: soul.present,
+      soulLineCount: soul.lineCount,
+      voicePresent: voice.present,
+      voiceLineCount: voice.lineCount,
+    }),
   };
 
   return {

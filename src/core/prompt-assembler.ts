@@ -96,6 +96,7 @@ type FoundationCoreOverview = {
   totalAreaCount?: number;
   missingAreas?: string[];
   thinAreas?: string[];
+  recommendedActions?: string[];
 };
 
 type FoundationCore = {
@@ -305,6 +306,7 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const overview = foundationCore.overview;
   const missingAreas = (overview?.missingAreas ?? []).filter(Boolean);
   const thinAreas = (overview?.thinAreas ?? []).filter(Boolean);
+  const recommendedActions = (overview?.recommendedActions ?? []).filter(Boolean);
   const coverageLine = overview
     ? `- coverage: ${overview.readyAreaCount ?? 0}/${overview.totalAreaCount ?? 4} ready${missingAreas.length > 0 ? `; missing ${missingAreas.join(', ')}` : ''}${thinAreas.length > 0 ? `; thin ${thinAreas.join(', ')}` : ''}`
     : null;
@@ -322,6 +324,9 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       : null,
     voice
       ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}`
+      : null,
+    recommendedActions.length > 0
+      ? `- next actions: ${recommendedActions.join(' | ')}`
       : null,
   ].filter(Boolean).join('\n');
 }
