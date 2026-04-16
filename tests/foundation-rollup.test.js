@@ -80,6 +80,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
     queuedProfiles: [
       {
         id: 'jane-doe',
@@ -89,6 +90,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         status: 'stale',
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         latestMaterialAt: null,
+        refreshCommand: 'node src/index.js update foundation --person jane-doe',
       },
     ],
   });
@@ -146,6 +148,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
     queuedProfiles: [
       {
         id: 'jane-doe',
@@ -155,6 +158,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         status: 'stale',
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+        refreshCommand: 'node src/index.js update foundation --person jane-doe',
       },
     ],
   });
@@ -162,6 +166,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Foundation maintenance:/);
   assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice/);
+  assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {

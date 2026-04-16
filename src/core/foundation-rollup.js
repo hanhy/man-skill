@@ -52,6 +52,7 @@ function summarizeMaintenanceQueue(profiles) {
       status: 'stale',
       missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
       latestMaterialAt: profile.latestMaterialAt ?? null,
+      refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
     }));
 
   return {
@@ -59,6 +60,7 @@ function summarizeMaintenanceQueue(profiles) {
     readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: queuedProfiles.length,
     incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
     queuedProfiles,
   };
 }

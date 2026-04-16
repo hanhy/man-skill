@@ -25,7 +25,7 @@ profiles/
 ```
 
 This directory is the entry point for user-supplied material about a person.
-Imported materials land in `materials/`, and `node src/index.js update foundation --person <id>` derives first-pass foundation drafts alongside them.
+Imported materials land in `materials/`, and `node src/index.js update foundation --person <id>` derives first-pass foundation drafts alongside them. Repo summaries now also expose maintenance-friendly refresh commands so stale profiles can be updated directly from the reported queue (`node src/index.js update foundation --stale` or the per-profile `refreshCommand`).
 `memory/long-term/foundation.json` carries the generated memory draft plus provenance like `latestMaterialId` and `materialTypes`, while `voice/README.md`, `soul/README.md`, and `skills/README.md` now stamp `Generated at`, `Latest material`, and `Source materials` headers so each artifact stays auditable on its own.
 `profile.json` can also store user-facing metadata like `displayName` and `summary`, either through `node src/index.js update profile --person <id> --display-name ... --summary ...`, through `node src/index.js update profile --person <id> --summary ... --refresh-foundation` when you want metadata edits to immediately regenerate the derived drafts, through the optional `profiles` block in a manifest import, or through a single-target manifest shorthand that puts `personId`, `displayName`, and `summary` at the top level and lets each entry omit `personId`.
 For a smoother user-facing entrance, you can also batch-ingest mixed materials from a JSON manifest with `node src/index.js import manifest --file ./materials.json --refresh-foundation`.
