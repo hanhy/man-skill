@@ -17,6 +17,8 @@ import { kimiProviderScaffold } from '../src/models/kimi.js';
 import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
 import { qwenProviderScaffold } from '../src/models/qwen.js';
+import { ManifestLoader as JsManifestLoader } from '../src/core/manifest-loader.js';
+import { ManifestLoader as TsManifestLoader } from '../src/core/manifest-loader.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-channel-provider-'));
@@ -55,6 +57,30 @@ function seedMinimalRepo(rootDir) {
     '',
   ].join('\n'));
 }
+
+test('JS manifest loader shim stays aligned with the TypeScript implementation', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), '{not-json');
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    JSON.stringify([
+      {
+        id: 'openai',
+        status: 'active',
+      },
+    ], null, 2),
+  );
+
+  const jsLoader = new JsManifestLoader(rootDir);
+  const tsLoader = new TsManifestLoader(rootDir);
+
+  assert.deepEqual(jsLoader.loadChannelManifestSummary(), tsLoader.loadChannelManifestSummary());
+  assert.deepEqual(jsLoader.loadProviderManifestSummary(), tsLoader.loadProviderManifestSummary());
+  assert.deepEqual(jsLoader.loadChannelManifest(), tsLoader.loadChannelManifest());
+  assert.deepEqual(jsLoader.loadProviderManifest(), tsLoader.loadProviderManifest());
+});
 
 test('default channel and provider scaffold modules stay aligned with registry metadata', () => {
   const channelScaffolds = [

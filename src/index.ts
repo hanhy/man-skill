@@ -15,7 +15,7 @@ import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
-import { ManifestLoader } from './core/manifest-loader.js';
+import { ManifestLoader } from './core/manifest-loader.ts';
 import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
 type OptionValue = string | boolean | undefined;

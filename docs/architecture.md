@@ -49,7 +49,8 @@ The project aims to keep personal-agent construction simple:
 - `src/core/foundation-core.ts`
 - `src/core/fs-loader.js`
 - `src/core/prompt-assembler.ts`
-- `src/runtime/work-loop.js`
+- `src/core/manifest-loader.ts`
+- `src/runtime/work-loop.ts`
 
 ## Current behavior
 
