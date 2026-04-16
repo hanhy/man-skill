@@ -1,6 +1,9 @@
 export interface MemorySummary {
   shortTermEntries: number;
   longTermEntries: number;
+  totalEntries: number;
+  shortTermPresent: boolean;
+  longTermPresent: boolean;
 }
 
 export interface MemoryStoreOptions {
@@ -26,9 +29,15 @@ export class MemoryStore {
   }
 
   summary(): MemorySummary {
+    const shortTermEntries = this.shortTerm.length;
+    const longTermEntries = this.longTerm.length;
+
     return {
-      shortTermEntries: this.shortTerm.length,
-      longTermEntries: this.longTerm.length,
+      shortTermEntries,
+      longTermEntries,
+      totalEntries: shortTermEntries + longTermEntries,
+      shortTermPresent: shortTermEntries > 0,
+      longTermPresent: longTermEntries > 0,
     };
   }
 }

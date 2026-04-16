@@ -4,6 +4,10 @@ export interface VoiceProfileSummary {
   constraints: string[];
   signatures: string[];
   languageHints: string[];
+  constraintCount: number;
+  signatureCount: number;
+  languageHintCount: number;
+  hasGuidance: boolean;
 }
 
 export interface VoiceProfileOptions {
@@ -36,6 +40,10 @@ export class VoiceProfile {
       constraints: this.constraints,
       signatures: this.signatures,
       languageHints: this.languageHints,
+      constraintCount: this.constraints.length,
+      signatureCount: this.signatures.length,
+      languageHintCount: this.languageHints.length,
+      hasGuidance: this.constraints.length > 0 || this.signatures.length > 0 || this.languageHints.length > 0,
     };
   }
 }

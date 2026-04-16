@@ -7,6 +7,14 @@ export interface SkillRecord {
   status: string;
 }
 
+export interface SkillRegistrySummary {
+  skillCount: number;
+  discoveredCount: number;
+  customCount: number;
+  statusCounts: Record<string, number>;
+  skills: SkillRecord[];
+}
+
 export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
   normalize(skill: string | SkillRecord): SkillRecord {
     if (typeof skill === 'string') {
@@ -25,10 +33,20 @@ export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
     };
   }
 
-  summary(): { skillCount: number; skills: SkillRecord[] } {
+  summary(): SkillRegistrySummary {
+    const skills = this.list() as SkillRecord[];
+    const statusCounts = skills.reduce<Record<string, number>>((counts, skill) => {
+      const status = skill.status ?? 'unknown';
+      counts[status] = (counts[status] ?? 0) + 1;
+      return counts;
+    }, {});
+
     return {
       skillCount: this.count(),
-      skills: this.list() as SkillRecord[],
+      discoveredCount: statusCounts.discovered ?? 0,
+      customCount: statusCounts.custom ?? 0,
+      statusCounts,
+      skills,
     };
   }
 }
