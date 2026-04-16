@@ -26,3 +26,4 @@ profiles/
 
 This directory is the entry point for user-supplied material about a person.
 Imported materials land in `materials/`, and `node src/index.js update foundation --person <id>` derives first-pass foundation drafts alongside them.
+For a smoother user-facing entrance, you can also batch-ingest mixed materials from a JSON manifest with `node src/index.js import manifest --file ./materials.json --refresh-foundation`.

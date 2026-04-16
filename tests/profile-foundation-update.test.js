@@ -151,3 +151,48 @@ test('CLI update foundation --all writes derived drafts for every profile with i
   assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['harry-han', 'jane-doe']);
   assert.equal(result.results.every((entry) => /profiles\/.+\/voice\/README\.md$/.test(entry.voiceDraftPath)), true);
 });
+
+test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
+  const rootDir = makeTempRepo();
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Harry Han',
+            type: 'message',
+            text: 'Ship the thin slice first.',
+            notes: 'chat sample',
+          },
+          {
+            personId: 'Harry Han',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', './materials.json', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/harry-han\/memory\/long-term\/foundation\.json$/);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md')), true);
+});

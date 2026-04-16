@@ -28,6 +28,43 @@ node src/index.js import talk --person harry-han --text "We can ship the first s
 node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png --notes "chat screenshot"
 ```
 
+### Import a JSON manifest of mixed materials
+
+```bash
+node src/index.js import manifest --file ./samples/harry-materials.json --refresh-foundation
+```
+
+Manifest shape:
+
+```json
+{
+  "entries": [
+    {
+      "personId": "harry-han",
+      "type": "message",
+      "text": "Ship the thin slice first.",
+      "notes": "chat sample"
+    },
+    {
+      "personId": "harry-han",
+      "type": "text",
+      "file": "./post.txt",
+      "notes": "blog fragment"
+    },
+    {
+      "personId": "jane-doe",
+      "type": "screenshot",
+      "file": "./chat.png",
+      "notes": "visual reference"
+    }
+  ]
+}
+```
+
+- `file` paths inside the manifest are resolved relative to the manifest file itself
+- `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
+- manifest imports can span multiple target profiles in one pass
+
 ## What happens
 
 - the target person is normalized into a profile id

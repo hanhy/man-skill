@@ -74,6 +74,14 @@ function sortByNewest(records) {
   );
 }
 
+function resolveImportFile(baseDir, filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
+}
+
 export class MaterialIngestion {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -199,6 +207,93 @@ export class MaterialIngestion {
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
     });
+  }
+
+  importManifest({ manifestFile }) {
+    if (!manifestFile) {
+      throw new Error('manifestFile is required for manifest import');
+    }
+
+    const resolvedManifestPath = resolveImportFile(this.rootDir, manifestFile);
+    const manifest = readJsonIfExists(resolvedManifestPath);
+    if (!manifest) {
+      throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
+    }
+
+    const entries = Array.isArray(manifest) ? manifest : manifest.entries;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error('Manifest must contain a non-empty entries array');
+    }
+
+    const manifestDir = path.dirname(resolvedManifestPath);
+    const results = entries.map((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(`Manifest entry ${index} must be an object`);
+      }
+
+      if (!isNonEmptyString(entry.personId)) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      const normalizedPersonId = slugifyPersonId(entry.personId);
+
+      if (entry.type === 'text') {
+        return {
+          personId: normalizedPersonId,
+          type: 'text',
+          ...this.importTextDocument({
+            personId: entry.personId,
+            sourceFile: resolveImportFile(manifestDir, entry.file),
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'message') {
+        return {
+          personId: normalizedPersonId,
+          type: 'message',
+          ...this.importMessage({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'talk') {
+        return {
+          personId: normalizedPersonId,
+          type: 'talk',
+          ...this.importTalkSnippet({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'screenshot') {
+        return {
+          personId: normalizedPersonId,
+          type: 'screenshot',
+          ...this.importScreenshotSource({
+            personId: entry.personId,
+            sourceFile: resolveImportFile(manifestDir, entry.file),
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
+    });
+
+    return {
+      manifestFile: path.relative(this.rootDir, resolvedManifestPath),
+      entryCount: results.length,
+      profileIds: [...new Set(results.map((entry) => entry.personId))].sort(),
+      results,
+    };
   }
 
   loadMaterialRecords(personId) {

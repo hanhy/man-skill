@@ -61,6 +61,7 @@ The project aims to keep personal-agent construction simple:
 - expose generated draft paths, freshness status, and lightweight draft summaries back through `loadProfilesIndex()` for prompt/runtime consumption
 - render compact per-profile foundation snapshots in `PromptAssembler` so the runtime can see stale drafts, missing pieces, and key highlights without parsing the full profile JSON blob
 - support targeted or bulk profile draft refreshes through `update foundation --person <id>` and `update foundation --all`
+- support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
 - expose planned channel/provider registries from manifests and factories
 - assemble a prompt preview from profile, soul, voice, memory, and skills
 

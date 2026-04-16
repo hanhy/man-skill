@@ -48,6 +48,23 @@ function relativizeDraftPaths(rootDir, result) {
 
 function runImportCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
+
+  if (subcommand === 'manifest') {
+    const result = ingestion.importManifest({ manifestFile: options.file });
+    if (!options['refresh-foundation']) {
+      return result;
+    }
+
+    return {
+      ...result,
+      foundationRefresh: {
+        profileCount: result.profileIds.length,
+        results: result.profileIds.map((personId) =>
+          relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId }))),
+      },
+    };
+  }
+
   const personId = options.person;
 
   if (!personId) {
@@ -55,35 +72,51 @@ function runImportCommand(rootDir, subcommand, options) {
   }
 
   if (subcommand === 'text') {
-    return ingestion.importTextDocument({
+    const result = ingestion.importTextDocument({
       personId,
       sourceFile: options.file,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'message') {
-    return ingestion.importMessage({
+    const result = ingestion.importMessage({
       personId,
       text: options.text,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'talk') {
-    return ingestion.importTalkSnippet({
+    const result = ingestion.importTalkSnippet({
       personId,
       text: options.text,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'screenshot') {
-    return ingestion.importScreenshotSource({
+    const result = ingestion.importScreenshotSource({
       personId,
       sourceFile: options.file,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   throw new Error(`Unsupported import type: ${subcommand}`);
