@@ -24,6 +24,10 @@
 2. improve the **material ingestion entrance**
 3. expand channels and model providers
 
+### Development rule
+- use **TypeScript-first** for new and migrated runtime code
+- keep thin `.js` compatibility shims only when the CLI/package entrypoint still needs them
+
 ---
 
 ## Quick example

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A lightweight framework for constructing a person-like AI agent from text, memory, skills, soul, and voice.",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/index.js",
   "scripts": {
     "check": "tsx src/index.ts",
     "test": "node --import tsx --test",

@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { FileSystemLoader } from '../src/core/fs-loader.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
-import { PromptAssembler } from '../src/core/prompt-assembler.js';
+import { PromptAssembler } from '../src/core/prompt-assembler.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
@@ -240,6 +240,105 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Ship the first slice\./);
 });
 
+test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: [],
+    models: [],
+    profiles: [
+      {
+        id: 'jane-doe',
+        materialCount: 1,
+        materialTypes: { talk: 1 },
+        latestMaterialAt: '2026-04-16T16:00:00.000Z',
+        foundationReadiness: {
+          memory: { candidateCount: 1, latestTypes: ['talk'], sampleSummaries: ['Tight loops beat big plans.'] },
+          voice: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['feedback-loop heuristic'] },
+        },
+        foundationDraftStatus: {
+          generatedAt: null,
+          complete: false,
+          missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+          needsRefresh: true,
+        },
+        foundationDraftSummaries: {
+          memory: { generated: false, entryCount: 0, latestSummaries: [] },
+          voice: { generated: false, highlights: [] },
+          soul: { generated: false, highlights: [] },
+          skills: { generated: false, highlights: [] },
+        },
+      },
+    ],
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /voice highlights: Tight loops beat big plans\./);
+  assert.match(prompt, /soul highlights: Tight loops beat big plans\./);
+  assert.match(prompt, /skills signals: feedback-loop heuristic/);
+});
+
+test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: [],
+    models: [],
+    profiles: [],
+    foundationRollup: null,
+  }).buildSystemPrompt();
+
+  assert.doesNotMatch(prompt, /Profile foundation snapshots:/);
+});
+
+test('PromptAssembler prefers distilled generated skill highlights over sample lines', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: [],
+    models: [],
+    profiles: [
+      {
+        id: 'jane-doe',
+        materialCount: 1,
+        materialTypes: { talk: 1 },
+        foundationReadiness: {
+          memory: { candidateCount: 1, latestTypes: ['talk'], sampleSummaries: ['Tight loops beat big plans.'] },
+          voice: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['fallback skill signal'] },
+        },
+        foundationDraftStatus: {
+          generatedAt: '2026-04-16T16:00:01.000Z',
+          complete: true,
+          missingDrafts: [],
+          needsRefresh: false,
+        },
+        foundationDraftSummaries: {
+          memory: { generated: true, entryCount: 1, latestSummaries: ['Tight loops beat big plans.'] },
+          voice: { generated: false, highlights: [] },
+          soul: { generated: false, highlights: [] },
+          skills: {
+            generated: true,
+            highlights: ['- execution heuristic', '- sample: Tight loops beat big plans.'],
+          },
+        },
+      },
+    ],
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /skills signals: execution heuristic/);
+  assert.doesNotMatch(prompt, /skills signals: .*sample:/);
+  assert.doesNotMatch(prompt, /skills signals: .*fallback skill signal/);
+});
+
 test('loadProfilesIndex marks draft status as stale when new materials arrive after generation', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -270,8 +369,8 @@ test('loadProfilesIndex marks draft status as stale when a new material lands in
   const RealDate = Date;
   const fixedIso = '2026-04-16T15:00:00.000Z';
 
-  global.Date = class extends RealDate {
-    constructor(value) {
+  const MockDate = class extends RealDate {
+    constructor(value?: string | number | Date) {
       super(value ?? fixedIso);
     }
 
@@ -279,14 +378,16 @@ test('loadProfilesIndex marks draft status as stale when a new material lands in
       return new RealDate(fixedIso).valueOf();
     }
 
-    static parse(value) {
+    static parse(value: string) {
       return RealDate.parse(value);
     }
 
-    static UTC(...args) {
-      return RealDate.UTC(...args);
+    static UTC(...args: number[]) {
+      return (RealDate.UTC as (...values: number[]) => number)(...args);
     }
-  };
+  } as unknown as DateConstructor;
+
+  global.Date = MockDate;
 
   try {
     ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
