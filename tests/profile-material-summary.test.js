@@ -45,6 +45,10 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     soul: 'profiles/harry-han/soul/README.md',
     skills: 'profiles/harry-han/skills/README.md',
   });
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.equal(profile.foundationDraftStatus.generatedAt !== null, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
   assert.equal(profile.foundationDraftSummaries.memory.generated, true);
   assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
@@ -97,6 +101,12 @@ test('PromptAssembler includes profile material summaries when provided', () => 
           soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Direct writing sample.'] },
           skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
         },
+        foundationDraftStatus: {
+          generatedAt: '2026-04-16T15:00:01.000Z',
+          complete: true,
+          missingDrafts: [],
+          needsRefresh: false,
+        },
         foundationDraftSummaries: {
           memory: { generated: true, entryCount: 3, latestSummaries: ['Ship the first slice.', 'Direct writing sample.'] },
           voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
@@ -109,8 +119,65 @@ test('PromptAssembler includes profile material summaries when provided', () => 
   assert.match(prompt, /harry-han/);
   assert.match(prompt, /"screenshot": 1/);
   assert.match(prompt, /foundationReadiness/);
+  assert.match(prompt, /foundationDraftStatus/);
   assert.match(prompt, /foundationDraftSummaries/);
   assert.match(prompt, /Ship the first slice\./);
+});
+
+test('loadProfilesIndex marks draft status as stale when new materials arrive after generation', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.latestMaterialAt > profile.foundationDraftStatus.generatedAt, true);
+});
+
+test('loadProfilesIndex marks draft status as missing before foundation generation runs', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.generatedAt, null);
+  assert.equal(profile.foundationDraftStatus.complete, false);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
+});
+
+test('loadProfilesIndex marks foundation status stale when memory draft metadata is unreadable', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), '{not-json');
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.generatedAt, null);
+  assert.equal(profile.foundationDraftStatus.complete, false);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['memory']);
 });
 
 test('loadProfilesIndex skips malformed material records while keeping valid summaries', () => {

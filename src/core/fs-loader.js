@@ -162,6 +162,33 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
+function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null) {
+  const candidates = {
+    memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
+    voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
+    soul: path.join(rootDir, 'profiles', profileId, 'soul', 'README.md'),
+    skills: path.join(rootDir, 'profiles', profileId, 'skills', 'README.md'),
+  };
+  const missingDrafts = new Set(
+    Object.entries(candidates)
+      .filter(([, candidatePath]) => !fs.existsSync(candidatePath))
+      .map(([key]) => key),
+  );
+  const memoryDraft = readJsonIfExists(candidates.memory);
+  if (fs.existsSync(candidates.memory) && !memoryDraft) {
+    missingDrafts.add('memory');
+  }
+  const generatedAt = memoryDraft?.generatedAt ?? null;
+  const needsRefresh = missingDrafts.size > 0 || (Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt));
+
+  return {
+    generatedAt,
+    complete: missingDrafts.size === 0,
+    missingDrafts: [...missingDrafts].sort(),
+    needsRefresh,
+  };
+}
+
 function loadFoundationDraftSummaries(rootDir, profileId) {
   const memoryDraftPath = path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json');
   const voiceDraftPath = path.join(rootDir, 'profiles', profileId, 'voice', 'README.md');
@@ -249,6 +276,7 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
+        foundationDraftStatus: loadFoundationDraftStatus(this.rootDir, profileId, profileSummary.latestMaterialAt),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
       };

@@ -59,6 +59,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationReadiness.soul` sample excerpts from text / talk materials
 - `foundationReadiness.skills` procedural-note candidates from talk materials
 - `foundationDrafts` relative paths for generated memory / voice / soul / skills artifacts
+- `foundationDraftStatus` with `generatedAt`, `missingDrafts`, and `needsRefresh` so stale profiles are visible
 - `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 
