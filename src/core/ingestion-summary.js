@@ -46,7 +46,7 @@ function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
     present: Boolean(normalizedPath),
     personId: samplePersonId,
     command: normalizedPath && samplePersonId
-      ? `node src/index.js import text --person ${samplePersonId} --file ${normalizedPath} --refresh-foundation`
+      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(normalizedPath)} --refresh-foundation`
       : null,
   };
 }
@@ -154,7 +154,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleManifestProfileIds: sampleManifest.profileIds,
     sampleManifestError: sampleManifest.error,
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
-      ? `node src/index.js import manifest --file ${sampleManifestPath} --refresh-foundation`
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
       : null,
     sampleTextPath: sampleText.path,
     sampleTextPresent: sampleText.present,
