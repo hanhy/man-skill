@@ -46,6 +46,11 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.equal(summary.workLoop.priorities[0].status, 'ready');
   assert.match(summary.workLoop.priorities[2].summary, /4 pending/);
   assert.match(summary.workLoop.priorities[3].summary, /6 pending/);
+  assert.match(summary.promptPreview, /Work loop:/);
+  assert.match(summary.promptPreview, /priorities: 4 total \(1 ready, 3 queued\)/);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
 
 test('buildSummary work loop keeps foundation first when repo-core coverage is still thin', () => {
@@ -61,4 +66,6 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.equal(summary.workLoop.currentPriority.nextAction, 'create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch']);
   assert.equal(summary.workLoop.priorities[1].status, 'queued');
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch/);
 });

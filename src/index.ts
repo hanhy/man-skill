@@ -538,6 +538,7 @@ export function buildSummary(rootDir: string) {
       }),
     ],
   });
+  const workLoopSummary = workLoop.summary();
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -554,6 +555,7 @@ export function buildSummary(rootDir: string) {
     channels: channelsSummary,
     models: modelsSummary,
     delivery: deliverySummary,
+    workLoop: workLoopSummary,
   } as any);
 
   return {
@@ -570,8 +572,8 @@ export function buildSummary(rootDir: string) {
     models: modelsSummary,
     delivery: deliverySummary,
     profiles,
-    workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(3400),
+    workLoop: workLoopSummary,
+    promptPreview: prompt.buildPreview(4200),
   };
 }
 

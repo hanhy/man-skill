@@ -358,6 +358,86 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });
 
+test('PromptAssembler includes work-loop guidance in the system prompt', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 5,
+      objectives: [
+        'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+        'improve the user-facing ingestion/update entrance for target-person materials',
+        'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+        'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+        'report progress in small verified increments',
+      ],
+      priorityCount: 4,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 3,
+      currentPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'queued',
+        summary: '0 imported, 0 metadata-only, 0 ready, 0 queued for refresh',
+        nextAction: 'bootstrap a target profile',
+        command: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+        paths: [],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'ready',
+          summary: 'core 4/4 ready; profiles 0 queued for refresh, 0 incomplete',
+          nextAction: null,
+          command: null,
+          paths: [],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'queued',
+          summary: '0 imported, 0 metadata-only, 0 ready, 0 queued for refresh',
+          nextAction: 'bootstrap a target profile',
+          command: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+          paths: [],
+        },
+        {
+          id: 'channels',
+          label: 'Channels',
+          status: 'queued',
+          summary: '4 pending, 0 configured',
+          nextAction: 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET',
+          command: null,
+          paths: ['src/channels/slack.js'],
+        },
+        {
+          id: 'providers',
+          label: 'Providers',
+          status: 'queued',
+          summary: '6 pending, 0 configured',
+          nextAction: 'set OPENAI_API_KEY for gpt-5',
+          command: null,
+          paths: ['src/models/openai.js'],
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /Work loop:/);
+  assert.match(prompt, /priorities: 4 total \(1 ready, 3 queued\)/);
+  assert.match(prompt, /cadence: every 10 minutes/);
+  assert.match(prompt, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
+  assert.match(prompt, /next action: bootstrap a target profile/);
+  assert.match(prompt, /command: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
+  assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
+});
+
 test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

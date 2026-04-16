@@ -310,6 +310,27 @@ type IngestionSummary = {
   profileCommands?: IngestionProfileCommand[];
 } | null;
 
+type WorkLoopPriority = {
+  id?: string;
+  label?: string;
+  status?: 'ready' | 'queued' | string;
+  summary?: string;
+  nextAction?: string | null;
+  command?: string | null;
+  paths?: string[];
+};
+
+type WorkLoopSummary = {
+  intervalMinutes?: number;
+  objectiveCount?: number;
+  objectives?: string[];
+  priorityCount?: number;
+  readyPriorityCount?: number;
+  queuedPriorityCount?: number;
+  currentPriority?: WorkLoopPriority | null;
+  priorities?: WorkLoopPriority[];
+} | null;
+
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
@@ -323,6 +344,7 @@ export interface PromptAssemblerOptions {
   foundationRollup?: FoundationRollup;
   foundationCore?: FoundationCore;
   ingestion?: IngestionSummary;
+  workLoop?: WorkLoopSummary;
 }
 
 function formatMaterialCount(count: number) {
@@ -697,6 +719,43 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   ].filter(Boolean).join('\n');
 }
 
+function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
+  if (!workLoop || (workLoop.priorityCount ?? workLoop.priorities?.length ?? 0) === 0) {
+    return null;
+  }
+
+  const currentPriority = workLoop.currentPriority;
+  const priorities = workLoop.priorities ?? [];
+  const cadenceLine = workLoop.intervalMinutes
+    ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
+    : null;
+  const objectiveLine = (workLoop.objectives ?? []).length > 0
+    ? `- objectives: ${(workLoop.objectives ?? []).join(' | ')}`
+    : null;
+  const orderLine = priorities.length > 0
+    ? `- order: ${priorities.map((priority) => `${priority.id ?? priority.label ?? 'priority'}:${priority.status ?? 'unknown'}`).join(' | ')}`
+    : null;
+
+  return [
+    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${workLoop.readyPriorityCount ?? 0} ready, ${workLoop.queuedPriorityCount ?? 0} queued)`,
+    cadenceLine,
+    currentPriority
+      ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
+      : null,
+    currentPriority?.nextAction
+      ? `- next action: ${currentPriority.nextAction}`
+      : null,
+    currentPriority?.command
+      ? `- command: ${currentPriority.command}`
+      : null,
+    (currentPriority?.paths ?? []).length > 0
+      ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
+      : null,
+    orderLine,
+    objectiveLine,
+  ].filter(Boolean).join('\n');
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
@@ -710,6 +769,7 @@ export class PromptAssembler {
   foundationRollup: FoundationRollup;
   foundationCore: FoundationCore;
   ingestion: IngestionSummary;
+  workLoop: WorkLoopSummary;
 
   constructor({
     profile,
@@ -724,6 +784,7 @@ export class PromptAssembler {
     foundationRollup = null,
     foundationCore = null,
     ingestion = null,
+    workLoop = null,
   }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
@@ -737,6 +798,7 @@ export class PromptAssembler {
     this.foundationRollup = foundationRollup;
     this.foundationCore = foundationCore;
     this.ingestion = ingestion;
+    this.workLoop = workLoop;
   }
 
   buildPreview(maxLength = 1200) {
@@ -746,6 +808,7 @@ export class PromptAssembler {
     const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
+    const workLoopBlock = buildWorkLoopBlock(this.workLoop);
     const voicePreview = this.voice
       ? {
           tone: this.voice.tone,
@@ -765,6 +828,9 @@ export class PromptAssembler {
       ingestionEntranceBlock ? '' : null,
       ingestionEntranceBlock ? 'Ingestion entrance:' : null,
       ingestionEntranceBlock,
+      workLoopBlock ? '' : null,
+      workLoopBlock ? 'Work loop:' : null,
+      workLoopBlock,
       deliveryFoundationBlock ? '' : null,
       deliveryFoundationBlock ? 'Delivery foundation:' : null,
       deliveryFoundationBlock,
@@ -793,6 +859,7 @@ export class PromptAssembler {
     const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
+    const workLoopBlock = buildWorkLoopBlock(this.workLoop);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 
     return [
@@ -816,6 +883,9 @@ export class PromptAssembler {
       '',
       ingestionEntranceBlock ? 'Ingestion entrance:' : null,
       ingestionEntranceBlock,
+      '',
+      workLoopBlock ? 'Work loop:' : null,
+      workLoopBlock,
       '',
       deliveryFoundationBlock ? 'Delivery foundation:' : null,
       deliveryFoundationBlock,
