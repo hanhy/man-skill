@@ -34,6 +34,7 @@ node src/index.js import message --person harry-han --text "I’ll be there in 1
 node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png --refresh-foundation
 node src/index.js import manifest --file ./samples/harry-materials.json --refresh-foundation
 node src/index.js update profile --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
+node src/index.js update profile --person harry-han --summary "Direct operator with a bias for fast feedback loops." --refresh-foundation
 node src/index.js update foundation --person harry-han
 node src/index.js update foundation --stale
 node src/index.js update foundation --all

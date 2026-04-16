@@ -412,6 +412,51 @@ test('CLI update profile writes target-person metadata into profile.json', () =>
   assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
+test('CLI update profile can refresh foundation drafts after metadata changes', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'profile',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for fast feedback loops.',
+      '--refresh-foundation',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for fast feedback loops.');
+  assert.match(result.foundationRefresh.memoryDraftPath, /profiles\/harry-han\/memory\/long-term\/foundation\.json$/);
+
+  const memoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(memoryDraft.summary, 'Direct operator with a bias for fast feedback loops.');
+  assert.equal(memoryDraft.generatedAt >= result.profile.updatedAt, true);
+});
+
 test('CLI import manifest can seed profile metadata before importing materials', () => {
   const rootDir = makeTempRepo();
 

@@ -133,11 +133,18 @@ export function runUpdateCommand(rootDir, subcommand, options) {
       throw new Error('Missing required --person argument');
     }
 
-    return ingestion.updateProfile({
+    const result = ingestion.updateProfile({
       personId,
       displayName: options['display-name'],
       summary: options.summary,
     });
+
+    return options['refresh-foundation']
+      ? {
+          ...result,
+          foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId: result.personId })),
+        }
+      : result;
   }
 
   if (subcommand === 'foundation' && options.all) {

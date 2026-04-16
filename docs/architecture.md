@@ -67,7 +67,7 @@ The project aims to keep personal-agent construction simple:
 - render a compact foundation-rollup block in `PromptAssembler` that summarizes generated vs stale foundation state plus top memory / voice / soul / skills highlights across the repo
 - support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`
 - support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
-- support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`
+- support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`, with optional `--refresh-foundation` when those metadata edits should immediately regenerate identity-bearing drafts
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names
 - expose planned channel/provider registries from manifests and factories
 - assemble a prompt preview from profile, soul, voice, memory, and skills
