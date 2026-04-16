@@ -916,6 +916,45 @@ test('buildSummary reports invalid sample manifests without advertising a broken
   assert.doesNotMatch(summary.promptPreview, /sample manifest: 0 entries/);
 });
 
+test('buildSummary falls back to another valid sample manifest when the canonical sample manifest is invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-materials.json'), '{not valid json');
+  fs.writeFileSync(path.join(sampleDir, 'starter-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(sampleDir, 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestPath, 'samples/starter-materials.json');
+  assert.equal(summary.ingestion.sampleManifestPresent, true);
+  assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
+  assert.equal(summary.ingestion.sampleManifestEntryCount, 1);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['starter-person']);
+  assert.equal(summary.ingestion.sampleManifestError, null);
+  assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
+  assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.equal(summary.ingestion.sampleTextPath, 'samples/starter-post.txt');
+  assert.equal(summary.ingestion.sampleTextPresent, true);
+  assert.equal(summary.ingestion.sampleTextPersonId, 'starter-person');
+  assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
+  assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\]/);
+  assert.match(summary.promptPreview, /sample manifest: 1 entry for starter-person -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample text: starter-person -> node src\/index\.js import text --person starter-person --file 'samples\/starter-post\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /sample manifest invalid: .*harry-materials\.json/);
+});
+
 test('buildSummary derives the sample text command from the matching manifest text entry instead of the first profile id', () => {
   const rootDir = makeTempRepo();
   const sampleDir = path.join(rootDir, 'samples');
@@ -953,6 +992,36 @@ test('buildSummary derives the sample text command from the matching manifest te
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /sample text: anna-ace/);
+});
+
+test('buildSummary ignores the canonical sample text path when it does not belong to the selected sample manifest', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-post.txt'), 'Canonical but unrelated.\n');
+  fs.writeFileSync(path.join(sampleDir, 'starter-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(sampleDir, 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestPath, 'samples/starter-materials.json');
+  assert.equal(summary.ingestion.sampleTextPath, 'samples/starter-post.txt');
+  assert.equal(summary.ingestion.sampleTextPresent, true);
+  assert.equal(summary.ingestion.sampleTextPersonId, 'starter-person');
+  assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
+  assert.doesNotMatch(summary.promptPreview, /sample text: .*harry-post\.txt/);
+  assert.match(summary.promptPreview, /sample text: starter-person -> node src\/index\.js import text --person starter-person --file 'samples\/starter-post\.txt' --refresh-foundation/);
 });
 
 test('buildSummary shell-quotes sample ingestion commands when discovered sample paths contain spaces', () => {

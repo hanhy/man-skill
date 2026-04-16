@@ -146,6 +146,43 @@ test('CLI import sample command loads the checked-in sample manifest and refresh
   assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
 });
 
+test('CLI import sample command falls back to another valid sample manifest when the canonical one is invalid', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-materials.json'), '{not valid json');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'starter-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/starter-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['starter-person']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/starter-person\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

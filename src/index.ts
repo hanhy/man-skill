@@ -222,28 +222,37 @@ function listRelativeFiles(dirPath: string, extension: string): string[] {
 }
 
 function detectSampleManifestRelativePath(rootDir: string): string | null {
-  const canonicalPath = path.join(rootDir, 'samples', 'harry-materials.json');
+  const sampleDir = path.join(rootDir, 'samples');
+  const canonicalRelativePath = 'samples/harry-materials.json';
+  const canonicalPath = path.join(rootDir, canonicalRelativePath);
   if (fs.existsSync(canonicalPath)) {
-    return 'samples/harry-materials.json';
+    const canonicalSummary = readSampleManifestSummary(rootDir, canonicalRelativePath);
+    if (canonicalSummary.status === 'loaded') {
+      return canonicalRelativePath;
+    }
   }
 
-  const sampleDir = path.join(rootDir, 'samples');
   const candidates = listRelativeFiles(sampleDir, '.json');
   for (const fileName of candidates) {
     const relativePath = ['samples', fileName].join('/');
+    if (relativePath === canonicalRelativePath) {
+      continue;
+    }
+
     const summary = readSampleManifestSummary(rootDir, relativePath);
     if (summary.status === 'loaded') {
       return relativePath;
     }
   }
 
-  return null;
+  return fs.existsSync(canonicalPath) ? canonicalRelativePath : null;
 }
 
 function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleManifestSummary): string | null {
-  const canonicalPath = path.join(rootDir, 'samples', 'harry-post.txt');
-  if (fs.existsSync(canonicalPath)) {
-    return 'samples/harry-post.txt';
+  const canonicalRelativePath = 'samples/harry-post.txt';
+  const canonicalPath = path.join(rootDir, canonicalRelativePath);
+  if (fs.existsSync(canonicalPath) && sampleManifest?.textFilePersonIds?.[canonicalRelativePath]) {
+    return canonicalRelativePath;
   }
 
   const candidatePaths = Object.keys(sampleManifest?.textFilePersonIds ?? {}).sort();
@@ -253,7 +262,7 @@ function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleMan
     }
   }
 
-  return null;
+  return fs.existsSync(canonicalPath) ? canonicalRelativePath : null;
 }
 
 function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[] {
