@@ -283,6 +283,9 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  sampleManifestPath?: string | null;
+  sampleManifestPresent?: boolean;
+  sampleManifestCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
 } | null;
@@ -585,6 +588,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion?.bootstrapProfileCommand
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
+      || ingestion?.sampleManifestCommand
       || ingestion?.staleRefreshCommand
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
@@ -607,6 +611,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
+      : null,
+    ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
+      ? `- sample manifest: ${ingestion.sampleManifestCommand}`
       : null,
     ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) =>
       `- ${profile.label ?? profile.personId}: refresh ${profile.refreshFoundationCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`,

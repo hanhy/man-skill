@@ -1,0 +1,22 @@
+{
+  "personId": "harry-han",
+  "displayName": "Harry Han",
+  "summary": "Direct operator with a bias for momentum and fast feedback loops.",
+  "entries": [
+    {
+      "type": "message",
+      "text": "Ship the thin slice first, then tighten it with real feedback.",
+      "notes": "short chat sample"
+    },
+    {
+      "type": "talk",
+      "text": "If we can learn it in one run today, that beats polishing a big plan all week.",
+      "notes": "voice memo transcript"
+    },
+    {
+      "type": "text",
+      "file": "./harry-post.txt",
+      "notes": "short writing sample"
+    }
+  ]
+}

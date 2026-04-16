@@ -252,8 +252,11 @@ export function buildSummary(rootDir: string) {
     ],
   } as any);
   const profiles = loader.loadProfilesIndex() as any;
+  const sampleManifestRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-materials.json'))
+    ? 'samples/harry-materials.json'
+    : null;
   const foundation = buildFoundationRollup(profiles) as any;
-  const ingestionSummary = buildIngestionSummary(profiles) as any;
+  const ingestionSummary = buildIngestionSummary(profiles, { sampleManifestPath: sampleManifestRelativePath }) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,
     voiceDocument,

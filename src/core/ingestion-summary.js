@@ -4,6 +4,10 @@ function buildProfileLabel(profile) {
   return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
 }
 
+function normalizeRelativePath(value) {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
 function buildProfileCommands(profile) {
   if (!profile?.id) {
     return null;
@@ -21,10 +25,12 @@ function buildProfileCommands(profile) {
   };
 }
 
-export function buildIngestionSummary(profiles = []) {
+export function buildIngestionSummary(profiles = [], options = {}) {
   const safeProfiles = Array.isArray(profiles) ? profiles : [];
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
   const metadataOnlyProfileCount = safeProfiles.length - importedProfiles.length;
+  const sampleManifestPath = normalizeRelativePath(options?.sampleManifestPath);
+  const sampleManifestPresent = Boolean(sampleManifestPath);
   const orderedProfileCommands = importedProfiles
     .slice()
     .sort((left, right) => {
@@ -50,6 +56,9 @@ export function buildIngestionSummary(profiles = []) {
     bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    sampleManifestPath,
+    sampleManifestPresent,
+    sampleManifestCommand: sampleManifestPresent ? `node src/index.js import manifest --file ${sampleManifestPath} --refresh-foundation` : null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: orderedProfileCommands,
   };

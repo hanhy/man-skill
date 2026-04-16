@@ -589,6 +589,22 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-post.txt'), 'Direct writing sample.');
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      entries: [
+        { type: 'message', text: 'Ship the thin slice first.' },
+        { type: 'text', file: './harry-post.txt', notes: 'blog fragment' },
+      ],
+    }, null, 2),
+  );
+
   ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
   ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
   ingestion.importTalkSnippet({
@@ -615,6 +631,9 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    sampleManifestPath: 'samples/harry-materials.json',
+    sampleManifestPresent: true,
+    sampleManifestCommand: 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [
       {
@@ -647,6 +666,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample manifest: node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
 });
 
@@ -666,6 +686,9 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    sampleManifestPath: null,
+    sampleManifestPresent: false,
+    sampleManifestCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [],
   });
