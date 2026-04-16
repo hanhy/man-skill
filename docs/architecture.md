@@ -81,7 +81,7 @@ The project aims to keep personal-agent construction simple:
 - keep the user-facing `Ingestion entrance:` prompt block visible even on empty repos by surfacing bootstrap commands, supported import types, and a sample one-shot import path before any target profile exists
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names
 - expose planned channel/provider registries from manifests
-- expose a top-level `delivery` summary with pending channel/provider setup queues, manifest paths, auth-readiness counts, and concrete env-var setup hints so rollout work is visible alongside foundation diagnostics
+- expose a top-level `delivery` summary with pending channel/provider setup queues, manifest paths, auth-readiness counts, concrete env-var setup hints, and a checked-in `.env.example` bootstrap path so rollout work is visible alongside foundation diagnostics
 - aggregate channel/provider status counts plus deduped auth env vars in the delivery summary so prompt previews can distinguish active vs planned vs candidate integrations without re-scanning raw manifests
 - treat malformed `manifests/channels.json` or `manifests/providers.json` as delivery-foundation diagnostics instead of fatal errors, so summary generation falls back to built-in defaults while still surfacing the manifest issue inline
 - expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice

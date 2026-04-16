@@ -20,6 +20,22 @@ function seedMinimalRepo(rootDir) {
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice');
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=',
+    'SLACK_SIGNING_SECRET=',
+    'TELEGRAM_BOT_TOKEN=',
+    'WHATSAPP_ACCESS_TOKEN=',
+    'WHATSAPP_PHONE_NUMBER_ID=',
+    'FEISHU_APP_ID=',
+    'FEISHU_APP_SECRET=',
+    'OPENAI_API_KEY=',
+    'ANTHROPIC_API_KEY=',
+    'KIMI_API_KEY=',
+    'MINIMAX_API_KEY=',
+    'GLM_API_KEY=',
+    'QWEN_API_KEY=',
+    '',
+  ].join('\n'));
 }
 
 test('buildSummary exposes delivery metadata for default chat channels', () => {
@@ -117,8 +133,26 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       'MINIMAX_API_KEY',
       'QWEN_API_KEY',
     ]);
+    assert.deepEqual(summary.delivery.requiredEnvVars, [
+      'ANTHROPIC_API_KEY',
+      'FEISHU_APP_ID',
+      'FEISHU_APP_SECRET',
+      'GLM_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'OPENAI_API_KEY',
+      'QWEN_API_KEY',
+      'SLACK_BOT_TOKEN',
+      'SLACK_SIGNING_SECRET',
+      'TELEGRAM_BOT_TOKEN',
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+    ]);
     assert.equal(summary.delivery.channelManifestPath, 'manifests/channels.json');
     assert.equal(summary.delivery.providerManifestPath, 'manifests/providers.json');
+    assert.equal(summary.delivery.envTemplatePath, '.env.example');
+    assert.equal(summary.delivery.envTemplatePresent, true);
+    assert.equal(summary.delivery.envTemplateCommand, 'cp .env.example .env');
     assert.deepEqual(summary.delivery.channelQueue[0], {
       id: 'slack',
       name: 'Slack',
@@ -144,6 +178,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     });
     assert.match(summary.promptPreview, /Delivery foundation:/);
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
+    assert.match(summary.promptPreview, /env template: \.env\.example \(13 vars\)/);
+    assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
     assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present via events-api\/web-api/);

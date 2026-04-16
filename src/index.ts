@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgentProfile } from './core/agent-profile.ts';
@@ -278,7 +279,15 @@ export function buildSummary(rootDir: string) {
       error: providerManifest.error,
     },
   };
-  const deliverySummary = buildDeliverySummary(channelsSummary, modelsSummary);
+  const envTemplateRelativePath = '.env.example';
+  const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
+  const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const deliverySummary = {
+    ...buildDeliverySummary(channelsSummary, modelsSummary),
+    envTemplatePath: envTemplateRelativePath,
+    envTemplatePresent,
+    envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+  };
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,

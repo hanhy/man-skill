@@ -251,8 +251,12 @@ type DeliverySummary = {
   configuredProviderCount?: number;
   missingChannelEnvVars?: string[];
   missingProviderEnvVars?: string[];
+  requiredEnvVars?: string[];
   channelManifestPath?: string;
   providerManifestPath?: string;
+  envTemplatePath?: string | null;
+  envTemplatePresent?: boolean;
+  envTemplateCommand?: string | null;
   channelQueue?: DeliveryQueueItem[];
   providerQueue?: DeliveryQueueItem[];
 } | null;
@@ -539,6 +543,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     channelManifestSummary,
     channelRecords.length > 0
       ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
+      : null,
+    (delivery?.envTemplatePresent && delivery.envTemplatePath)
+      ? `- env template: ${delivery.envTemplatePath}${(delivery.requiredEnvVars ?? []).length > 0 ? ` (${delivery.requiredEnvVars.length} vars)` : ''}`
+      : null,
+    delivery?.envTemplatePresent && delivery.envTemplateCommand
+      ? `- env bootstrap: ${delivery.envTemplateCommand}`
       : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`

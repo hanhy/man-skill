@@ -64,8 +64,12 @@ export type DeliverySummary = {
   configuredProviderCount: number;
   missingChannelEnvVars: string[];
   missingProviderEnvVars: string[];
+  requiredEnvVars: string[];
   channelManifestPath: string;
   providerManifestPath: string;
+  envTemplatePath: string | null;
+  envTemplatePresent: boolean;
+  envTemplateCommand: string | null;
   channelQueue: DeliveryChannelQueueItem[];
   providerQueue: DeliveryProviderQueueItem[];
 };
@@ -153,6 +157,11 @@ export function buildDeliverySummary(
       };
     });
 
+  const requiredEnvVars = [
+    ...(channels?.channels ?? []).flatMap((channel) => (channel.auth?.envVars ?? []).filter(Boolean)),
+    ...(models?.providers ?? []).flatMap((provider) => (provider.authEnvVar ? [provider.authEnvVar] : [])),
+  ].filter(Boolean);
+
   return {
     pendingChannelCount: channelQueue.length,
     pendingProviderCount: providerQueue.length,
@@ -160,8 +169,12 @@ export function buildDeliverySummary(
     configuredProviderCount: providerQueue.filter((provider) => provider.configured).length,
     missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
     missingProviderEnvVars: [...new Set(providerQueue.flatMap((provider) => provider.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
+    requiredEnvVars: [...new Set(requiredEnvVars)].sort((left, right) => left.localeCompare(right)),
     channelManifestPath,
     providerManifestPath,
+    envTemplatePath: null,
+    envTemplatePresent: false,
+    envTemplateCommand: null,
     channelQueue,
     providerQueue,
   };
