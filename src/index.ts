@@ -394,6 +394,24 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   };
 }
 
+function buildSampleImportNextAction(ingestionSummary: any) {
+  const sampleStarterLabel = typeof ingestionSummary?.sampleStarterLabel === 'string' && ingestionSummary.sampleStarterLabel.length > 0
+    ? ingestionSummary.sampleStarterLabel
+    : null;
+
+  if (!sampleStarterLabel) {
+    return 'import the checked-in sample target profile';
+  }
+
+  const sampleProfileCount = Array.isArray(ingestionSummary?.sampleManifestProfileIds)
+    ? ingestionSummary.sampleManifestProfileIds.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0).length
+    : 0;
+
+  return sampleProfileCount > 1
+    ? `import the checked-in sample target profiles for ${sampleStarterLabel}`
+    : `import the checked-in sample target profile for ${sampleStarterLabel}`;
+}
+
 function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
@@ -417,12 +435,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       : null;
 
     if (sampleStarterCommand) {
-      const sampleStarterLabel = typeof ingestionSummary?.sampleStarterLabel === 'string' && ingestionSummary.sampleStarterLabel.length > 0
-        ? ingestionSummary.sampleStarterLabel
-        : null;
-      nextAction = sampleStarterLabel
-        ? `import the checked-in sample target profile for ${sampleStarterLabel}`
-        : 'import the checked-in sample target profile';
+      nextAction = buildSampleImportNextAction(ingestionSummary);
       command = sampleStarterCommand;
       paths = [sampleManifestPath, sampleTextPath]
         .filter((value): value is string => typeof value === 'string' && value.length > 0);
@@ -442,6 +455,9 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
+    const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
+      ? ingestionSummary.sampleManifestPath
+      : null;
     const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
       ? ingestionSummary.sampleTextPath
       : null;
@@ -460,6 +476,10 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
+      paths = ingestionSummary?.sampleManifestCommand
+        ? [sampleManifestPath, sampleTextPath]
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
     } else {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`

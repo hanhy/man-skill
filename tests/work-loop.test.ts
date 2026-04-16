@@ -101,6 +101,44 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt/);
 });
 
+test('buildSummary work loop uses plural wording when the checked-in sample manifest spans multiple starter profiles', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'jane-post.txt'), 'Refine tomorrow after we ship today.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      profiles: [
+        { personId: 'Harry Han', displayName: 'Harry Han' },
+        { personId: 'Jane Doe', displayName: 'Jane Doe' },
+      ],
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+        {
+          personId: 'Jane Doe',
+          type: 'text',
+          file: 'jane-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han), Jane Doe (jane-doe)');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profiles for Harry Han (harry-han), Jane Doe (jane-doe)');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import sample');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
+  assert.match(summary.promptPreview, /next action: import the checked-in sample target profiles for Harry Han \(harry-han\), Jane Doe \(jane-doe\)/);
+});
+
 test('buildSummary work loop targets metadata-only profiles with their direct import command when one is runnable', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -140,6 +178,86 @@ test('buildSummary work loop targets metadata-only profiles with their direct im
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: samples\/metadata-only\.txt/);
+});
+
+test('buildSummary work loop keeps sample manifest paths when metadata-only profiles need the fallback batch import', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'starter-post.txt'), 'Starter profile draft.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'starter-person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for metadata-only profiles');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/starter-materials.json', 'samples/starter-post.txt']);
+  assert.match(summary.promptPreview, /next action: import source materials for metadata-only profiles/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /paths: samples\/starter-materials\.json, samples\/starter-post\.txt/);
+});
+
+test('buildSummary work loop avoids broken sample paths when metadata-only profiles fall back to the generic manifest command', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'missing-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for metadata-only profiles');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import manifest --file <manifest.json>');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
+  assert.match(summary.promptPreview, /next action: import source materials for metadata-only profiles/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file <manifest\.json>/);
+  assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
 test('buildSummary work loop points foundation refreshes at the stale profile draft paths', () => {
