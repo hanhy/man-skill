@@ -73,6 +73,30 @@ function buildMemoryMaintenanceAction({
   return actions.join(' | ');
 }
 
+function buildMemoryMaintenancePaths({
+  hasRootDocument,
+  emptyBuckets,
+}: {
+  hasRootDocument: boolean;
+  emptyBuckets: string[];
+}): string[] {
+  const paths: string[] = [];
+
+  if (!hasRootDocument) {
+    paths.push('memory/README.md');
+  }
+
+  emptyBuckets
+    .map((bucket) => `memory/${bucket}`)
+    .forEach((bucketPath) => {
+      if (!paths.includes(bucketPath)) {
+        paths.push(bucketPath);
+      }
+    });
+
+  return paths;
+}
+
 function buildSkillsDocumentationPaths(undocumentedSkillNames: string[]): string[] {
   return undocumentedSkillNames
     .filter((skillName) => isNonEmptyString(skillName))
@@ -227,7 +251,10 @@ function buildCoreFoundationMaintenance({
         hasRootDocument: memory.hasRootDocument,
         emptyBuckets: memory.emptyBuckets,
       }),
-      paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+      paths: buildMemoryMaintenancePaths({
+        hasRootDocument: memory.hasRootDocument,
+        emptyBuckets: memory.emptyBuckets,
+      }),
     },
     {
       area: 'skills',

@@ -310,7 +310,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         status: 'thin',
         summary: 'README yes, daily 0, long-term 0, scratch 0',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-        paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+        paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
       },
       {
         area: 'skills',
@@ -337,8 +337,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   });
   assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch/);
-  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
+  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\//);
   assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
 });
@@ -412,12 +412,12 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
         status: 'thin',
         summary: 'README no, daily 1, long-term 1, scratch 1',
         action: 'create memory/README.md',
-        paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+        paths: ['memory/README.md'],
       },
     ],
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
@@ -470,7 +470,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     ],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
 });
 
