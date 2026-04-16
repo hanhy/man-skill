@@ -68,6 +68,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
   assert.deepEqual(profile.foundationReadiness.memory.latestTypes.slice().sort(), ['message', 'screenshot', 'text']);
   assert.equal(profile.foundationReadiness.memory.candidateCount, 3);
+  assert.deepEqual(profile.foundationReadiness.memory.sampleSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.deepEqual(profile.foundationReadiness.voice.sampleTypes.slice().sort(), ['message', 'text']);
   assert.deepEqual(profile.foundationReadiness.voice.sampleExcerpts.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.deepEqual(profile.foundationReadiness.soul, {
@@ -101,7 +102,11 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
         materialTypes: { text: 1, message: 1, screenshot: 1 },
         latestMaterialAt: '2026-04-16T15:00:00.000Z',
         foundationReadiness: {
-          memory: { candidateCount: 3, latestTypes: ['screenshot', 'message', 'text'] },
+          memory: {
+            candidateCount: 3,
+            latestTypes: ['screenshot', 'message', 'text'],
+            sampleSummaries: ['Ship the first slice.', 'Direct writing sample.'],
+          },
           voice: { candidateCount: 2, sampleTypes: ['message', 'text'], sampleExcerpts: ['Ship the first slice.', 'Direct writing sample.'] },
           soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Direct writing sample.'] },
           skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
@@ -125,7 +130,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
         materialTypes: { talk: 1 },
         latestMaterialAt: '2026-04-16T16:00:00.000Z',
         foundationReadiness: {
-          memory: { candidateCount: 1, latestTypes: ['talk'] },
+          memory: { candidateCount: 1, latestTypes: ['talk'], sampleSummaries: ['Tight loops beat big plans.'] },
           voice: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
           soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
           skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
@@ -186,6 +191,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
   assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
   assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice/);
+  assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
   assert.match(prompt, /Ship the first slice\./);
 });

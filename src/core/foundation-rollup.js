@@ -51,7 +51,14 @@ export function buildFoundationRollup(profiles = []) {
         0,
       ),
       highlights: collectUnique(
-        safeProfiles.flatMap((profile) => profile.foundationDraftSummaries?.memory?.latestSummaries ?? []),
+        safeProfiles.flatMap((profile) => {
+          const generatedHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries ?? [];
+          if (generatedHighlights.length > 0) {
+            return generatedHighlights;
+          }
+
+          return profile.foundationReadiness?.memory?.sampleSummaries ?? [];
+        }),
       ),
     },
     voice: {

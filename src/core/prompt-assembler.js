@@ -47,7 +47,9 @@ function formatProfileSnapshot(profile = {}) {
     );
   }
 
-  const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries ?? [];
+  const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries?.length > 0
+    ? profile.foundationDraftSummaries.memory.latestSummaries
+    : (profile.foundationReadiness?.memory?.sampleSummaries ?? []);
   if (memoryHighlights.length > 0) {
     lines.push(`  memory highlights: ${memoryHighlights.join(' | ')}`);
   }

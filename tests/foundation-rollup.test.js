@@ -25,6 +25,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         skills: { generated: true, highlights: ['- execution heuristic'] },
       },
       foundationReadiness: {
+        memory: { candidateCount: 2, sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
         voice: { candidateCount: 2, sampleExcerpts: ['Ship the first slice.'] },
         soul: { candidateCount: 1, sampleExcerpts: ['Keep the scope tight.'] },
         skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
@@ -41,6 +42,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         skills: { generated: false, highlights: [] },
       },
       foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
         voice: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
         soul: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
         skills: { candidateCount: 1, sampleExcerpts: ['feedback-loop heuristic'] },
@@ -53,7 +55,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     generatedProfileCount: 1,
     repoStaleProfileCount: 1,
     totalEntries: 2,
-    highlights: ['Ship the first slice.', 'Keep the scope tight.'],
+    highlights: ['Ship the first slice.', 'Keep the scope tight.', 'Tight loops beat big plans.'],
   });
   assert.deepEqual(rollup.voice, {
     profileCount: 2,
@@ -114,7 +116,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     generatedProfileCount: 1,
     repoStaleProfileCount: 1,
     totalEntries: 2,
-    highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.'],
+    highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.', 'Tight loops beat big plans.'],
   });
   assert.deepEqual(summary.foundation.skills, {
     profileCount: 2,

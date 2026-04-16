@@ -109,7 +109,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `profile.displayName` / `profile.summary` from `profile.json`
 - `materialTypes` counts by imported type
 - `latestMaterialAt` so the newest profile activity is visible
-- `foundationReadiness.memory` candidate counts and newest material types
+- `foundationReadiness.memory` candidate counts, newest material types, and lightweight text-first sample summaries
 - `foundationReadiness.voice` sample excerpts from text / message / talk materials
 - `foundationReadiness.soul` sample excerpts from text / talk materials
 - `foundationReadiness.skills` procedural-note candidates from talk materials
