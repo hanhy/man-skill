@@ -85,6 +85,28 @@ type FoundationRollup = {
   skills?: RollupSection;
 } | null;
 
+type CoreDocumentFoundationSummary = {
+  present?: boolean;
+  lineCount?: number;
+  excerpt?: string | null;
+};
+
+type FoundationCore = {
+  memory?: {
+    hasRootDocument?: boolean;
+    dailyCount?: number;
+    longTermCount?: number;
+    scratchCount?: number;
+    totalEntries?: number;
+  };
+  skills?: {
+    count?: number;
+    sample?: string[];
+  };
+  soul?: CoreDocumentFoundationSummary;
+  voice?: CoreDocumentFoundationSummary;
+} | null;
+
 type AgentSummary = {
   name?: string;
   soul?: string;
@@ -106,6 +128,7 @@ export interface PromptAssemblerOptions {
   models: unknown;
   profiles?: ProfileSnapshot[];
   foundationRollup?: FoundationRollup;
+  foundationCore?: FoundationCore;
 }
 
 function formatMaterialCount(count: number) {
@@ -259,6 +282,32 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   ].filter(Boolean).join('\n');
 }
 
+function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
+  if (!foundationCore) {
+    return null;
+  }
+
+  const memory = foundationCore.memory;
+  const skills = foundationCore.skills;
+  const soul = foundationCore.soul;
+  const voice = foundationCore.voice;
+
+  return [
+    memory
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}`
+      : null,
+    skills
+      ? `- skills: ${skills.count ?? 0} registered${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}`
+      : null,
+    soul
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}`
+      : null,
+    voice
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}`
+      : null,
+  ].filter(Boolean).join('\n');
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
@@ -269,8 +318,20 @@ export class PromptAssembler {
   models: unknown;
   profiles: ProfileSnapshot[];
   foundationRollup: FoundationRollup;
+  foundationCore: FoundationCore;
 
-  constructor({ profile, soul = '', voice, memory, skills, channels, models, profiles = [], foundationRollup = null }: PromptAssemblerOptions) {
+  constructor({
+    profile,
+    soul = '',
+    voice,
+    memory,
+    skills,
+    channels,
+    models,
+    profiles = [],
+    foundationRollup = null,
+    foundationCore = null,
+  }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
     this.voice = voice;
@@ -280,11 +341,13 @@ export class PromptAssembler {
     this.models = models;
     this.profiles = profiles;
     this.foundationRollup = foundationRollup;
+    this.foundationCore = foundationCore;
   }
 
   buildPreview(maxLength = 1200) {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const voicePreview = this.voice
       ? {
           tone: this.voice.tone,
@@ -301,6 +364,9 @@ export class PromptAssembler {
       '',
       'Voice profile:',
       JSON.stringify(voicePreview, null, 2),
+      coreFoundationBlock ? '' : null,
+      coreFoundationBlock ? 'Core foundation:' : null,
+      coreFoundationBlock,
       foundationRollupBlock ? '' : null,
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,
@@ -316,6 +382,7 @@ export class PromptAssembler {
   buildSystemPrompt() {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 
     return [
@@ -336,6 +403,9 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      coreFoundationBlock ? 'Core foundation:' : null,
+      coreFoundationBlock,
       '',
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,

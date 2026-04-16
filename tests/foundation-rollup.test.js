@@ -156,3 +156,49 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
   });
   assert.doesNotMatch(summary.promptPreview, /Foundation rollup:/);
 });
+
+test('buildSummary exposes core foundation diagnostics for repo memory, skills, soul, and voice', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'obsidian'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.\n- Prefer momentum over hedging.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.\nPreserve clear priorities.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.memory, {
+    hasRootDocument: true,
+    dailyCount: 1,
+    longTermCount: 1,
+    scratchCount: 1,
+    totalEntries: 3,
+  });
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 2,
+    sample: ['obsidian', 'telegram'],
+  });
+  assert.deepEqual(summary.foundation.core.soul, {
+    present: true,
+    lineCount: 2,
+    excerpt: 'Build a faithful operator core.',
+  });
+  assert.deepEqual(summary.foundation.core.voice, {
+    present: true,
+    lineCount: 2,
+    excerpt: 'Keep replies direct.',
+  });
+  assert.match(summary.promptPreview, /Core foundation:/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
+  assert.match(summary.promptPreview, /skills: 2 registered \(obsidian, telegram\)/);
+  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\./);
+  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\./);
+});

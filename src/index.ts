@@ -8,6 +8,7 @@ import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
+import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.js';
@@ -244,6 +245,12 @@ export function buildSummary(rootDir: string) {
   } as any);
   const profiles = loader.loadProfilesIndex() as any;
   const foundation = buildFoundationRollup(profiles) as any;
+  const coreFoundation = buildCoreFoundationSummary({
+    soulDocument,
+    voiceDocument,
+    memoryIndex,
+    skillNames,
+  });
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -255,6 +262,7 @@ export function buildSummary(rootDir: string) {
     skills: skills.summary(),
     profiles,
     foundationRollup: foundation,
+    foundationCore: coreFoundation,
     channels: channels.summary(),
     models: models.summary(),
   } as any);
@@ -264,7 +272,10 @@ export function buildSummary(rootDir: string) {
     memory: memory.summary(),
     skills: skills.summary(),
     voice: voice.summary(),
-    foundation,
+    foundation: {
+      ...foundation,
+      core: coreFoundation,
+    },
     channels: channels.summary(),
     models: models.summary(),
     profiles,

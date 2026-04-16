@@ -40,14 +40,15 @@ The project aims to keep personal-agent construction simple:
 
 ## Current modules
 
-- `src/core/agent-profile.js`
-- `src/core/memory-store.js`
-- `src/core/skill-registry.js`
-- `src/core/voice-profile.js`
-- `src/core/channel-registry.js`
-- `src/core/model-registry.js`
+- `src/core/agent-profile.ts`
+- `src/core/memory-store.ts`
+- `src/core/skill-registry.ts`
+- `src/core/voice-profile.ts`
+- `src/core/channel-registry.ts`
+- `src/core/model-registry.ts`
+- `src/core/foundation-core.ts`
 - `src/core/fs-loader.js`
-- `src/core/prompt-assembler.js`
+- `src/core/prompt-assembler.ts`
 - `src/runtime/work-loop.js`
 
 ## Current behavior
@@ -62,6 +63,7 @@ The project aims to keep personal-agent construction simple:
 - carry per-draft provenance forward (`latestMaterialId`, `materialTypes`, markdown draft headers) so generated memory / voice / soul / skills artifacts remain auditable after ingestion
 - mirror memory-draft provenance (`generatedAt`, latest material id/timestamp, source counts, material types) back into `foundationDraftSummaries.memory` so prompt/runtime consumers can inspect freshness without reopening raw draft files
 - aggregate per-profile draft state into a repo-level `foundation` rollup so memory / voice / soul / skills progress is visible without manually scanning every profile
+- expose `foundation.core` diagnostics for the repo's own memory / skills / soul / voice assets so the prompt/runtime layer can quickly audit whether the base agent scaffolding is actually populated
 - detect stale drafts with both `latestMaterialAt` and `latestMaterialId` so same-timestamp imports do not get hidden by timestamp collisions
 - treat target-person metadata changes (`displayName`, `summary`) as foundation-draft drift so stale-only refreshes also regenerate identity-bearing drafts after profile updates
 - render compact per-profile foundation snapshots in `PromptAssembler` so the runtime can see stale drafts, missing pieces, key highlights, and a short target summary without parsing the full profile JSON blob
