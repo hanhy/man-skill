@@ -86,38 +86,89 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
 
-  const summary = buildSummary(rootDir);
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
 
-  assert.equal(summary.delivery.pendingChannelCount, 4);
-  assert.equal(summary.delivery.pendingProviderCount, 6);
-  assert.equal(summary.delivery.channelManifestPath, 'manifests/channels.json');
-  assert.equal(summary.delivery.providerManifestPath, 'manifests/providers.json');
-  assert.deepEqual(summary.delivery.channelQueue[0], {
-    id: 'slack',
-    name: 'Slack',
-    status: 'planned',
-    authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
-    deliveryModes: ['events-api', 'web-api'],
-    manifestPath: 'manifests/channels.json',
-    setupHint: 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET',
-  });
-  assert.deepEqual(summary.delivery.providerQueue[0], {
-    id: 'openai',
-    name: 'OpenAI',
-    status: 'planned',
-    defaultModel: 'gpt-5',
-    authEnvVar: 'OPENAI_API_KEY',
-    modalities: ['chat', 'reasoning', 'vision'],
-    manifestPath: 'manifests/providers.json',
-    setupHint: 'set OPENAI_API_KEY for gpt-5',
-  });
-  assert.match(summary.promptPreview, /Delivery foundation:/);
-  assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
-  assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api/);
-  assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
-  assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
-  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
+  process.env.SLACK_BOT_TOKEN = 'xoxb-test';
+  process.env.SLACK_SIGNING_SECRET = 'signing-secret';
+  process.env.OPENAI_API_KEY = 'sk-test';
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.pendingChannelCount, 4);
+    assert.equal(summary.delivery.pendingProviderCount, 6);
+    assert.equal(summary.delivery.configuredChannelCount, 1);
+    assert.equal(summary.delivery.configuredProviderCount, 1);
+    assert.deepEqual(summary.delivery.missingChannelEnvVars, [
+      'FEISHU_APP_ID',
+      'FEISHU_APP_SECRET',
+      'TELEGRAM_BOT_TOKEN',
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+    ]);
+    assert.deepEqual(summary.delivery.missingProviderEnvVars, [
+      'ANTHROPIC_API_KEY',
+      'GLM_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'QWEN_API_KEY',
+    ]);
+    assert.equal(summary.delivery.channelManifestPath, 'manifests/channels.json');
+    assert.equal(summary.delivery.providerManifestPath, 'manifests/providers.json');
+    assert.deepEqual(summary.delivery.channelQueue[0], {
+      id: 'slack',
+      name: 'Slack',
+      status: 'planned',
+      authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+      deliveryModes: ['events-api', 'web-api'],
+      configured: true,
+      missingEnvVars: [],
+      manifestPath: 'manifests/channels.json',
+      setupHint: 'credentials present',
+    });
+    assert.deepEqual(summary.delivery.providerQueue[0], {
+      id: 'openai',
+      name: 'OpenAI',
+      status: 'planned',
+      defaultModel: 'gpt-5',
+      authEnvVar: 'OPENAI_API_KEY',
+      modalities: ['chat', 'reasoning', 'vision'],
+      configured: true,
+      missingEnvVars: [],
+      manifestPath: 'manifests/providers.json',
+      setupHint: 'auth configured for gpt-5',
+    });
+    assert.match(summary.promptPreview, /Delivery foundation:/);
+    assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
+    assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
+    assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present via events-api\/web-api/);
+    assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
+    assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5 \{chat, reasoning, vision\}/);
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+
+    if (originalEnv.OPENAI_API_KEY === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+    }
+  }
 });
 
 test('buildSummary prompt preview surfaces candidate delivery integrations from manifests', () => {

@@ -38,6 +38,8 @@ export type DeliveryChannelQueueItem = {
   status: string;
   authEnvVars: string[];
   deliveryModes: string[];
+  configured: boolean;
+  missingEnvVars: string[];
   manifestPath: string;
   setupHint: string;
 };
@@ -49,6 +51,8 @@ export type DeliveryProviderQueueItem = {
   defaultModel: string | null;
   authEnvVar: string | null;
   modalities: string[];
+  configured: boolean;
+  missingEnvVars: string[];
   manifestPath: string;
   setupHint: string;
 };
@@ -56,22 +60,42 @@ export type DeliveryProviderQueueItem = {
 export type DeliverySummary = {
   pendingChannelCount: number;
   pendingProviderCount: number;
+  configuredChannelCount: number;
+  configuredProviderCount: number;
+  missingChannelEnvVars: string[];
+  missingProviderEnvVars: string[];
   channelManifestPath: string;
   providerManifestPath: string;
   channelQueue: DeliveryChannelQueueItem[];
   providerQueue: DeliveryProviderQueueItem[];
 };
 
-function buildChannelSetupHint(record: ChannelSummaryRecord): string {
-  const envVars = (record.auth?.envVars ?? []).filter(Boolean);
-  if (envVars.length > 0) {
-    return `set ${envVars.join(', ')}`;
-  }
-
-  return 'define channel credentials';
+function collectMissingEnvVars(envVars: string[], environment: NodeJS.ProcessEnv): string[] {
+  return envVars.filter((envVar) => !environment[envVar]);
 }
 
-function buildProviderSetupHint(record: ProviderSummaryRecord): string {
+function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
+  const envVars = (record.auth?.envVars ?? []).filter(Boolean);
+  const missingEnvVars = collectMissingEnvVars(envVars, environment);
+  if (envVars.length === 0) {
+    return 'define channel credentials';
+  }
+
+  if (missingEnvVars.length === 0) {
+    return 'credentials present';
+  }
+
+  return `set ${missingEnvVars.join(', ')}`;
+}
+
+function buildProviderSetupHint(record: ProviderSummaryRecord, environment: NodeJS.ProcessEnv): string {
+  const missingEnvVars = record.authEnvVar ? collectMissingEnvVars([record.authEnvVar], environment) : [];
+  const authConfigured = missingEnvVars.length === 0 && Boolean(record.authEnvVar);
+
+  if (authConfigured && record.defaultModel) {
+    return `auth configured for ${record.defaultModel}`;
+  }
+
   if (record.authEnvVar && record.defaultModel) {
     return `set ${record.authEnvVar} for ${record.defaultModel}`;
   }
@@ -87,36 +111,55 @@ function buildProviderSetupHint(record: ProviderSummaryRecord): string {
   return 'choose auth and default model';
 }
 
-export function buildDeliverySummary(channels: ChannelsSummary = null, models: ModelsSummary = null): DeliverySummary {
+export function buildDeliverySummary(
+  channels: ChannelsSummary = null,
+  models: ModelsSummary = null,
+  environment: NodeJS.ProcessEnv = process.env,
+): DeliverySummary {
   const channelManifestPath = channels?.manifest?.path ?? 'manifests/channels.json';
   const providerManifestPath = models?.manifest?.path ?? 'manifests/providers.json';
   const channelQueue = (channels?.channels ?? [])
     .filter((channel) => channel?.status !== 'active')
-    .map((channel) => ({
-      id: channel.id ?? null,
-      name: channel.name ?? channel.id ?? null,
-      status: channel.status ?? 'unknown',
-      authEnvVars: (channel.auth?.envVars ?? []).filter(Boolean),
-      deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
-      manifestPath: channelManifestPath,
-      setupHint: buildChannelSetupHint(channel),
-    }));
+    .map((channel) => {
+      const authEnvVars = (channel.auth?.envVars ?? []).filter(Boolean);
+      const missingEnvVars = collectMissingEnvVars(authEnvVars, environment);
+      return {
+        id: channel.id ?? null,
+        name: channel.name ?? channel.id ?? null,
+        status: channel.status ?? 'unknown',
+        authEnvVars,
+        deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
+        configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
+        missingEnvVars,
+        manifestPath: channelManifestPath,
+        setupHint: buildChannelSetupHint(channel, environment),
+      };
+    });
   const providerQueue = (models?.providers ?? [])
     .filter((provider) => provider?.status !== 'active')
-    .map((provider) => ({
-      id: provider.id ?? null,
-      name: provider.name ?? provider.id ?? null,
-      status: provider.status ?? 'unknown',
-      defaultModel: provider.defaultModel ?? null,
-      authEnvVar: provider.authEnvVar ?? null,
-      modalities: (provider.modalities ?? []).filter(Boolean),
-      manifestPath: providerManifestPath,
-      setupHint: buildProviderSetupHint(provider),
-    }));
+    .map((provider) => {
+      const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
+      return {
+        id: provider.id ?? null,
+        name: provider.name ?? provider.id ?? null,
+        status: provider.status ?? 'unknown',
+        defaultModel: provider.defaultModel ?? null,
+        authEnvVar: provider.authEnvVar ?? null,
+        modalities: (provider.modalities ?? []).filter(Boolean),
+        configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
+        missingEnvVars,
+        manifestPath: providerManifestPath,
+        setupHint: buildProviderSetupHint(provider, environment),
+      };
+    });
 
   return {
     pendingChannelCount: channelQueue.length,
     pendingProviderCount: providerQueue.length,
+    configuredChannelCount: channelQueue.filter((channel) => channel.configured).length,
+    configuredProviderCount: providerQueue.filter((provider) => provider.configured).length,
+    missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
+    missingProviderEnvVars: [...new Set(providerQueue.flatMap((provider) => provider.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
     channelManifestPath,
     providerManifestPath,
     channelQueue,
