@@ -55,6 +55,14 @@ type QueueLike = {
   implementationPath?: string | null;
 };
 
+type ProfileSummaryLike = {
+  id?: string;
+  foundationDrafts?: Record<string, string> | null;
+  foundationDraftStatus?: {
+    missingDrafts?: string[];
+  } | null;
+};
+
 function slugifyPersonId(value: string) {
   return value
     .trim()
@@ -248,12 +256,48 @@ function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleMan
   return null;
 }
 
-function buildFoundationPriority(foundation: any, coreFoundation: any): WorkPriority {
+function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[] {
+  if (!profile?.id) {
+    return [];
+  }
+
+  const draftPathByKey: Record<string, string> = {
+    memory: `profiles/${profile.id}/memory/long-term/foundation.json`,
+    skills: `profiles/${profile.id}/skills/README.md`,
+    soul: `profiles/${profile.id}/soul/README.md`,
+    voice: `profiles/${profile.id}/voice/README.md`,
+  };
+  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
+    ? [...profile.foundationDraftStatus.missingDrafts]
+      .filter((value): value is string => typeof value === 'string' && value in draftPathByKey)
+      .sort()
+    : [];
+
+  if (missingDrafts.length > 0) {
+    return missingDrafts.map((draftKey) => draftPathByKey[draftKey]);
+  }
+
+  const draftPaths = profile.foundationDrafts && typeof profile.foundationDrafts === 'object'
+    ? Object.entries(profile.foundationDrafts)
+      .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].length > 0)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([, value]) => value)
+    : [];
+
+  return draftPaths.length > 0
+    ? draftPaths
+    : Object.keys(draftPathByKey).sort().map((draftKey) => draftPathByKey[draftKey]);
+}
+
+function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
   const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const queuedProfileSummary = queuedProfile?.id
+    ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
+    : null;
   const refreshProfileCount = maintenance.refreshProfileCount ?? 0;
   const incompleteProfileCount = maintenance.incompleteProfileCount ?? 0;
   const thinAreaCount = coreMaintenance.thinAreaCount ?? 0;
@@ -271,7 +315,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any): WorkPrio
       ? `refresh ${queuedProfile.label ?? queuedProfile.id ?? 'stale profiles'}`
       : queuedArea?.action ?? null,
     command: queuedProfile?.refreshCommand ?? null,
-    paths: Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [],
+    paths: queuedProfile?.refreshCommand
+      ? buildFoundationDraftPaths(queuedProfileSummary)
+      : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),
   };
 }
 
@@ -650,7 +696,7 @@ export function buildSummary(rootDir: string) {
     intervalMinutes: 10,
     objectives: workLoopObjectives,
     priorities: [
-      buildFoundationPriority(foundation, coreFoundation),
+      buildFoundationPriority(foundation, coreFoundation, profiles),
       buildIngestionPriority(ingestionSummary),
       buildDeliveryPriority({
         id: 'channels',

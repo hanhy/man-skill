@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { buildSummary } from '../src/index.js';
+import { buildSummary, runImportCommand, runUpdateCommand } from '../src/index.js';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-work-loop-'));
@@ -138,4 +138,40 @@ test('buildSummary work loop targets metadata-only profiles with their direct im
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: samples\/metadata-only\.txt/);
+});
+
+test('buildSummary work loop points foundation refreshes at the stale profile draft paths', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Updated profile metadata without refreshing foundation drafts.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person harry-han');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/harry-han/memory/long-term/foundation.json',
+    'profiles/harry-han/skills/README.md',
+    'profiles/harry-han/soul/README.md',
+    'profiles/harry-han/voice/README.md',
+  ]);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /next action: refresh Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person harry-han/);
+  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
