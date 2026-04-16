@@ -124,8 +124,8 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
     skills: [],
-    channels: [],
-    models: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
     profiles: [
       {
         id: 'harry-han',
@@ -240,14 +240,69 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Ship the first slice\./);
 });
 
+test('PromptAssembler includes delivery foundation snapshots in the system prompt', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: {
+      channelCount: 2,
+      channels: [
+        {
+          id: 'slack',
+          name: 'Slack',
+          status: 'planned',
+          deliveryModes: ['events-api', 'web-api'],
+          auth: { type: 'bot-token', envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'] },
+        },
+        {
+          id: 'telegram',
+          name: 'Telegram',
+          status: 'active',
+          deliveryModes: ['polling', 'webhook'],
+          auth: { type: 'bot-token', envVars: ['TELEGRAM_BOT_TOKEN'] },
+        },
+      ],
+    },
+    models: {
+      providerCount: 2,
+      providers: [
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          status: 'planned',
+          defaultModel: 'gpt-5',
+          authEnvVar: 'OPENAI_API_KEY',
+          modalities: ['chat', 'reasoning', 'vision'],
+        },
+        {
+          id: 'anthropic',
+          name: 'Anthropic',
+          status: 'active',
+          defaultModel: 'claude-3.7-sonnet',
+          authEnvVar: 'ANTHROPIC_API_KEY',
+          modalities: ['chat', 'long-context', 'vision'],
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /Delivery foundation:/);
+  assert.match(prompt, /channels: 2 total \(1 active, 1 planned\)/);
+  assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(prompt, /models: 2 total \(1 active, 1 planned\)/);
+  assert.match(prompt, /Anthropic default claude-3.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
+});
+
 test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
     skills: [],
-    channels: [],
-    models: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
     profiles: [
       {
         id: 'jane-doe',
@@ -287,8 +342,8 @@ test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
     skills: [],
-    channels: [],
-    models: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
     profiles: [],
     foundationRollup: null,
   }).buildSystemPrompt();
@@ -302,8 +357,8 @@ test('PromptAssembler prefers distilled generated skill highlights over sample l
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
     skills: [],
-    channels: [],
-    models: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
     profiles: [
       {
         id: 'jane-doe',

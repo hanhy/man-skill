@@ -149,14 +149,46 @@ type VoiceSummary = {
   [key: string]: unknown;
 } | null;
 
+type ChannelAuth = {
+  type?: string | null;
+  envVars?: string[];
+};
+
+type ChannelSummaryRecord = {
+  id?: string;
+  name?: string;
+  status?: string;
+  deliveryModes?: string[];
+  auth?: ChannelAuth | null;
+};
+
+type ChannelsSummary = {
+  channelCount?: number;
+  channels?: ChannelSummaryRecord[];
+} | null;
+
+type ModelSummaryRecord = {
+  id?: string;
+  name?: string;
+  status?: string;
+  defaultModel?: string | null;
+  authEnvVar?: string | null;
+  modalities?: string[];
+};
+
+type ModelsSummary = {
+  providerCount?: number;
+  providers?: ModelSummaryRecord[];
+} | null;
+
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
   voice: VoiceSummary;
   memory: unknown;
   skills: unknown;
-  channels: unknown;
-  models: unknown;
+  channels: ChannelsSummary;
+  models: ModelsSummary;
   profiles?: ProfileSnapshot[];
   foundationRollup?: FoundationRollup;
   foundationCore?: FoundationCore;
@@ -331,6 +363,44 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   ].filter(Boolean).join('\n');
 }
 
+function formatChannelAuth(auth: ChannelAuth | null | undefined) {
+  if (!auth?.type) {
+    return 'no auth';
+  }
+
+  const envVars = (auth.envVars ?? []).filter(Boolean);
+  return envVars.length > 0 ? `${auth.type}: ${envVars.join(', ')}` : auth.type;
+}
+
+function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null) {
+  const channelRecords = channels?.channels ?? [];
+  const providerRecords = models?.providers ?? [];
+  if (channelRecords.length === 0 && providerRecords.length === 0) {
+    return null;
+  }
+
+  const activeChannelCount = channelRecords.filter((channel) => channel.status === 'active').length;
+  const plannedChannelCount = channelRecords.filter((channel) => channel.status === 'planned').length;
+  const activeProviderCount = providerRecords.filter((provider) => provider.status === 'active').length;
+  const plannedProviderCount = providerRecords.filter((provider) => provider.status === 'planned').length;
+
+  return [
+    channelRecords.length > 0
+      ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned)`
+      : null,
+    ...channelRecords.slice(0, 2).map((channel) =>
+      `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
+    ),
+    providerRecords.length > 0
+      ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned)`
+      : null,
+    ...providerRecords.slice(0, 2).map((provider) => {
+      const modalities = (provider.modalities ?? []).join(', ');
+      return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
+    }),
+  ].filter(Boolean).join('\n');
+}
+
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   if (!foundationCore) {
     return null;
@@ -374,8 +444,8 @@ export class PromptAssembler {
   voice: VoiceSummary;
   memory: unknown;
   skills: unknown;
-  channels: unknown;
-  models: unknown;
+  channels: ChannelsSummary;
+  models: ModelsSummary;
   profiles: ProfileSnapshot[];
   foundationRollup: FoundationRollup;
   foundationCore: FoundationCore;
@@ -408,6 +478,7 @@ export class PromptAssembler {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const voicePreview = this.voice
       ? {
@@ -425,6 +496,9 @@ export class PromptAssembler {
       '',
       'Voice profile:',
       JSON.stringify(voicePreview, null, 2),
+      deliveryFoundationBlock ? '' : null,
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       coreFoundationBlock ? '' : null,
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
@@ -447,6 +521,7 @@ export class PromptAssembler {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 
@@ -468,6 +543,9 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       '',
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,

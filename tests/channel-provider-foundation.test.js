@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildSummary } from '../src/index.js';
+import { ChannelRegistry as JsChannelRegistry } from '../src/core/channel-registry.js';
+import { ModelRegistry as JsModelRegistry } from '../src/core/model-registry.js';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-channel-provider-'));
@@ -54,6 +56,19 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(anthropic.defaultModel, 'claude-3.7-sonnet');
   assert.equal(anthropic.authEnvVar, 'ANTHROPIC_API_KEY');
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
+});
+
+test('buildSummary prompt preview includes compact channel and provider planning snapshots', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+
+  const summary = buildSummary(rootDir);
+
+  assert.match(summary.promptPreview, /Delivery foundation:/);
+  assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned\)/);
+  assert.match(summary.promptPreview, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned\)/);
+  assert.match(summary.promptPreview, /OpenAI default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
 });
 
 test('buildSummary merges channel and provider manifests onto the default foundation metadata', () => {
@@ -132,4 +147,54 @@ test('buildSummary merges channel and provider manifests onto the default founda
   assert.deepEqual(openai.modalities, ['chat', 'reasoning', 'vision', 'audio']);
   assert.equal(deepseek.defaultModel, 'deepseek-chat');
   assert.equal(deepseek.authEnvVar, 'DEEPSEEK_API_KEY');
+});
+
+test('JS registry shims preserve merged channel and provider defaults', () => {
+  const channels = new JsChannelRegistry([
+    {
+      id: 'slack',
+      status: 'active',
+      capabilities: ['slash-commands'],
+      auth: { type: 'bot-token' },
+      direction: ['outbound'],
+      deliveryModes: ['socket-mode'],
+    },
+  ]).summary().channels;
+  const providers = new JsModelRegistry([
+    {
+      id: 'openai',
+      status: 'active',
+      models: ['gpt-5-mini'],
+      features: ['batch'],
+      modalities: ['audio'],
+    },
+  ]).summary().providers;
+
+  assert.deepEqual(channels, [
+    {
+      id: 'slack',
+      name: 'Slack',
+      transport: 'chat',
+      direction: ['inbound', 'outbound'],
+      status: 'active',
+      capabilities: ['threads', 'mentions', 'bot-token', 'slash-commands'],
+      auth: {
+        type: 'bot-token',
+        envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+      },
+      deliveryModes: ['events-api', 'web-api', 'socket-mode'],
+    },
+  ]);
+  assert.deepEqual(providers, [
+    {
+      id: 'openai',
+      name: 'OpenAI',
+      models: ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-5-mini'],
+      status: 'active',
+      features: ['chat', 'tools', 'reasoning', 'batch'],
+      defaultModel: 'gpt-5',
+      authEnvVar: 'OPENAI_API_KEY',
+      modalities: ['chat', 'reasoning', 'vision', 'audio'],
+    },
+  ]);
 });

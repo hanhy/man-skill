@@ -282,7 +282,7 @@ export function buildSummary(rootDir: string) {
     models: models.summary(),
     profiles,
     workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(1200),
+    promptPreview: prompt.buildPreview(1800),
   };
 }
 
