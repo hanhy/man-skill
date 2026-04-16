@@ -506,6 +506,7 @@ function buildDeliveryPriority({
   configuredCount,
   queue,
   envTemplatePath = null,
+  envTemplateCommand = null,
 }: {
   id: 'channels' | 'providers';
   label: 'Channels' | 'Providers';
@@ -513,6 +514,7 @@ function buildDeliveryPriority({
   configuredCount: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
+  envTemplateCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
   const paths = [
@@ -520,6 +522,8 @@ function buildDeliveryPriority({
     typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
     typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  const needsCredentialBootstrap = pendingCount > configuredCount;
 
   return {
     id,
@@ -529,7 +533,7 @@ function buildDeliveryPriority({
     nextAction: firstQueued
       ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
       : null,
-    command: null,
+    command: needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null,
     paths,
   };
 }
@@ -823,18 +827,20 @@ export function buildSummary(rootDir: string) {
       buildDeliveryPriority({
         id: 'channels',
         label: 'Channels',
-        pendingCount: deliverySummary.pendingChannelCount ?? 0,
-        configuredCount: deliverySummary.configuredChannelCount ?? 0,
-        queue: Array.isArray(deliverySummary.channelQueue) ? deliverySummary.channelQueue : [],
+        pendingCount: deliverySummary.pendingChannelCount,
+        configuredCount: deliverySummary.configuredChannelCount,
+        queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
       }),
       buildDeliveryPriority({
         id: 'providers',
         label: 'Providers',
-        pendingCount: deliverySummary.pendingProviderCount ?? 0,
-        configuredCount: deliverySummary.configuredProviderCount ?? 0,
-        queue: Array.isArray(deliverySummary.providerQueue) ? deliverySummary.providerQueue : [],
+        pendingCount: deliverySummary.pendingProviderCount,
+        configuredCount: deliverySummary.configuredProviderCount,
+        queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
       }),
     ],
   });

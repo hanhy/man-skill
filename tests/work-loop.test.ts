@@ -260,6 +260,33 @@ test('buildSummary work loop avoids broken sample paths when metadata-only profi
   assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
+test('buildSummary work loop points delivery setup at the env template once foundation and ingestion are ready', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', 'manifests/channels.json', 'src/channels/slack.js']);
+  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured/);
+  assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
+  assert.match(summary.promptPreview, /paths: \.env\.example, manifests\/channels\.json, src\/channels\/slack\.js/);
+});
+
 test('buildSummary work loop points foundation refreshes at the stale profile draft paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
