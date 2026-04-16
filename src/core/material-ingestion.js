@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { FileSystemLoader } from './fs-loader.js';
+import { FileSystemLoader, hasValidFoundationMarkdownDraft } from './fs-loader.js';
 
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -621,6 +621,10 @@ export class MaterialIngestion {
         const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
 
         if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
+          return true;
+        }
+
+        if (!hasValidFoundationMarkdownDraft(voiceDraftPath) || !hasValidFoundationMarkdownDraft(soulDraftPath) || !hasValidFoundationMarkdownDraft(skillsDraftPath)) {
           return true;
         }
 

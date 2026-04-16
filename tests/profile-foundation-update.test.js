@@ -215,6 +215,32 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
 });
 
+test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Repair Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Repair Person' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'voice', 'README.md');
+  const malformedVoiceDraft = '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
+  fs.writeFileSync(voiceDraftPath, malformedVoiceDraft);
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['repair-person']);
+
+  const repairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.notEqual(repairedVoiceDraft, malformedVoiceDraft);
+  assert.match(repairedVoiceDraft, /Generated at: /);
+  assert.match(repairedVoiceDraft, /Latest material: .*\(.+\)/);
+  assert.match(repairedVoiceDraft, /Source materials: 1 \(message:1\)/);
+});
+
 test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

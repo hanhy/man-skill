@@ -119,6 +119,36 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
+test('loadProfilesIndex marks malformed markdown foundation drafts as stale and ungenerated', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md'),
+    '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n',
+  );
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, false);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['voice']);
+  assert.deepEqual(profile.foundationDraftSummaries.voice, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+  });
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+});
+
 test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
