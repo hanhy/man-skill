@@ -12,6 +12,10 @@ export interface ProviderRecord {
   [key: string]: unknown;
 }
 
+function mergeStringLists(...lists: Array<string[] | undefined>): string[] {
+  return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
+}
+
 const DEFAULT_PROVIDERS: ProviderRecord[] = [
   {
     id: 'openai',
@@ -75,6 +79,8 @@ const DEFAULT_PROVIDERS: ProviderRecord[] = [
   },
 ];
 
+const DEFAULT_PROVIDERS_BY_ID = new Map(DEFAULT_PROVIDERS.map((provider) => [provider.id, provider]));
+
 export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
   constructor(providers: Array<string | ProviderRecord> = DEFAULT_PROVIDERS) {
     super(providers);
@@ -94,14 +100,23 @@ export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
       };
     }
 
-    return {
+    const defaultProvider = typeof provider.id === 'string' ? DEFAULT_PROVIDERS_BY_ID.get(provider.id) : undefined;
+    const normalizedProvider = {
       models: [],
       status: 'unknown',
       features: [],
       defaultModel: null,
       authEnvVar: null,
       modalities: [],
+      ...defaultProvider,
       ...provider,
+    };
+
+    return {
+      ...normalizedProvider,
+      models: mergeStringLists(defaultProvider?.models, provider.models),
+      features: mergeStringLists(defaultProvider?.features, provider.features),
+      modalities: mergeStringLists(defaultProvider?.modalities, provider.modalities),
     };
   }
 
