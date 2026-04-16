@@ -68,7 +68,28 @@ Manifest shape:
 }
 ```
 
+Single-target shorthand is also supported when all entries belong to one person:
+
+```json
+{
+  "personId": "harry-han",
+  "displayName": "Harry Han",
+  "summary": "Direct operator with a bias for momentum.",
+  "entries": [
+    {
+      "type": "message",
+      "text": "Ship the thin slice first."
+    },
+    {
+      "type": "text",
+      "file": "./post.txt"
+    }
+  ]
+}
+```
+
 - `profiles` is optional and lets you seed target-person metadata before material import
+- top-level `personId` / `displayName` / `summary` act as a single-target shorthand and let `entries[]` omit `personId`
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - manifest imports can span multiple target profiles in one pass

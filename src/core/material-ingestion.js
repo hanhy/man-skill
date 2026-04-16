@@ -241,7 +241,17 @@ export class MaterialIngestion {
       throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
     }
 
-    const manifestProfiles = Array.isArray(manifest?.profiles) ? manifest.profiles : [];
+    const shorthandProfile = !Array.isArray(manifest) && isNonEmptyString(manifest?.personId)
+      ? {
+          personId: manifest.personId,
+          displayName: manifest.displayName,
+          summary: manifest.summary,
+        }
+      : null;
+    const manifestProfiles = [
+      ...(shorthandProfile ? [shorthandProfile] : []),
+      ...(Array.isArray(manifest?.profiles) ? manifest.profiles : []),
+    ];
     for (const [index, profile] of manifestProfiles.entries()) {
       if (!profile || typeof profile !== 'object') {
         throw new Error(`Manifest profile ${index} must be an object`);
@@ -263,24 +273,26 @@ export class MaterialIngestion {
       throw new Error('Manifest must contain a non-empty entries array');
     }
 
+    const defaultPersonId = shorthandProfile?.personId ?? null;
     const manifestDir = path.dirname(resolvedManifestPath);
     const results = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      if (!isNonEmptyString(entry.personId)) {
+      const resolvedPersonId = entry.personId ?? defaultPersonId;
+      if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
 
-      const normalizedPersonId = slugifyPersonId(entry.personId);
+      const normalizedPersonId = slugifyPersonId(resolvedPersonId);
 
       if (entry.type === 'text') {
         return {
           personId: normalizedPersonId,
           type: 'text',
           ...this.importTextDocument({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             sourceFile: resolveImportFile(manifestDir, entry.file),
             notes: entry.notes ?? null,
           }),
@@ -292,7 +304,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'message',
           ...this.importMessage({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             text: entry.text,
             notes: entry.notes ?? null,
           }),
@@ -304,7 +316,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'talk',
           ...this.importTalkSnippet({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             text: entry.text,
             notes: entry.notes ?? null,
           }),
@@ -316,7 +328,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'screenshot',
           ...this.importScreenshotSource({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             sourceFile: resolveImportFile(manifestDir, entry.file),
             notes: entry.notes ?? null,
           }),

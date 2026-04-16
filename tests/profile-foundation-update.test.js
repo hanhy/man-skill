@@ -458,3 +458,55 @@ test('CLI import manifest can seed profile metadata before importing materials',
   assert.equal(profile.displayName, 'Harry Han');
   assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
 });
+
+test('CLI import manifest supports single-target shorthand metadata and inherited personId entries', () => {
+  const rootDir = makeTempRepo();
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        summary: 'Direct operator with a bias for momentum.',
+        entries: [
+          {
+            type: 'message',
+            text: 'Ship the thin slice first.',
+          },
+          {
+            type: 'text',
+            file: './post.txt',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', './materials.json', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+
+  const memoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(memoryDraft.displayName, 'Harry Han');
+  assert.equal(memoryDraft.entryCount, 2);
+});
