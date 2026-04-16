@@ -212,6 +212,29 @@ type ModelsSummary = {
   providers?: ModelSummaryRecord[];
 } | null;
 
+type IngestionProfileCommand = {
+  personId?: string | null;
+  displayName?: string | null;
+  label?: string | null;
+  materialCount?: number;
+  needsRefresh?: boolean;
+  missingDrafts?: string[];
+  updateProfileCommand?: string | null;
+  refreshFoundationCommand?: string | null;
+};
+
+type IngestionSummary = {
+  profileCount?: number;
+  importedProfileCount?: number;
+  metadataOnlyProfileCount?: number;
+  readyProfileCount?: number;
+  refreshProfileCount?: number;
+  incompleteProfileCount?: number;
+  importManifestCommand?: string | null;
+  staleRefreshCommand?: string | null;
+  profileCommands?: IngestionProfileCommand[];
+} | null;
+
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
@@ -223,6 +246,7 @@ export interface PromptAssemblerOptions {
   profiles?: ProfileSnapshot[];
   foundationRollup?: FoundationRollup;
   foundationCore?: FoundationCore;
+  ingestion?: IngestionSummary;
 }
 
 function formatMaterialCount(count: number) {
@@ -455,6 +479,23 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   ].filter(Boolean).join('\n');
 }
 
+function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
+  if (!ingestion || (ingestion.profileCount ?? 0) === 0) {
+    return null;
+  }
+
+  return [
+    `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
+    `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
+    (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+      : null,
+    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) =>
+      `- ${profile.label ?? profile.personId}: refresh ${profile.refreshFoundationCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`,
+    ),
+  ].filter(Boolean).join('\n');
+}
+
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   if (!foundationCore) {
     return null;
@@ -503,6 +544,7 @@ export class PromptAssembler {
   profiles: ProfileSnapshot[];
   foundationRollup: FoundationRollup;
   foundationCore: FoundationCore;
+  ingestion: IngestionSummary;
 
   constructor({
     profile,
@@ -515,6 +557,7 @@ export class PromptAssembler {
     profiles = [],
     foundationRollup = null,
     foundationCore = null,
+    ingestion = null,
   }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
@@ -526,12 +569,14 @@ export class PromptAssembler {
     this.profiles = profiles;
     this.foundationRollup = foundationRollup;
     this.foundationCore = foundationCore;
+    this.ingestion = ingestion;
   }
 
   buildPreview(maxLength = 1200) {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const voicePreview = this.voice
@@ -550,6 +595,9 @@ export class PromptAssembler {
       '',
       'Voice profile:',
       JSON.stringify(voicePreview, null, 2),
+      ingestionEntranceBlock ? '' : null,
+      ingestionEntranceBlock ? 'Ingestion entrance:' : null,
+      ingestionEntranceBlock,
       deliveryFoundationBlock ? '' : null,
       deliveryFoundationBlock ? 'Delivery foundation:' : null,
       deliveryFoundationBlock,
@@ -575,6 +623,7 @@ export class PromptAssembler {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
@@ -597,6 +646,9 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      ingestionEntranceBlock ? 'Ingestion entrance:' : null,
+      ingestionEntranceBlock,
       '',
       deliveryFoundationBlock ? 'Delivery foundation:' : null,
       deliveryFoundationBlock,

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { FileSystemLoader } from '../src/core/fs-loader.js';
+import { buildSummary } from '../src/index.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { PromptAssembler } from '../src/core/prompt-assembler.ts';
 
@@ -246,6 +247,24 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
     skills: [],
+    ingestion: {
+      profileCount: 2,
+      importedProfileCount: 2,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 1,
+      refreshProfileCount: 1,
+      incompleteProfileCount: 1,
+      importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+      staleRefreshCommand: 'node src/index.js update foundation --stale',
+      profileCommands: [
+        {
+          personId: 'jane-doe',
+          label: 'Jane Doe (jane-doe)',
+          refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+          updateProfileCommand: 'node src/index.js update profile --person jane-doe',
+        },
+      ],
+    },
     channels: {
       channelCount: 2,
       channels: [
@@ -288,6 +307,10 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
     },
   }).buildSystemPrompt();
 
+  assert.match(prompt, /Ingestion entrance:/);
+  assert.match(prompt, /profiles: 2 total \(2 imported, 0 metadata-only\)/);
+  assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
+  assert.match(prompt, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
@@ -550,4 +573,63 @@ test('loadProfilesIndex skips malformed material records while keeping valid sum
   assert.equal(profile.materialCount, 2);
   assert.deepEqual(profile.materialTypes, { message: 1 });
   assert.equal(profile.foundationReadiness.memory.candidateCount, 1);
+});
+
+test('buildSummary exposes an ingestion entrance rollup with actionable commands', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+  ingestion.importTalkSnippet({
+    personId: 'Jane Doe',
+    text: 'Tight loops beat big plans.',
+    notes: 'execution heuristic',
+  });
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.ingestion, {
+    profileCount: 3,
+    importedProfileCount: 2,
+    metadataOnlyProfileCount: 1,
+    readyProfileCount: 1,
+    refreshProfileCount: 1,
+    incompleteProfileCount: 1,
+    importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
+    profileCommands: [
+      {
+        personId: 'jane-doe',
+        displayName: 'Jane Doe',
+        label: 'Jane Doe (jane-doe)',
+        materialCount: 1,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        updateProfileCommand: 'node src/index.js update profile --person jane-doe',
+        refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+      },
+      {
+        personId: 'harry-han',
+        displayName: 'Harry Han',
+        label: 'Harry Han (harry-han)',
+        materialCount: 1,
+        needsRefresh: false,
+        missingDrafts: [],
+        updateProfileCommand: 'node src/index.js update profile --person harry-han',
+        refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      },
+    ],
+  });
+
+  assert.match(summary.promptPreview, /Ingestion entrance:/);
+  assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
+  assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
 });

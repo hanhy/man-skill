@@ -9,6 +9,7 @@ import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
+import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.js';
@@ -246,6 +247,7 @@ export function buildSummary(rootDir: string) {
   } as any);
   const profiles = loader.loadProfilesIndex() as any;
   const foundation = buildFoundationRollup(profiles) as any;
+  const ingestionSummary = buildIngestionSummary(profiles) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,
     voiceDocument,
@@ -283,6 +285,7 @@ export function buildSummary(rootDir: string) {
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
+    ingestion: ingestionSummary,
     channels: channelsSummary,
     models: modelsSummary,
   } as any);
@@ -296,11 +299,12 @@ export function buildSummary(rootDir: string) {
       ...foundation,
       core: coreFoundation,
     },
+    ingestion: ingestionSummary,
     channels: channelsSummary,
     models: modelsSummary,
     profiles,
     workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(1800),
+    promptPreview: prompt.buildPreview(2400),
   };
 }
 
