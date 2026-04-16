@@ -212,6 +212,28 @@ type ModelsSummary = {
   providers?: ModelSummaryRecord[];
 } | null;
 
+type DeliveryQueueItem = {
+  id?: string | null;
+  name?: string | null;
+  status?: string;
+  authEnvVars?: string[];
+  deliveryModes?: string[];
+  defaultModel?: string | null;
+  authEnvVar?: string | null;
+  modalities?: string[];
+  manifestPath?: string;
+  setupHint?: string;
+};
+
+type DeliverySummary = {
+  pendingChannelCount?: number;
+  pendingProviderCount?: number;
+  channelManifestPath?: string;
+  providerManifestPath?: string;
+  channelQueue?: DeliveryQueueItem[];
+  providerQueue?: DeliveryQueueItem[];
+} | null;
+
 type IngestionProfileCommand = {
   personId?: string | null;
   displayName?: string | null;
@@ -246,6 +268,7 @@ export interface PromptAssemblerOptions {
   skills: unknown;
   channels: ChannelsSummary;
   models: ModelsSummary;
+  delivery?: DeliverySummary;
   profiles?: ProfileSnapshot[];
   foundationRollup?: FoundationRollup;
   foundationCore?: FoundationCore;
@@ -447,12 +470,38 @@ function formatManifestSummary(label: string, manifest: ChannelManifestSummary |
   return `- ${label}: missing (${manifest.path})`;
 }
 
-function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null) {
+function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
   const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
   const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
-  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary) {
+  const channelQueue = delivery?.channelQueue ?? channelRecords
+    .filter((channel) => channel?.status !== 'active')
+    .map((channel) => ({
+      name: channel.name ?? channel.id,
+      id: channel.id,
+      status: channel.status ?? 'unknown',
+      deliveryModes: channel.deliveryModes ?? [],
+      setupHint: (channel.auth?.envVars ?? []).length > 0
+        ? `set ${(channel.auth?.envVars ?? []).join(', ')}`
+        : 'define channel credentials',
+    }));
+  const providerQueue = delivery?.providerQueue ?? providerRecords
+    .filter((provider) => provider?.status !== 'active')
+    .map((provider) => ({
+      name: provider.name ?? provider.id,
+      id: provider.id,
+      status: provider.status ?? 'unknown',
+      modalities: provider.modalities ?? [],
+      setupHint: provider.authEnvVar && provider.defaultModel
+        ? `set ${provider.authEnvVar} for ${provider.defaultModel}`
+        : provider.authEnvVar
+          ? `set ${provider.authEnvVar}`
+          : provider.defaultModel
+            ? `choose auth for ${provider.defaultModel}`
+            : 'choose auth and default model',
+    }));
+  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && channelQueue.length === 0 && providerQueue.length === 0) {
     return null;
   }
 
@@ -471,6 +520,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     ...channelRecords.slice(0, 2).map((channel) =>
       `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
     ),
+    channelQueue.length > 0
+      ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+      : null,
+    ...channelQueue.slice(0, 1).map((channel) =>
+      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}]: ${channel.setupHint ?? 'define channel credentials'}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}`,
+    ),
     providerManifestSummary,
     providerRecords.length > 0
       ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
@@ -479,6 +534,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       const modalities = (provider.modalities ?? []).join(', ');
       return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
+    providerQueue.length > 0
+      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
+      : null,
+    ...providerQueue.slice(0, 1).map((provider) =>
+      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}]: ${provider.setupHint ?? 'choose auth and default model'}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}`,
+    ),
   ].filter(Boolean).join('\n');
 }
 
@@ -562,6 +623,7 @@ export class PromptAssembler {
   skills: unknown;
   channels: ChannelsSummary;
   models: ModelsSummary;
+  delivery: DeliverySummary;
   profiles: ProfileSnapshot[];
   foundationRollup: FoundationRollup;
   foundationCore: FoundationCore;
@@ -575,6 +637,7 @@ export class PromptAssembler {
     skills,
     channels,
     models,
+    delivery = null,
     profiles = [],
     foundationRollup = null,
     foundationCore = null,
@@ -587,6 +650,7 @@ export class PromptAssembler {
     this.skills = skills;
     this.channels = channels;
     this.models = models;
+    this.delivery = delivery;
     this.profiles = profiles;
     this.foundationRollup = foundationRollup;
     this.foundationCore = foundationCore;
@@ -598,7 +662,7 @@ export class PromptAssembler {
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
     const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
-    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const voicePreview = this.voice
       ? {
@@ -645,7 +709,7 @@ export class PromptAssembler {
     const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
     const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
-    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 

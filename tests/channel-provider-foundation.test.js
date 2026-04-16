@@ -82,17 +82,42 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
 });
 
-test('buildSummary prompt preview includes compact channel and provider planning snapshots', () => {
+test('buildSummary exposes a delivery setup queue and prompt preview includes setup hints', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.delivery.pendingChannelCount, 4);
+  assert.equal(summary.delivery.pendingProviderCount, 6);
+  assert.equal(summary.delivery.channelManifestPath, 'manifests/channels.json');
+  assert.equal(summary.delivery.providerManifestPath, 'manifests/providers.json');
+  assert.deepEqual(summary.delivery.channelQueue[0], {
+    id: 'slack',
+    name: 'Slack',
+    status: 'planned',
+    authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+    deliveryModes: ['events-api', 'web-api'],
+    manifestPath: 'manifests/channels.json',
+    setupHint: 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET',
+  });
+  assert.deepEqual(summary.delivery.providerQueue[0], {
+    id: 'openai',
+    name: 'OpenAI',
+    status: 'planned',
+    defaultModel: 'gpt-5',
+    authEnvVar: 'OPENAI_API_KEY',
+    modalities: ['chat', 'reasoning', 'vision'],
+    manifestPath: 'manifests/providers.json',
+    setupHint: 'set OPENAI_API_KEY for gpt-5',
+  });
   assert.match(summary.promptPreview, /Delivery foundation:/);
   assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
-  assert.match(summary.promptPreview, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api/);
   assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
-  assert.match(summary.promptPreview, /OpenAI default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+  assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
+  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });
 
 test('buildSummary prompt preview surfaces candidate delivery integrations from manifests', () => {

@@ -10,6 +10,7 @@ import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
+import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.js';
@@ -273,6 +274,7 @@ export function buildSummary(rootDir: string) {
       error: providerManifest.error,
     },
   };
+  const deliverySummary = buildDeliverySummary(channelsSummary, modelsSummary);
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -288,6 +290,7 @@ export function buildSummary(rootDir: string) {
     ingestion: ingestionSummary,
     channels: channelsSummary,
     models: modelsSummary,
+    delivery: deliverySummary,
   } as any);
 
   return {
@@ -302,6 +305,7 @@ export function buildSummary(rootDir: string) {
     ingestion: ingestionSummary,
     channels: channelsSummary,
     models: modelsSummary,
+    delivery: deliverySummary,
     profiles,
     workLoop: workLoop.summary(),
     promptPreview: prompt.buildPreview(3000),
