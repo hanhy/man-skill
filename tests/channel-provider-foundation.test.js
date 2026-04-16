@@ -7,6 +7,16 @@ import path from 'node:path';
 import { buildSummary } from '../src/index.js';
 import { ChannelRegistry as JsChannelRegistry } from '../src/core/channel-registry.js';
 import { ModelRegistry as JsModelRegistry } from '../src/core/model-registry.js';
+import { slackChannelScaffold } from '../src/channels/slack.js';
+import { telegramChannelScaffold } from '../src/channels/telegram.js';
+import { whatsappChannelScaffold } from '../src/channels/whatsapp.js';
+import { feishuChannelScaffold } from '../src/channels/feishu.js';
+import { openaiProviderScaffold } from '../src/models/openai.js';
+import { anthropicProviderScaffold } from '../src/models/anthropic.js';
+import { kimiProviderScaffold } from '../src/models/kimi.js';
+import { minimaxProviderScaffold } from '../src/models/minimax.js';
+import { glmProviderScaffold } from '../src/models/glm.js';
+import { qwenProviderScaffold } from '../src/models/qwen.js';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-channel-provider-'));
@@ -45,6 +55,62 @@ function seedMinimalRepo(rootDir) {
     '',
   ].join('\n'));
 }
+
+test('default channel and provider scaffold modules stay aligned with registry metadata', () => {
+  const channelScaffolds = [
+    slackChannelScaffold,
+    telegramChannelScaffold,
+    whatsappChannelScaffold,
+    feishuChannelScaffold,
+  ];
+  const providerScaffolds = [
+    openaiProviderScaffold,
+    anthropicProviderScaffold,
+    kimiProviderScaffold,
+    minimaxProviderScaffold,
+    glmProviderScaffold,
+    qwenProviderScaffold,
+  ];
+  const channels = new JsChannelRegistry().summary().channels;
+  const providers = new JsModelRegistry().summary().providers;
+
+  assert.equal(channelScaffolds.length, channels.length);
+  assert.equal(providerScaffolds.length, providers.length);
+
+  channelScaffolds.forEach((scaffold) => {
+    const registryRecord = channels.find((channel) => channel.id === scaffold.id);
+    assert.ok(registryRecord, `missing channel registry record for ${scaffold.id}`);
+    assert.deepEqual(scaffold, {
+      id: registryRecord.id,
+      name: registryRecord.name,
+      transport: registryRecord.transport,
+      direction: registryRecord.direction,
+      status: registryRecord.status,
+      capabilities: registryRecord.capabilities,
+      auth: registryRecord.auth,
+      deliveryModes: registryRecord.deliveryModes,
+      implementationPath: registryRecord.implementationPath,
+      nextStep: registryRecord.nextStep,
+    });
+  });
+
+  providerScaffolds.forEach((scaffold) => {
+    const registryRecord = providers.find((provider) => provider.id === scaffold.id);
+    assert.ok(registryRecord, `missing provider registry record for ${scaffold.id}`);
+    assert.deepEqual(scaffold, {
+      id: registryRecord.id,
+      name: registryRecord.name,
+      models: registryRecord.models,
+      status: registryRecord.status,
+      features: registryRecord.features,
+      defaultModel: registryRecord.defaultModel,
+      authEnvVar: registryRecord.authEnvVar,
+      modalities: registryRecord.modalities,
+      implementationPath: registryRecord.implementationPath,
+      nextStep: registryRecord.nextStep,
+    });
+  });
+});
 
 test('buildSummary exposes delivery metadata for default chat channels', () => {
   const rootDir = makeTempRepo();
