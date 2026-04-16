@@ -1,69 +1,119 @@
 # man-skill
 
-A lightweight prompt pattern for making an AI imitate one specific person from a small amount of text.
+> A lightweight framework for building a person-like AI agent from **memory + skills + soul + voice**.
+
+`man-skill` is aimed at a practical goal: let a user define a target person, add a small set of representative materials, and progressively shape an AI that speaks in a more faithful, stable, and useful way.
+
+---
+
+## At a glance
+
+### What it tries to do
+- imitate one specific person's tone and phrasing
+- preserve recurring preferences, habits, and quirks
+- make persona building practical for normal users
+- grow from raw materials into a reusable agent profile
+
+### What it is **not** trying to do
+- perfect identity cloning
+- heavy training pipelines
+- mandatory fine-tuning before it becomes useful
+
+### Current development focus
+1. strengthen the foundation around **memory / skills / soul / voice**
+2. improve the **material ingestion entrance**
+3. expand channels and model providers
+
+---
+
+## Quick example
+
+```bash
+node src/index.js import text --person harry-han --file ./samples/post.txt
+node src/index.js import message --person harry-han --text "I’ll be there in 10 minutes."
+node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png
+node src/index.js
+```
+
+This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer.
+
+---
 
 ## English
 
-This repo is for a simple idea:
+### Core idea
 
-Give the model a compact description of one person, plus a few writing samples, and make it imitate that person's style, tone, and habits consistently.
+Give the model:
+- a compact description of one person
+- a few representative text or conversation samples
+- repeated preferences and behavior patterns
 
-The goal is not perfect identity cloning.
-The goal is practical imitation:
+Then keep updating that profile so the model can stay more faithful over time.
+
+### Practical imitation means
 - similar tone
 - similar phrasing
 - similar values and preferences
 - similar speaking rhythm
 - similar recurring habits or quirks
 
-This is useful when you want to:
-- create a personal assistant with a strong voice
-- preserve a consistent character or persona
-- prototype a digital twin from text only
-- make prompt-based role imitation easier for normal users
+### Good use cases
+- a personal assistant with a strong voice
+- a stable character or persona system
+- a text-first digital twin prototype
+- a simple user-facing workflow for person imitation
 
 ### Basic approach
-
-1. Describe who the person is
-2. Add representative text samples
-3. Summarize repeated traits, preferences, and patterns
-4. Instruct the model to stay faithful to that voice
-5. Keep updating the profile as you learn more
+1. describe who the person is
+2. add representative materials
+3. summarize repeated traits and preferences
+4. ask the model to stay faithful to that voice
+5. keep updating the profile as you learn more
 
 ### Design principle
-
-The system should be easy enough that anyone can imitate a single person with only some text, without building a large pipeline or doing model fine-tuning.
+The system should be simple enough that someone can imitate a single person with only some text and lightweight structure, without needing a large pipeline.
 
 ---
 
 ## 中文
 
-这个仓库的目标很简单：
+### 核心想法
 
-用少量文字描述一个人，再加上一些这个人的文本样本，让 AI 尽量稳定地模仿这个人的语气、风格和表达习惯。
+给模型这些东西：
+- 一个对目标人物的紧凑描述
+- 一些有代表性的文本或对话样本
+- 重复出现的偏好、习惯和表达模式
 
-目标不是做“完美复制”。
-目标是做“实用模仿”，包括：
+然后持续更新这个人物档案，让模型随着材料增加，越来越稳定地接近这个人的风格。
+
+### 这里追求的是“实用模仿”
 - 语气接近
 - 用词接近
 - 价值取向和偏好接近
 - 说话节奏接近
 - 一些固定习惯和小特点接近
 
-这个方向适合用来：
+### 适合的方向
 - 做一个有明确个人风格的助手
 - 保持角色或人格设定的一致性
 - 只靠文本原型化一个数字分身
-- 让普通用户也能更容易地通过 prompt 模仿某个人
+- 给普通用户提供更容易上手的人物模仿流程
 
 ### 基本方法
-
 1. 描述这个人是谁
-2. 提供有代表性的文本样本
-3. 总结重复出现的性格、偏好和表达模式
+2. 添加有代表性的材料
+3. 总结反复出现的性格、偏好和表达模式
 4. 要求模型持续忠于这种声音
-5. 随着了解加深，不断更新这个人物档案
+5. 随着了解加深，不断更新人物档案
 
 ### 设计原则
+这个系统应该足够轻量，让任何人只靠一些文本和少量结构化信息，就能开始构建一个针对具体人物的 AI，而不需要复杂流程或重训练。
 
-这个系统应该足够简单，让任何人只靠一些文本就能模仿一个具体的人，而不需要复杂流程，也不需要做模型微调。
+---
+
+## Project shape
+
+- `src/core/` — foundation pieces like profile, memory, prompt assembly, ingestion
+- `profiles/` — target-person profile data and imported materials
+- `docs/` — architecture and ingestion notes
+- `memory/`, `skills/`, `soul/`, `voice/` — long-term building blocks
