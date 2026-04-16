@@ -91,6 +91,13 @@ type CoreDocumentFoundationSummary = {
   excerpt?: string | null;
 };
 
+type FoundationCoreOverview = {
+  readyAreaCount?: number;
+  totalAreaCount?: number;
+  missingAreas?: string[];
+  thinAreas?: string[];
+};
+
 type FoundationCore = {
   memory?: {
     hasRootDocument?: boolean;
@@ -105,6 +112,7 @@ type FoundationCore = {
   };
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
+  overview?: FoundationCoreOverview;
 } | null;
 
 type AgentSummary = {
@@ -291,8 +299,15 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const skills = foundationCore.skills;
   const soul = foundationCore.soul;
   const voice = foundationCore.voice;
+  const overview = foundationCore.overview;
+  const missingAreas = (overview?.missingAreas ?? []).filter(Boolean);
+  const thinAreas = (overview?.thinAreas ?? []).filter(Boolean);
+  const coverageLine = overview
+    ? `- coverage: ${overview.readyAreaCount ?? 0}/${overview.totalAreaCount ?? 4} ready${missingAreas.length > 0 ? `; missing ${missingAreas.join(', ')}` : ''}${thinAreas.length > 0 ? `; thin ${thinAreas.join(', ')}` : ''}`
+    : null;
 
   return [
+    coverageLine,
     memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}`
       : null,

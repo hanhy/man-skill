@@ -74,7 +74,8 @@ The project aims to keep personal-agent construction simple:
 - support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`, with optional `--refresh-foundation` when those metadata edits should immediately regenerate identity-bearing drafts
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names
 - expose planned channel/provider registries from manifests and factories
-- assemble a prompt preview from profile, soul, voice, memory, and skills
+- expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice
+- assemble a prompt preview from profile, soul, voice, memory, and skills, including the core-foundation coverage line when the base scaffold is thin or incomplete
 
 ## Staged development sequence
 

@@ -196,9 +196,36 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     lineCount: 2,
     excerpt: 'Keep replies direct.',
   });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 4,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: [],
+  });
   assert.match(summary.promptPreview, /Core foundation:/);
+  assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.match(summary.promptPreview, /skills: 2 registered \(obsidian, telegram\)/);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\./);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\./);
+});
+
+test('buildSummary flags missing and thin core foundation areas in the prompt preview', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 0,
+    totalAreaCount: 4,
+    missingAreas: ['skills', 'voice'],
+    thinAreas: ['memory', 'soul'],
+  });
+  assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
 });

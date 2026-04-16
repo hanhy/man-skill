@@ -55,11 +55,19 @@ export interface CoreDocumentFoundationSummary {
   excerpt: string | null;
 }
 
+export interface CoreFoundationOverview {
+  readyAreaCount: number;
+  totalAreaCount: number;
+  missingAreas: string[];
+  thinAreas: string[];
+}
+
 export interface CoreFoundationSummary {
   memory: CoreMemoryFoundationSummary;
   skills: CoreSkillsFoundationSummary;
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
+  overview: CoreFoundationOverview;
 }
 
 export interface BuildCoreFoundationSummaryOptions {
@@ -84,28 +92,66 @@ export function buildCoreFoundationSummary({
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
   const safeSkillNames = Array.isArray(skillNames) ? [...skillNames].sort((left, right) => left.localeCompare(right)) : [];
+  const memory = {
+    hasRootDocument: isNonEmptyString(memoryIndex?.root),
+    dailyCount: daily.length,
+    longTermCount: longTerm.length,
+    scratchCount: scratch.length,
+    totalEntries: daily.length + longTerm.length + scratch.length,
+  };
+  const skills = {
+    count: safeSkillNames.length,
+    sample: safeSkillNames.slice(0, 5),
+  };
+  const soul = {
+    present: isNonEmptyString(soulDocument),
+    lineCount: countContentLines(soulDocument),
+    excerpt: extractExcerpt(soulDocument),
+  };
+  const voice = {
+    present: isNonEmptyString(voiceDocument),
+    lineCount: countContentLines(voiceDocument),
+    excerpt: extractExcerpt(voiceDocument),
+  };
+
+  const missingAreas: string[] = [];
+  const thinAreas: string[] = [];
+
+  if (!memory.hasRootDocument && memory.totalEntries === 0) {
+    missingAreas.push('memory');
+  } else if (!memory.hasRootDocument || memory.totalEntries === 0) {
+    thinAreas.push('memory');
+  }
+
+  if (skills.count === 0) {
+    missingAreas.push('skills');
+  }
+
+  if (!soul.present) {
+    missingAreas.push('soul');
+  } else if (soul.lineCount === 0) {
+    thinAreas.push('soul');
+  }
+
+  if (!voice.present) {
+    missingAreas.push('voice');
+  } else if (voice.lineCount === 0) {
+    thinAreas.push('voice');
+  }
+
+  const totalAreaCount = 4;
+  const overview = {
+    readyAreaCount: totalAreaCount - missingAreas.length - thinAreas.length,
+    totalAreaCount,
+    missingAreas,
+    thinAreas,
+  };
 
   return {
-    memory: {
-      hasRootDocument: isNonEmptyString(memoryIndex?.root),
-      dailyCount: daily.length,
-      longTermCount: longTerm.length,
-      scratchCount: scratch.length,
-      totalEntries: daily.length + longTerm.length + scratch.length,
-    },
-    skills: {
-      count: safeSkillNames.length,
-      sample: safeSkillNames.slice(0, 5),
-    },
-    soul: {
-      present: isNonEmptyString(soulDocument),
-      lineCount: countContentLines(soulDocument),
-      excerpt: extractExcerpt(soulDocument),
-    },
-    voice: {
-      present: isNonEmptyString(voiceDocument),
-      lineCount: countContentLines(voiceDocument),
-      excerpt: extractExcerpt(voiceDocument),
-    },
+    memory,
+    skills,
+    soul,
+    voice,
+    overview,
   };
 }
