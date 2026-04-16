@@ -312,6 +312,7 @@ type IngestionSummary = {
   sampleManifestError?: string | null;
   sampleStarterCommand?: string | null;
   sampleStarterSource?: string | null;
+  sampleStarterLabel?: string | null;
   sampleManifestCommand?: string | null;
   sampleTextPath?: string | null;
   sampleTextPresent?: boolean;
@@ -677,7 +678,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- sample import: ${ingestion.sampleImportCommand}`
       : null,
     ingestion.sampleStarterCommand
-      ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}`
+      ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}${ingestion.sampleStarterLabel ? ` for ${ingestion.sampleStarterLabel}` : ''}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`

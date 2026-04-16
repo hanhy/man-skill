@@ -34,6 +34,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedProfileLabels = Array.isArray(sampleManifest?.profileLabels)
     ? sampleManifest.profileLabels.filter((value) => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const starterTargets = normalizedProfileLabels.length > 0 ? normalizedProfileLabels : normalizedProfileIds;
 
   return {
     path: normalizedPath,
@@ -42,6 +43,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     entryCount: Number.isFinite(sampleManifest?.entryCount) ? sampleManifest.entryCount : 0,
     profileIds: normalizedProfileIds,
     profileLabels: normalizedProfileLabels,
+    starterLabel: starterTargets.length > 0 ? starterTargets.join(', ') : null,
     materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
@@ -173,6 +175,9 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       : null,
     sampleStarterSource: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'manifest'
+      : null,
+    sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? sampleManifest.starterLabel
       : null,
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`

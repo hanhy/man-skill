@@ -417,7 +417,12 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       : null;
 
     if (sampleStarterCommand) {
-      nextAction = 'import the checked-in sample target profile';
+      const sampleStarterLabel = typeof ingestionSummary?.sampleStarterLabel === 'string' && ingestionSummary.sampleStarterLabel.length > 0
+        ? ingestionSummary.sampleStarterLabel
+        : null;
+      nextAction = sampleStarterLabel
+        ? `import the checked-in sample target profile for ${sampleStarterLabel}`
+        : 'import the checked-in sample target profile';
       command = sampleStarterCommand;
       paths = [sampleManifestPath, sampleTextPath]
         .filter((value): value is string => typeof value === 'string' && value.length > 0);
