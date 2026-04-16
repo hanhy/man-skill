@@ -256,7 +256,9 @@ export interface CoreSkillsFoundationSummary {
   documentedCount: number;
   undocumentedCount: number;
   sample: string[];
+  samplePaths: string[];
   undocumentedSample: string[];
+  undocumentedPaths: string[];
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -360,7 +362,9 @@ export function buildCoreFoundationSummary({
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
     sample: safeSkillNames.slice(0, 5),
+    samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     undocumentedSample: undocumentedSkillNames.slice(0, 5),
+    undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}`),
   };
   const soul = {
     present: isNonEmptyString(soulDocument),

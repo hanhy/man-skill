@@ -237,7 +237,9 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     documentedCount: 2,
     undocumentedCount: 0,
     sample: ['obsidian', 'telegram'],
+    samplePaths: ['skills/obsidian/SKILL.md', 'skills/telegram/SKILL.md'],
     undocumentedSample: [],
+    undocumentedPaths: [],
   });
   assert.deepEqual(summary.foundation.core.soul, {
     present: true,
@@ -269,7 +271,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\)/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md/);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
 });
@@ -441,7 +443,9 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     documentedCount: 0,
     undocumentedCount: 2,
     sample: ['slack', 'telegram'],
+    samplePaths: [],
     undocumentedSample: ['slack', 'telegram'],
+    undocumentedPaths: ['skills/slack', 'skills/telegram'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -451,7 +455,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     recommendedActions: ['document placeholder skill folders with SKILL.md'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
 });
 
 test('buildSummary keeps mixed documented and placeholder skills thin until all skill folders carry SKILL docs', () => {
@@ -478,7 +482,9 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     documentedCount: 1,
     undocumentedCount: 1,
     sample: ['slack', 'telegram'],
+    samplePaths: ['skills/telegram/SKILL.md'],
     undocumentedSample: ['slack'],
+    undocumentedPaths: ['skills/slack'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -488,5 +494,5 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     recommendedActions: ['document placeholder skill folders with SKILL.md'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); placeholders: slack/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; placeholders: slack @ skills\/slack/);
 });
