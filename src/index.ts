@@ -203,6 +203,51 @@ function readSampleTextSummary(rootDir: string, relativePath: string | null): Sa
   };
 }
 
+function listRelativeFiles(dirPath: string, extension: string): string[] {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs.readdirSync(dirPath)
+    .filter((entry) => entry.endsWith(extension))
+    .sort();
+}
+
+function detectSampleManifestRelativePath(rootDir: string): string | null {
+  const canonicalPath = path.join(rootDir, 'samples', 'harry-materials.json');
+  if (fs.existsSync(canonicalPath)) {
+    return 'samples/harry-materials.json';
+  }
+
+  const sampleDir = path.join(rootDir, 'samples');
+  const candidates = listRelativeFiles(sampleDir, '.json');
+  for (const fileName of candidates) {
+    const relativePath = ['samples', fileName].join('/');
+    const summary = readSampleManifestSummary(rootDir, relativePath);
+    if (summary.status === 'loaded') {
+      return relativePath;
+    }
+  }
+
+  return null;
+}
+
+function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleManifestSummary): string | null {
+  const canonicalPath = path.join(rootDir, 'samples', 'harry-post.txt');
+  if (fs.existsSync(canonicalPath)) {
+    return 'samples/harry-post.txt';
+  }
+
+  const candidatePaths = Object.keys(sampleManifest?.textFilePersonIds ?? {}).sort();
+  for (const relativePath of candidatePaths) {
+    if (fs.existsSync(path.join(rootDir, relativePath))) {
+      return relativePath;
+    }
+  }
+
+  return null;
+}
+
 function buildFoundationPriority(foundation: any, coreFoundation: any): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
@@ -273,8 +318,22 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
+    const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
+      ? ingestionSummary.sampleTextPath
+      : null;
+    const sampleTextPersonId = typeof ingestionSummary?.sampleTextPersonId === 'string' && ingestionSummary.sampleTextPersonId.length > 0
+      ? ingestionSummary.sampleTextPersonId
+      : null;
 
-    if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
+    if (runnableImportCommand) {
+      nextAction = metadataOnlyProfile?.label
+        ? `import source materials for ${metadataOnlyProfile.label}`
+        : 'import source materials for metadata-only profiles';
+      command = runnableImportCommand;
+      paths = sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
+        ? [sampleTextPath]
+        : [];
+    } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
     } else {
@@ -543,13 +602,9 @@ export function buildSummary(rootDir: string) {
     'report progress in small verified increments',
   ];
   const profiles = loader.loadProfilesIndex() as any;
-  const sampleManifestRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-materials.json'))
-    ? 'samples/harry-materials.json'
-    : null;
-  const sampleTextRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-post.txt'))
-    ? 'samples/harry-post.txt'
-    : null;
+  const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
   const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
+  const sampleTextRelativePath = detectSampleTextRelativePath(rootDir, sampleManifest);
   const sampleText = readSampleTextSummary(rootDir, sampleTextRelativePath);
   const foundation = buildFoundationRollup(profiles) as any;
   const ingestionSummary = buildIngestionSummary(profiles, {

@@ -99,19 +99,19 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt/);
 });
 
-test('buildSummary work loop targets metadata-only profiles with a direct import command', () => {
+test('buildSummary work loop targets metadata-only profiles with their direct import command when one is runnable', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'metadata-only.txt'), 'Ship the thin slice first.\n');
   fs.writeFileSync(
-    path.join(rootDir, 'samples', 'harry-materials.json'),
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
     JSON.stringify({
-      personId: 'Harry Han',
+      personId: 'metadata-only',
       entries: [
         {
           type: 'text',
-          file: 'harry-post.txt',
+          file: 'metadata-only.txt',
         },
       ],
     }, null, 2),
@@ -131,10 +131,11 @@ test('buildSummary work loop targets metadata-only profiles with a direct import
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for metadata-only profiles');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'samples/metadata-only.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only.txt']);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, 0 ready, 0 queued for refresh/);
-  assert.match(summary.promptPreview, /next action: import source materials for metadata-only profiles/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
+  assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only\.txt/);
 });
