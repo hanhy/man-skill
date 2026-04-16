@@ -70,7 +70,7 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch/);
 });
 
-test('buildSummary work loop surfaces checked-in ingestion sample assets when the repo is otherwise ready for imports', () => {
+test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
@@ -91,7 +91,11 @@ test('buildSummary work loop surfaces checked-in ingestion sample assets when th
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
+  assert.match(summary.promptPreview, /next action: import the checked-in sample target profile/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt/);
 });
 

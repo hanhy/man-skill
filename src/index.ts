@@ -244,10 +244,25 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   let paths: string[] = [];
 
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
-    nextAction = 'bootstrap a target profile';
-    command = ingestionSummary?.bootstrapProfileCommand ?? null;
-    paths = [ingestionSummary?.sampleManifestPath, ingestionSummary?.sampleTextPath]
-      .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0);
+    const sampleManifestCommand = ingestionSummary?.sampleManifestCommand ?? null;
+    const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
+      ? ingestionSummary.sampleManifestPath
+      : null;
+    const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
+      ? ingestionSummary.sampleTextPath
+      : null;
+
+    if (sampleManifestCommand && sampleManifestPath) {
+      nextAction = 'import the checked-in sample target profile';
+      command = sampleManifestCommand;
+      paths = [sampleManifestPath, sampleTextPath]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+    } else {
+      nextAction = 'bootstrap a target profile';
+      command = ingestionSummary?.bootstrapProfileCommand ?? null;
+      paths = [sampleManifestPath, sampleTextPath]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+    }
   } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
     nextAction = 'refresh stale or incomplete target profiles';
     command = ingestionSummary?.staleRefreshCommand ?? null;
