@@ -122,11 +122,15 @@ test('importManifest imports mixed material entries across profiles from a JSON 
     {
       personId: 'harry-han',
       displayName: 'Harry Han',
+      label: 'Harry Han (harry-han)',
+      summary: null,
       materialCount: 2,
       materialTypes: {
         message: 1,
         text: 1,
       },
+      needsRefresh: true,
+      missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: 'node src/index.js import manifest --file materials.json',
       updateProfileCommand: 'node src/index.js update profile --person harry-han',
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
@@ -134,10 +138,14 @@ test('importManifest imports mixed material entries across profiles from a JSON 
     {
       personId: 'jane-doe',
       displayName: 'Jane Doe',
+      label: 'Jane Doe (jane-doe)',
+      summary: null,
       materialCount: 1,
       materialTypes: {
         screenshot: 1,
       },
+      needsRefresh: true,
+      missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: 'node src/index.js import manifest --file materials.json',
       updateProfileCommand: 'node src/index.js update profile --person jane-doe',
       refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
@@ -197,11 +205,15 @@ test('importManifest supports a single-target shorthand profile and inherits per
     {
       personId: 'harry-han',
       displayName: 'Harry Han',
+      label: 'Harry Han (harry-han)',
+      summary: 'Direct operator with a bias for momentum.',
       materialCount: 2,
       materialTypes: {
         message: 1,
         text: 1,
       },
+      needsRefresh: true,
+      missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: 'node src/index.js import manifest --file materials.json',
       updateProfileCommand: 'node src/index.js update profile --person harry-han',
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
@@ -217,6 +229,103 @@ test('importManifest supports a single-target shorthand profile and inherits per
     .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
     .filter((name) => name.endsWith('.json'));
   assert.equal(materials.length, 2);
+});
+
+test('importManifest profile summaries keep current manifest counts while surfacing cumulative refresh state', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Older material that should not change this import summary.',
+    notes: 'existing sample',
+  });
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Harry Han',
+            type: 'talk',
+            text: 'Ship the thin slice first, then refine.',
+            notes: 'execution heuristic',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      label: 'Harry Han (harry-han)',
+      summary: null,
+      materialCount: 1,
+      materialTypes: {
+        talk: 1,
+      },
+      needsRefresh: true,
+      missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+  ]);
+});
+
+test('importManifest can refresh foundation drafts before returning profile summaries', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        summary: 'Direct operator with a bias for momentum.',
+        entries: [
+          {
+            type: 'message',
+            text: 'Ship the thin slice first.',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath, refreshFoundation: true });
+
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.equal(result.foundationRefresh.results[0].personId, 'harry-han');
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      label: 'Harry Han (harry-han)',
+      summary: 'Direct operator with a bias for momentum.',
+      materialCount: 1,
+      materialTypes: {
+        message: 1,
+      },
+      needsRefresh: false,
+      missingDrafts: [],
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+  ]);
 });
 
 test('updateProfile stores display name and summary metadata for a target person', () => {

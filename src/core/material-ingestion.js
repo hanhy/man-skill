@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { FileSystemLoader } from './fs-loader.js';
 
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -134,12 +135,23 @@ function buildManifestImportCommand(manifestPath) {
   return `node src/index.js import manifest --file ${manifestPath}`;
 }
 
-function buildProfileCommandSummaries({ manifestPath, personId, displayName, materialCount, materialTypes }) {
+function buildProfileLabel({ personId, displayName }) {
+  return displayName && displayName !== personId ? `${displayName} (${personId})` : (displayName ?? personId);
+}
+
+function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCount, materialTypes }) {
+  const personId = profileSummary?.id;
+  const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
+
   return {
     personId,
-    displayName: displayName ?? personId,
+    displayName,
+    label: buildProfileLabel({ personId, displayName }),
+    summary: profileSummary?.profile?.summary ?? null,
     materialCount,
     materialTypes,
+    needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
+    missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
     importCommand: buildManifestImportCommand(manifestPath),
     updateProfileCommand: `node src/index.js update profile --person ${personId}`,
     refreshFoundationCommand: `node src/index.js update foundation --person ${personId}`,
@@ -280,7 +292,7 @@ export class MaterialIngestion {
     });
   }
 
-  importManifest({ manifestFile }) {
+  importManifest({ manifestFile, refreshFoundation = false }) {
     if (!manifestFile) {
       throw new Error('manifestFile is required for manifest import');
     }
@@ -390,14 +402,27 @@ export class MaterialIngestion {
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
     const profileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const foundationRefresh = refreshFoundation
+      ? {
+          profileCount: profileIds.length,
+          results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
+        }
+      : null;
+    const profileIndex = new FileSystemLoader(this.rootDir).loadProfilesIndex();
     const profileSummaries = profileIds.map((personId) => {
-      const profileDocument = readJsonIfExists(this.resolve('profiles', personId, 'profile.json'));
       const profileResults = results.filter((entry) => entry.personId === personId);
+      const profileSummary = profileIndex.find((profile) => profile.id === personId) ?? {
+        id: personId,
+        profile: readJsonIfExists(this.resolve('profiles', personId, 'profile.json')),
+        foundationDraftStatus: {
+          needsRefresh: true,
+          missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        },
+      };
 
       return buildProfileCommandSummaries({
         manifestPath: relativeManifestPath,
-        personId,
-        displayName: normalizeText(profileDocument?.displayName) ?? personId,
+        profileSummary,
         materialCount: profileResults.length,
         materialTypes: summarizeMaterialTypes(profileResults),
       });
@@ -408,6 +433,7 @@ export class MaterialIngestion {
       entryCount: results.length,
       profileIds,
       profileSummaries,
+      ...(foundationRefresh ? { foundationRefresh } : {}),
       results,
     };
   }

@@ -71,18 +71,22 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   const ingestion = new MaterialIngestion(rootDir);
 
   if (subcommand === 'manifest') {
-    const result = ingestion.importManifest({ manifestFile: typeof options.file === 'string' ? options.file : undefined });
-    if (!options['refresh-foundation']) {
+    const result = ingestion.importManifest({
+      manifestFile: typeof options.file === 'string' ? options.file : undefined,
+      refreshFoundation: Boolean(options['refresh-foundation']),
+    });
+
+    if (!result.foundationRefresh || typeof result.foundationRefresh !== 'object') {
       return result;
     }
 
     return {
       ...result,
       foundationRefresh: {
-        profileCount: result.profileIds.length,
-        results: result.profileIds.map((personId: string) =>
-          relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })),
-        ),
+        ...result.foundationRefresh,
+        results: Array.isArray((result.foundationRefresh as { results?: DraftRefreshResult[] }).results)
+          ? (result.foundationRefresh as { results: DraftRefreshResult[] }).results.map((entry) => relativizeDraftPaths(rootDir, entry))
+          : [],
       },
     };
   }
