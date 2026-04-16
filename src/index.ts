@@ -335,7 +335,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   let paths: string[] = [];
 
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
-    const sampleManifestCommand = ingestionSummary?.sampleManifestCommand ?? null;
+    const sampleStarterCommand = ingestionSummary?.sampleStarterCommand ?? null;
     const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
       ? ingestionSummary.sampleManifestPath
       : null;
@@ -343,9 +343,9 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       ? ingestionSummary.sampleTextPath
       : null;
 
-    if (sampleManifestCommand && sampleManifestPath) {
+    if (sampleStarterCommand) {
       nextAction = 'import the checked-in sample target profile';
-      command = sampleManifestCommand;
+      command = sampleStarterCommand;
       paths = [sampleManifestPath, sampleTextPath]
         .filter((value): value is string => typeof value === 'string' && value.length > 0);
     } else {
@@ -468,12 +468,7 @@ export function relativizeDraftPaths(rootDir: string, result: DraftRefreshResult
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
-  if (subcommand === 'manifest') {
-    const result = ingestion.importManifest({
-      manifestFile: typeof options.file === 'string' ? options.file : undefined,
-      refreshFoundation: Boolean(options['refresh-foundation']),
-    });
-
+  const relativizeManifestImportResult = (result: any) => {
     if (!result.foundationRefresh || typeof result.foundationRefresh !== 'object') {
       return result;
     }
@@ -487,6 +482,30 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
           : [],
       },
     };
+  };
+
+  if (subcommand === 'manifest') {
+    const result = ingestion.importManifest({
+      manifestFile: typeof options.file === 'string' ? options.file : undefined,
+      refreshFoundation: Boolean(options['refresh-foundation']),
+    });
+
+    return relativizeManifestImportResult(result);
+  }
+
+  if (subcommand === 'sample') {
+    const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
+    const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
+    if (sampleManifest.status !== 'loaded' || !sampleManifestRelativePath) {
+      throw new Error('No valid sample manifest found under samples/');
+    }
+
+    const result = ingestion.importManifest({
+      manifestFile: sampleManifestRelativePath,
+      refreshFoundation: true,
+    });
+
+    return relativizeManifestImportResult(result);
   }
 
   const personId = typeof options.person === 'string' ? options.person : undefined;

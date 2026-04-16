@@ -153,6 +153,12 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleManifestEntryCount: sampleManifest.entryCount,
     sampleManifestProfileIds: sampleManifest.profileIds,
     sampleManifestError: sampleManifest.error,
+    sampleStarterCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? 'node src/index.js import sample'
+      : null,
+    sampleStarterSource: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? 'manifest'
+      : null,
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
       : null,

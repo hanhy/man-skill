@@ -308,6 +308,8 @@ type IngestionSummary = {
   sampleManifestEntryCount?: number;
   sampleManifestProfileIds?: string[];
   sampleManifestError?: string | null;
+  sampleStarterCommand?: string | null;
+  sampleStarterSource?: string | null;
   sampleManifestCommand?: string | null;
   sampleTextPath?: string | null;
   sampleTextPresent?: boolean;
@@ -671,6 +673,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
+      : null,
+    ingestion.sampleStarterCommand
+      ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${(ingestion.sampleManifestProfileIds ?? []).length > 0 ? ` for ${(ingestion.sampleManifestProfileIds ?? []).join(', ')}` : ''} -> ${ingestion.sampleManifestCommand}`

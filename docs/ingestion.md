@@ -28,6 +28,14 @@ node src/index.js import talk --person harry-han --text "We can ship the first s
 node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png --notes "chat screenshot"
 ```
 
+### Import the checked-in starter profile
+
+```bash
+node src/index.js import sample
+```
+
+This shortcut auto-loads `samples/harry-materials.json`, runs the manifest import, and refreshes the derived foundation drafts in one step. Use it when you want the fastest end-to-end sanity check of the ingestion entrance on a fresh checkout.
+
 ### Import a JSON manifest of mixed materials
 
 ```bash
@@ -94,6 +102,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - top-level `personId` / `displayName` / `summary` act as a single-target shorthand and let `entries[]` omit `personId`
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
+- `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts
 - manifest imports can span multiple target profiles in one pass
 - manifest import results now also include per-profile summaries with imported material counts/types, the stored display label/summary, `needsRefresh`, sorted `missingDrafts`, and direct follow-up commands for `update profile` and `update foundation`
 - when `import manifest` is paired with `--refresh-foundation`, those per-profile summaries are recomputed after draft generation so freshly imported profiles report `needsRefresh: false` instead of stale pre-refresh status
@@ -149,9 +158,10 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - top-level `foundation.maintenance` queue data (`readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `staleRefreshCommand`, `queuedProfiles`) so stale or incomplete target profiles can be surfaced directly in the prompt preview before the detailed rollup
   - each queued profile now includes its own `refreshCommand`, which keeps the user-facing ingestion/update entrance operational instead of requiring operators to reconstruct the right CLI call by hand
 - `update foundation --stale` now also repairs malformed generated markdown drafts (`voice/README.md`, `soul/README.md`, `skills/README.md`) when their provenance headers are missing or corrupted, instead of only refreshing fully missing/stale profiles
-- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `profileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
+- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `profileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
   - the prompt preview mirrors this as `Ingestion entrance:` before delivery/foundation diagnostics so operators can jump straight from the summary to `import manifest`, `update profile`, one-shot `import text --refresh-foundation`, or `update foundation`
   - when the repo includes `samples/harry-materials.json`, the same block now advertises a real `sampleManifestCommand` instead of only a placeholder manifest path
+  - that same sample-manifest path now also collapses into a shorter `sampleStarterCommand` (`node src/index.js import sample`) so first-run operators and the cron work loop can use one stable bootstrap command instead of reconstructing the longer manifest call
   - when the repo also includes `samples/harry-post.txt`, the same block now advertises a real `sampleTextCommand` (`node src/index.js import text --person <sample-person> --file samples/harry-post.txt --refresh-foundation`) so the entrance exposes both a batch and one-shot bootstrap path
   - the ingestion block now stays visible even for empty repos, which makes the user-facing bootstrap path discoverable before any target profile has been created
   - the top-level `workLoop` queue now mirrors those sample asset paths when ingestion is the current priority, so cron-style runs can see the concrete `samples/...` files backing the next import slice

@@ -770,6 +770,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleManifestEntryCount, 2);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
   assert.equal(summary.ingestion.sampleManifestError, null);
+  assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
+  assert.equal(summary.ingestion.sampleStarterSource, 'manifest');
   assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
   assert.equal(summary.ingestion.sampleTextPath, 'samples/harry-post.txt');
   assert.equal(summary.ingestion.sampleTextPresent, true);
@@ -812,6 +814,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
+  assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\]/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; refresh node src\/index\.js update foundation --person jane-doe/);
@@ -840,6 +843,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleManifestEntryCount: 0,
     sampleManifestProfileIds: [],
     sampleManifestError: null,
+    sampleStarterCommand: null,
+    sampleStarterSource: null,
     sampleManifestCommand: null,
     sampleTextPath: null,
     sampleTextPresent: false,
@@ -871,6 +876,8 @@ test('buildSummary reports invalid sample manifests without advertising a broken
   assert.equal(summary.ingestion.sampleManifestEntryCount, 0);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
   assert.equal(typeof summary.ingestion.sampleManifestError, 'string');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleStarterSource, null);
   assert.equal(summary.ingestion.sampleManifestCommand, null);
   assert.equal(summary.ingestion.sampleTextPath, null);
   assert.equal(summary.ingestion.sampleTextPresent, false);
@@ -909,6 +916,8 @@ test('buildSummary derives the sample text command from the matching manifest te
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
+  assert.equal(summary.ingestion.sampleStarterSource, 'manifest');
   assert.equal(summary.ingestion.sampleTextPath, 'samples/harry-post.txt');
   assert.equal(summary.ingestion.sampleTextPresent, true);
   assert.equal(summary.ingestion.sampleTextPersonId, 'harry-han');

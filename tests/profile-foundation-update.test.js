@@ -110,6 +110,42 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
 });
 
+test('CLI import sample command loads the checked-in sample manifest and refreshes foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/harry-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
