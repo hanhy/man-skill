@@ -88,6 +88,7 @@ The project aims to keep personal-agent construction simple:
 - treat malformed `manifests/channels.json` or `manifests/providers.json` as delivery-foundation diagnostics instead of fatal errors, so summary generation falls back to built-in defaults while still surfacing the manifest issue inline
 - expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice
 - emit `foundation.core.overview.recommendedActions` so missing/thin repo scaffolding produces concrete next-step guidance instead of only a passive status summary
+- expose a top-level `workLoop` priority queue that keeps foundation, ingestion, channels, and providers in the intended order while surfacing the current focus, summary, next action, command, and file paths for the first queued area
 - assemble a prompt preview from profile, soul, voice, memory, and skills, including the core-foundation coverage line when the base scaffold is thin or incomplete
 
 ## Staged development sequence

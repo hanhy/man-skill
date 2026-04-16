@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { buildSummary } from '../src/index.js';
+
+function makeTempRepo() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-work-loop-'));
+}
+
+function seedReadyFoundationRepo(rootDir: string) {
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nRepo memory guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron\n\nUse cron carefully.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nStable voice guidance.\n');
+}
+
+test('buildSummary work loop advances to ingestion when the base foundation is ready', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.priorityCount, 4);
+  assert.equal(summary.workLoop.readyPriorityCount, 1);
+  assert.equal(summary.workLoop.queuedPriorityCount, 3);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"');
+  assert.match(summary.workLoop.currentPriority.summary, /0 imported/);
+  assert.deepEqual(
+    summary.workLoop.priorities.map((priority: { id: string }) => priority.id),
+    ['foundation', 'ingestion', 'channels', 'providers'],
+  );
+  assert.equal(summary.workLoop.priorities[0].status, 'ready');
+  assert.match(summary.workLoop.priorities[2].summary, /4 pending/);
+  assert.match(summary.workLoop.priorities[3].summary, /6 pending/);
+});
+
+test('buildSummary work loop keeps foundation first when repo-core coverage is still thin', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Only one bucket seeded.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.match(summary.workLoop.currentPriority.summary, /core .* ready/i);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch']);
+  assert.equal(summary.workLoop.priorities[1].status, 'queued');
+});

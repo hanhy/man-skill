@@ -15,7 +15,7 @@ import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.js';
-import { WorkLoop } from './runtime/work-loop.js';
+import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
 type OptionValue = string | boolean | undefined;
 type ParsedOptions = Record<string, OptionValue>;
@@ -40,6 +40,13 @@ interface SampleManifestSummary {
   profileIds: string[];
   error: string | null;
 }
+
+type QueueLike = {
+  status?: string;
+  setupHint?: string | null;
+  nextStep?: string | null;
+  implementationPath?: string | null;
+};
 
 function slugifyPersonId(value: string) {
   return value
@@ -157,6 +164,97 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }
+}
+
+function buildFoundationPriority(foundation: any, coreFoundation: any): WorkPriority {
+  const maintenance = foundation?.maintenance ?? {};
+  const coreMaintenance = coreFoundation?.maintenance ?? {};
+  const coreOverview = coreFoundation?.overview ?? {};
+  const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
+  const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const refreshProfileCount = maintenance.refreshProfileCount ?? 0;
+  const incompleteProfileCount = maintenance.incompleteProfileCount ?? 0;
+  const thinAreaCount = coreMaintenance.thinAreaCount ?? 0;
+  const missingAreaCount = coreMaintenance.missingAreaCount ?? 0;
+  const status: WorkPriority['status'] = refreshProfileCount > 0 || incompleteProfileCount > 0 || thinAreaCount > 0 || missingAreaCount > 0
+    ? 'queued'
+    : 'ready';
+
+  return {
+    id: 'foundation',
+    label: 'Foundation',
+    status,
+    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
+    nextAction: queuedProfile?.refreshCommand
+      ? `refresh ${queuedProfile.label ?? queuedProfile.id ?? 'stale profiles'}`
+      : queuedArea?.action ?? null,
+    command: queuedProfile?.refreshCommand ?? null,
+    paths: Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [],
+  };
+}
+
+function buildIngestionPriority(ingestionSummary: any): WorkPriority {
+  const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
+  const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
+  const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
+  const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
+  const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
+    ? 'ready'
+    : 'queued';
+
+  let nextAction: string | null = null;
+  let command: string | null = null;
+
+  if ((ingestionSummary?.profileCount ?? 0) === 0) {
+    nextAction = 'bootstrap a target profile';
+    command = ingestionSummary?.bootstrapProfileCommand ?? null;
+  } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
+    nextAction = 'refresh stale or incomplete target profiles';
+    command = ingestionSummary?.staleRefreshCommand ?? null;
+  } else if (metadataOnlyProfileCount > 0) {
+    nextAction = 'import source materials for metadata-only profiles';
+    command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
+  }
+
+  return {
+    id: 'ingestion',
+    label: 'Ingestion',
+    status,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh`,
+    nextAction,
+    command,
+    paths: [],
+  };
+}
+
+function buildDeliveryPriority({
+  id,
+  label,
+  pendingCount,
+  configuredCount,
+  queue,
+}: {
+  id: 'channels' | 'providers';
+  label: 'Channels' | 'Providers';
+  pendingCount: number;
+  configuredCount: number;
+  queue: QueueLike[];
+}): WorkPriority {
+  const firstQueued = Array.isArray(queue) ? queue[0] : null;
+
+  return {
+    id,
+    label,
+    status: pendingCount > 0 ? 'queued' : 'ready',
+    summary: `${pendingCount} pending, ${configuredCount} configured`,
+    nextAction: firstQueued
+      ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
+      : null,
+    command: null,
+    paths: typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
+      ? [firstQueued.implementationPath]
+      : [],
+  };
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -367,15 +465,13 @@ export function buildSummary(rootDir: string) {
   if (Array.isArray(providerManifest.records)) {
     providerManifest.records.forEach((provider: unknown) => models.register(provider as any));
   }
-  const workLoop = new WorkLoop({
-    intervalMinutes: 10,
-    objectives: [
-      'strengthen the core structure',
-      'add channel adapters',
-      'add model providers',
-      'report progress in small increments',
-    ],
-  } as any);
+  const workLoopObjectives = [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ];
   const profiles = loader.loadProfilesIndex() as any;
   const sampleManifestRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-materials.json'))
     ? 'samples/harry-materials.json'
@@ -420,6 +516,28 @@ export function buildSummary(rootDir: string) {
     envTemplatePresent,
     envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
   };
+  const workLoop = new WorkLoop({
+    intervalMinutes: 10,
+    objectives: workLoopObjectives,
+    priorities: [
+      buildFoundationPriority(foundation, coreFoundation),
+      buildIngestionPriority(ingestionSummary),
+      buildDeliveryPriority({
+        id: 'channels',
+        label: 'Channels',
+        pendingCount: deliverySummary.pendingChannelCount ?? 0,
+        configuredCount: deliverySummary.configuredChannelCount ?? 0,
+        queue: Array.isArray(deliverySummary.channelQueue) ? deliverySummary.channelQueue : [],
+      }),
+      buildDeliveryPriority({
+        id: 'providers',
+        label: 'Providers',
+        pendingCount: deliverySummary.pendingProviderCount ?? 0,
+        configuredCount: deliverySummary.configuredProviderCount ?? 0,
+        queue: Array.isArray(deliverySummary.providerQueue) ? deliverySummary.providerQueue : [],
+      }),
+    ],
+  });
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
