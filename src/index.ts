@@ -130,6 +130,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const textFilePersonIds: Record<string, string> = {};
     const profileDisplayNames = new Map<string, string>();
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
+    const realRootDir = fs.realpathSync(rootDir);
 
     const registerPersonId = (value: unknown, displayName?: unknown) => {
       if (typeof value !== 'string' || value.trim().length === 0) {
@@ -190,7 +191,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      const entryRecord = entry as { personId?: unknown; type?: unknown; file?: unknown };
+      const entryRecord = entry as { personId?: unknown; type?: unknown; file?: unknown; text?: unknown };
       const resolvedPersonId = entryRecord.personId ?? fallbackPersonId;
       const normalizedPersonId = registerPersonId(resolvedPersonId);
       if (!normalizedPersonId) {
@@ -201,15 +202,39 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         throw new Error(`Unsupported manifest entry type at index ${index}: ${entryRecord.type}`);
       }
 
-      materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
+      if (entryRecord.type === 'message' || entryRecord.type === 'talk') {
+        if (typeof entryRecord.text !== 'string' || entryRecord.text.trim().length === 0) {
+          throw new Error(`Manifest entry ${index} is missing text for ${entryRecord.type} import`);
+        }
+      }
 
-      if (entryRecord.type === 'text' && typeof entryRecord.file === 'string' && entryRecord.file.trim().length > 0) {
+      if (entryRecord.type === 'text' || entryRecord.type === 'screenshot') {
+        if (typeof entryRecord.file !== 'string' || entryRecord.file.trim().length === 0) {
+          throw new Error(`Manifest entry ${index} is missing file for ${entryRecord.type} import`);
+        }
+
         const resolvedFilePath = path.resolve(manifestDir, entryRecord.file);
-        const relativeFilePath = path.relative(rootDir, resolvedFilePath);
-        if (relativeFilePath && !relativeFilePath.startsWith('..')) {
+        if (!fs.existsSync(resolvedFilePath)) {
+          throw new Error(`Manifest entry ${index} references a missing file: ${entryRecord.file}`);
+        }
+
+        const realFilePath = fs.realpathSync(resolvedFilePath);
+        const fileStats = fs.statSync(realFilePath);
+        if (!fileStats.isFile()) {
+          throw new Error(`Manifest entry ${index} references a non-file path: ${entryRecord.file}`);
+        }
+
+        const relativeFilePath = path.relative(realRootDir, realFilePath);
+        if (path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')) {
+          throw new Error(`Manifest entry ${index} references a file outside the repo: ${entryRecord.file}`);
+        }
+
+        if (entryRecord.type === 'text') {
           textFilePersonIds[relativeFilePath.split(path.sep).join('/')] = normalizedPersonId;
         }
       }
+
+      materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
     });
 
     const sortedProfileIds = [...profileIds].sort();

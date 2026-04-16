@@ -1122,3 +1122,133 @@ test('buildSummary treats parseable but semantically invalid sample manifests as
   assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 is missing personId/);
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 is missing personId @ samples\/harry-materials\.json/);
 });
+
+test('buildSummary treats sample manifests with missing referenced files as invalid and hides broken starter commands', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      displayName: 'Harry Han',
+      entries: [{ type: 'text', file: 'missing-post.txt' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.equal(summary.ingestion.sampleTextPersonId, null);
+  assert.equal(summary.ingestion.sampleTextCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 references a missing file: missing-post\.txt/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 references a missing file: missing-post\.txt @ samples\/harry-materials\.json/);
+  assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
+});
+
+test('buildSummary treats sample manifests with directory-backed file entries as invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(path.join(sampleDir, 'nested-source'), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [{ type: 'text', file: 'nested-source' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 references a non-file path: nested-source/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 references a non-file path: nested-source @ samples\/harry-materials\.json/);
+});
+
+test('buildSummary treats sample manifests with symlinked outside-repo files as invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  const outsideFile = path.join(os.tmpdir(), `man-skill-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFile, 'outside content');
+  fs.symlinkSync(outsideFile, path.join(sampleDir, 'linked-post.txt'));
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [{ type: 'text', file: 'linked-post.txt' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 references a file outside the repo: linked-post\.txt/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 references a file outside the repo: linked-post\.txt @ samples\/harry-materials\.json/);
+});
+
+test('buildSummary treats sample manifests with missing text payloads as invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [{ type: 'message' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 is missing text for message import/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 is missing text for message import @ samples\/harry-materials\.json/);
+});
+
+test('buildSummary falls back to another valid sample manifest when the canonical manifest references a missing file', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [{ type: 'text', file: 'missing-post.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(sampleDir, 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      displayName: 'Starter Person',
+      entries: [{ type: 'text', file: 'starter-post.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(path.join(sampleDir, 'starter-post.txt'), 'Starter profile draft.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestPath, 'samples/starter-materials.json');
+  assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
+  assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
+  assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.equal(summary.ingestion.sampleTextPersonId, 'starter-person');
+  assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
+  assert.match(summary.promptPreview, /sample manifest: 1 entry for Starter Person \(starter-person\) \(text:1\) -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /sample manifest invalid: .*missing-post\.txt/);
+});
