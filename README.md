@@ -31,11 +31,15 @@
 ```bash
 node src/index.js import text --person harry-han --file ./samples/post.txt
 node src/index.js import message --person harry-han --text "I’ll be there in 10 minutes."
-node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png
+node src/index.js import screenshot --person harry-han --file ./screenshots/chat.png --refresh-foundation
+node src/index.js import manifest --file ./samples/harry-materials.json --refresh-foundation
+node src/index.js update profile --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
+node src/index.js update foundation --person harry-han
+node src/index.js update foundation --all
 node src/index.js
 ```
 
-This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer.
+This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. You can now also seed target-person metadata (`displayName`, `summary`) either directly with `update profile` or through a manifest `profiles` block before importing materials. Generated foundation drafts are also surfaced back through `profiles[].foundationDrafts`, `profiles[].foundationDraftStatus`, and `profiles[].foundationDraftSummaries` so the next prompt/runtime layer can see both draft content and whether those drafts are stale. The prompt preview now also emits compact per-profile foundation snapshots, making freshness, missing drafts, key voice/skill signals, and human-readable target names visible without scanning the full raw profile JSON.
 
 ---
 

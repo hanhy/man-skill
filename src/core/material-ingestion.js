@@ -1,6 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 function slugifyPersonId(value) {
   return value
     .trim()
@@ -14,8 +26,74 @@ function ensureDir(dirPath) {
   return dirPath;
 }
 
+function listDirectoriesIfExists(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
 function timestampId() {
   return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeText(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function buildExcerpt(value, maxLength = 160) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function sortByNewest(records) {
+  return [...records].sort(
+    (left, right) =>
+      (right.createdAt ?? '').localeCompare(left.createdAt ?? '') || (right.id ?? '').localeCompare(left.id ?? ''),
+  );
+}
+
+function resolveImportFile(baseDir, filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
+}
+
+function buildProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
+  const now = new Date().toISOString();
+  const normalizedDisplayName = normalizeText(displayName);
+  const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
+
+  return {
+    id: normalizedId,
+    createdAt: existingProfile?.createdAt ?? now,
+    updatedAt: now,
+    displayName: normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId,
+    summary: normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary,
+  };
 }
 
 export class MaterialIngestion {
@@ -27,7 +105,7 @@ export class MaterialIngestion {
     return path.join(this.rootDir, ...segments);
   }
 
-  ensureProfile(personId) {
+  ensureProfile(personId, profileUpdates = {}) {
     const normalizedId = slugifyPersonId(personId);
     if (!normalizedId) {
       throw new Error('personId is required');
@@ -38,21 +116,28 @@ export class MaterialIngestion {
     ensureDir(path.join(materialsDir, 'screenshots'));
     const profilePath = path.join(profileDir, 'profile.json');
 
-    if (!fs.existsSync(profilePath)) {
-      fs.writeFileSync(
-        profilePath,
-        JSON.stringify(
-          {
-            id: normalizedId,
-            createdAt: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-      );
+    const existingProfile = readJsonIfExists(profilePath);
+    if (!existingProfile || Object.keys(profileUpdates).length > 0) {
+      const profileDocument = buildProfileDocument({
+        existingProfile,
+        normalizedId,
+        personId,
+        displayName: profileUpdates.displayName,
+        summary: profileUpdates.summary,
+      });
+      fs.writeFileSync(profilePath, JSON.stringify(profileDocument, null, 2));
     }
 
     return { personId: normalizedId, profileDir, materialsDir, profilePath };
+  }
+
+  updateProfile({ personId, displayName, summary }) {
+    const normalized = this.ensureProfile(personId, { displayName, summary });
+    return {
+      personId: normalized.personId,
+      profilePath: normalized.profilePath,
+      profile: readJsonIfExists(normalized.profilePath),
+    };
   }
 
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
@@ -143,5 +228,249 @@ export class MaterialIngestion {
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
     });
+  }
+
+  importManifest({ manifestFile }) {
+    if (!manifestFile) {
+      throw new Error('manifestFile is required for manifest import');
+    }
+
+    const resolvedManifestPath = resolveImportFile(this.rootDir, manifestFile);
+    const manifest = readJsonIfExists(resolvedManifestPath);
+    if (!manifest) {
+      throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
+    }
+
+    const manifestProfiles = Array.isArray(manifest?.profiles) ? manifest.profiles : [];
+    for (const [index, profile] of manifestProfiles.entries()) {
+      if (!profile || typeof profile !== 'object') {
+        throw new Error(`Manifest profile ${index} must be an object`);
+      }
+
+      if (!isNonEmptyString(profile.personId)) {
+        throw new Error(`Manifest profile ${index} is missing personId`);
+      }
+
+      this.updateProfile({
+        personId: profile.personId,
+        displayName: profile.displayName,
+        summary: profile.summary,
+      });
+    }
+
+    const entries = Array.isArray(manifest) ? manifest : manifest.entries;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error('Manifest must contain a non-empty entries array');
+    }
+
+    const manifestDir = path.dirname(resolvedManifestPath);
+    const results = entries.map((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(`Manifest entry ${index} must be an object`);
+      }
+
+      if (!isNonEmptyString(entry.personId)) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      const normalizedPersonId = slugifyPersonId(entry.personId);
+
+      if (entry.type === 'text') {
+        return {
+          personId: normalizedPersonId,
+          type: 'text',
+          ...this.importTextDocument({
+            personId: entry.personId,
+            sourceFile: resolveImportFile(manifestDir, entry.file),
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'message') {
+        return {
+          personId: normalizedPersonId,
+          type: 'message',
+          ...this.importMessage({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'talk') {
+        return {
+          personId: normalizedPersonId,
+          type: 'talk',
+          ...this.importTalkSnippet({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      if (entry.type === 'screenshot') {
+        return {
+          personId: normalizedPersonId,
+          type: 'screenshot',
+          ...this.importScreenshotSource({
+            personId: entry.personId,
+            sourceFile: resolveImportFile(manifestDir, entry.file),
+            notes: entry.notes ?? null,
+          }),
+        };
+      }
+
+      throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
+    });
+
+    return {
+      manifestFile: path.relative(this.rootDir, resolvedManifestPath),
+      entryCount: results.length,
+      profileIds: [...new Set(results.map((entry) => entry.personId))].sort(),
+      results,
+    };
+  }
+
+  loadMaterialRecords(personId) {
+    const normalized = this.ensureProfile(personId);
+    return fs
+      .readdirSync(normalized.materialsDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => readJsonIfExists(path.join(normalized.materialsDir, entry.name)))
+      .filter(Boolean);
+  }
+
+  refreshFoundationDrafts({ personId }) {
+    const normalized = this.ensureProfile(personId);
+    const materialRecords = sortByNewest(this.loadMaterialRecords(normalized.personId));
+
+    if (materialRecords.length === 0) {
+      throw new Error(`No imported materials found for profile ${normalized.personId}`);
+    }
+
+    const memoryDir = ensureDir(path.join(normalized.profileDir, 'memory', 'long-term'));
+    const voiceDir = ensureDir(path.join(normalized.profileDir, 'voice'));
+    const soulDir = ensureDir(path.join(normalized.profileDir, 'soul'));
+    const skillsDir = ensureDir(path.join(normalized.profileDir, 'skills'));
+
+    const memoryDraftPath = path.join(memoryDir, 'foundation.json');
+    const voiceDraftPath = path.join(voiceDir, 'README.md');
+    const soulDraftPath = path.join(soulDir, 'README.md');
+    const skillsDraftPath = path.join(skillsDir, 'README.md');
+
+    const memoryEntries = materialRecords.map((record) => ({
+      type: record.type,
+      createdAt: record.createdAt,
+      summary: buildExcerpt(record.content ?? record.notes ?? record.sourceFile),
+      sourceFile: record.sourceFile ?? null,
+    }));
+
+    const voiceSamples = materialRecords
+      .filter((record) => ['text', 'message', 'talk'].includes(record.type))
+      .map((record) => ({
+        type: record.type,
+        excerpt: buildExcerpt(record.content),
+      }))
+      .filter((record) => record.excerpt)
+      .slice(0, 5);
+
+    const soulSignals = materialRecords
+      .filter((record) => ['text', 'talk'].includes(record.type))
+      .map((record) => ({
+        type: record.type,
+        excerpt: buildExcerpt(record.content),
+      }))
+      .filter((record) => record.excerpt)
+      .slice(0, 5);
+
+    const skillSignals = materialRecords
+      .filter((record) => record.type === 'talk' && isNonEmptyString(record.notes))
+      .map((record) => ({
+        note: buildExcerpt(record.notes),
+        excerpt: buildExcerpt(record.content),
+      }))
+      .slice(0, 5);
+
+    fs.writeFileSync(
+      memoryDraftPath,
+      JSON.stringify(
+        {
+          personId: normalized.personId,
+          generatedAt: new Date().toISOString(),
+          entryCount: memoryEntries.length,
+          entries: memoryEntries,
+        },
+        null,
+        2,
+      ),
+    );
+
+    fs.writeFileSync(
+      voiceDraftPath,
+      [
+        '# Voice draft',
+        '',
+        `Profile: ${normalized.personId}`,
+        '',
+        'Representative voice excerpts:',
+        ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
+      ].join('\n'),
+    );
+
+    fs.writeFileSync(
+      soulDraftPath,
+      [
+        '# Soul draft',
+        '',
+        `Profile: ${normalized.personId}`,
+        '',
+        'Candidate soul signals:',
+        ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
+      ].join('\n'),
+    );
+
+    fs.writeFileSync(
+      skillsDraftPath,
+      [
+        '# Skills draft',
+        '',
+        `Profile: ${normalized.personId}`,
+        '',
+        'Candidate procedural skills:',
+        ...skillSignals.flatMap((signal) => {
+          const lines = [];
+          if (signal.note) {
+            lines.push(`- ${signal.note}`);
+          }
+          if (signal.excerpt) {
+            lines.push(`  - sample: ${signal.excerpt}`);
+          }
+          return lines;
+        }),
+      ].join('\n'),
+    );
+
+    return {
+      personId: normalized.personId,
+      memoryDraftPath,
+      voiceDraftPath,
+      soulDraftPath,
+      skillsDraftPath,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  refreshAllFoundationDrafts() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir)
+      .filter((profileId) => this.loadMaterialRecords(profileId).length > 0);
+
+    return {
+      profileCount: profileIds.length,
+      results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
+    };
   }
 }

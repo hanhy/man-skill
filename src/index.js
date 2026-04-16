@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { AgentProfile } from './core/agent-profile.js';
 import { MemoryStore } from './core/memory-store.js';
 import { SkillRegistry } from './core/skill-registry.js';
@@ -22,16 +23,48 @@ function parseArgs(argv) {
     }
 
     const key = token.slice(2);
-    const value = rest[index + 1];
-    options[key] = value;
+    const nextToken = rest[index + 1];
+    if (!nextToken || nextToken.startsWith('--')) {
+      options[key] = true;
+      continue;
+    }
+
+    options[key] = nextToken;
     index += 1;
   }
 
   return { command, subcommand, options };
 }
 
+function relativizeDraftPaths(rootDir, result) {
+  return {
+    ...result,
+    memoryDraftPath: result.memoryDraftPath ? path.relative(rootDir, result.memoryDraftPath) : null,
+    voiceDraftPath: result.voiceDraftPath ? path.relative(rootDir, result.voiceDraftPath) : null,
+    soulDraftPath: result.soulDraftPath ? path.relative(rootDir, result.soulDraftPath) : null,
+    skillsDraftPath: result.skillsDraftPath ? path.relative(rootDir, result.skillsDraftPath) : null,
+  };
+}
+
 function runImportCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
+
+  if (subcommand === 'manifest') {
+    const result = ingestion.importManifest({ manifestFile: options.file });
+    if (!options['refresh-foundation']) {
+      return result;
+    }
+
+    return {
+      ...result,
+      foundationRefresh: {
+        profileCount: result.profileIds.length,
+        results: result.profileIds.map((personId) =>
+          relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId }))),
+      },
+    };
+  }
+
   const personId = options.person;
 
   if (!personId) {
@@ -39,38 +72,89 @@ function runImportCommand(rootDir, subcommand, options) {
   }
 
   if (subcommand === 'text') {
-    return ingestion.importTextDocument({
+    const result = ingestion.importTextDocument({
       personId,
       sourceFile: options.file,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'message') {
-    return ingestion.importMessage({
+    const result = ingestion.importMessage({
       personId,
       text: options.text,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'talk') {
-    return ingestion.importTalkSnippet({
+    const result = ingestion.importTalkSnippet({
       personId,
       text: options.text,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   if (subcommand === 'screenshot') {
-    return ingestion.importScreenshotSource({
+    const result = ingestion.importScreenshotSource({
       personId,
       sourceFile: options.file,
       notes: options.notes ?? null,
     });
+
+    return options['refresh-foundation']
+      ? { ...result, foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })) }
+      : result;
   }
 
   throw new Error(`Unsupported import type: ${subcommand}`);
+}
+
+function runUpdateCommand(rootDir, subcommand, options) {
+  const ingestion = new MaterialIngestion(rootDir);
+  const personId = options.person;
+
+  if (subcommand === 'profile') {
+    if (!personId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return ingestion.updateProfile({
+      personId,
+      displayName: options['display-name'],
+      summary: options.summary,
+    });
+  }
+
+  if (subcommand === 'foundation' && options.all) {
+    const result = ingestion.refreshAllFoundationDrafts();
+    return {
+      ...result,
+      results: result.results.map((entry) => relativizeDraftPaths(rootDir, entry)),
+    };
+  }
+
+  if (!personId) {
+    throw new Error('Missing required --person argument');
+  }
+
+  if (subcommand === 'foundation') {
+    return relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId }));
+  }
+
+  throw new Error(`Unsupported update type: ${subcommand}`);
 }
 
 function buildSummary(rootDir) {
@@ -148,6 +232,9 @@ const { command, subcommand, options } = parseArgs(process.argv.slice(2));
 
 if (command === 'import') {
   const result = runImportCommand(rootDir, subcommand, options);
+  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+} else if (command === 'update') {
+  const result = runUpdateCommand(rootDir, subcommand, options);
   console.log(JSON.stringify({ ok: true, ...result }, null, 2));
 } else {
   console.log(JSON.stringify(buildSummary(rootDir), null, 2));

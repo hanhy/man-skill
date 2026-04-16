@@ -72,3 +72,81 @@ test('imports text, message, talk, and screenshot materials into a profile-speci
   assert.equal(fs.existsSync(screenshotMaterial.assetPath), true);
   assert.match(screenshotRecord.assetPath, /materials\/screenshots\//);
 });
+
+test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Harry Han',
+            type: 'message',
+            text: 'Ship the thin slice first.',
+            notes: 'chat sample',
+          },
+          {
+            personId: 'Harry Han',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+          {
+            personId: 'Jane Doe',
+            type: 'screenshot',
+            file: './chat.png',
+            notes: 'visual chat reference',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(result.entryCount, 3);
+  assert.deepEqual(result.profileIds, ['harry-han', 'jane-doe']);
+  assert.equal(result.results.map((entry) => entry.type).sort().join(','), 'message,screenshot,text');
+
+  const harryMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(harryMaterials.length, 2);
+
+  const janeMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(janeMaterials.length, 1);
+});
+
+test('updateProfile stores display name and summary metadata for a target person', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const result = ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.displayName, 'Harry Han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for momentum.');
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+  assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
