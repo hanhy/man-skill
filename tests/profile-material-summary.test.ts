@@ -149,6 +149,35 @@ test('loadProfilesIndex marks malformed markdown foundation drafts as stale and 
   assert.equal(profile.foundationDraftSummaries.soul.generated, true);
 });
 
+test('loadProfilesIndex marks valid markdown drafts as stale when their target-person metadata drifts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace('Display name: Harry Han', 'Display name: Old Harry')
+    .replace('Summary: Direct operator with a bias for momentum.', 'Summary: Outdated summary.');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.highlights, ['- [message] Ship the first slice.']);
+});
+
 test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

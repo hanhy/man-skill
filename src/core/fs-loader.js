@@ -210,9 +210,15 @@ export function parseDraftMetadata(filePath) {
     return null;
   }
 
+  const profileMatch = content.match(/^Profile:\s+(.+)$/m);
+  const displayNameMatch = content.match(/^Display name:\s+(.+)$/m);
+  const summaryMatch = content.match(/^Summary:\s+(.+)$/m);
   const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
   const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
+  const profileId = profileMatch?.[1] ?? null;
+  const displayName = displayNameMatch?.[1] ?? null;
+  const summary = summaryMatch?.[1] ?? null;
   const generatedAt = generatedAtMatch?.[1] ?? null;
   const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
   const latestMaterialId = latestMaterialMatch?.[2] ?? null;
@@ -220,17 +226,47 @@ export function parseDraftMetadata(filePath) {
   const materialTypes = parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null);
 
   return {
+    profileId,
+    displayName,
+    summary,
     generatedAt,
     latestMaterialAt,
     latestMaterialId,
     sourceCount,
     materialTypes,
-    valid: Boolean(generatedAtMatch && latestMaterialMatch && sourceMaterialsMatch && isNonEmptyString(generatedAt) && isNonEmptyString(latestMaterialAt) && isNonEmptyString(latestMaterialId)),
+    valid: Boolean(
+      profileMatch
+      && displayNameMatch
+      && summaryMatch
+      && generatedAtMatch
+      && latestMaterialMatch
+      && sourceMaterialsMatch
+      && isNonEmptyString(profileId)
+      && isNonEmptyString(displayName)
+      && isNonEmptyString(summary)
+      && isNonEmptyString(generatedAt)
+      && isNonEmptyString(latestMaterialAt)
+      && isNonEmptyString(latestMaterialId)
+    ),
   };
 }
 
 export function hasValidFoundationMarkdownDraft(filePath) {
   return Boolean(parseDraftMetadata(filePath)?.valid);
+}
+
+export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, profileId, profileDocument = null) {
+  if (!draftMetadata?.valid) {
+    return false;
+  }
+
+  const expectedProfileId = profileId;
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+
+  return (draftMetadata.profileId ?? profileId) !== expectedProfileId
+    || (draftMetadata.displayName ?? profileId) !== expectedDisplayName
+    || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
 }
 
 function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
@@ -250,8 +286,16 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
     missingDrafts.add('memory');
   }
 
-  for (const draftName of ['voice', 'soul', 'skills']) {
-    if (fs.existsSync(candidates[draftName]) && !hasValidFoundationMarkdownDraft(candidates[draftName])) {
+  const voiceMetadata = parseDraftMetadata(candidates.voice);
+  const soulMetadata = parseDraftMetadata(candidates.soul);
+  const skillsMetadata = parseDraftMetadata(candidates.skills);
+
+  for (const [draftName, draftMetadata] of [
+    ['voice', voiceMetadata],
+    ['soul', soulMetadata],
+    ['skills', skillsMetadata],
+  ]) {
+    if (fs.existsSync(candidates[draftName]) && !draftMetadata?.valid) {
       missingDrafts.add(draftName);
     }
   }
@@ -264,10 +308,12 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
       (memoryDraft.displayName ?? profileId) !== expectedDisplayName
       || (memoryDraft.summary ?? null) !== expectedSummary
     );
+  const hasMarkdownMetadataMismatch = [voiceMetadata, soulMetadata, skillsMetadata]
+    .some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
-  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch;
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch || hasMarkdownMetadataMismatch;
 
   return {
     generatedAt,

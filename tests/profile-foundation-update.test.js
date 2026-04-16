@@ -401,6 +401,42 @@ test('refreshStaleFoundationDrafts refreshes profiles when target metadata chang
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for fast feedback loops.');
 });
 
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft metadata drifts from the target profile', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace('Display name: Harry Han', 'Display name: Old Harry')
+    .replace('Summary: Direct operator with a bias for momentum.', 'Summary: Outdated summary.');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(refreshedVoiceDraft, /Display name: Harry Han/);
+  assert.match(refreshedVoiceDraft, /Summary: Direct operator with a bias for momentum\./);
+  assert.doesNotMatch(refreshedVoiceDraft, /Display name: Old Harry/);
+  assert.doesNotMatch(refreshedVoiceDraft, /Summary: Outdated summary\./);
+});
+
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
   const rootDir = makeTempRepo();
 
