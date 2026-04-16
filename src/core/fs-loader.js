@@ -248,6 +248,31 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
   };
 }
 
+function summarizeLegacyMemoryDraft(memoryDraft) {
+  const entries = Array.isArray(memoryDraft?.entries) ? memoryDraft.entries : [];
+  const materialTypes = memoryDraft?.materialTypes && Object.keys(memoryDraft.materialTypes).length > 0
+    ? memoryDraft.materialTypes
+    : entries.reduce((summary, entry) => {
+        if (!isNonEmptyString(entry?.type)) {
+          return summary;
+        }
+
+        summary[entry.type] = (summary[entry.type] ?? 0) + 1;
+        return summary;
+      }, {});
+  const sourceCount = Object.keys(materialTypes).length > 0
+    ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
+    : (memoryDraft?.entryCount ?? entries.length ?? 0);
+
+  return {
+    generatedAt: memoryDraft?.generatedAt ?? null,
+    latestMaterialAt: memoryDraft?.latestMaterialAt ?? null,
+    latestMaterialId: memoryDraft?.latestMaterialId ?? null,
+    sourceCount,
+    materialTypes,
+  };
+}
+
 function loadFoundationDraftSummaries(rootDir, profileId) {
   const memoryDraftPath = path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json');
   const voiceDraftPath = path.join(rootDir, 'profiles', profileId, 'voice', 'README.md');
@@ -255,6 +280,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
   const skillsDraftPath = path.join(rootDir, 'profiles', profileId, 'skills', 'README.md');
 
   const memoryDraft = readJsonIfExists(memoryDraftPath);
+  const memoryMetadata = summarizeLegacyMemoryDraft(memoryDraft);
   const voiceMetadata = parseDraftMetadata(voiceDraftPath);
   const soulMetadata = parseDraftMetadata(soulDraftPath);
   const skillsMetadata = parseDraftMetadata(skillsDraftPath);
@@ -263,6 +289,11 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
     memory: memoryDraft
       ? {
           generated: true,
+          generatedAt: memoryMetadata.generatedAt,
+          latestMaterialAt: memoryMetadata.latestMaterialAt,
+          latestMaterialId: memoryMetadata.latestMaterialId,
+          sourceCount: memoryMetadata.sourceCount,
+          materialTypes: memoryMetadata.materialTypes,
           entryCount: memoryDraft.entryCount ?? 0,
           latestSummaries: (memoryDraft.entries ?? [])
             .filter((entry) => entry.type !== 'screenshot')
@@ -270,7 +301,16 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
             .filter(Boolean)
             .slice(0, 3),
         }
-      : { generated: false, entryCount: 0, latestSummaries: [] },
+      : {
+          generated: false,
+          generatedAt: null,
+          latestMaterialAt: null,
+          latestMaterialId: null,
+          sourceCount: 0,
+          materialTypes: {},
+          entryCount: 0,
+          latestSummaries: [],
+        },
     voice: fs.existsSync(voiceDraftPath)
       ? {
           generated: true,

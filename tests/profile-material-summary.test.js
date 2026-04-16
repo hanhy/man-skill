@@ -52,6 +52,15 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftStatus.generatedAt !== null, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
   assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+  assert.equal(profile.foundationDraftSummaries.memory.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialAt, profile.latestMaterialAt);
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialId, profile.latestMaterialId);
+  assert.equal(profile.foundationDraftSummaries.memory.sourceCount, 3);
+  assert.deepEqual(profile.foundationDraftSummaries.memory.materialTypes, {
+    message: 1,
+    screenshot: 1,
+    text: 1,
+  });
   assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
@@ -144,7 +153,16 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           needsRefresh: false,
         },
         foundationDraftSummaries: {
-          memory: { generated: true, entryCount: 3, latestSummaries: ['Ship the first slice.', 'Direct writing sample.'] },
+          memory: {
+            generated: true,
+            generatedAt: '2026-04-16T15:00:01.000Z',
+            latestMaterialAt: '2026-04-16T15:00:00.000Z',
+            latestMaterialId: '2026-04-16T15-00-00-000Z-screenshot',
+            sourceCount: 3,
+            materialTypes: { text: 1, message: 1, screenshot: 1 },
+            entryCount: 3,
+            latestSummaries: ['Ship the first slice.', 'Direct writing sample.'],
+          },
           voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
           soul: { generated: true, highlights: ['- [text] Direct writing sample.'] },
           skills: { generated: false, highlights: [] },
@@ -322,6 +340,41 @@ test('loadProfilesIndex marks foundation status stale when memory draft metadata
   assert.equal(profile.foundationDraftStatus.complete, false);
   assert.equal(profile.foundationDraftStatus.needsRefresh, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['memory']);
+});
+
+test('loadProfilesIndex backfills memory draft provenance from legacy foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const legacyMemoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  delete legacyMemoryDraft.materialTypes;
+  delete legacyMemoryDraft.latestMaterialAt;
+  delete legacyMemoryDraft.latestMaterialId;
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(legacyMemoryDraft, null, 2));
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+  assert.equal(profile.foundationDraftSummaries.memory.generatedAt, legacyMemoryDraft.generatedAt);
+  assert.equal(profile.foundationDraftSummaries.memory.sourceCount, 2);
+  assert.deepEqual(profile.foundationDraftSummaries.memory.materialTypes, {
+    message: 1,
+    talk: 1,
+  });
+  assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), [
+    'Keep the feedback loop short.',
+    'Ship the first slice.',
+  ]);
 });
 
 test('loadProfilesIndex skips malformed material records while keeping valid summaries', () => {
