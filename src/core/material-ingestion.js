@@ -360,6 +360,7 @@ export class MaterialIngestion {
     const voiceDraftPath = path.join(voiceDir, 'README.md');
     const soulDraftPath = path.join(soulDir, 'README.md');
     const skillsDraftPath = path.join(skillsDir, 'README.md');
+    const generatedAt = new Date().toISOString();
 
     const memoryEntries = materialRecords.map((record) => ({
       type: record.type,
@@ -367,6 +368,7 @@ export class MaterialIngestion {
       summary: buildExcerpt(record.content ?? record.notes ?? record.sourceFile),
       sourceFile: record.sourceFile ?? null,
     }));
+    const latestMaterialRecord = materialRecords[0] ?? null;
 
     const voiceSamples = materialRecords
       .filter((record) => ['text', 'message', 'talk'].includes(record.type))
@@ -399,7 +401,9 @@ export class MaterialIngestion {
       JSON.stringify(
         {
           personId: normalized.personId,
-          generatedAt: new Date().toISOString(),
+          generatedAt,
+          latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
+          latestMaterialId: latestMaterialRecord?.id ?? null,
           entryCount: memoryEntries.length,
           entries: memoryEntries,
         },
@@ -459,7 +463,7 @@ export class MaterialIngestion {
       voiceDraftPath,
       soulDraftPath,
       skillsDraftPath,
-      generatedAt: new Date().toISOString(),
+      generatedAt,
     };
   }
 
@@ -467,6 +471,45 @@ export class MaterialIngestion {
     const profilesDir = this.resolve('profiles');
     const profileIds = listDirectoriesIfExists(profilesDir)
       .filter((profileId) => this.loadMaterialRecords(profileId).length > 0);
+
+    return {
+      profileCount: profileIds.length,
+      results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
+    };
+  }
+
+  refreshStaleFoundationDrafts() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir)
+      .filter((profileId) => {
+        const materialRecords = this.loadMaterialRecords(profileId);
+        if (materialRecords.length === 0) {
+          return false;
+        }
+
+        const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
+        const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+
+        const memoryDraftPath = this.resolve('profiles', profileId, 'memory', 'long-term', 'foundation.json');
+        const voiceDraftPath = this.resolve('profiles', profileId, 'voice', 'README.md');
+        const soulDraftPath = this.resolve('profiles', profileId, 'soul', 'README.md');
+        const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
+
+        if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
+          return true;
+        }
+
+        const memoryDraft = readJsonIfExists(memoryDraftPath);
+        if (!memoryDraft?.generatedAt) {
+          return true;
+        }
+
+        if (memoryDraft.latestMaterialId && latestMaterialRecord?.id) {
+          return memoryDraft.latestMaterialId !== latestMaterialRecord.id;
+        }
+
+        return Boolean(latestMaterialAt) && latestMaterialAt > memoryDraft.generatedAt;
+      });
 
     return {
       profileCount: profileIds.length,

@@ -146,6 +146,14 @@ function runUpdateCommand(rootDir, subcommand, options) {
     };
   }
 
+  if (subcommand === 'foundation' && options.stale) {
+    const result = ingestion.refreshStaleFoundationDrafts();
+    return {
+      ...result,
+      results: result.results.map((entry) => relativizeDraftPaths(rootDir, entry)),
+    };
+  }
+
   if (!personId) {
     throw new Error('Missing required --person argument');
   }

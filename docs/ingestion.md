@@ -134,6 +134,12 @@ To refresh every profile that already has imported materials:
 node src/index.js update foundation --all
 ```
 
+To refresh only profiles that are missing drafts or have newer materials than their last generated foundation draft:
+
+```bash
+node src/index.js update foundation --stale
+```
+
 This writes:
 
 - `profiles/<person-id>/memory/long-term/foundation.json`

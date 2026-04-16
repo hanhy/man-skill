@@ -60,7 +60,7 @@ The project aims to keep personal-agent construction simple:
 - derive first-pass per-profile foundation drafts under `profiles/<person-id>/memory|voice|soul|skills/`
 - expose generated draft paths, freshness status, and lightweight draft summaries back through `loadProfilesIndex()` for prompt/runtime consumption
 - render compact per-profile foundation snapshots in `PromptAssembler` so the runtime can see stale drafts, missing pieces, and key highlights without parsing the full profile JSON blob
-- support targeted or bulk profile draft refreshes through `update foundation --person <id>` and `update foundation --all`
+- support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`
 - support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
 - support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names

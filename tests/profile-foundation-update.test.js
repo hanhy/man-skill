@@ -152,6 +152,142 @@ test('CLI update foundation --all writes derived drafts for every profile with i
   assert.equal(result.results.every((entry) => /profiles\/.+\/voice\/README\.md$/.test(entry.voiceDraftPath)), true);
 });
 
+test('refreshStaleFoundationDrafts updates only profiles with stale or missing drafts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  const freshResult = ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  const staleInitial = ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['missing-drafts', 'stale-person']);
+
+  const refreshedStale = result.results.find((entry) => entry.personId === 'stale-person');
+  assert.equal(refreshedStale.generatedAt > staleInitial.generatedAt, true);
+
+  const staleMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'stale-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(staleMemoryDraft.entryCount, 2);
+
+  const freshMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'fresh-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
+});
+
+test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const RealDate = Date;
+  const fixedIso = '2026-04-16T15:00:00.000Z';
+
+  global.Date = class extends RealDate {
+    constructor(value) {
+      super(value ?? fixedIso);
+    }
+
+    static now() {
+      return new RealDate(fixedIso).valueOf();
+    }
+
+    static parse(value) {
+      return RealDate.parse(value);
+    }
+
+    static UTC(...args) {
+      return RealDate.UTC(...args);
+    }
+  };
+
+  try {
+    ingestion.importMessage({
+      personId: 'Stale Person',
+      text: 'Ship the first slice.',
+    });
+    ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+    ingestion.importTalkSnippet({
+      personId: 'Stale Person',
+      text: 'Keep the feedback loop short.',
+      notes: 'execution heuristic',
+    });
+  } finally {
+    global.Date = RealDate;
+  }
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['stale-person']);
+
+  const staleMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'stale-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(staleMemoryDraft.entryCount, 2);
+  assert.equal(staleMemoryDraft.latestMaterialId.endsWith('-talk'), true);
+});
+
+test('CLI update foundation --stale refreshes only profiles that need draft updates', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'foundation', '--stale'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['missing-drafts', 'stale-person']);
+  assert.equal(result.results.every((entry) => /profiles\/.+\/memory\/long-term\/foundation\.json$/.test(entry.memoryDraftPath)), true);
+});
+
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
   const rootDir = makeTempRepo();
 
