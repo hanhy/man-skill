@@ -115,21 +115,17 @@ function loadMaterialSummaries(materialsDir) {
   const materialRecords = materialFiles
     .map((name) => readJsonIfExists(path.join(materialsDir, name)))
     .filter(Boolean);
+  const newestRecords = sortByNewest(materialRecords);
 
   const materialTypes = {};
   for (const record of materialRecords) {
     materialTypes[record.type] = (materialTypes[record.type] ?? 0) + 1;
   }
 
-  const latestMaterialAt = materialRecords
-    .map((record) => record.createdAt)
-    .filter(Boolean)
-    .sort()
-    .at(-1) ?? null;
-
   return {
     materialTypes,
-    latestMaterialAt,
+    latestMaterialAt: newestRecords[0]?.createdAt ?? null,
+    latestMaterialId: newestRecords[0]?.id ?? null,
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
   };
 }
@@ -166,7 +162,7 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
-function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null) {
+function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -183,7 +179,10 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null) 
     missingDrafts.add('memory');
   }
   const generatedAt = memoryDraft?.generatedAt ?? null;
-  const needsRefresh = missingDrafts.size > 0 || (Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt));
+  const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
+    ? memoryDraft.latestMaterialId !== latestMaterialId
+    : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial;
 
   return {
     generatedAt,
@@ -282,7 +281,12 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
-        foundationDraftStatus: loadFoundationDraftStatus(this.rootDir, profileId, profileSummary.latestMaterialAt),
+        foundationDraftStatus: loadFoundationDraftStatus(
+          this.rootDir,
+          profileId,
+          profileSummary.latestMaterialAt,
+          profileSummary.latestMaterialId,
+        ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
       };

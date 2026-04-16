@@ -181,6 +181,52 @@ test('loadProfilesIndex marks draft status as stale when new materials arrive af
   assert.equal(profile.latestMaterialAt > profile.foundationDraftStatus.generatedAt, true);
 });
 
+test('loadProfilesIndex marks draft status as stale when a new material lands in the same timestamp window', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+  const RealDate = Date;
+  const fixedIso = '2026-04-16T15:00:00.000Z';
+
+  global.Date = class extends RealDate {
+    constructor(value) {
+      super(value ?? fixedIso);
+    }
+
+    static now() {
+      return new RealDate(fixedIso).valueOf();
+    }
+
+    static parse(value) {
+      return RealDate.parse(value);
+    }
+
+    static UTC(...args) {
+      return RealDate.UTC(...args);
+    }
+  };
+
+  try {
+    ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+    ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+    ingestion.importTalkSnippet({
+      personId: 'Harry Han',
+      text: 'Keep the feedback loop short.',
+      notes: 'execution heuristic',
+    });
+  } finally {
+    global.Date = RealDate;
+  }
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.latestMaterialAt, '2026-04-16T15:00:00.000Z');
+  assert.equal(profile.foundationDraftStatus.generatedAt, '2026-04-16T15:00:00.000Z');
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+});
+
 test('loadProfilesIndex marks draft status as missing before foundation generation runs', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

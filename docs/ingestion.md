@@ -115,6 +115,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationReadiness.skills` procedural-note candidates from talk materials
 - `foundationDrafts` relative paths for generated memory / voice / soul / skills artifacts
 - `foundationDraftStatus` with `generatedAt`, `missingDrafts`, and `needsRefresh` so stale profiles are visible
+  - freshness uses `latestMaterialId` as a tie-breaker, so same-timestamp imports still show up as stale when drafts lag behind
 - `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 
