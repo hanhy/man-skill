@@ -1,6 +1,23 @@
 import { BaseRegistry } from './base-registry.js';
 
-const DEFAULT_CHANNELS = [
+export interface ChannelAuthRecord {
+  type: string;
+  envVars: string[];
+}
+
+export interface ChannelRecord {
+  id: string;
+  name: string;
+  transport: string;
+  direction: string[];
+  status: string;
+  capabilities: string[];
+  auth: ChannelAuthRecord | null;
+  deliveryModes: string[];
+  [key: string]: unknown;
+}
+
+const DEFAULT_CHANNELS: ChannelRecord[] = [
   {
     id: 'slack',
     name: 'Slack',
@@ -55,12 +72,12 @@ const DEFAULT_CHANNELS = [
   },
 ];
 
-export class ChannelRegistry extends BaseRegistry {
-  constructor(channels = DEFAULT_CHANNELS) {
+export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
+  constructor(channels: Array<string | ChannelRecord> = DEFAULT_CHANNELS) {
     super(channels);
   }
 
-  normalize(channel) {
+  normalize(channel: string | ChannelRecord): ChannelRecord {
     if (typeof channel === 'string') {
       return {
         id: channel,
@@ -85,10 +102,10 @@ export class ChannelRegistry extends BaseRegistry {
     };
   }
 
-  summary() {
+  summary(): { channelCount: number; channels: ChannelRecord[] } {
     return {
       channelCount: this.count(),
-      channels: this.list(),
+      channels: this.list() as ChannelRecord[],
     };
   }
 }

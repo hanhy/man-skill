@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "description": "A lightweight framework for constructing a person-like AI agent from text, memory, skills, soul, and voice.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "scripts": {
-    "check": "node src/index.js",
-    "test": "node --test"
+    "check": "tsx src/index.ts",
+    "test": "node --import tsx --test",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "agent",
@@ -16,5 +17,10 @@
     "voice",
     "llm"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
 }

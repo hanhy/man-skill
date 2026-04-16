@@ -1,11 +1,22 @@
 export class BaseChannel {
-  constructor({ id, name, transport = 'chat', direction = ['inbound', 'outbound'], status = 'planned', capabilities = [] } = {}) {
+  constructor({
+    id,
+    name,
+    transport = 'chat',
+    direction = ['inbound', 'outbound'],
+    status = 'planned',
+    capabilities = [],
+    auth = null,
+    deliveryModes = [],
+  } = {}) {
     this.id = id;
     this.name = name;
     this.transport = transport;
     this.direction = direction;
     this.status = status;
     this.capabilities = capabilities;
+    this.auth = auth;
+    this.deliveryModes = deliveryModes;
   }
 
   summary() {
@@ -16,6 +27,8 @@ export class BaseChannel {
       direction: this.direction,
       status: this.status,
       capabilities: this.capabilities,
+      auth: this.auth,
+      deliveryModes: this.deliveryModes,
     };
   }
 }
