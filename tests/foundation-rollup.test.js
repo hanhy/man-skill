@@ -452,9 +452,25 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
-    recommendedActions: ['document placeholder skill folders with SKILL.md'],
+    recommendedActions: ['create skills/slack/SKILL.md and skills/telegram/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '2 registered, 0 documented',
+        action: 'create skills/slack/SKILL.md and skills/telegram/SKILL.md',
+        paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+      },
+    ],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
 });
 
@@ -491,8 +507,80 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
-    recommendedActions: ['document placeholder skill folders with SKILL.md'],
+    recommendedActions: ['create skills/slack/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '2 registered, 1 documented',
+        action: 'create skills/slack/SKILL.md',
+        paths: ['skills/slack/SKILL.md'],
+      },
+    ],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; placeholders: slack @ skills\/slack/);
+});
+
+test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  for (const skillName of ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta']) {
+    fs.mkdirSync(path.join(rootDir, 'skills', skillName), { recursive: true });
+  }
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 6,
+    documentedCount: 0,
+    undocumentedCount: 6,
+    sample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
+    samplePaths: [],
+    undocumentedSample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
+    undocumentedPaths: ['skills/alpha', 'skills/beta', 'skills/delta', 'skills/epsilon', 'skills/gamma'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: [
+      'create skills/alpha/SKILL.md, skills/beta/SKILL.md, skills/delta/SKILL.md, skills/epsilon/SKILL.md, skills/gamma/SKILL.md, and skills/zeta/SKILL.md',
+    ],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'skills',
+      status: 'thin',
+      summary: '6 registered, 0 documented',
+      action: 'create skills/alpha/SKILL.md, skills/beta/SKILL.md, skills/delta/SKILL.md, skills/epsilon/SKILL.md, skills/gamma/SKILL.md, and skills/zeta/SKILL.md',
+      paths: [
+        'skills/alpha/SKILL.md',
+        'skills/beta/SKILL.md',
+        'skills/delta/SKILL.md',
+        'skills/epsilon/SKILL.md',
+        'skills/gamma/SKILL.md',
+        'skills/zeta/SKILL.md',
+      ],
+    },
+  ]);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/alpha\/SKILL\.md, skills\/beta\/SKILL\.md, skills\/delta\/SKILL\.md, skills\/epsilon\/SKILL\.md, skills\/gamma\/SKILL\.md, and skills\/zeta\/SKILL\.md/);
 });

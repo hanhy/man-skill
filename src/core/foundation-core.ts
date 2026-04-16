@@ -73,11 +73,36 @@ function buildMemoryMaintenanceAction({
   return actions.join(' | ');
 }
 
+function buildSkillsDocumentationPaths(undocumentedSkillNames: string[]): string[] {
+  return undocumentedSkillNames
+    .filter((skillName) => isNonEmptyString(skillName))
+    .map((skillName) => `skills/${skillName}/SKILL.md`);
+}
+
+function buildSkillsMaintenanceAction({
+  skillsCount,
+  undocumentedSkillNames,
+}: {
+  skillsCount: number;
+  undocumentedSkillNames: string[];
+}): string | null {
+  if (skillsCount === 0) {
+    return 'create skills/<name>/SKILL.md for at least one repo skill';
+  }
+
+  const documentationPaths = buildSkillsDocumentationPaths(undocumentedSkillNames);
+  if (documentationPaths.length === 0) {
+    return null;
+  }
+
+  return `create ${formatList(documentationPaths)}`;
+}
+
 function collectRecommendedActions({
   memoryHasRootDocument,
   memoryEmptyBuckets,
   skillsCount,
-  documentedSkillCount,
+  undocumentedSkillNames,
   soulPresent,
   soulLineCount,
   voicePresent,
@@ -86,7 +111,7 @@ function collectRecommendedActions({
   memoryHasRootDocument: boolean;
   memoryEmptyBuckets: string[];
   skillsCount: number;
-  documentedSkillCount: number;
+  undocumentedSkillNames: string[];
   soulPresent: boolean;
   soulLineCount: number;
   voicePresent: boolean;
@@ -103,10 +128,12 @@ function collectRecommendedActions({
     actions.push(memoryBucketAction);
   }
 
-  if (skillsCount === 0) {
-    actions.push('create skills/<name>/SKILL.md for at least one repo skill');
-  } else if (documentedSkillCount < skillsCount) {
-    actions.push('document placeholder skill folders with SKILL.md');
+  const skillsAction = buildSkillsMaintenanceAction({
+    skillsCount,
+    undocumentedSkillNames,
+  });
+  if (skillsAction) {
+    actions.push(skillsAction);
   }
 
   if (!soulPresent) {
@@ -167,18 +194,21 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
 function buildCoreFoundationMaintenance({
   memory,
   skills,
+  undocumentedSkillNames,
   soul,
   voice,
 }: {
   memory: CoreMemoryFoundationSummary;
   skills: CoreSkillsFoundationSummary;
+  undocumentedSkillNames: string[];
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
 }): CoreFoundationMaintenanceSummary {
   const queue: CoreFoundationMaintenanceQueueItem[] = [];
-  const skillsAction = skills.count === 0
-    ? 'create skills/<name>/SKILL.md for at least one repo skill'
-    : (skills.documentedCount < skills.count ? 'document placeholder skill folders with SKILL.md' : null);
+  const skillsAction = buildSkillsMaintenanceAction({
+    skillsCount: skills.count,
+    undocumentedSkillNames,
+  });
   const soulAction = !soul.present
     ? 'create SOUL.md'
     : (soul.lineCount === 0 ? 'add non-heading guidance to SOUL.md' : null);
@@ -204,7 +234,7 @@ function buildCoreFoundationMaintenance({
       status: skills.count === 0 ? 'missing' : (skills.documentedCount < skills.count ? 'thin' : 'ready'),
       summary: summarizeSkillsFoundation(skills),
       action: skillsAction,
-      paths: ['skills/'],
+      paths: skills.count === 0 ? ['skills/'] : buildSkillsDocumentationPaths(undocumentedSkillNames),
     },
     {
       area: 'soul',
@@ -416,7 +446,7 @@ export function buildCoreFoundationSummary({
       memoryHasRootDocument: memory.hasRootDocument,
       memoryEmptyBuckets: memory.emptyBuckets,
       skillsCount: skills.count,
-      documentedSkillCount: skills.documentedCount,
+      undocumentedSkillNames,
       soulPresent: soul.present,
       soulLineCount: soul.lineCount,
       voicePresent: voice.present,
@@ -426,6 +456,7 @@ export function buildCoreFoundationSummary({
   const maintenance = buildCoreFoundationMaintenance({
     memory,
     skills,
+    undocumentedSkillNames,
     soul,
     voice,
   });
