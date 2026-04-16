@@ -1,5 +1,10 @@
 import { BaseRegistry } from './base-registry.js';
 
+function collectProviderAuthEnvVars(providers) {
+  return [...new Set(providers.map((provider) => provider.authEnvVar).filter((value) => typeof value === 'string' && value.length > 0))]
+    .sort((left, right) => left.localeCompare(right));
+}
+
 const DEFAULT_PROVIDERS = [
   {
     id: 'openai',
@@ -94,9 +99,15 @@ export class ModelRegistry extends BaseRegistry {
   }
 
   summary() {
+    const providers = this.list();
     return {
       providerCount: this.count(),
-      providers: this.list(),
+      activeCount: providers.filter((provider) => provider.status === 'active').length,
+      plannedCount: providers.filter((provider) => provider.status === 'planned').length,
+      candidateCount: providers.filter((provider) => provider.status === 'candidate').length,
+      multimodalProviderCount: providers.filter((provider) => (provider.modalities ?? []).length > 1).length,
+      authEnvVars: collectProviderAuthEnvVars(providers),
+      providers,
     };
   }
 }

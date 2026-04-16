@@ -21,6 +21,10 @@ function mergeStringLists(...lists: Array<string[] | undefined>): string[] {
   return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
 }
 
+function collectAuthEnvVars(channels: ChannelRecord[]): string[] {
+  return [...new Set(channels.flatMap((channel) => channel.auth?.envVars ?? []))].sort((left, right) => left.localeCompare(right));
+}
+
 function mergeChannelAuth(
   defaultAuth: ChannelAuthRecord | null | undefined,
   overrideAuth: ChannelAuthRecord | null | undefined,
@@ -136,10 +140,15 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
     };
   }
 
-  summary(): { channelCount: number; channels: ChannelRecord[] } {
+  summary(): { channelCount: number; activeCount: number; plannedCount: number; candidateCount: number; authEnvVars: string[]; channels: ChannelRecord[] } {
+    const channels = this.list() as ChannelRecord[];
     return {
       channelCount: this.count(),
-      channels: this.list() as ChannelRecord[],
+      activeCount: channels.filter((channel) => channel.status === 'active').length,
+      plannedCount: channels.filter((channel) => channel.status === 'planned').length,
+      candidateCount: channels.filter((channel) => channel.status === 'candidate').length,
+      authEnvVars: collectAuthEnvVars(channels),
+      channels,
     };
   }
 }

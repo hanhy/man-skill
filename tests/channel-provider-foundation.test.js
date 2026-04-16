@@ -30,6 +30,18 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
   const slack = summary.channels.channels.find((channel) => channel.id === 'slack');
   const telegram = summary.channels.channels.find((channel) => channel.id === 'telegram');
 
+  assert.equal(summary.channels.activeCount, 0);
+  assert.equal(summary.channels.plannedCount, 4);
+  assert.equal(summary.channels.candidateCount, 0);
+  assert.deepEqual(summary.channels.authEnvVars, [
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+  ]);
   assert.deepEqual(slack.auth, {
     type: 'bot-token',
     envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
@@ -50,6 +62,18 @@ test('buildSummary exposes capability metadata for default model providers', () 
   const openai = summary.models.providers.find((provider) => provider.id === 'openai');
   const anthropic = summary.models.providers.find((provider) => provider.id === 'anthropic');
 
+  assert.equal(summary.models.activeCount, 0);
+  assert.equal(summary.models.plannedCount, 6);
+  assert.equal(summary.models.candidateCount, 0);
+  assert.equal(summary.models.multimodalProviderCount, 5);
+  assert.deepEqual(summary.models.authEnvVars, [
+    'ANTHROPIC_API_KEY',
+    'GLM_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'OPENAI_API_KEY',
+    'QWEN_API_KEY',
+  ]);
   assert.equal(openai.defaultModel, 'gpt-5');
   assert.equal(openai.authEnvVar, 'OPENAI_API_KEY');
   assert.deepEqual(openai.modalities, ['chat', 'reasoning', 'vision']);
@@ -65,10 +89,58 @@ test('buildSummary prompt preview includes compact channel and provider planning
   const summary = buildSummary(rootDir);
 
   assert.match(summary.promptPreview, /Delivery foundation:/);
-  assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned\)/);
+  assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
   assert.match(summary.promptPreview, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
-  assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned\)/);
+  assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
   assert.match(summary.promptPreview, /OpenAI default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+});
+
+test('buildSummary prompt preview surfaces candidate delivery integrations from manifests', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'channels.json'),
+    JSON.stringify([
+      {
+        id: 'slack',
+        status: 'active',
+      },
+      {
+        id: 'discord',
+        name: 'Discord',
+        status: 'candidate',
+        transport: 'chat',
+        direction: ['inbound', 'outbound'],
+        capabilities: ['gateway'],
+        deliveryModes: ['gateway'],
+      },
+    ], null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    JSON.stringify([
+      {
+        id: 'openai',
+        status: 'active',
+      },
+      {
+        id: 'deepseek',
+        name: 'DeepSeek',
+        status: 'candidate',
+        models: ['deepseek-chat'],
+        features: ['chat'],
+        defaultModel: 'deepseek-chat',
+        authEnvVar: 'DEEPSEEK_API_KEY',
+        modalities: ['chat'],
+      },
+    ], null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
+  assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
 });
 
 test('buildSummary merges channel and provider manifests onto the default foundation metadata', () => {
@@ -129,7 +201,23 @@ test('buildSummary merges channel and provider manifests onto the default founda
   const deepseek = summary.models.providers.find((provider) => provider.id === 'deepseek');
 
   assert.equal(summary.channels.channelCount, 5);
+  assert.equal(summary.channels.activeCount, 1);
+  assert.equal(summary.channels.plannedCount, 3);
+  assert.equal(summary.channels.candidateCount, 1);
+  assert.deepEqual(summary.channels.authEnvVars, [
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+  ]);
   assert.equal(summary.models.providerCount, 7);
+  assert.equal(summary.models.activeCount, 1);
+  assert.equal(summary.models.plannedCount, 5);
+  assert.equal(summary.models.candidateCount, 1);
+  assert.equal(summary.models.multimodalProviderCount, 5);
   assert.equal(slack.status, 'active');
   assert.deepEqual(slack.auth, {
     type: 'bot-token',

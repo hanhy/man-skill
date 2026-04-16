@@ -289,9 +289,9 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   }).buildSystemPrompt();
 
   assert.match(prompt, /Delivery foundation:/);
-  assert.match(prompt, /channels: 2 total \(1 active, 1 planned\)/);
+  assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
-  assert.match(prompt, /models: 2 total \(1 active, 1 planned\)/);
+  assert.match(prompt, /models: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Anthropic default claude-3.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
 });
 

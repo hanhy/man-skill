@@ -16,6 +16,11 @@ function mergeStringLists(...lists: Array<string[] | undefined>): string[] {
   return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
 }
 
+function collectProviderAuthEnvVars(providers: ProviderRecord[]): string[] {
+  return [...new Set(providers.map((provider) => provider.authEnvVar).filter((value): value is string => typeof value === 'string' && value.length > 0))]
+    .sort((left, right) => left.localeCompare(right));
+}
+
 const DEFAULT_PROVIDERS: ProviderRecord[] = [
   {
     id: 'openai',
@@ -120,10 +125,16 @@ export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
     };
   }
 
-  summary(): { providerCount: number; providers: ProviderRecord[] } {
+  summary(): { providerCount: number; activeCount: number; plannedCount: number; candidateCount: number; multimodalProviderCount: number; authEnvVars: string[]; providers: ProviderRecord[] } {
+    const providers = this.list() as ProviderRecord[];
     return {
       providerCount: this.count(),
-      providers: this.list() as ProviderRecord[],
+      activeCount: providers.filter((provider) => provider.status === 'active').length,
+      plannedCount: providers.filter((provider) => provider.status === 'planned').length,
+      candidateCount: providers.filter((provider) => provider.status === 'candidate').length,
+      multimodalProviderCount: providers.filter((provider) => (provider.modalities ?? []).length > 1).length,
+      authEnvVars: collectProviderAuthEnvVars(providers),
+      providers,
     };
   }
 }

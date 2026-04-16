@@ -1,5 +1,9 @@
 import { BaseRegistry } from './base-registry.js';
 
+function collectAuthEnvVars(channels) {
+  return [...new Set(channels.flatMap((channel) => channel.auth?.envVars ?? []))].sort((left, right) => left.localeCompare(right));
+}
+
 const DEFAULT_CHANNELS = [
   {
     id: 'slack',
@@ -86,9 +90,14 @@ export class ChannelRegistry extends BaseRegistry {
   }
 
   summary() {
+    const channels = this.list();
     return {
       channelCount: this.count(),
-      channels: this.list(),
+      activeCount: channels.filter((channel) => channel.status === 'active').length,
+      plannedCount: channels.filter((channel) => channel.status === 'planned').length,
+      candidateCount: channels.filter((channel) => channel.status === 'candidate').length,
+      authEnvVars: collectAuthEnvVars(channels),
+      channels,
     };
   }
 }

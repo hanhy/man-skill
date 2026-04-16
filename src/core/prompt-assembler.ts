@@ -166,6 +166,10 @@ type ChannelSummaryRecord = {
 
 type ChannelsSummary = {
   channelCount?: number;
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  authEnvVars?: string[];
   channels?: ChannelSummaryRecord[];
 } | null;
 
@@ -180,6 +184,11 @@ type ModelSummaryRecord = {
 
 type ModelsSummary = {
   providerCount?: number;
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  multimodalProviderCount?: number;
+  authEnvVars?: string[];
   providers?: ModelSummaryRecord[];
 } | null;
 
@@ -382,20 +391,22 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     return null;
   }
 
-  const activeChannelCount = channelRecords.filter((channel) => channel.status === 'active').length;
-  const plannedChannelCount = channelRecords.filter((channel) => channel.status === 'planned').length;
-  const activeProviderCount = providerRecords.filter((provider) => provider.status === 'active').length;
-  const plannedProviderCount = providerRecords.filter((provider) => provider.status === 'planned').length;
+  const activeChannelCount = channels?.activeCount ?? channelRecords.filter((channel) => channel.status === 'active').length;
+  const plannedChannelCount = channels?.plannedCount ?? channelRecords.filter((channel) => channel.status === 'planned').length;
+  const candidateChannelCount = channels?.candidateCount ?? channelRecords.filter((channel) => channel.status === 'candidate').length;
+  const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
+  const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
+  const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
 
   return [
     channelRecords.length > 0
-      ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned)`
+      ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
       : null,
     ...channelRecords.slice(0, 2).map((channel) =>
       `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
     ),
     providerRecords.length > 0
-      ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned)`
+      ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
       : null,
     ...providerRecords.slice(0, 2).map((provider) => {
       const modalities = (provider.modalities ?? []).join(', ');
