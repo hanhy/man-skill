@@ -38,6 +38,27 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     text: 1,
   });
   assert.match(profile.latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(profile.foundationReadiness, {
+    memory: {
+      candidateCount: 3,
+      latestTypes: ['screenshot', 'message', 'text'],
+    },
+    voice: {
+      candidateCount: 2,
+      sampleTypes: ['message', 'text'],
+      sampleExcerpts: ['Ship the first slice.', 'Direct writing sample.'],
+    },
+    soul: {
+      candidateCount: 1,
+      sampleTypes: ['text'],
+      sampleExcerpts: ['Direct writing sample.'],
+    },
+    skills: {
+      candidateCount: 0,
+      sampleTypes: [],
+      sampleExcerpts: [],
+    },
+  });
 });
 
 test('PromptAssembler includes profile material summaries when provided', () => {
@@ -54,6 +75,12 @@ test('PromptAssembler includes profile material summaries when provided', () => 
         materialCount: 3,
         materialTypes: { text: 1, message: 1, screenshot: 1 },
         latestMaterialAt: '2026-04-16T15:00:00.000Z',
+        foundationReadiness: {
+          memory: { candidateCount: 3, latestTypes: ['screenshot', 'message', 'text'] },
+          voice: { candidateCount: 2, sampleTypes: ['message', 'text'], sampleExcerpts: ['Ship the first slice.', 'Direct writing sample.'] },
+          soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Direct writing sample.'] },
+          skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
+        },
       },
     ],
   }).buildSystemPrompt();
@@ -61,4 +88,6 @@ test('PromptAssembler includes profile material summaries when provided', () => 
   assert.match(prompt, /Profiles:/);
   assert.match(prompt, /harry-han/);
   assert.match(prompt, /"screenshot": 1/);
+  assert.match(prompt, /foundationReadiness/);
+  assert.match(prompt, /Direct writing sample\./);
 });

@@ -41,6 +41,67 @@ function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function buildExcerpt(value, maxLength = 160) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function sortByNewest(records) {
+  return [...records].sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
+}
+
+function summarizeFoundationReadiness(materialRecords) {
+  const memoryRecords = sortByNewest(materialRecords);
+  const voiceRecords = sortByNewest(materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type)));
+  const soulRecords = sortByNewest(materialRecords.filter((record) => ['text', 'talk'].includes(record.type)));
+  const skillRecords = sortByNewest(
+    materialRecords.filter((record) => record.type === 'talk' && isNonEmptyString(record.notes)),
+  );
+
+  return {
+    memory: {
+      candidateCount: memoryRecords.length,
+      latestTypes: memoryRecords.slice(0, 3).map((record) => record.type),
+    },
+    voice: {
+      candidateCount: voiceRecords.length,
+      sampleTypes: voiceRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: voiceRecords
+        .map((record) => buildExcerpt(record.content))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+    soul: {
+      candidateCount: soulRecords.length,
+      sampleTypes: soulRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: soulRecords
+        .map((record) => buildExcerpt(record.content))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+    skills: {
+      candidateCount: skillRecords.length,
+      sampleTypes: skillRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: skillRecords
+        .map((record) => buildExcerpt(record.notes))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+  };
+}
+
 function loadMaterialSummaries(materialsDir) {
   const materialFiles = listFilesIfExists(materialsDir)
     .filter((name) => name.endsWith('.json'));
@@ -62,6 +123,7 @@ function loadMaterialSummaries(materialsDir) {
   return {
     materialTypes,
     latestMaterialAt,
+    foundationReadiness: summarizeFoundationReadiness(materialRecords),
   };
 }
 
@@ -110,6 +172,7 @@ export class FileSystemLoader {
         screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
+        foundationReadiness: profileSummary.foundationReadiness,
       };
     });
   }
