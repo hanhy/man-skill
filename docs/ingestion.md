@@ -118,6 +118,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - freshness uses `latestMaterialId` as a tie-breaker, so same-timestamp imports still show up as stale when drafts lag behind
 - `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
+- top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
 
 Generated draft files now also carry the target person's `displayName` and `summary` in both the memory JSON draft and the voice / soul / skills markdown headers, so the foundation layer keeps a direct identity anchor alongside extracted evidence. Prompt snapshots surface that summary as a one-line `profile summary:` field when it is available, and stale detection now treats profile-metadata changes as draft drift even when no new materials were imported.
 
@@ -152,5 +153,5 @@ Running `node src/index.js` will also expose these generated draft paths under `
 
 ## Current limitation
 
-The update command now creates first-pass drafts from imported materials, but the outputs are still heuristic draft artifacts.
-They are not yet merged into a richer learned memory store, reusable skill schema, or production channel/provider runtime.
+The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup.
+They are still heuristic draft artifacts rather than a fully learned memory store, reusable skill schema, or production channel/provider runtime.

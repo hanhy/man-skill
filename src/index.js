@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { AgentProfile } from './core/agent-profile.js';
 import { MemoryStore } from './core/memory-store.js';
 import { SkillRegistry } from './core/skill-registry.js';
@@ -6,13 +7,14 @@ import { VoiceProfile } from './core/voice-profile.js';
 import { ChannelRegistry } from './core/channel-registry.js';
 import { ModelRegistry } from './core/model-registry.js';
 import { FileSystemLoader } from './core/fs-loader.js';
+import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { PromptAssembler } from './core/prompt-assembler.js';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { createDefaultChannels } from './channels/index.js';
 import { createDefaultProviders } from './models/index.js';
 import { WorkLoop } from './runtime/work-loop.js';
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const [command, subcommand, ...rest] = argv;
   const options = {};
 
@@ -36,7 +38,7 @@ function parseArgs(argv) {
   return { command, subcommand, options };
 }
 
-function relativizeDraftPaths(rootDir, result) {
+export function relativizeDraftPaths(rootDir, result) {
   return {
     ...result,
     memoryDraftPath: result.memoryDraftPath ? path.relative(rootDir, result.memoryDraftPath) : null,
@@ -46,7 +48,7 @@ function relativizeDraftPaths(rootDir, result) {
   };
 }
 
-function runImportCommand(rootDir, subcommand, options) {
+export function runImportCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
 
   if (subcommand === 'manifest') {
@@ -122,7 +124,7 @@ function runImportCommand(rootDir, subcommand, options) {
   throw new Error(`Unsupported import type: ${subcommand}`);
 }
 
-function runUpdateCommand(rootDir, subcommand, options) {
+export function runUpdateCommand(rootDir, subcommand, options) {
   const ingestion = new MaterialIngestion(rootDir);
   const personId = options.person;
 
@@ -165,7 +167,7 @@ function runUpdateCommand(rootDir, subcommand, options) {
   throw new Error(`Unsupported update type: ${subcommand}`);
 }
 
-function buildSummary(rootDir) {
+export function buildSummary(rootDir) {
   const loader = new FileSystemLoader(rootDir);
   const soulDocument = loader.loadSoul();
   const voiceDocument = loader.loadVoice();
@@ -208,6 +210,7 @@ function buildSummary(rootDir) {
     ],
   });
   const profiles = loader.loadProfilesIndex();
+  const foundation = buildFoundationRollup(profiles);
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -218,6 +221,7 @@ function buildSummary(rootDir) {
     memory: memoryIndex,
     skills: skills.summary(),
     profiles,
+    foundationRollup: foundation,
     channels: channels.summary(),
     models: models.summary(),
   });
@@ -227,23 +231,35 @@ function buildSummary(rootDir) {
     memory: memory.summary(),
     skills: skills.summary(),
     voice: voice.summary(),
+    foundation,
     channels: channels.summary(),
     models: models.summary(),
     profiles,
     workLoop: workLoop.summary(),
-    promptPreview: prompt.buildSystemPrompt().slice(0, 400),
+    promptPreview: prompt.buildPreview(1200),
   };
 }
 
-const rootDir = process.cwd();
-const { command, subcommand, options } = parseArgs(process.argv.slice(2));
+export function main(argv = process.argv.slice(2), rootDir = process.cwd()) {
+  const { command, subcommand, options } = parseArgs(argv);
 
-if (command === 'import') {
-  const result = runImportCommand(rootDir, subcommand, options);
-  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
-} else if (command === 'update') {
-  const result = runUpdateCommand(rootDir, subcommand, options);
-  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
-} else {
+  if (command === 'import') {
+    const result = runImportCommand(rootDir, subcommand, options);
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+
+  if (command === 'update') {
+    const result = runUpdateCommand(rootDir, subcommand, options);
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+
   console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+}
+
+const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (isEntrypoint) {
+  main();
 }

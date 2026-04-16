@@ -78,8 +78,46 @@ function buildProfileSnapshots(profiles = []) {
   return profiles.map((profile) => formatProfileSnapshot(profile)).join('\n');
 }
 
+function formatFoundationHighlights(highlights = []) {
+  return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
+}
+
+function buildFoundationRollupBlock(foundationRollup = null) {
+  const memory = foundationRollup?.memory;
+  const voice = foundationRollup?.voice;
+  const soul = foundationRollup?.soul;
+  const skills = foundationRollup?.skills;
+
+  if (!memory && !voice && !soul && !skills) {
+    return null;
+  }
+
+  const totalProfiles = [memory?.profileCount, voice?.profileCount, soul?.profileCount, skills?.profileCount]
+    .filter((value) => Number.isFinite(value))
+    .reduce((maxValue, value) => Math.max(maxValue, value), 0);
+
+  if (totalProfiles === 0) {
+    return null;
+  }
+
+  return [
+    memory
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      : null,
+    voice
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${voice.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      : null,
+    soul
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${soul.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      : null,
+    skills
+      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skills.candidateCount} candidates, highlights: ${formatFoundationHighlights(skills.highlights)}`
+      : null,
+  ].filter(Boolean).join('\n');
+}
+
 export class PromptAssembler {
-  constructor({ profile, soul, voice, memory, skills, channels, models, profiles = [] } = {}) {
+  constructor({ profile, soul, voice, memory, skills, channels, models, profiles = [], foundationRollup = null } = {}) {
     this.profile = profile;
     this.soul = soul;
     this.voice = voice;
@@ -88,10 +126,43 @@ export class PromptAssembler {
     this.channels = channels;
     this.models = models;
     this.profiles = profiles;
+    this.foundationRollup = foundationRollup;
+  }
+
+  buildPreview(maxLength = 1200) {
+    const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const voicePreview = this.voice
+      ? {
+          tone: this.voice.tone,
+          style: this.voice.style,
+          constraints: this.voice.constraints,
+          signatures: this.voice.signatures,
+          languageHints: this.voice.languageHints,
+        }
+      : null;
+
+    return [
+      `Name: ${this.profile.name}`,
+      `Soul summary: ${this.profile.soul}`,
+      '',
+      'Voice profile:',
+      JSON.stringify(voicePreview, null, 2),
+      foundationRollupBlock ? '' : null,
+      foundationRollupBlock ? 'Foundation rollup:' : null,
+      foundationRollupBlock,
+      profileSnapshots ? '' : null,
+      profileSnapshots ? 'Profile foundation snapshots:' : null,
+      profileSnapshots,
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, maxLength);
   }
 
   buildSystemPrompt() {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
 
     return [
       `Name: ${this.profile.name}`,
@@ -111,6 +182,9 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      foundationRollupBlock ? 'Foundation rollup:' : null,
+      foundationRollupBlock,
       '',
       'Profiles:',
       JSON.stringify(this.profiles, null, 2),

@@ -144,8 +144,38 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
         },
       },
     ],
+    foundationRollup: {
+      memory: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        repoStaleProfileCount: 1,
+        totalEntries: 3,
+        highlights: ['Ship the first slice.', 'Direct writing sample.'],
+      },
+      voice: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        highlights: ['[message] Ship the first slice.', 'Tight loops beat big plans.'],
+      },
+      soul: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        highlights: ['[text] Direct writing sample.', 'Tight loops beat big plans.'],
+      },
+      skills: {
+        profileCount: 2,
+        generatedProfileCount: 0,
+        candidateCount: 1,
+        highlights: ['execution heuristic'],
+      },
+    },
   }).buildSystemPrompt();
 
+  assert.match(prompt, /Foundation rollup:/);
+  assert.match(prompt, /memory: 1\/2 generated, 1 repo-stale profiles, 3 entries/);
+  assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
   assert.match(prompt, /Profiles:/);
   assert.match(prompt, /"jane-doe"/);
   assert.match(prompt, /Profile foundation snapshots:/);
