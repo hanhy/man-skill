@@ -282,6 +282,8 @@ type IngestionProfileCommand = {
   displayName?: string | null;
   label?: string | null;
   materialCount?: number;
+  materialTypes?: MaterialTypes;
+  latestMaterialAt?: string | null;
   needsRefresh?: boolean;
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
@@ -682,7 +684,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) => {
       const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
-      return `- ${profile.label ?? profile.personId}: ${actionLabel} ${actionCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`;
+      const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
+      const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}; ${actionLabel} ${actionCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`;
     }),
   ].filter(Boolean).join('\n');
 }

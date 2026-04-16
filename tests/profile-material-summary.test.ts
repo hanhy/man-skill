@@ -298,6 +298,9 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
         {
           personId: 'jane-doe',
           label: 'Jane Doe (jane-doe)',
+          materialCount: 1,
+          materialTypes: { talk: 1 },
+          latestMaterialAt: '2026-04-16T16:00:00.000Z',
           refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
           updateProfileCommand: 'node src/index.js update profile --person jane-doe',
           importMaterialCommand: null,
@@ -305,6 +308,9 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
         {
           personId: 'metadata-only',
           label: 'Metadata Only (metadata-only)',
+          materialCount: 0,
+          materialTypes: {},
+          latestMaterialAt: null,
           refreshFoundationCommand: null,
           updateProfileCommand: 'node src/index.js update profile --person metadata-only',
           importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
@@ -360,8 +366,8 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(prompt, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
-  assert.match(prompt, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
-  assert.match(prompt, /Metadata Only \(metadata-only\): import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
+  assert.match(prompt, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest 2026-04-16T16:00:00\.000Z; refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
+  assert.match(prompt, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
@@ -744,68 +750,60 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   });
 
   const summary = buildSummary(rootDir);
+  const janeCommand = summary.ingestion.profileCommands[0];
+  const metadataOnlyCommand = summary.ingestion.profileCommands[1];
+  const metadataOnlyProfileCommand = summary.ingestion.metadataProfileCommands[0];
 
-  assert.deepEqual(summary.ingestion, {
-    profileCount: 3,
-    importedProfileCount: 2,
-    metadataOnlyProfileCount: 1,
-    readyProfileCount: 1,
-    refreshProfileCount: 1,
-    incompleteProfileCount: 1,
-    supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
-    bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
-    sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
-    importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
-    sampleManifestPath: 'samples/harry-materials.json',
-    sampleManifestPresent: true,
-    sampleManifestStatus: 'loaded',
-    sampleManifestEntryCount: 2,
-    sampleManifestProfileIds: ['harry-han'],
-    sampleManifestError: null,
-    sampleManifestCommand: 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation',
-    sampleTextPath: 'samples/harry-post.txt',
-    sampleTextPresent: true,
-    sampleTextPersonId: 'harry-han',
-    sampleTextCommand: 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation',
-    staleRefreshCommand: 'node src/index.js update foundation --stale',
-    profileCommands: [
-      {
-        personId: 'jane-doe',
-        displayName: 'Jane Doe',
-        label: 'Jane Doe (jane-doe)',
-        materialCount: 1,
-        needsRefresh: true,
-        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
-        updateProfileCommand: 'node src/index.js update profile --person jane-doe',
-        refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
-        importMaterialCommand: null,
-      },
-      {
-        personId: 'metadata-only',
-        displayName: 'Metadata Only',
-        label: 'Metadata Only (metadata-only)',
-        materialCount: 0,
-        needsRefresh: false,
-        missingDrafts: [],
-        updateProfileCommand: 'node src/index.js update profile --person metadata-only',
-        refreshFoundationCommand: null,
-        importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
-      },
-    ],
-    metadataProfileCommands: [
-      {
-        personId: 'metadata-only',
-        displayName: 'Metadata Only',
-        label: 'Metadata Only (metadata-only)',
-        materialCount: 0,
-        needsRefresh: false,
-        missingDrafts: [],
-        updateProfileCommand: 'node src/index.js update profile --person metadata-only',
-        refreshFoundationCommand: null,
-        importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
-      },
-    ],
+  assert.equal(summary.ingestion.profileCount, 3);
+  assert.equal(summary.ingestion.importedProfileCount, 2);
+  assert.equal(summary.ingestion.metadataOnlyProfileCount, 1);
+  assert.equal(summary.ingestion.readyProfileCount, 1);
+  assert.equal(summary.ingestion.refreshProfileCount, 1);
+  assert.equal(summary.ingestion.incompleteProfileCount, 1);
+  assert.deepEqual(summary.ingestion.supportedImportTypes, ['message', 'screenshot', 'talk', 'text']);
+  assert.equal(summary.ingestion.bootstrapProfileCommand, 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"');
+  assert.equal(summary.ingestion.sampleImportCommand, 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation');
+  assert.equal(summary.ingestion.importManifestCommand, 'node src/index.js import manifest --file <manifest.json>');
+  assert.equal(summary.ingestion.sampleManifestPath, 'samples/harry-materials.json');
+  assert.equal(summary.ingestion.sampleManifestPresent, true);
+  assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
+  assert.equal(summary.ingestion.sampleManifestEntryCount, 2);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.equal(summary.ingestion.sampleManifestError, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation');
+  assert.equal(summary.ingestion.sampleTextPath, 'samples/harry-post.txt');
+  assert.equal(summary.ingestion.sampleTextPresent, true);
+  assert.equal(summary.ingestion.sampleTextPersonId, 'harry-han');
+  assert.equal(summary.ingestion.sampleTextCommand, 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation');
+  assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
+
+  assert.deepEqual(janeCommand.materialTypes, { talk: 1 });
+  assert.equal(janeCommand.personId, 'jane-doe');
+  assert.equal(janeCommand.displayName, 'Jane Doe');
+  assert.equal(janeCommand.label, 'Jane Doe (jane-doe)');
+  assert.equal(janeCommand.materialCount, 1);
+  assert.equal(janeCommand.needsRefresh, true);
+  assert.deepEqual(janeCommand.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
+  assert.equal(janeCommand.latestMaterialAt, summary.profiles.find((profile) => profile.id === 'jane-doe')?.latestMaterialAt ?? null);
+  assert.match(janeCommand.latestMaterialAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(janeCommand.updateProfileCommand, 'node src/index.js update profile --person jane-doe');
+  assert.equal(janeCommand.refreshFoundationCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(janeCommand.importMaterialCommand, null);
+
+  assert.deepEqual(metadataOnlyCommand, {
+    personId: 'metadata-only',
+    displayName: 'Metadata Only',
+    label: 'Metadata Only (metadata-only)',
+    materialCount: 0,
+    materialTypes: {},
+    latestMaterialAt: null,
+    needsRefresh: false,
+    missingDrafts: [],
+    updateProfileCommand: 'node src/index.js update profile --person metadata-only',
+    refreshFoundationCommand: null,
+    importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
   });
+  assert.deepEqual(metadataOnlyProfileCommand, metadataOnlyCommand);
 
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
@@ -816,8 +814,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; refresh node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
 });
 
 test('buildSummary keeps the ingestion entrance visible for empty repos', () => {

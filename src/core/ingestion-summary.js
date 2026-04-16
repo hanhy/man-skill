@@ -71,6 +71,8 @@ function buildProfileCommands(profile, options = {}) {
     displayName: profile.profile?.displayName ?? profile.id,
     label: buildProfileLabel(profile),
     materialCount,
+    materialTypes: profile?.materialTypes && typeof profile.materialTypes === 'object' ? { ...profile.materialTypes } : {},
+    latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
