@@ -1,6 +1,18 @@
 import { BaseRegistry } from './base-registry.js';
 
-const DEFAULT_PROVIDERS = [
+export interface ProviderRecord {
+  id: string;
+  name: string;
+  models: string[];
+  status: string;
+  features: string[];
+  defaultModel: string | null;
+  authEnvVar: string | null;
+  modalities: string[];
+  [key: string]: unknown;
+}
+
+const DEFAULT_PROVIDERS: ProviderRecord[] = [
   {
     id: 'openai',
     name: 'OpenAI',
@@ -63,12 +75,12 @@ const DEFAULT_PROVIDERS = [
   },
 ];
 
-export class ModelRegistry extends BaseRegistry {
-  constructor(providers = DEFAULT_PROVIDERS) {
+export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
+  constructor(providers: Array<string | ProviderRecord> = DEFAULT_PROVIDERS) {
     super(providers);
   }
 
-  normalize(provider) {
+  normalize(provider: string | ProviderRecord): ProviderRecord {
     if (typeof provider === 'string') {
       return {
         id: provider,
@@ -93,10 +105,10 @@ export class ModelRegistry extends BaseRegistry {
     };
   }
 
-  summary() {
+  summary(): { providerCount: number; providers: ProviderRecord[] } {
     return {
       providerCount: this.count(),
-      providers: this.list(),
+      providers: this.list() as ProviderRecord[],
     };
   }
 }

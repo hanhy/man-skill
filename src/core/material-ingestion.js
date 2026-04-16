@@ -74,6 +74,40 @@ function sortByNewest(records) {
   );
 }
 
+function summarizeMaterialTypes(records) {
+  return records.reduce((summary, record) => {
+    if (!isNonEmptyString(record?.type)) {
+      return summary;
+    }
+
+    summary[record.type] = (summary[record.type] ?? 0) + 1;
+    return summary;
+  }, {});
+}
+
+function formatMaterialTypes(materialTypes = {}) {
+  const entries = Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) {
+    return 'none';
+  }
+
+  return entries.map(([type, count]) => `${type}:${count}`).join(', ');
+}
+
+function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
+  return [
+    `# ${title}`,
+    '',
+    `Profile: ${normalizedPersonId}`,
+    `Display name: ${profileDocument?.displayName ?? normalizedPersonId}`,
+    `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
+    `Generated at: ${generatedAt}`,
+    `Latest material: ${latestMaterialRecord?.createdAt ?? 'Not set.'} (${latestMaterialRecord?.id ?? 'none'})`,
+    `Source materials: ${materialCount} (${formatMaterialTypes(materialTypes)})`,
+    '',
+  ];
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
@@ -241,7 +275,17 @@ export class MaterialIngestion {
       throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
     }
 
-    const manifestProfiles = Array.isArray(manifest?.profiles) ? manifest.profiles : [];
+    const shorthandProfile = !Array.isArray(manifest) && isNonEmptyString(manifest?.personId)
+      ? {
+          personId: manifest.personId,
+          displayName: manifest.displayName,
+          summary: manifest.summary,
+        }
+      : null;
+    const manifestProfiles = [
+      ...(shorthandProfile ? [shorthandProfile] : []),
+      ...(Array.isArray(manifest?.profiles) ? manifest.profiles : []),
+    ];
     for (const [index, profile] of manifestProfiles.entries()) {
       if (!profile || typeof profile !== 'object') {
         throw new Error(`Manifest profile ${index} must be an object`);
@@ -263,24 +307,26 @@ export class MaterialIngestion {
       throw new Error('Manifest must contain a non-empty entries array');
     }
 
+    const defaultPersonId = shorthandProfile?.personId ?? null;
     const manifestDir = path.dirname(resolvedManifestPath);
     const results = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      if (!isNonEmptyString(entry.personId)) {
+      const resolvedPersonId = entry.personId ?? defaultPersonId;
+      if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
 
-      const normalizedPersonId = slugifyPersonId(entry.personId);
+      const normalizedPersonId = slugifyPersonId(resolvedPersonId);
 
       if (entry.type === 'text') {
         return {
           personId: normalizedPersonId,
           type: 'text',
           ...this.importTextDocument({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             sourceFile: resolveImportFile(manifestDir, entry.file),
             notes: entry.notes ?? null,
           }),
@@ -292,7 +338,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'message',
           ...this.importMessage({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             text: entry.text,
             notes: entry.notes ?? null,
           }),
@@ -304,7 +350,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'talk',
           ...this.importTalkSnippet({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             text: entry.text,
             notes: entry.notes ?? null,
           }),
@@ -316,7 +362,7 @@ export class MaterialIngestion {
           personId: normalizedPersonId,
           type: 'screenshot',
           ...this.importScreenshotSource({
-            personId: entry.personId,
+            personId: resolvedPersonId,
             sourceFile: resolveImportFile(manifestDir, entry.file),
             notes: entry.notes ?? null,
           }),
@@ -345,6 +391,7 @@ export class MaterialIngestion {
 
   refreshFoundationDrafts({ personId }) {
     const normalized = this.ensureProfile(personId);
+    const profileDocument = readJsonIfExists(normalized.profilePath);
     const materialRecords = sortByNewest(this.loadMaterialRecords(normalized.personId));
 
     if (materialRecords.length === 0) {
@@ -360,6 +407,7 @@ export class MaterialIngestion {
     const voiceDraftPath = path.join(voiceDir, 'README.md');
     const soulDraftPath = path.join(soulDir, 'README.md');
     const skillsDraftPath = path.join(skillsDir, 'README.md');
+    const generatedAt = new Date().toISOString();
 
     const memoryEntries = materialRecords.map((record) => ({
       type: record.type,
@@ -367,6 +415,8 @@ export class MaterialIngestion {
       summary: buildExcerpt(record.content ?? record.notes ?? record.sourceFile),
       sourceFile: record.sourceFile ?? null,
     }));
+    const latestMaterialRecord = materialRecords[0] ?? null;
+    const materialTypes = summarizeMaterialTypes(materialRecords);
 
     const voiceSamples = materialRecords
       .filter((record) => ['text', 'message', 'talk'].includes(record.type))
@@ -399,7 +449,12 @@ export class MaterialIngestion {
       JSON.stringify(
         {
           personId: normalized.personId,
-          generatedAt: new Date().toISOString(),
+          displayName: profileDocument?.displayName ?? normalized.personId,
+          summary: profileDocument?.summary ?? null,
+          generatedAt,
+          latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
+          latestMaterialId: latestMaterialRecord?.id ?? null,
+          materialTypes,
           entryCount: memoryEntries.length,
           entries: memoryEntries,
         },
@@ -411,10 +466,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       voiceDraftPath,
       [
-        '# Voice draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Voice draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Representative voice excerpts:',
         ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
       ].join('\n'),
@@ -423,10 +483,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       soulDraftPath,
       [
-        '# Soul draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Soul draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Candidate soul signals:',
         ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
       ].join('\n'),
@@ -435,10 +500,15 @@ export class MaterialIngestion {
     fs.writeFileSync(
       skillsDraftPath,
       [
-        '# Skills draft',
-        '',
-        `Profile: ${normalized.personId}`,
-        '',
+        ...buildDraftHeaderLines({
+          title: 'Skills draft',
+          normalizedPersonId: normalized.personId,
+          profileDocument,
+          generatedAt,
+          latestMaterialRecord,
+          materialCount: materialRecords.length,
+          materialTypes,
+        }),
         'Candidate procedural skills:',
         ...skillSignals.flatMap((signal) => {
           const lines = [];
@@ -459,7 +529,7 @@ export class MaterialIngestion {
       voiceDraftPath,
       soulDraftPath,
       skillsDraftPath,
-      generatedAt: new Date().toISOString(),
+      generatedAt,
     };
   }
 
@@ -467,6 +537,54 @@ export class MaterialIngestion {
     const profilesDir = this.resolve('profiles');
     const profileIds = listDirectoriesIfExists(profilesDir)
       .filter((profileId) => this.loadMaterialRecords(profileId).length > 0);
+
+    return {
+      profileCount: profileIds.length,
+      results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
+    };
+  }
+
+  refreshStaleFoundationDrafts() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir)
+      .filter((profileId) => {
+        const materialRecords = this.loadMaterialRecords(profileId);
+        if (materialRecords.length === 0) {
+          return false;
+        }
+
+        const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
+        const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+        const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
+
+        const memoryDraftPath = this.resolve('profiles', profileId, 'memory', 'long-term', 'foundation.json');
+        const voiceDraftPath = this.resolve('profiles', profileId, 'voice', 'README.md');
+        const soulDraftPath = this.resolve('profiles', profileId, 'soul', 'README.md');
+        const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
+
+        if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
+          return true;
+        }
+
+        const memoryDraft = readJsonIfExists(memoryDraftPath);
+        if (!memoryDraft?.generatedAt) {
+          return true;
+        }
+
+        if ((memoryDraft.displayName ?? profileId) !== (profileDocument?.displayName ?? profileId)) {
+          return true;
+        }
+
+        if ((memoryDraft.summary ?? null) !== (profileDocument?.summary ?? null)) {
+          return true;
+        }
+
+        if (memoryDraft.latestMaterialId && latestMaterialRecord?.id) {
+          return memoryDraft.latestMaterialId !== latestMaterialRecord.id;
+        }
+
+        return Boolean(latestMaterialAt) && latestMaterialAt > memoryDraft.generatedAt;
+      });
 
     return {
       profileCount: profileIds.length,

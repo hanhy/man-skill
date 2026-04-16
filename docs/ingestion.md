@@ -68,7 +68,28 @@ Manifest shape:
 }
 ```
 
+Single-target shorthand is also supported when all entries belong to one person:
+
+```json
+{
+  "personId": "harry-han",
+  "displayName": "Harry Han",
+  "summary": "Direct operator with a bias for momentum.",
+  "entries": [
+    {
+      "type": "message",
+      "text": "Ship the thin slice first."
+    },
+    {
+      "type": "text",
+      "file": "./post.txt"
+    }
+  ]
+}
+```
+
 - `profiles` is optional and lets you seed target-person metadata before material import
+- top-level `personId` / `displayName` / `summary` act as a single-target shorthand and let `entries[]` omit `personId`
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - manifest imports can span multiple target profiles in one pass
@@ -77,9 +98,10 @@ Manifest shape:
 
 ```bash
 node src/index.js update profile --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
+node src/index.js update profile --person harry-han --summary "Direct operator with a bias for fast feedback loops." --refresh-foundation
 ```
 
-This updates `profiles/<person-id>/profile.json` without requiring a new material import.
+This updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
 
 ## What happens
 
@@ -109,16 +131,19 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `profile.displayName` / `profile.summary` from `profile.json`
 - `materialTypes` counts by imported type
 - `latestMaterialAt` so the newest profile activity is visible
-- `foundationReadiness.memory` candidate counts and newest material types
+- `latestMaterialId` so the newest imported record can be tied back to stale-draft detection and draft provenance
+- `foundationReadiness.memory` candidate counts, newest material types, and lightweight text-first sample summaries
 - `foundationReadiness.voice` sample excerpts from text / message / talk materials
 - `foundationReadiness.soul` sample excerpts from text / talk materials
 - `foundationReadiness.skills` procedural-note candidates from talk materials
 - `foundationDrafts` relative paths for generated memory / voice / soul / skills artifacts
 - `foundationDraftStatus` with `generatedAt`, `missingDrafts`, and `needsRefresh` so stale profiles are visible
-- `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
+  - freshness uses `latestMaterialId` as a tie-breaker, so same-timestamp imports still show up as stale when drafts lag behind
+- `foundationDraftSummaries.memory` generated entry counts, provenance metadata (`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`), plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
+- top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
 
-This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials. The assembled system prompt also turns these fields into compact per-profile foundation snapshots so a runtime can quickly see fresh vs stale drafts, the top extracted highlights, and the human-readable target person name when it is available.
+Generated draft files now also carry the target person's `displayName` and `summary` in both the memory JSON draft and the voice / soul / skills markdown headers, so the foundation layer keeps a direct identity anchor alongside extracted evidence. The memory draft also records `materialTypes`, while the markdown drafts stamp `Generated at`, `Latest material`, and `Source materials` headers for provenance. Prompt snapshots surface that summary as a one-line `profile summary:` field when it is available, and stale detection now treats profile-metadata changes as draft drift even when no new materials were imported.
 
 ## Foundation draft update command
 
@@ -134,6 +159,12 @@ To refresh every profile that already has imported materials:
 node src/index.js update foundation --all
 ```
 
+To refresh only profiles that are missing drafts or have newer materials than their last generated foundation draft:
+
+```bash
+node src/index.js update foundation --stale
+```
+
 This writes:
 
 - `profiles/<person-id>/memory/long-term/foundation.json`
@@ -145,5 +176,5 @@ Running `node src/index.js` will also expose these generated draft paths under `
 
 ## Current limitation
 
-The update command now creates first-pass drafts from imported materials, but the outputs are still heuristic draft artifacts.
-They are not yet merged into a richer learned memory store, reusable skill schema, or production channel/provider runtime.
+The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup.
+They are still heuristic draft artifacts rather than a fully learned memory store, reusable skill schema, or production channel/provider runtime.

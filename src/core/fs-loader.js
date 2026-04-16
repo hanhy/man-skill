@@ -81,6 +81,11 @@ function summarizeFoundationReadiness(materialRecords) {
     memory: {
       candidateCount: memoryRecords.length,
       latestTypes: memoryRecords.slice(0, 3).map((record) => record.type),
+      sampleSummaries: memoryRecords
+        .filter((record) => record.type !== 'screenshot')
+        .map((record) => buildExcerpt(record.content ?? record.notes ?? record.sourceFile))
+        .filter(Boolean)
+        .slice(0, 3),
     },
     voice: {
       candidateCount: voiceRecords.length,
@@ -115,21 +120,17 @@ function loadMaterialSummaries(materialsDir) {
   const materialRecords = materialFiles
     .map((name) => readJsonIfExists(path.join(materialsDir, name)))
     .filter(Boolean);
+  const newestRecords = sortByNewest(materialRecords);
 
   const materialTypes = {};
   for (const record of materialRecords) {
     materialTypes[record.type] = (materialTypes[record.type] ?? 0) + 1;
   }
 
-  const latestMaterialAt = materialRecords
-    .map((record) => record.createdAt)
-    .filter(Boolean)
-    .sort()
-    .at(-1) ?? null;
-
   return {
     materialTypes,
-    latestMaterialAt,
+    latestMaterialAt: newestRecords[0]?.createdAt ?? null,
+    latestMaterialId: newestRecords[0]?.id ?? null,
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
   };
 }
@@ -166,7 +167,51 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
-function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null) {
+function parseMaterialTypes(value) {
+  if (!isNonEmptyString(value) || value === 'none') {
+    return {};
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .reduce((summary, entry) => {
+      const [type, count] = entry.split(':');
+      if (!isNonEmptyString(type) || !isNonEmptyString(count)) {
+        return summary;
+      }
+
+      const parsedCount = Number.parseInt(count, 10);
+      if (!Number.isFinite(parsedCount)) {
+        return summary;
+      }
+
+      summary[type] = parsedCount;
+      return summary;
+    }, {});
+}
+
+function parseDraftMetadata(filePath) {
+  const content = readTextIfExists(filePath);
+  if (!content) {
+    return null;
+  }
+
+  const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
+  const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
+  const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
+
+  return {
+    generatedAt: generatedAtMatch?.[1] ?? null,
+    latestMaterialAt: latestMaterialMatch?.[1] ?? null,
+    latestMaterialId: latestMaterialMatch?.[2] ?? null,
+    sourceCount: sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0,
+    materialTypes: parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null),
+  };
+}
+
+function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -183,13 +228,48 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null) 
     missingDrafts.add('memory');
   }
   const generatedAt = memoryDraft?.generatedAt ?? null;
-  const needsRefresh = missingDrafts.size > 0 || (Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt));
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+  const hasProfileMetadataMismatch = Boolean(memoryDraft)
+    && (
+      (memoryDraft.displayName ?? profileId) !== expectedDisplayName
+      || (memoryDraft.summary ?? null) !== expectedSummary
+    );
+  const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
+    ? memoryDraft.latestMaterialId !== latestMaterialId
+    : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch;
 
   return {
     generatedAt,
     complete: missingDrafts.size === 0,
     missingDrafts: [...missingDrafts].sort(),
     needsRefresh,
+  };
+}
+
+function summarizeLegacyMemoryDraft(memoryDraft) {
+  const entries = Array.isArray(memoryDraft?.entries) ? memoryDraft.entries : [];
+  const materialTypes = memoryDraft?.materialTypes && Object.keys(memoryDraft.materialTypes).length > 0
+    ? memoryDraft.materialTypes
+    : entries.reduce((summary, entry) => {
+        if (!isNonEmptyString(entry?.type)) {
+          return summary;
+        }
+
+        summary[entry.type] = (summary[entry.type] ?? 0) + 1;
+        return summary;
+      }, {});
+  const sourceCount = Object.keys(materialTypes).length > 0
+    ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
+    : (memoryDraft?.entryCount ?? entries.length ?? 0);
+
+  return {
+    generatedAt: memoryDraft?.generatedAt ?? null,
+    latestMaterialAt: memoryDraft?.latestMaterialAt ?? null,
+    latestMaterialId: memoryDraft?.latestMaterialId ?? null,
+    sourceCount,
+    materialTypes,
   };
 }
 
@@ -200,11 +280,20 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
   const skillsDraftPath = path.join(rootDir, 'profiles', profileId, 'skills', 'README.md');
 
   const memoryDraft = readJsonIfExists(memoryDraftPath);
+  const memoryMetadata = summarizeLegacyMemoryDraft(memoryDraft);
+  const voiceMetadata = parseDraftMetadata(voiceDraftPath);
+  const soulMetadata = parseDraftMetadata(soulDraftPath);
+  const skillsMetadata = parseDraftMetadata(skillsDraftPath);
 
   return {
     memory: memoryDraft
       ? {
           generated: true,
+          generatedAt: memoryMetadata.generatedAt,
+          latestMaterialAt: memoryMetadata.latestMaterialAt,
+          latestMaterialId: memoryMetadata.latestMaterialId,
+          sourceCount: memoryMetadata.sourceCount,
+          materialTypes: memoryMetadata.materialTypes,
           entryCount: memoryDraft.entryCount ?? 0,
           latestSummaries: (memoryDraft.entries ?? [])
             .filter((entry) => entry.type !== 'screenshot')
@@ -212,25 +301,49 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
             .filter(Boolean)
             .slice(0, 3),
         }
-      : { generated: false, entryCount: 0, latestSummaries: [] },
+      : {
+          generated: false,
+          generatedAt: null,
+          latestMaterialAt: null,
+          latestMaterialId: null,
+          sourceCount: 0,
+          materialTypes: {},
+          entryCount: 0,
+          latestSummaries: [],
+        },
     voice: fs.existsSync(voiceDraftPath)
       ? {
           generated: true,
+          generatedAt: voiceMetadata?.generatedAt ?? null,
+          latestMaterialAt: voiceMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: voiceMetadata?.latestMaterialId ?? null,
+          sourceCount: voiceMetadata?.sourceCount ?? 0,
+          materialTypes: voiceMetadata?.materialTypes ?? {},
           highlights: readMarkdownHighlights(voiceDraftPath),
         }
-      : { generated: false, highlights: [] },
+      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
     soul: fs.existsSync(soulDraftPath)
       ? {
           generated: true,
+          generatedAt: soulMetadata?.generatedAt ?? null,
+          latestMaterialAt: soulMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: soulMetadata?.latestMaterialId ?? null,
+          sourceCount: soulMetadata?.sourceCount ?? 0,
+          materialTypes: soulMetadata?.materialTypes ?? {},
           highlights: readMarkdownHighlights(soulDraftPath),
         }
-      : { generated: false, highlights: [] },
+      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
     skills: fs.existsSync(skillsDraftPath)
       ? {
           generated: true,
+          generatedAt: skillsMetadata?.generatedAt ?? null,
+          latestMaterialAt: skillsMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: skillsMetadata?.latestMaterialId ?? null,
+          sourceCount: skillsMetadata?.sourceCount ?? 0,
+          materialTypes: skillsMetadata?.materialTypes ?? {},
           highlights: readMarkdownHighlights(skillsDraftPath),
         }
-      : { generated: false, highlights: [] },
+      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
   };
 }
 
@@ -281,8 +394,15 @@ export class FileSystemLoader {
         screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
+        latestMaterialId: profileSummary.latestMaterialId,
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
-        foundationDraftStatus: loadFoundationDraftStatus(this.rootDir, profileId, profileSummary.latestMaterialAt),
+        foundationDraftStatus: loadFoundationDraftStatus(
+          this.rootDir,
+          profileId,
+          profileSummary.latestMaterialAt,
+          profileSummary.latestMaterialId,
+          profileDocument,
+        ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
       };

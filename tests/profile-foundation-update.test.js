@@ -21,6 +21,11 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   const sourceTextPath = path.join(rootDir, 'sample.txt');
   fs.writeFileSync(sourceTextPath, 'Harry prefers blunt execution over long debate.');
 
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
   ingestion.importTextDocument({
     personId: 'Harry Han',
     sourceFile: sourceTextPath,
@@ -53,11 +58,23 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
 
   const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
   assert.equal(memoryDraft.personId, 'harry-han');
+  assert.equal(memoryDraft.displayName, 'Harry Han');
+  assert.equal(memoryDraft.summary, 'Direct operator with a bias for momentum.');
   assert.equal(memoryDraft.entryCount, 3);
+  assert.deepEqual(memoryDraft.materialTypes, {
+    message: 1,
+    talk: 1,
+    text: 1,
+  });
   assert.deepEqual(memoryDraft.entries.map((entry) => entry.type).sort(), ['message', 'talk', 'text']);
   assert.equal(memoryDraft.entries.some((entry) => /Cut the scope, keep the momentum/.test(entry.summary)), true);
 
   const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(voiceDraft, /Generated at: /);
+  assert.match(voiceDraft, /Latest material: .*\(.+\)/);
+  assert.match(voiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
+  assert.match(voiceDraft, /Display name: Harry Han/);
+  assert.match(voiceDraft, /Summary: Direct operator with a bias for momentum\./);
   assert.match(voiceDraft, /Representative voice excerpts/);
   assert.match(voiceDraft, /Ship the thin slice first\./);
   assert.match(voiceDraft, /Cut the scope, keep the momentum/);
@@ -152,6 +169,176 @@ test('CLI update foundation --all writes derived drafts for every profile with i
   assert.equal(result.results.every((entry) => /profiles\/.+\/voice\/README\.md$/.test(entry.voiceDraftPath)), true);
 });
 
+test('refreshStaleFoundationDrafts updates only profiles with stale or missing drafts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  const freshResult = ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  const staleInitial = ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['missing-drafts', 'stale-person']);
+
+  const refreshedStale = result.results.find((entry) => entry.personId === 'stale-person');
+  assert.equal(refreshedStale.generatedAt > staleInitial.generatedAt, true);
+
+  const staleMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'stale-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(staleMemoryDraft.entryCount, 2);
+
+  const freshMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'fresh-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
+});
+
+test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const RealDate = Date;
+  const fixedIso = '2026-04-16T15:00:00.000Z';
+
+  global.Date = class extends RealDate {
+    constructor(value) {
+      super(value ?? fixedIso);
+    }
+
+    static now() {
+      return new RealDate(fixedIso).valueOf();
+    }
+
+    static parse(value) {
+      return RealDate.parse(value);
+    }
+
+    static UTC(...args) {
+      return RealDate.UTC(...args);
+    }
+  };
+
+  try {
+    ingestion.importMessage({
+      personId: 'Stale Person',
+      text: 'Ship the first slice.',
+    });
+    ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+    ingestion.importTalkSnippet({
+      personId: 'Stale Person',
+      text: 'Keep the feedback loop short.',
+      notes: 'execution heuristic',
+    });
+  } finally {
+    global.Date = RealDate;
+  }
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['stale-person']);
+
+  const staleMemoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'stale-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(staleMemoryDraft.entryCount, 2);
+  assert.equal(staleMemoryDraft.latestMaterialId.endsWith('-talk'), true);
+});
+
+test('CLI update foundation --stale refreshes only profiles that need draft updates', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'foundation', '--stale'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId).sort(), ['missing-drafts', 'stale-person']);
+  assert.equal(result.results.every((entry) => /profiles\/.+\/memory\/long-term\/foundation\.json$/.test(entry.memoryDraftPath)), true);
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when target metadata changes after draft generation', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for fast feedback loops.',
+  });
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const memoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(memoryDraft.summary, 'Direct operator with a bias for fast feedback loops.');
+});
+
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
   const rootDir = makeTempRepo();
 
@@ -233,6 +420,51 @@ test('CLI update profile writes target-person metadata into profile.json', () =>
   assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
+test('CLI update profile can refresh foundation drafts after metadata changes', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'profile',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for fast feedback loops.',
+      '--refresh-foundation',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for fast feedback loops.');
+  assert.match(result.foundationRefresh.memoryDraftPath, /profiles\/harry-han\/memory\/long-term\/foundation\.json$/);
+
+  const memoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(memoryDraft.summary, 'Direct operator with a bias for fast feedback loops.');
+  assert.equal(memoryDraft.generatedAt >= result.profile.updatedAt, true);
+});
+
 test('CLI import manifest can seed profile metadata before importing materials', () => {
   const rootDir = makeTempRepo();
 
@@ -278,4 +510,56 @@ test('CLI import manifest can seed profile metadata before importing materials',
   const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
   assert.equal(profile.displayName, 'Harry Han');
   assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+});
+
+test('CLI import manifest supports single-target shorthand metadata and inherited personId entries', () => {
+  const rootDir = makeTempRepo();
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        summary: 'Direct operator with a bias for momentum.',
+        entries: [
+          {
+            type: 'message',
+            text: 'Ship the thin slice first.',
+          },
+          {
+            type: 'text',
+            file: './post.txt',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', './materials.json', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.displayName, 'Harry Han');
+  assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
+
+  const memoryDraft = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
+  );
+  assert.equal(memoryDraft.displayName, 'Harry Han');
+  assert.equal(memoryDraft.entryCount, 2);
 });
