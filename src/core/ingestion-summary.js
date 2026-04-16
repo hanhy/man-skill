@@ -23,6 +23,13 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         .filter(([filePath, personId]) => typeof filePath === 'string' && filePath.trim().length > 0 && typeof personId === 'string' && personId.trim().length > 0),
     )
     : {};
+  const normalizedMaterialTypes = sampleManifest?.materialTypes && typeof sampleManifest.materialTypes === 'object'
+    ? Object.fromEntries(
+      Object.entries(sampleManifest.materialTypes)
+        .filter(([type, count]) => typeof type === 'string' && type.trim().length > 0 && Number.isFinite(count) && count > 0)
+        .sort(([left], [right]) => left.localeCompare(right)),
+    )
+    : {};
 
   return {
     path: normalizedPath,
@@ -30,6 +37,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     status: sampleManifest?.status ?? (normalizedPath ? 'loaded' : 'missing'),
     entryCount: Number.isFinite(sampleManifest?.entryCount) ? sampleManifest.entryCount : 0,
     profileIds: normalizedProfileIds,
+    materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
   };
@@ -152,6 +160,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleManifestStatus: sampleManifest.status,
     sampleManifestEntryCount: sampleManifest.entryCount,
     sampleManifestProfileIds: sampleManifest.profileIds,
+    sampleManifestMaterialTypes: sampleManifest.materialTypes,
     sampleManifestError: sampleManifest.error,
     sampleStarterCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'

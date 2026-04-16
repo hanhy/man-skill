@@ -307,6 +307,7 @@ type IngestionSummary = {
   sampleManifestStatus?: 'loaded' | 'missing' | 'invalid' | string;
   sampleManifestEntryCount?: number;
   sampleManifestProfileIds?: string[];
+  sampleManifestMaterialTypes?: MaterialTypes;
   sampleManifestError?: string | null;
   sampleStarterCommand?: string | null;
   sampleStarterSource?: string | null;
@@ -678,7 +679,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
-      ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${(ingestion.sampleManifestProfileIds ?? []).length > 0 ? ` for ${(ingestion.sampleManifestProfileIds ?? []).join(', ')}` : ''} -> ${ingestion.sampleManifestCommand}`
+      ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${(ingestion.sampleManifestProfileIds ?? []).length > 0 ? ` for ${(ingestion.sampleManifestProfileIds ?? []).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`
       : null,
     ingestion.sampleTextPresent && ingestion.sampleTextCommand
       ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`

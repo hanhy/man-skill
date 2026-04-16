@@ -798,6 +798,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
   assert.equal(summary.ingestion.sampleManifestEntryCount, 2);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, { message: 1, text: 1 });
   assert.equal(summary.ingestion.sampleManifestError, null);
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
   assert.equal(summary.ingestion.sampleStarterSource, 'manifest');
@@ -844,7 +845,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\]/);
-  assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han \(message:1, text:1\) -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; refresh node src\/index\.js update foundation --person jane-doe/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
@@ -871,6 +872,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleManifestStatus: 'missing',
     sampleManifestEntryCount: 0,
     sampleManifestProfileIds: [],
+    sampleManifestMaterialTypes: {},
     sampleManifestError: null,
     sampleStarterCommand: null,
     sampleStarterSource: null,
@@ -904,6 +906,7 @@ test('buildSummary reports invalid sample manifests without advertising a broken
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.ingestion.sampleManifestEntryCount, 0);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
+  assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, {});
   assert.equal(typeof summary.ingestion.sampleManifestError, 'string');
   assert.equal(summary.ingestion.sampleStarterCommand, null);
   assert.equal(summary.ingestion.sampleStarterSource, null);
@@ -945,12 +948,13 @@ test('buildSummary falls back to another valid sample manifest when the canonica
   assert.equal(summary.ingestion.sampleManifestError, null);
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
   assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, { text: 1 });
   assert.equal(summary.ingestion.sampleTextPath, 'samples/starter-post.txt');
   assert.equal(summary.ingestion.sampleTextPresent, true);
   assert.equal(summary.ingestion.sampleTextPersonId, 'starter-person');
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\]/);
-  assert.match(summary.promptPreview, /sample manifest: 1 entry for starter-person -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample manifest: 1 entry for starter-person \(text:1\) -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: starter-person -> node src\/index\.js import text --person starter-person --file 'samples\/starter-post\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /sample manifest invalid: .*harry-materials\.json/);
 });
@@ -1048,7 +1052,7 @@ test('buildSummary shell-quotes sample ingestion commands when discovered sample
   assert.equal(summary.ingestion.sampleTextPath, 'samples/harry sample post.txt');
   assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/harry sample materials.json' --refresh-foundation");
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry sample post.txt' --refresh-foundation");
-  assert.match(summary.promptPreview, /sample manifest: 1 entry for harry-han -> node src\/index\.js import manifest --file 'samples\/harry sample materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample manifest: 1 entry for harry-han \(text:1\) -> node src\/index\.js import manifest --file 'samples\/harry sample materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry sample post\.txt' --refresh-foundation/);
 });
 

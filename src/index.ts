@@ -39,6 +39,7 @@ interface SampleManifestSummary {
   status: 'loaded' | 'missing' | 'invalid';
   entryCount: number;
   profileIds: string[];
+  materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
   error: string | null;
 }
@@ -78,6 +79,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      materialTypes: {},
       textFilePersonIds: {},
       error: null,
     };
@@ -89,6 +91,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      materialTypes: {},
       textFilePersonIds: {},
       error: null,
     };
@@ -102,6 +105,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      materialTypes: {},
       textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
     };
@@ -109,6 +113,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
   try {
     const profileIds = new Set<string>();
+    const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
 
@@ -171,6 +176,8 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         throw new Error(`Unsupported manifest entry type at index ${index}: ${entryRecord.type}`);
       }
 
+      materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
+
       if (entryRecord.type === 'text' && typeof entryRecord.file === 'string' && entryRecord.file.trim().length > 0) {
         const resolvedFilePath = path.resolve(manifestDir, entryRecord.file);
         const relativeFilePath = path.relative(rootDir, resolvedFilePath);
@@ -184,6 +191,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'loaded',
       entryCount: entries.length,
       profileIds: [...profileIds].sort(),
+      materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
       error: null,
     };
@@ -192,6 +200,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      materialTypes: {},
       textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };

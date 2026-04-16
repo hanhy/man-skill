@@ -59,7 +59,7 @@ The project aims to keep personal-agent construction simple:
 - load memory index from `memory/`
 - discover local skill folders from `skills/`
 - distinguish documented skills (`skills/<name>/SKILL.md`) from placeholder skill directories when computing `foundation.core` readiness
-- summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, an optional checked-in sample manifest command, a shorter `import sample` starter command that wraps that manifest when it validates, a checked-in sample text command, and the first actionable per-profile `update profile` / `update foundation` commands
+- summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, an optional checked-in sample manifest command, that sample manifest's typed material mix, a shorter `import sample` starter command that wraps that manifest when it validates, a checked-in sample text command, and the first actionable per-profile `update profile` / `update foundation` commands
 - summarize per-profile material counts plus foundation-readiness signals for memory / voice / soul / skills
 - derive first-pass per-profile foundation drafts under `profiles/<person-id>/memory|voice|soul|skills/`
 - expose generated draft paths, freshness status, and lightweight draft summaries back through `loadProfilesIndex()` for prompt/runtime consumption
