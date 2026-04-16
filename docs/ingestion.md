@@ -63,7 +63,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 
-This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials.
+This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials. The assembled system prompt also turns these fields into compact per-profile foundation snapshots so a runtime can quickly see fresh vs stale drafts and the top extracted highlights.
 
 ## Foundation draft update command
 

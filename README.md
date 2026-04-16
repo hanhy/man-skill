@@ -37,7 +37,7 @@ node src/index.js update foundation --all
 node src/index.js
 ```
 
-This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. Generated foundation drafts are also surfaced back through `profiles[].foundationDrafts`, `profiles[].foundationDraftStatus`, and `profiles[].foundationDraftSummaries` so the next prompt/runtime layer can see both draft content and whether those drafts are stale.
+This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. Generated foundation drafts are also surfaced back through `profiles[].foundationDrafts`, `profiles[].foundationDraftStatus`, and `profiles[].foundationDraftSummaries` so the next prompt/runtime layer can see both draft content and whether those drafts are stale. The prompt preview now also emits compact per-profile foundation snapshots, making freshness, missing drafts, and key voice/skill signals visible without scanning the full raw profile JSON.
 
 ---
 

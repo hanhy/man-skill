@@ -81,7 +81,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
-test('PromptAssembler includes profile material summaries when provided', () => {
+test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },
@@ -110,17 +110,47 @@ test('PromptAssembler includes profile material summaries when provided', () => 
         foundationDraftSummaries: {
           memory: { generated: true, entryCount: 3, latestSummaries: ['Ship the first slice.', 'Direct writing sample.'] },
           voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
+          soul: { generated: true, highlights: ['- [text] Direct writing sample.'] },
+          skills: { generated: false, highlights: [] },
+        },
+      },
+      {
+        id: 'jane-doe',
+        materialCount: 1,
+        materialTypes: { talk: 1 },
+        latestMaterialAt: '2026-04-16T16:00:00.000Z',
+        foundationReadiness: {
+          memory: { candidateCount: 1, latestTypes: ['talk'] },
+          voice: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+          skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+        },
+        foundationDraftStatus: {
+          generatedAt: null,
+          complete: false,
+          missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+          needsRefresh: true,
+        },
+        foundationDraftSummaries: {
+          memory: { generated: false, entryCount: 0, latestSummaries: [] },
+          voice: { generated: false, highlights: [] },
+          soul: { generated: false, highlights: [] },
+          skills: { generated: false, highlights: [] },
         },
       },
     ],
   }).buildSystemPrompt();
 
   assert.match(prompt, /Profiles:/);
-  assert.match(prompt, /harry-han/);
-  assert.match(prompt, /"screenshot": 1/);
-  assert.match(prompt, /foundationReadiness/);
-  assert.match(prompt, /foundationDraftStatus/);
-  assert.match(prompt, /foundationDraftSummaries/);
+  assert.match(prompt, /"jane-doe"/);
+  assert.match(prompt, /Profile foundation snapshots:/);
+  assert.match(prompt, /- harry-han: 3 materials \(message:1, screenshot:1, text:1\)/);
+  assert.match(prompt, /drafts: fresh, complete, generated 2026-04-16T15:00:01.000Z/);
+  assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
+  assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
+  assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
+  assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice/);
+  assert.match(prompt, /skills signals: execution heuristic/);
   assert.match(prompt, /Ship the first slice\./);
 });
 
