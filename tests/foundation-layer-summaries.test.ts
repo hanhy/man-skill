@@ -7,6 +7,7 @@ import path from 'node:path';
 import { AgentProfile } from '../src/core/agent-profile.ts';
 import { MemoryStore } from '../src/core/memory-store.ts';
 import { SkillRegistry } from '../src/core/skill-registry.ts';
+import { SoulProfile } from '../src/core/soul-profile.ts';
 import { VoiceProfile } from '../src/core/voice-profile.ts';
 import { buildSummary } from '../src/index.js';
 
@@ -28,6 +29,7 @@ function seedMinimalRepo(rootDir: string) {
 }
 
 test('foundation layer primitives expose readiness-oriented summary metadata', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nLead with fidelity.\n\n## Core truths\n\nKeep the system inspectable.\nPrefer small verified slices.\n\n## Boundaries\n\n- Do not bluff certainty.\n- Do not hide provenance.\n\n## Vibe\n\nGrounded and direct.\n\n## Continuity\n\nCarry durable lessons forward.\n`);
   const voice = new VoiceProfile({
     tone: 'human',
     style: 'precise',
@@ -50,6 +52,20 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     'delivery',
     { id: 'foundation', name: 'Foundation', description: 'core foundations', status: 'custom' },
   ]);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Lead with fidelity.',
+    coreTruths: ['Keep the system inspectable.', 'Prefer small verified slices.'],
+    boundaries: ['Do not bluff certainty.', 'Do not hide provenance.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 2,
+    boundaryCount: 2,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
 
   assert.deepEqual(memory.summary(), {
     shortTermEntries: 1,
@@ -121,6 +137,20 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     totalEntries: 2,
     shortTermPresent: true,
     longTermPresent: true,
+  });
+
+  assert.deepEqual(summary.soul, {
+    excerpt: 'Serve faithfully.',
+    coreTruths: [],
+    boundaries: [],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 0,
+    boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 0,
+    hasGuidance: true,
   });
 
   assert.deepEqual(summary.voice, {

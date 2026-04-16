@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { AgentProfile } from './core/agent-profile.ts';
 import { MemoryStore } from './core/memory-store.ts';
 import { SkillRegistry } from './core/skill-registry.ts';
+import { SoulProfile } from './core/soul-profile.ts';
 import { VoiceProfile } from './core/voice-profile.ts';
 import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
@@ -492,6 +493,7 @@ export function buildSummary(rootDir: string) {
     signatures: ['consistent persona', 'compact but vivid phrasing'],
     languageHints: ['preserve bilingual or multilingual behavior when present'],
   });
+  const soul = SoulProfile.fromDocument(soulDocument);
 
   const profile = new AgentProfile({
     name: 'ManSkill',
@@ -618,6 +620,7 @@ export function buildSummary(rootDir: string) {
 
   return {
     profile: profile.summary(),
+    soul: soul.summary(),
     memory: memory.summary(),
     skills: skills.summary(),
     voice: voice.summary(),
