@@ -37,7 +37,7 @@ node src/index.js update foundation --all
 node src/index.js
 ```
 
-This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer.
+This creates a profile-specific material structure under `profiles/<person-id>/` and exposes a repo summary that can later feed the learning/update layer. Generated foundation drafts are also surfaced back through `profiles[].foundationDrafts` and `profiles[].foundationDraftSummaries` so the next prompt/runtime layer can see draft content, not just file paths.
 
 ---
 

@@ -149,6 +149,60 @@ function loadFoundationDrafts(rootDir, profileId) {
   );
 }
 
+function readMarkdownHighlights(filePath, limit = 3) {
+  const content = readTextIfExists(filePath);
+  if (!content) {
+    return [];
+  }
+
+  return content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('- '))
+    .slice(0, limit);
+}
+
+function loadFoundationDraftSummaries(rootDir, profileId) {
+  const memoryDraftPath = path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json');
+  const voiceDraftPath = path.join(rootDir, 'profiles', profileId, 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', profileId, 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', profileId, 'skills', 'README.md');
+
+  const memoryDraft = readJsonIfExists(memoryDraftPath);
+
+  return {
+    memory: memoryDraft
+      ? {
+          generated: true,
+          entryCount: memoryDraft.entryCount ?? 0,
+          latestSummaries: (memoryDraft.entries ?? [])
+            .filter((entry) => entry.type !== 'screenshot')
+            .map((entry) => entry.summary)
+            .filter(Boolean)
+            .slice(0, 3),
+        }
+      : { generated: false, entryCount: 0, latestSummaries: [] },
+    voice: fs.existsSync(voiceDraftPath)
+      ? {
+          generated: true,
+          highlights: readMarkdownHighlights(voiceDraftPath),
+        }
+      : { generated: false, highlights: [] },
+    soul: fs.existsSync(soulDraftPath)
+      ? {
+          generated: true,
+          highlights: readMarkdownHighlights(soulDraftPath),
+        }
+      : { generated: false, highlights: [] },
+    skills: fs.existsSync(skillsDraftPath)
+      ? {
+          generated: true,
+          highlights: readMarkdownHighlights(skillsDraftPath),
+        }
+      : { generated: false, highlights: [] },
+  };
+}
+
 export class FileSystemLoader {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -195,6 +249,7 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
+        foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,
       };
     });

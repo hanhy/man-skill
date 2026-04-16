@@ -58,6 +58,9 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationReadiness.voice` sample excerpts from text / message / talk materials
 - `foundationReadiness.soul` sample excerpts from text / talk materials
 - `foundationReadiness.skills` procedural-note candidates from talk materials
+- `foundationDrafts` relative paths for generated memory / voice / soul / skills artifacts
+- `foundationDraftSummaries.memory` generated entry counts plus latest textual summaries
+- `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
 
 This makes ingestion state visible to the next learning/update layer and gives the memory / voice / soul / skills foundation a first concrete bridge from raw materials.
 

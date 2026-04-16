@@ -45,6 +45,22 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     soul: 'profiles/harry-han/soul/README.md',
     skills: 'profiles/harry-han/skills/README.md',
   });
+  assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+  assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
+  assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
+    '- [message] Ship the first slice.',
+    '- [text] Direct writing sample.',
+  ]);
+  assert.deepEqual(profile.foundationDraftSummaries.soul, {
+    generated: true,
+    highlights: ['- [text] Direct writing sample.'],
+  });
+  assert.deepEqual(profile.foundationDraftSummaries.skills, {
+    generated: true,
+    highlights: [],
+  });
   assert.deepEqual(profile.foundationReadiness.memory.latestTypes.slice().sort(), ['message', 'screenshot', 'text']);
   assert.equal(profile.foundationReadiness.memory.candidateCount, 3);
   assert.deepEqual(profile.foundationReadiness.voice.sampleTypes.slice().sort(), ['message', 'text']);
@@ -81,6 +97,10 @@ test('PromptAssembler includes profile material summaries when provided', () => 
           soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Direct writing sample.'] },
           skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
         },
+        foundationDraftSummaries: {
+          memory: { generated: true, entryCount: 3, latestSummaries: ['Ship the first slice.', 'Direct writing sample.'] },
+          voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
+        },
       },
     ],
   }).buildSystemPrompt();
@@ -89,7 +109,8 @@ test('PromptAssembler includes profile material summaries when provided', () => 
   assert.match(prompt, /harry-han/);
   assert.match(prompt, /"screenshot": 1/);
   assert.match(prompt, /foundationReadiness/);
-  assert.match(prompt, /Direct writing sample\./);
+  assert.match(prompt, /foundationDraftSummaries/);
+  assert.match(prompt, /Ship the first slice\./);
 });
 
 test('loadProfilesIndex skips malformed material records while keeping valid summaries', () => {
