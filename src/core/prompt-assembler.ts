@@ -230,6 +230,9 @@ type IngestionSummary = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  supportedImportTypes?: string[];
+  bootstrapProfileCommand?: string | null;
+  sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
@@ -480,15 +483,33 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
 }
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
-  if (!ingestion || (ingestion.profileCount ?? 0) === 0) {
+  const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
+  const hasBootstrapData = Boolean(
+    ingestion?.bootstrapProfileCommand
+      || ingestion?.sampleImportCommand
+      || ingestion?.importManifestCommand
+      || ingestion?.staleRefreshCommand
+      || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
+  );
+
+  if (!ingestion || (!hasProfileData && !hasBootstrapData)) {
     return null;
   }
 
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
+    (ingestion.supportedImportTypes ?? []).length > 0
+      ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
+      : null,
+    ingestion.bootstrapProfileCommand
+      ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
+      : null,
     (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
       ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+      : null,
+    ingestion.sampleImportCommand
+      ? `- sample import: ${ingestion.sampleImportCommand}`
       : null,
     ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) =>
       `- ${profile.label ?? profile.personId}: refresh ${profile.refreshFoundationCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`,

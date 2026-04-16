@@ -304,7 +304,7 @@ export function buildSummary(rootDir: string) {
     models: modelsSummary,
     profiles,
     workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(2400),
+    promptPreview: prompt.buildPreview(3000),
   };
 }
 

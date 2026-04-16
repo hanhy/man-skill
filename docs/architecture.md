@@ -77,6 +77,7 @@ The project aims to keep personal-agent construction simple:
 - support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`
 - support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
 - support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`, with optional `--refresh-foundation` when those metadata edits should immediately regenerate identity-bearing drafts
+- keep the user-facing `Ingestion entrance:` prompt block visible even on empty repos by surfacing bootstrap commands, supported import types, and a sample one-shot import path before any target profile exists
 - expose profile metadata (`displayName`, `summary`) alongside material/draft state so prompt assembly can render human-readable target names
 - expose planned channel/provider registries from manifests
 - aggregate channel/provider status counts plus deduped auth env vars in the delivery summary so prompt previews can distinguish active vs planned vs candidate integrations without re-scanning raw manifests

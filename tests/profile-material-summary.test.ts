@@ -254,6 +254,9 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
       readyProfileCount: 1,
       refreshProfileCount: 1,
       incompleteProfileCount: 1,
+      supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
+      bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+      sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
       importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
       staleRefreshCommand: 'node src/index.js update foundation --stale',
       profileCommands: [
@@ -309,7 +312,10 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
 
   assert.match(prompt, /Ingestion entrance:/);
   assert.match(prompt, /profiles: 2 total \(2 imported, 0 metadata-only\)/);
+  assert.match(prompt, /imports: message, screenshot, talk, text/);
+  assert.match(prompt, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
+  assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(prompt, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
@@ -601,6 +607,9 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
+    bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+    sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [
@@ -630,6 +639,36 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
+});
+
+test('buildSummary keeps the ingestion entrance visible for empty repos', () => {
+  const rootDir = makeTempRepo();
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.ingestion, {
+    profileCount: 0,
+    importedProfileCount: 0,
+    metadataOnlyProfileCount: 0,
+    readyProfileCount: 0,
+    refreshProfileCount: 0,
+    incompleteProfileCount: 0,
+    supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
+    bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+    sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
+    importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
+    profileCommands: [],
+  });
+
+  assert.match(summary.promptPreview, /Ingestion entrance:/);
+  assert.match(summary.promptPreview, /profiles: 0 total \(0 imported, 0 metadata-only\)/);
+  assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
+  assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
 });
