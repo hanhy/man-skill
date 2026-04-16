@@ -53,6 +53,7 @@ type QueueLike = {
   setupHint?: string | null;
   nextStep?: string | null;
   implementationPath?: string | null;
+  manifestPath?: string | null;
 };
 
 type ProfileSummaryLike = {
@@ -416,14 +417,21 @@ function buildDeliveryPriority({
   pendingCount,
   configuredCount,
   queue,
+  envTemplatePath = null,
 }: {
   id: 'channels' | 'providers';
   label: 'Channels' | 'Providers';
   pendingCount: number;
   configuredCount: number;
   queue: QueueLike[];
+  envTemplatePath?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
+  const paths = [
+    envTemplatePath,
+    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
+    typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return {
     id,
@@ -434,9 +442,7 @@ function buildDeliveryPriority({
       ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
       : null,
     command: null,
-    paths: typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
-      ? [firstQueued.implementationPath]
-      : [],
+    paths,
   };
 }
 
@@ -732,6 +738,7 @@ export function buildSummary(rootDir: string) {
         pendingCount: deliverySummary.pendingChannelCount ?? 0,
         configuredCount: deliverySummary.configuredChannelCount ?? 0,
         queue: Array.isArray(deliverySummary.channelQueue) ? deliverySummary.channelQueue : [],
+        envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
       }),
       buildDeliveryPriority({
         id: 'providers',
@@ -739,6 +746,7 @@ export function buildSummary(rootDir: string) {
         pendingCount: deliverySummary.pendingProviderCount ?? 0,
         configuredCount: deliverySummary.configuredProviderCount ?? 0,
         queue: Array.isArray(deliverySummary.providerQueue) ? deliverySummary.providerQueue : [],
+        envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
       }),
     ],
   });

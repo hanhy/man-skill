@@ -45,7 +45,9 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   );
   assert.equal(summary.workLoop.priorities[0].status, 'ready');
   assert.match(summary.workLoop.priorities[2].summary, /4 pending/);
+  assert.deepEqual(summary.workLoop.priorities[2].paths, ['manifests/channels.json', 'src/channels/slack.js']);
   assert.match(summary.workLoop.priorities[3].summary, /6 pending/);
+  assert.deepEqual(summary.workLoop.priorities[3].paths, ['manifests/providers.json', 'src/models/openai.js']);
   assert.match(summary.promptPreview, /Work loop:/);
   assert.match(summary.promptPreview, /priorities: 4 total \(1 ready, 3 queued\)/);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
