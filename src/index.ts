@@ -38,7 +38,13 @@ interface SampleManifestSummary {
   status: 'loaded' | 'missing' | 'invalid';
   entryCount: number;
   profileIds: string[];
+  textFilePersonIds: Record<string, string>;
   error: string | null;
+}
+
+interface SampleTextSummary {
+  path: string | null;
+  present: boolean;
 }
 
 type QueueLike = {
@@ -62,6 +68,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      textFilePersonIds: {},
       error: null,
     };
   }
@@ -72,6 +79,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      textFilePersonIds: {},
       error: null,
     };
   }
@@ -84,12 +92,14 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
     };
   }
 
   try {
     const profileIds = new Set<string>();
+    const textFilePersonIds: Record<string, string> = {};
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
 
     const registerPersonId = (value: unknown) => {
@@ -115,6 +125,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     }
 
     const fallbackPersonId = registerPersonId(manifest.personId);
+    const manifestDir = path.dirname(absolutePath);
 
     if (Array.isArray(manifest.profiles)) {
       manifest.profiles.forEach((profileEntry, index) => {
@@ -139,14 +150,23 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      const entryRecord = entry as { personId?: unknown; type?: unknown };
+      const entryRecord = entry as { personId?: unknown; type?: unknown; file?: unknown };
       const resolvedPersonId = entryRecord.personId ?? fallbackPersonId;
-      if (!registerPersonId(resolvedPersonId)) {
+      const normalizedPersonId = registerPersonId(resolvedPersonId);
+      if (!normalizedPersonId) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
 
       if (typeof entryRecord.type !== 'string' || !supportedEntryTypes.has(entryRecord.type)) {
         throw new Error(`Unsupported manifest entry type at index ${index}: ${entryRecord.type}`);
+      }
+
+      if (entryRecord.type === 'text' && typeof entryRecord.file === 'string' && entryRecord.file.trim().length > 0) {
+        const resolvedFilePath = path.resolve(manifestDir, entryRecord.file);
+        const relativeFilePath = path.relative(rootDir, resolvedFilePath);
+        if (relativeFilePath && !relativeFilePath.startsWith('..')) {
+          textFilePersonIds[relativeFilePath.split(path.sep).join('/')] = normalizedPersonId;
+        }
       }
     });
 
@@ -154,6 +174,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'loaded',
       entryCount: entries.length,
       profileIds: [...profileIds].sort(),
+      textFilePersonIds,
       error: null,
     };
   } catch (error) {
@@ -161,9 +182,24 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }
+}
+
+function readSampleTextSummary(rootDir: string, relativePath: string | null): SampleTextSummary {
+  if (!relativePath) {
+    return {
+      path: null,
+      present: false,
+    };
+  }
+
+  return {
+    path: relativePath,
+    present: fs.existsSync(path.join(rootDir, relativePath)),
+  };
 }
 
 function buildFoundationPriority(foundation: any, coreFoundation: any): WorkPriority {
@@ -204,10 +240,13 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
 
   let nextAction: string | null = null;
   let command: string | null = null;
+  let paths: string[] = [];
 
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
     nextAction = 'bootstrap a target profile';
     command = ingestionSummary?.bootstrapProfileCommand ?? null;
+    paths = [ingestionSummary?.sampleManifestPath, ingestionSummary?.sampleTextPath]
+      .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0);
   } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
     nextAction = 'refresh stale or incomplete target profiles';
     command = ingestionSummary?.staleRefreshCommand ?? null;
@@ -223,7 +262,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh`,
     nextAction,
     command,
-    paths: [],
+    paths,
   };
 }
 
@@ -476,11 +515,16 @@ export function buildSummary(rootDir: string) {
   const sampleManifestRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-materials.json'))
     ? 'samples/harry-materials.json'
     : null;
+  const sampleTextRelativePath = fs.existsSync(path.join(rootDir, 'samples', 'harry-post.txt'))
+    ? 'samples/harry-post.txt'
+    : null;
   const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
+  const sampleText = readSampleTextSummary(rootDir, sampleTextRelativePath);
   const foundation = buildFoundationRollup(profiles) as any;
   const ingestionSummary = buildIngestionSummary(profiles, {
     sampleManifestPath: sampleManifestRelativePath,
     sampleManifest,
+    sampleTextPath: sampleText.present ? sampleText.path : null,
   }) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,

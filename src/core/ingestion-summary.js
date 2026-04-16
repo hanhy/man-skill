@@ -13,6 +13,12 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedProfileIds = Array.isArray(sampleManifest?.profileIds)
     ? sampleManifest.profileIds.filter((value) => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const normalizedTextFilePersonIds = sampleManifest?.textFilePersonIds && typeof sampleManifest.textFilePersonIds === 'object'
+    ? Object.fromEntries(
+      Object.entries(sampleManifest.textFilePersonIds)
+        .filter(([filePath, personId]) => typeof filePath === 'string' && filePath.trim().length > 0 && typeof personId === 'string' && personId.trim().length > 0),
+    )
+    : {};
 
   return {
     path: normalizedPath,
@@ -20,7 +26,24 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     status: sampleManifest?.status ?? (normalizedPath ? 'loaded' : 'missing'),
     entryCount: Number.isFinite(sampleManifest?.entryCount) ? sampleManifest.entryCount : 0,
     profileIds: normalizedProfileIds,
+    textFilePersonIds: normalizedTextFilePersonIds,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
+  };
+}
+
+function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
+  const normalizedPath = normalizeRelativePath(sampleTextPath);
+  const samplePersonId = normalizedPath && sampleManifest?.status === 'loaded' && sampleManifest?.textFilePersonIds
+    ? sampleManifest.textFilePersonIds[normalizedPath] ?? null
+    : null;
+
+  return {
+    path: normalizedPath,
+    present: Boolean(normalizedPath),
+    personId: samplePersonId,
+    command: normalizedPath && samplePersonId
+      ? `node src/index.js import text --person ${samplePersonId} --file ${normalizedPath} --refresh-foundation`
+      : null,
   };
 }
 
@@ -48,6 +71,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
+  const sampleText = normalizeSampleTextSummary(options?.sampleTextPath, sampleManifest);
   const orderedProfileCommands = importedProfiles
     .slice()
     .sort((left, right) => {
@@ -82,6 +106,10 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${sampleManifestPath} --refresh-foundation`
       : null,
+    sampleTextPath: sampleText.path,
+    sampleTextPresent: sampleText.present,
+    sampleTextPersonId: sampleText.personId,
+    sampleTextCommand: sampleText.command,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: orderedProfileCommands,
   };

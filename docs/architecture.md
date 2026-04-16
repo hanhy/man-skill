@@ -58,7 +58,7 @@ The project aims to keep personal-agent construction simple:
 - load memory index from `memory/`
 - discover local skill folders from `skills/`
 - distinguish documented skills (`skills/<name>/SKILL.md`) from placeholder skill directories when computing `foundation.core` readiness
-- summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, an optional checked-in sample manifest command, and the first actionable per-profile `update profile` / `update foundation` commands
+- summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, an optional checked-in sample manifest command, a checked-in sample text command, and the first actionable per-profile `update profile` / `update foundation` commands
 - summarize per-profile material counts plus foundation-readiness signals for memory / voice / soul / skills
 - derive first-pass per-profile foundation drafts under `profiles/<person-id>/memory|voice|soul|skills/`
 - expose generated draft paths, freshness status, and lightweight draft summaries back through `loadProfilesIndex()` for prompt/runtime consumption
@@ -88,7 +88,7 @@ The project aims to keep personal-agent construction simple:
 - treat malformed `manifests/channels.json` or `manifests/providers.json` as delivery-foundation diagnostics instead of fatal errors, so summary generation falls back to built-in defaults while still surfacing the manifest issue inline
 - expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice
 - emit `foundation.core.overview.recommendedActions` so missing/thin repo scaffolding produces concrete next-step guidance instead of only a passive status summary
-- expose a top-level `workLoop` priority queue that keeps foundation, ingestion, channels, and providers in the intended order while surfacing the current focus, summary, next action, command, and file paths for the first queued area
+- expose a top-level `workLoop` priority queue that keeps foundation, ingestion, channels, and providers in the intended order while surfacing the current focus, summary, next action, command, and file paths for the first queued area, including checked-in `samples/...` assets when ingestion is the active queue item
 - render the same `workLoop` state back into the prompt preview/system prompt as a compact `Work loop:` block so cron-style runs can see the current priority without re-parsing raw JSON
 - assemble a prompt preview from profile, soul, voice, memory, and skills, including the core-foundation coverage line when the base scaffold is thin or incomplete
 

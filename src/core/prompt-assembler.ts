@@ -306,6 +306,10 @@ type IngestionSummary = {
   sampleManifestProfileIds?: string[];
   sampleManifestError?: string | null;
   sampleManifestCommand?: string | null;
+  sampleTextPath?: string | null;
+  sampleTextPresent?: boolean;
+  sampleTextPersonId?: string | null;
+  sampleTextCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
 } | null;
@@ -640,6 +644,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
       || ingestion?.sampleManifestCommand
+      || ingestion?.sampleTextCommand
       || ingestion?.staleRefreshCommand
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
@@ -665,6 +670,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${(ingestion.sampleManifestProfileIds ?? []).length > 0 ? ` for ${(ingestion.sampleManifestProfileIds ?? []).join(', ')}` : ''} -> ${ingestion.sampleManifestCommand}`
+      : null,
+    ingestion.sampleTextPresent && ingestion.sampleTextCommand
+      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
       : null,
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`

@@ -288,6 +288,11 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
       bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
       sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
       importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+      sampleManifestProfileIds: ['harry-han'],
+      sampleTextPath: 'samples/harry-post.txt',
+      sampleTextPresent: true,
+      sampleTextPersonId: 'harry-han',
+      sampleTextCommand: 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation',
       staleRefreshCommand: 'node src/index.js update foundation --stale',
       profileCommands: [
         {
@@ -346,6 +351,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /bootstrap: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
   assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
+  assert.match(prompt, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
   assert.match(prompt, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
@@ -748,6 +754,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     sampleManifestProfileIds: ['harry-han'],
     sampleManifestError: null,
     sampleManifestCommand: 'node src/index.js import manifest --file samples/harry-materials.json --refresh-foundation',
+    sampleTextPath: 'samples/harry-post.txt',
+    sampleTextPresent: true,
+    sampleTextPersonId: 'harry-han',
+    sampleTextCommand: 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [
       {
@@ -781,6 +791,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
 });
 
@@ -807,6 +818,10 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleManifestProfileIds: [],
     sampleManifestError: null,
     sampleManifestCommand: null,
+    sampleTextPath: null,
+    sampleTextPresent: false,
+    sampleTextPersonId: null,
+    sampleTextCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [],
   });
@@ -833,8 +848,49 @@ test('buildSummary reports invalid sample manifests without advertising a broken
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
   assert.equal(typeof summary.ingestion.sampleManifestError, 'string');
   assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.equal(summary.ingestion.sampleTextPath, null);
+  assert.equal(summary.ingestion.sampleTextPresent, false);
+  assert.equal(summary.ingestion.sampleTextPersonId, null);
+  assert.equal(summary.ingestion.sampleTextCommand, null);
   assert.match(summary.promptPreview, /sample manifest invalid: .* @ samples\/harry-materials\.json/);
   assert.doesNotMatch(summary.promptPreview, /sample manifest: 0 entries/);
+});
+
+test('buildSummary derives the sample text command from the matching manifest text entry instead of the first profile id', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      profiles: [
+        { personId: 'Anna Ace' },
+        { personId: 'Harry Han' },
+      ],
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+        {
+          personId: 'Anna Ace',
+          type: 'message',
+          text: 'Use the manifest for grouped imports.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleTextPath, 'samples/harry-post.txt');
+  assert.equal(summary.ingestion.sampleTextPresent, true);
+  assert.equal(summary.ingestion.sampleTextPersonId, 'harry-han');
+  assert.equal(summary.ingestion.sampleTextCommand, 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation');
+  assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /sample text: anna-ace/);
 });
 
 test('buildSummary treats parseable but semantically invalid sample manifests as invalid', () => {
