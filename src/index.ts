@@ -197,7 +197,8 @@ export function buildSummary(rootDir: string) {
   const soulDocument = loader.loadSoul();
   const voiceDocument = loader.loadVoice();
   const memoryIndex = loader.loadMemoryIndex();
-  const skillNames = loader.loadSkills();
+  const skillInventory = loader.loadSkillInventory();
+  const skillNames = skillInventory.names;
   const channelManifest = manifestLoader.loadChannelManifest();
   const providerManifest = manifestLoader.loadProviderManifest();
 
@@ -250,6 +251,7 @@ export function buildSummary(rootDir: string) {
     voiceDocument,
     memoryIndex,
     skillNames,
+    skillInventory,
   });
   const prompt = new PromptAssembler({
     profile: profile.summary(),

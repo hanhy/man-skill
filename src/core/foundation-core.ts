@@ -46,7 +46,10 @@ export interface CoreMemoryFoundationSummary {
 
 export interface CoreSkillsFoundationSummary {
   count: number;
+  documentedCount: number;
+  undocumentedCount: number;
   sample: string[];
+  undocumentedSample: string[];
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -80,6 +83,11 @@ export interface BuildCoreFoundationSummaryOptions {
     scratch?: string[];
   } | null;
   skillNames?: string[];
+  skillInventory?: {
+    names?: string[];
+    documented?: string[];
+    undocumented?: string[];
+  } | null;
 }
 
 export function buildCoreFoundationSummary({
@@ -87,11 +95,20 @@ export function buildCoreFoundationSummary({
   voiceDocument = null,
   memoryIndex = null,
   skillNames = [],
+  skillInventory = null,
 }: BuildCoreFoundationSummaryOptions = {}): CoreFoundationSummary {
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
-  const safeSkillNames = Array.isArray(skillNames) ? [...skillNames].sort((left, right) => left.localeCompare(right)) : [];
+  const safeSkillNames = Array.isArray(skillInventory?.names)
+    ? [...skillInventory.names].sort((left, right) => left.localeCompare(right))
+    : (Array.isArray(skillNames) ? [...skillNames].sort((left, right) => left.localeCompare(right)) : []);
+  const documentedSkillNames = Array.isArray(skillInventory?.documented)
+    ? [...skillInventory.documented].sort((left, right) => left.localeCompare(right))
+    : [...safeSkillNames];
+  const undocumentedSkillNames = Array.isArray(skillInventory?.undocumented)
+    ? [...skillInventory.undocumented].sort((left, right) => left.localeCompare(right))
+    : safeSkillNames.filter((skillName) => !documentedSkillNames.includes(skillName));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
     dailyCount: daily.length,
@@ -101,7 +118,10 @@ export function buildCoreFoundationSummary({
   };
   const skills = {
     count: safeSkillNames.length,
+    documentedCount: documentedSkillNames.length,
+    undocumentedCount: undocumentedSkillNames.length,
     sample: safeSkillNames.slice(0, 5),
+    undocumentedSample: undocumentedSkillNames.slice(0, 5),
   };
   const soul = {
     present: isNonEmptyString(soulDocument),
@@ -125,6 +145,8 @@ export function buildCoreFoundationSummary({
 
   if (skills.count === 0) {
     missingAreas.push('skills');
+  } else if (skills.documentedCount === 0 || skills.documentedCount < skills.count) {
+    thinAreas.push('skills');
   }
 
   if (!soul.present) {

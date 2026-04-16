@@ -33,6 +33,18 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function loadSkillInventory(rootDir) {
+  const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const documented = skillNames.filter((skillName) => fs.existsSync(path.join(rootDir, 'skills', skillName, 'SKILL.md')));
+  const undocumented = skillNames.filter((skillName) => !documented.includes(skillName));
+
+  return {
+    names: skillNames,
+    documented,
+    undocumented,
+  };
+}
+
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
@@ -365,7 +377,11 @@ export class FileSystemLoader {
   }
 
   loadSkills() {
-    return listDirectoriesIfExists(this.resolve('skills'));
+    return loadSkillInventory(this.rootDir).names;
+  }
+
+  loadSkillInventory() {
+    return loadSkillInventory(this.rootDir);
   }
 
   loadMemoryIndex() {
