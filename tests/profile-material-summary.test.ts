@@ -300,6 +300,14 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           label: 'Jane Doe (jane-doe)',
           refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
           updateProfileCommand: 'node src/index.js update profile --person jane-doe',
+          importMaterialCommand: null,
+        },
+        {
+          personId: 'metadata-only',
+          label: 'Metadata Only (metadata-only)',
+          refreshFoundationCommand: null,
+          updateProfileCommand: 'node src/index.js update profile --person metadata-only',
+          importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
         },
       ],
     },
@@ -353,6 +361,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(prompt, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
   assert.match(prompt, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe \| update node src\/index\.js update profile --person jane-doe/);
+  assert.match(prompt, /Metadata Only \(metadata-only\): import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
@@ -769,16 +778,31 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         updateProfileCommand: 'node src/index.js update profile --person jane-doe',
         refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+        importMaterialCommand: null,
       },
       {
-        personId: 'harry-han',
-        displayName: 'Harry Han',
-        label: 'Harry Han (harry-han)',
-        materialCount: 1,
+        personId: 'metadata-only',
+        displayName: 'Metadata Only',
+        label: 'Metadata Only (metadata-only)',
+        materialCount: 0,
         needsRefresh: false,
         missingDrafts: [],
-        updateProfileCommand: 'node src/index.js update profile --person harry-han',
-        refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+        updateProfileCommand: 'node src/index.js update profile --person metadata-only',
+        refreshFoundationCommand: null,
+        importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
+      },
+    ],
+    metadataProfileCommands: [
+      {
+        personId: 'metadata-only',
+        displayName: 'Metadata Only',
+        label: 'Metadata Only (metadata-only)',
+        materialCount: 0,
+        needsRefresh: false,
+        missingDrafts: [],
+        updateProfileCommand: 'node src/index.js update profile --person metadata-only',
+        refreshFoundationCommand: null,
+        importMaterialCommand: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
       },
     ],
   });
@@ -793,6 +817,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample manifest: 2 entries for harry-han -> node src\/index\.js import manifest --file samples\/harry-materials\.json --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): refresh node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): import node src\/index\.js import text --person metadata-only --file <sample\.txt> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
 });
 
 test('buildSummary keeps the ingestion entrance visible for empty repos', () => {
@@ -824,6 +849,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleTextCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [],
+    metadataProfileCommands: [],
   });
 
   assert.match(summary.promptPreview, /Ingestion entrance:/);

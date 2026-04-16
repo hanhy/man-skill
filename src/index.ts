@@ -251,8 +251,22 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     nextAction = 'refresh stale or incomplete target profiles';
     command = ingestionSummary?.staleRefreshCommand ?? null;
   } else if (metadataOnlyProfileCount > 0) {
-    nextAction = 'import source materials for metadata-only profiles';
-    command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
+    const metadataOnlyProfile = Array.isArray(ingestionSummary?.metadataProfileCommands)
+      ? ingestionSummary.metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand)
+      : null;
+    const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
+      ? metadataOnlyProfile.importMaterialCommand
+      : null;
+
+    if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
+      nextAction = 'import source materials for metadata-only profiles';
+      command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
+    } else {
+      nextAction = metadataOnlyProfile?.label
+        ? `import source materials for ${metadataOnlyProfile.label}`
+        : 'import source materials for metadata-only profiles';
+      command = runnableImportCommand;
+    }
   }
 
   return {

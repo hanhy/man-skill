@@ -8,6 +8,10 @@ function normalizeRelativePath(value) {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
 function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedPath = normalizeRelativePath(sampleManifestPath);
   const normalizedProfileIds = Array.isArray(sampleManifest?.profileIds)
@@ -47,42 +51,86 @@ function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
   };
 }
 
-function buildProfileCommands(profile) {
+function buildProfileCommands(profile, options = {}) {
   if (!profile?.id) {
     return null;
   }
+
+  const materialCount = profile.materialCount ?? 0;
+  const imported = materialCount > 0;
+  const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
+    ? options.sampleTextPath
+    : null;
+  const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
+    ? options.sampleTextPersonId
+    : null;
+  const runnableSampleTextPath = sampleTextPath && sampleTextPersonId === profile.id ? sampleTextPath : null;
 
   return {
     personId: profile.id,
     displayName: profile.profile?.displayName ?? profile.id,
     label: buildProfileLabel(profile),
-    materialCount: profile.materialCount ?? 0,
-    needsRefresh: Boolean(profile.foundationDraftStatus?.needsRefresh),
-    missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+    materialCount,
+    needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
+    missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
-    refreshFoundationCommand: `node src/index.js update foundation --person ${profile.id}`,
+    refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
+    importMaterialCommand: imported
+      ? null
+      : (runnableSampleTextPath
+        ? `node src/index.js import text --person ${profile.id} --file ${shellQuote(runnableSampleTextPath)} --refresh-foundation`
+        : `node src/index.js import text --person ${profile.id} --file <sample.txt> --refresh-foundation`),
   };
 }
 
 export function buildIngestionSummary(profiles = [], options = {}) {
   const safeProfiles = Array.isArray(profiles) ? profiles : [];
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
-  const metadataOnlyProfileCount = safeProfiles.length - importedProfiles.length;
+  const metadataOnlyProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) <= 0);
+  const metadataOnlyProfileCount = metadataOnlyProfiles.length;
   const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
   const sampleText = normalizeSampleTextSummary(options?.sampleTextPath, sampleManifest);
-  const orderedProfileCommands = importedProfiles
+  const metadataProfileCommands = metadataOnlyProfiles
+    .slice()
+    .sort((left, right) => buildProfileLabel(left).localeCompare(buildProfileLabel(right)))
+    .map((profile) => buildProfileCommands(profile, {
+      sampleTextPath: sampleText.path,
+      sampleTextPersonId: sampleText.personId,
+    }))
+    .filter(Boolean);
+  const orderedProfileCommands = safeProfiles
     .slice()
     .sort((left, right) => {
-      const refreshDelta = Number(Boolean(right?.foundationDraftStatus?.needsRefresh)) - Number(Boolean(left?.foundationDraftStatus?.needsRefresh));
-      if (refreshDelta !== 0) {
-        return refreshDelta;
+      const leftImported = Number((left?.materialCount ?? 0) > 0);
+      const rightImported = Number((right?.materialCount ?? 0) > 0);
+      const leftActionRank = leftImported
+        ? Number(Boolean(left?.foundationDraftStatus?.needsRefresh) || !left?.foundationDraftStatus?.complete)
+        : 1;
+      const rightActionRank = rightImported
+        ? Number(Boolean(right?.foundationDraftStatus?.needsRefresh) || !right?.foundationDraftStatus?.complete)
+        : 1;
+      const actionDelta = rightActionRank - leftActionRank;
+      if (actionDelta !== 0) {
+        return actionDelta;
+      }
+
+      const importDelta = rightImported - leftImported;
+      if (importDelta !== 0) {
+        return importDelta;
       }
 
       return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
     })
-    .map(buildProfileCommands)
+    .filter((profile) => {
+      const imported = (profile?.materialCount ?? 0) > 0;
+      return !imported || Boolean(profile?.foundationDraftStatus?.needsRefresh) || !profile?.foundationDraftStatus?.complete;
+    })
+    .map((profile) => buildProfileCommands(profile, {
+      sampleTextPath: sampleText.path,
+      sampleTextPersonId: sampleText.personId,
+    }))
     .filter(Boolean)
     .slice(0, 2);
 
@@ -112,5 +160,6 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleTextCommand: sampleText.command,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: orderedProfileCommands,
+    metadataProfileCommands,
   };
 }

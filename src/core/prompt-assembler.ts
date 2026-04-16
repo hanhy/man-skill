@@ -286,6 +286,7 @@ type IngestionProfileCommand = {
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
   refreshFoundationCommand?: string | null;
+  importMaterialCommand?: string | null;
 };
 
 type IngestionSummary = {
@@ -312,6 +313,7 @@ type IngestionSummary = {
   sampleTextCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
+  metadataProfileCommands?: IngestionProfileCommand[];
 } | null;
 
 type WorkLoopPriority = {
@@ -677,9 +679,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
-    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) =>
-      `- ${profile.label ?? profile.personId}: refresh ${profile.refreshFoundationCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`,
-    ),
+    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) => {
+      const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
+      const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
+      return `- ${profile.label ?? profile.personId}: ${actionLabel} ${actionCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`;
+    }),
   ].filter(Boolean).join('\n');
 }
 
