@@ -6,77 +6,149 @@ import { ChannelRegistry } from './core/channel-registry.js';
 import { ModelRegistry } from './core/model-registry.js';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { PromptAssembler } from './core/prompt-assembler.js';
+import { MaterialIngestion } from './core/material-ingestion.js';
 import { createDefaultChannels } from './channels/index.js';
 import { createDefaultProviders } from './models/index.js';
 import { WorkLoop } from './runtime/work-loop.js';
 
-const loader = new FileSystemLoader(process.cwd());
-const soulDocument = loader.loadSoul();
-const voiceDocument = loader.loadVoice();
-const memoryIndex = loader.loadMemoryIndex();
-const skillNames = loader.loadSkills();
+function parseArgs(argv) {
+  const [command, subcommand, ...rest] = argv;
+  const options = {};
 
-const voice = new VoiceProfile({
-  tone: 'human',
-  style: 'person-specific',
-  constraints: ['stay faithful to learned voice'],
-  signatures: ['consistent persona', 'compact but vivid phrasing'],
-  languageHints: ['preserve bilingual or multilingual behavior when present'],
-});
+  for (let index = 0; index < rest.length; index += 1) {
+    const token = rest[index];
+    if (!token.startsWith('--')) {
+      continue;
+    }
 
-const profile = new AgentProfile({
-  name: 'ManSkill',
-  soul: 'A configurable personality core for imitating a specific person from text.',
-  identity: {
-    role: 'person-like AI agent',
-    architecture: 'memory + skills + soul + voice',
-  },
-  goals: ['imitate a specific person faithfully', 'stay practical and extensible'],
-  voice: voice.summary(),
-});
+    const key = token.slice(2);
+    const value = rest[index + 1];
+    options[key] = value;
+    index += 1;
+  }
 
-const memory = new MemoryStore({
-  shortTerm: memoryIndex.daily,
-  longTerm: memoryIndex.longTerm,
-});
-const skills = new SkillRegistry(skillNames);
-const channels = new ChannelRegistry(createDefaultChannels().map((channel) => channel.summary()));
-const models = new ModelRegistry(createDefaultProviders().map((provider) => provider.summary()));
-const workLoop = new WorkLoop({
-  intervalMinutes: 10,
-  objectives: [
-    'strengthen the core structure',
-    'add channel adapters',
-    'add model providers',
-    'report progress in small increments',
-  ],
-});
-const prompt = new PromptAssembler({
-  profile: profile.summary(),
-  soul: soulDocument,
-  voice: {
-    ...voice.summary(),
-    document: voiceDocument,
-  },
-  memory: memoryIndex,
-  skills: skills.summary(),
-  channels: channels.summary(),
-  models: models.summary(),
-});
+  return { command, subcommand, options };
+}
 
-console.log(
-  JSON.stringify(
-    {
-      profile: profile.summary(),
-      memory: memory.summary(),
-      skills: skills.summary(),
-      voice: voice.summary(),
-      channels: channels.summary(),
-      models: models.summary(),
-      workLoop: workLoop.summary(),
-      promptPreview: prompt.buildSystemPrompt().slice(0, 400),
+function runImportCommand(rootDir, subcommand, options) {
+  const ingestion = new MaterialIngestion(rootDir);
+  const personId = options.person;
+
+  if (!personId) {
+    throw new Error('Missing required --person argument');
+  }
+
+  if (subcommand === 'text') {
+    return ingestion.importTextDocument({
+      personId,
+      sourceFile: options.file,
+      notes: options.notes ?? null,
+    });
+  }
+
+  if (subcommand === 'message') {
+    return ingestion.importMessage({
+      personId,
+      text: options.text,
+      notes: options.notes ?? null,
+    });
+  }
+
+  if (subcommand === 'talk') {
+    return ingestion.importTalkSnippet({
+      personId,
+      text: options.text,
+      notes: options.notes ?? null,
+    });
+  }
+
+  if (subcommand === 'screenshot') {
+    return ingestion.importScreenshotSource({
+      personId,
+      sourceFile: options.file,
+      notes: options.notes ?? null,
+    });
+  }
+
+  throw new Error(`Unsupported import type: ${subcommand}`);
+}
+
+function buildSummary(rootDir) {
+  const loader = new FileSystemLoader(rootDir);
+  const soulDocument = loader.loadSoul();
+  const voiceDocument = loader.loadVoice();
+  const memoryIndex = loader.loadMemoryIndex();
+  const skillNames = loader.loadSkills();
+
+  const voice = new VoiceProfile({
+    tone: 'human',
+    style: 'person-specific',
+    constraints: ['stay faithful to learned voice'],
+    signatures: ['consistent persona', 'compact but vivid phrasing'],
+    languageHints: ['preserve bilingual or multilingual behavior when present'],
+  });
+
+  const profile = new AgentProfile({
+    name: 'ManSkill',
+    soul: 'A configurable personality core for imitating a specific person from text.',
+    identity: {
+      role: 'person-like AI agent',
+      architecture: 'memory + skills + soul + voice',
     },
-    null,
-    2,
-  ),
-);
+    goals: ['imitate a specific person faithfully', 'stay practical and extensible'],
+    voice: voice.summary(),
+  });
+
+  const memory = new MemoryStore({
+    shortTerm: memoryIndex.daily,
+    longTerm: memoryIndex.longTerm,
+  });
+  const skills = new SkillRegistry(skillNames);
+  const channels = new ChannelRegistry(createDefaultChannels().map((channel) => channel.summary()));
+  const models = new ModelRegistry(createDefaultProviders().map((provider) => provider.summary()));
+  const workLoop = new WorkLoop({
+    intervalMinutes: 10,
+    objectives: [
+      'strengthen the core structure',
+      'add channel adapters',
+      'add model providers',
+      'report progress in small increments',
+    ],
+  });
+  const profiles = loader.loadProfilesIndex();
+  const prompt = new PromptAssembler({
+    profile: profile.summary(),
+    soul: soulDocument,
+    voice: {
+      ...voice.summary(),
+      document: voiceDocument,
+    },
+    memory: memoryIndex,
+    skills: skills.summary(),
+    profiles,
+    channels: channels.summary(),
+    models: models.summary(),
+  });
+
+  return {
+    profile: profile.summary(),
+    memory: memory.summary(),
+    skills: skills.summary(),
+    voice: voice.summary(),
+    channels: channels.summary(),
+    models: models.summary(),
+    profiles,
+    workLoop: workLoop.summary(),
+    promptPreview: prompt.buildSystemPrompt().slice(0, 400),
+  };
+}
+
+const rootDir = process.cwd();
+const { command, subcommand, options } = parseArgs(process.argv.slice(2));
+
+if (command === 'import') {
+  const result = runImportCommand(rootDir, subcommand, options);
+  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+} else {
+  console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+}

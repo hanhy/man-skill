@@ -56,6 +56,7 @@ The project aims to keep personal-agent construction simple:
 - load voice guidance from `voice/README.md`
 - load memory index from `memory/`
 - discover local skill folders from `skills/`
+- summarize per-profile material counts plus foundation-readiness signals for memory / voice / soul / skills
 - expose planned channel/provider registries from manifests and factories
 - assemble a prompt preview from profile, soul, voice, memory, and skills
 

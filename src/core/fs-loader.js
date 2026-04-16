@@ -21,6 +21,112 @@ function listFilesIfExists(dirPath) {
     .sort();
 }
 
+function listDirectoriesIfExists(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(dirPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function buildExcerpt(value, maxLength = 160) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function sortByNewest(records) {
+  return [...records].sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
+}
+
+function summarizeFoundationReadiness(materialRecords) {
+  const memoryRecords = sortByNewest(materialRecords);
+  const voiceRecords = sortByNewest(materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type)));
+  const soulRecords = sortByNewest(materialRecords.filter((record) => ['text', 'talk'].includes(record.type)));
+  const skillRecords = sortByNewest(
+    materialRecords.filter((record) => record.type === 'talk' && isNonEmptyString(record.notes)),
+  );
+
+  return {
+    memory: {
+      candidateCount: memoryRecords.length,
+      latestTypes: memoryRecords.slice(0, 3).map((record) => record.type),
+    },
+    voice: {
+      candidateCount: voiceRecords.length,
+      sampleTypes: voiceRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: voiceRecords
+        .map((record) => buildExcerpt(record.content))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+    soul: {
+      candidateCount: soulRecords.length,
+      sampleTypes: soulRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: soulRecords
+        .map((record) => buildExcerpt(record.content))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+    skills: {
+      candidateCount: skillRecords.length,
+      sampleTypes: skillRecords.slice(0, 3).map((record) => record.type),
+      sampleExcerpts: skillRecords
+        .map((record) => buildExcerpt(record.notes))
+        .filter(Boolean)
+        .slice(0, 3),
+    },
+  };
+}
+
+function loadMaterialSummaries(materialsDir) {
+  const materialFiles = listFilesIfExists(materialsDir)
+    .filter((name) => name.endsWith('.json'));
+  const materialRecords = materialFiles
+    .map((name) => readJsonIfExists(path.join(materialsDir, name)))
+    .filter(Boolean);
+
+  const materialTypes = {};
+  for (const record of materialRecords) {
+    materialTypes[record.type] = (materialTypes[record.type] ?? 0) + 1;
+  }
+
+  const latestMaterialAt = materialRecords
+    .map((record) => record.createdAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null;
+
+  return {
+    materialTypes,
+    latestMaterialAt,
+    foundationReadiness: summarizeFoundationReadiness(materialRecords),
+  };
+}
+
 export class FileSystemLoader {
   constructor(rootDir = process.cwd()) {
     this.rootDir = rootDir;
@@ -39,17 +145,7 @@ export class FileSystemLoader {
   }
 
   loadSkills() {
-    const skillsDir = this.resolve('skills');
-
-    if (!fs.existsSync(skillsDir)) {
-      return [];
-    }
-
-    return fs
-      .readdirSync(skillsDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
+    return listDirectoriesIfExists(this.resolve('skills'));
   }
 
   loadMemoryIndex() {
@@ -59,5 +155,25 @@ export class FileSystemLoader {
       longTerm: listFilesIfExists(this.resolve('memory', 'long-term')),
       scratch: listFilesIfExists(this.resolve('memory', 'scratch')),
     };
+  }
+
+  loadProfilesIndex() {
+    const profilesDir = this.resolve('profiles');
+    const profileIds = listDirectoriesIfExists(profilesDir);
+
+    return profileIds.map((profileId) => {
+      const materialsDir = path.join(profilesDir, profileId, 'materials');
+      const profileSummary = loadMaterialSummaries(materialsDir);
+
+      return {
+        id: profileId,
+        hasProfile: fs.existsSync(path.join(profilesDir, profileId, 'profile.json')),
+        materialCount: listFilesIfExists(materialsDir).filter((name) => name.endsWith('.json')).length,
+        screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
+        materialTypes: profileSummary.materialTypes,
+        latestMaterialAt: profileSummary.latestMaterialAt,
+        foundationReadiness: profileSummary.foundationReadiness,
+      };
+    });
   }
 }
