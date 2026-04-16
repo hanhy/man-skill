@@ -16,6 +16,12 @@ node src/index.js import text --person harry-han --file ./samples/harry-post.txt
 node src/index.js import message --person harry-han --text "I will be there in ten minutes." --notes "short chat sample"
 ```
 
+### Import a talk snippet transcript
+
+```bash
+node src/index.js import talk --person harry-han --text "We can ship the first slice today and refine tomorrow." --notes "voice memo transcript"
+```
+
 ### Import a screenshot source
 
 ```bash

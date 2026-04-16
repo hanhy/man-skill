@@ -10,7 +10,7 @@ function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-test-'));
 }
 
-test('imports text, message, and screenshot materials into a profile-specific structure', () => {
+test('imports text, message, talk, and screenshot materials into a profile-specific structure', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -32,6 +32,12 @@ test('imports text, message, and screenshot materials into a profile-specific st
     notes: 'short message sample',
   });
 
+  const talkMaterial = ingestion.importTalkSnippet({
+    personId: 'harry-han',
+    text: 'We can ship the first slice today and refine tomorrow.',
+    notes: 'voice memo transcript',
+  });
+
   const screenshotMaterial = ingestion.importScreenshotSource({
     personId: 'harry-han',
     sourceFile: screenshotPath,
@@ -46,7 +52,7 @@ test('imports text, message, and screenshot materials into a profile-specific st
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
   const entries = fs.readdirSync(materialsDir);
-  assert.ok(entries.length >= 3);
+  assert.ok(entries.length >= 4);
 
   const textRecord = JSON.parse(fs.readFileSync(textMaterial.recordPath, 'utf8'));
   assert.equal(textRecord.type, 'text');
@@ -56,6 +62,10 @@ test('imports text, message, and screenshot materials into a profile-specific st
   const messageRecord = JSON.parse(fs.readFileSync(messageMaterial.recordPath, 'utf8'));
   assert.equal(messageRecord.type, 'message');
   assert.equal(messageRecord.content, 'I will be there in ten minutes.');
+
+  const talkRecord = JSON.parse(fs.readFileSync(talkMaterial.recordPath, 'utf8'));
+  assert.equal(talkRecord.type, 'talk');
+  assert.equal(talkRecord.content, 'We can ship the first slice today and refine tomorrow.');
 
   const screenshotRecord = JSON.parse(fs.readFileSync(screenshotMaterial.recordPath, 'utf8'));
   assert.equal(screenshotRecord.type, 'screenshot');

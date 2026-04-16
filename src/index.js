@@ -54,6 +54,14 @@ function runImportCommand(rootDir, subcommand, options) {
     });
   }
 
+  if (subcommand === 'talk') {
+    return ingestion.importTalkSnippet({
+      personId,
+      text: options.text,
+      notes: options.notes ?? null,
+    });
+  }
+
   if (subcommand === 'screenshot') {
     return ingestion.importScreenshotSource({
       personId,

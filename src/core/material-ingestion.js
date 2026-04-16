@@ -111,6 +111,20 @@ export class MaterialIngestion {
     });
   }
 
+  importTalkSnippet({ personId, text, notes = null }) {
+    if (!text) {
+      throw new Error('text is required for talk import');
+    }
+
+    const normalized = this.ensureProfile(personId);
+    return this.writeMaterialRecord({
+      personId: normalized.personId,
+      type: 'talk',
+      content: text,
+      notes,
+    });
+  }
+
   importScreenshotSource({ personId, sourceFile, notes = null }) {
     if (!sourceFile) {
       throw new Error('sourceFile is required for screenshot import');
