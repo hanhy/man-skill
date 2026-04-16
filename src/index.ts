@@ -39,6 +39,7 @@ interface SampleManifestSummary {
   status: 'loaded' | 'missing' | 'invalid';
   entryCount: number;
   profileIds: string[];
+  profileLabels: string[];
   materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
   error: string | null;
@@ -73,12 +74,22 @@ function slugifyPersonId(value: string) {
     .replace(/^-+|-+$/g, '');
 }
 
+function buildSampleProfileLabel(personId: string, displayName?: string | null) {
+  const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
+  if (!normalizedDisplayName || normalizedDisplayName === personId) {
+    return personId;
+  }
+
+  return `${normalizedDisplayName} (${personId})`;
+}
+
 function readSampleManifestSummary(rootDir: string, relativePath: string | null): SampleManifestSummary {
   if (!relativePath) {
     return {
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
       error: null,
@@ -91,6 +102,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'missing',
       entryCount: 0,
       profileIds: [],
+      profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
       error: null,
@@ -105,6 +117,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
@@ -115,9 +128,10 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const profileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
+    const profileDisplayNames = new Map<string, string>();
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
 
-    const registerPersonId = (value: unknown) => {
+    const registerPersonId = (value: unknown, displayName?: unknown) => {
       if (typeof value !== 'string' || value.trim().length === 0) {
         return null;
       }
@@ -128,6 +142,9 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       }
 
       profileIds.add(normalized);
+      if (typeof displayName === 'string' && displayName.trim().length > 0) {
+        profileDisplayNames.set(normalized, displayName.trim());
+      }
       return normalized;
     };
 
@@ -139,7 +156,12 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       throw new Error('Sample manifest must be an array or object');
     }
 
-    const fallbackPersonId = registerPersonId(manifest.personId);
+    const fallbackPersonId = registerPersonId(
+      manifest.personId,
+      typeof (manifest as { displayName?: unknown }).displayName === 'string'
+        ? (manifest as { displayName?: string }).displayName
+        : undefined,
+    );
     const manifestDir = path.dirname(absolutePath);
 
     if (Array.isArray(manifest.profiles)) {
@@ -148,7 +170,10 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
           throw new Error(`Manifest profile ${index} must be an object`);
         }
 
-        const profilePersonId = registerPersonId((profileEntry as { personId?: unknown }).personId);
+        const profilePersonId = registerPersonId(
+          (profileEntry as { personId?: unknown }).personId,
+          (profileEntry as { displayName?: unknown }).displayName,
+        );
         if (!profilePersonId) {
           throw new Error(`Manifest profile ${index} is missing personId`);
         }
@@ -187,10 +212,13 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       }
     });
 
+    const sortedProfileIds = [...profileIds].sort();
+
     return {
       status: 'loaded',
       entryCount: entries.length,
-      profileIds: [...profileIds].sort(),
+      profileIds: sortedProfileIds,
+      profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
       materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
       error: null,
@@ -200,6 +228,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       status: 'invalid',
       entryCount: 0,
       profileIds: [],
+      profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
