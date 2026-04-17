@@ -399,15 +399,26 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? 'queued'
     : 'ready';
 
+  const useBulkRefreshCommand = refreshProfileCount > 1 && typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0;
+  const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
+    ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const queuedProfileLabel = queuedProfile?.label ?? queuedProfile?.id ?? null;
+  const bulkRefreshLabel = queuedProfileLabel
+    ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
+    : 'refresh stale or incomplete target profiles';
+
   return {
     id: 'foundation',
     label: 'Foundation',
     status,
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: queuedProfile?.refreshCommand
-      ? buildFoundationRefreshLabel(queuedProfile, queuedProfile.label ?? queuedProfile.id ?? null)
+      ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
       : queuedArea?.action ?? null,
-    command: queuedProfile?.refreshCommand ?? null,
+    command: queuedProfile?.refreshCommand
+      ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
+      : null,
     paths: queuedProfile?.refreshCommand
       ? buildFoundationDraftPaths(queuedProfileSummary)
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),

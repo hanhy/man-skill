@@ -511,14 +511,16 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person jane-doe');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh jane-doe — reasons missing drafts + new materials');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --stale');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with jane-doe (missing drafts + new materials)');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
     'profiles/jane-doe/soul/README.md',
     'profiles/jane-doe/voice/README.md',
   ]);
+  assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with jane-doe \(missing drafts \+ new materials\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --stale/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].generatedDraftCount, 0);
   assert.equal(summary.foundation.maintenance.queuedProfiles[1].id, 'harry-han');
