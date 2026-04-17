@@ -88,6 +88,9 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         summary: null,
         label: 'jane-doe',
         status: 'stale',
+        generatedDraftCount: 0,
+        expectedDraftCount: 4,
+        candidateDraftCount: 4,
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
@@ -157,6 +160,9 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         summary: null,
         label: 'Jane Doe (jane-doe)',
         status: 'stale',
+        generatedDraftCount: 0,
+        expectedDraftCount: 4,
+        candidateDraftCount: 4,
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
@@ -167,7 +173,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(summary.promptPreview, /Foundation maintenance:/);
   assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {

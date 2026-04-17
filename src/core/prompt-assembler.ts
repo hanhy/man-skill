@@ -85,6 +85,9 @@ type MaintenanceQueueItem = {
   summary?: string | null;
   label?: string | null;
   status?: string;
+  generatedDraftCount?: number;
+  expectedDraftCount?: number;
+  candidateDraftCount?: number;
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
@@ -509,7 +512,10 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
       const reasonSuffix = (profile.refreshReasons ?? []).length > 0
         ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
         : '';
-      return `- ${profile.label ?? profile.id}: ${profile.status}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
+      const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
+        ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
+        : '';
+      return `- ${profile.label ?? profile.id}: ${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
     }),
     maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
   ].filter(Boolean).join('\n');

@@ -484,3 +484,43 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person harry-han/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
+
+test('buildSummary work loop prioritizes the most incomplete stale foundation profile first', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Metadata drift without refreshing drafts yet.',
+  });
+
+  runImportCommand(rootDir, 'message', {
+    person: 'jane-doe',
+    text: 'Tight loops beat big plans.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh jane-doe — reasons missing drafts + new materials');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
+  assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
+  assert.equal(summary.foundation.maintenance.queuedProfiles[0].generatedDraftCount, 0);
+  assert.equal(summary.foundation.maintenance.queuedProfiles[1].id, 'harry-han');
+  assert.equal(summary.foundation.maintenance.queuedProfiles[1].generatedDraftCount, 4);
+});

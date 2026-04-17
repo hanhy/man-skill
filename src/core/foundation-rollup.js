@@ -41,6 +41,16 @@ function buildProfileLabel(profile) {
   return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
 }
 
+const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
+
+function countGeneratedDrafts(profile) {
+  return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
+}
+
+function countCandidateDrafts(profile) {
+  return FOUNDATION_DRAFT_KEYS.filter((key) => (profile?.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
+}
+
 function summarizeMaintenanceQueue(profiles) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
@@ -50,11 +60,28 @@ function summarizeMaintenanceQueue(profiles) {
       summary: profile.profile?.summary ?? null,
       label: buildProfileLabel(profile),
       status: 'stale',
+      generatedDraftCount: countGeneratedDrafts(profile),
+      expectedDraftCount: FOUNDATION_DRAFT_KEYS.length,
+      candidateDraftCount: countCandidateDrafts(profile),
       missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
       refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
       latestMaterialAt: profile.latestMaterialAt ?? null,
       refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
-    }));
+    }))
+    .sort((left, right) => {
+      const missingDraftDifference = (right.missingDrafts?.length ?? 0) - (left.missingDrafts?.length ?? 0);
+      if (missingDraftDifference !== 0) {
+        return missingDraftDifference;
+      }
+
+      const generatedDraftDifference = (left.generatedDraftCount ?? 0) - (right.generatedDraftCount ?? 0);
+      if (generatedDraftDifference !== 0) {
+        return generatedDraftDifference;
+      }
+
+      return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')
+        || (left.label ?? '').localeCompare(right.label ?? '');
+    });
 
   return {
     profileCount: profiles.length,
