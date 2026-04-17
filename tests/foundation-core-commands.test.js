@@ -164,6 +164,36 @@ test('buildCoreFoundationCommand seeds missing skill docs without clobbering exi
   );
 });
 
+test('buildCoreFoundationCommand combines missing and thin skill doc repairs without clobbering either side', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/slack/SKILL.md', 'skills/delivery/SKILL.md'],
+    missingPaths: ['skills/slack/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  assert.equal(
+    command,
+    "(mkdir -p 'skills/slack' && for file in 'skills/slack/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done) && (grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md')",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skill-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
 test('buildCoreFoundationCommand preserves shell quoting for skill docs with spaces and apostrophes', () => {
   const command = buildCoreFoundationCommand({
     area: 'skills',
