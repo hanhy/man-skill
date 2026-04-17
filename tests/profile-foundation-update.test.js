@@ -668,6 +668,43 @@ test('CLI update profile can refresh foundation drafts after metadata changes', 
   assert.equal(memoryDraft.generatedAt >= result.profile.updatedAt, true);
 });
 
+test('CLI update intake scaffolds starter manifest files for a target person', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for momentum.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+  assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
+  assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);
+  assert.match(result.sampleTextPath, /profiles\/harry-han\/imports\/sample\.txt$/);
+
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, result.starterManifestPath), 'utf8'));
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Han');
+  assert.equal(template.summary, 'Direct operator with a bias for momentum.');
+  assert.deepEqual(template.entries, []);
+});
+
 test('CLI import manifest can seed profile metadata before importing materials', () => {
   const rootDir = makeTempRepo();
 

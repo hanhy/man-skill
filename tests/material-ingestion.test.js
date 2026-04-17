@@ -462,3 +462,35 @@ test('updateProfile stores display name and summary metadata for a target person
   assert.equal(profile.summary, 'Direct operator with a bias for momentum.');
   assert.match(profile.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
+
+test('scaffoldProfileIntake creates starter intake files without importing placeholder materials', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const result = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.displayName, 'Harry Han');
+  assert.equal(result.profile.summary, 'Direct operator with a bias for momentum.');
+  assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+
+  const templatePath = path.join(rootDir, result.starterManifestPath);
+  const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Han');
+  assert.equal(template.summary, 'Direct operator with a bias for momentum.');
+  assert.deepEqual(template.entries, []);
+
+  const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
+  assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+});

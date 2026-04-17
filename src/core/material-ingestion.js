@@ -160,6 +160,44 @@ function buildManifestImportCommand(manifestPath) {
   return `node src/index.js import manifest --file ${manifestPath}`;
 }
 
+function buildIntakePaths(personId) {
+  const basePath = path.join('profiles', personId, 'imports');
+  return {
+    importsDir: basePath,
+    intakeReadmePath: path.join(basePath, 'README.md'),
+    starterManifestPath: path.join(basePath, 'materials.template.json'),
+    sampleTextPath: path.join(basePath, 'sample.txt'),
+  };
+}
+
+function buildStarterManifestDocument({ personId, displayName, summary, existingEntries = [] }) {
+  return {
+    personId,
+    displayName: normalizeText(displayName) ?? personId,
+    summary: summary === undefined ? null : (normalizeText(summary) ?? null),
+    entries: Array.isArray(existingEntries) ? existingEntries : [],
+  };
+}
+
+function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand }) {
+  const label = normalizeText(displayName) ?? personId;
+  return [
+    `# Intake scaffold for ${label}`,
+    '',
+    'Use this folder as the user-facing entrance for collecting target-person materials before import.',
+    '',
+    `- Starter manifest: ${starterManifestPath}`,
+    `- Sample text placeholder: ${sampleTextPath}`,
+    `- Import after editing: ${importManifestCommand}`,
+    '',
+    'Suggested flow:',
+    '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
+    '2. Add message / talk / screenshot entries to materials.template.json.',
+    '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+  ].join('\n');
+}
+
 function buildProfileLabel({ personId, displayName }) {
   return displayName && displayName !== personId ? `${displayName} (${personId})` : (displayName ?? personId);
 }
@@ -224,6 +262,49 @@ export class MaterialIngestion {
       personId: normalized.personId,
       profilePath: normalized.profilePath,
       profile: readJsonIfExists(normalized.profilePath),
+    };
+  }
+
+  scaffoldProfileIntake({ personId, displayName, summary }) {
+    const profileUpdate = this.updateProfile({ personId, displayName, summary });
+    const intakePaths = buildIntakePaths(profileUpdate.personId);
+    ensureDir(this.resolve(intakePaths.importsDir));
+
+    const existingTemplate = readJsonIfExists(this.resolve(intakePaths.starterManifestPath));
+    const starterManifest = buildStarterManifestDocument({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+      existingEntries: existingTemplate?.entries,
+    });
+    fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));
+
+    if (!fs.existsSync(this.resolve(intakePaths.sampleTextPath))) {
+      fs.writeFileSync(
+        this.resolve(intakePaths.sampleTextPath),
+        `Replace this file with a real writing sample for ${profileUpdate.profile?.displayName ?? profileUpdate.personId}.\n`,
+      );
+    }
+
+    const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    fs.writeFileSync(
+      this.resolve(intakePaths.intakeReadmePath),
+      buildIntakeReadme({
+        displayName: profileUpdate.profile?.displayName,
+        personId: profileUpdate.personId,
+        starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
+        sampleTextPath: intakePaths.sampleTextPath.split(path.sep).join('/'),
+        importManifestCommand,
+      }),
+    );
+
+    return {
+      ...profileUpdate,
+      intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
+      starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
+      sampleTextPath: intakePaths.sampleTextPath.split(path.sep).join('/'),
+      importManifestCommand,
+      refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
     };
   }
 

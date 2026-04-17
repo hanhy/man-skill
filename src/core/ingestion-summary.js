@@ -187,7 +187,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
-    bootstrapProfileCommand: 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"',
+    bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     sampleManifestPath,

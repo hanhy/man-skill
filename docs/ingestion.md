@@ -110,11 +110,12 @@ Single-target shorthand is also supported when all entries belong to one person:
 ### Update target-person profile metadata
 
 ```bash
+node src/index.js update intake --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
 node src/index.js update profile --person harry-han --display-name "Harry Han" --summary "Direct operator with a bias for momentum."
 node src/index.js update profile --person harry-han --summary "Direct operator with a bias for fast feedback loops." --refresh-foundation
 ```
 
-This updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
+`update intake` bootstraps a profile-local landing zone at `profiles/<person-id>/imports/` with a `README.md`, a `sample.txt` placeholder, and a `materials.template.json` starter manifest so users have an obvious place to drop target-person materials before import. `update profile` updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
 
 ## What happens
 
@@ -162,13 +163,13 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - each profile command bundle now also carries `importCommands.text|message|talk|screenshot`, which makes the first usable entrance explicit for every target profile instead of only exposing a single fallback command
   - `profileCommands` stays focused on the top actionable queue for prompt previews, while `allProfileCommands` exposes the full sorted per-profile command catalog so operators can inspect ready profiles too without recomputing command bundles downstream
   - metadata-only profiles now default their primary `importMaterialCommand` to `import message --person <id> --text <message> --refresh-foundation` unless a checked-in sample text file gives them a runnable text import, so the entrance stays copy-pasteable even when no local sample file exists yet
-  - the prompt preview mirrors this as `Ingestion entrance:` before delivery/foundation diagnostics so operators can jump straight from the summary to `import manifest`, `update profile`, one-shot `import text --refresh-foundation`, or `update foundation`
+  - the prompt preview mirrors this as `Ingestion entrance:` before delivery/foundation diagnostics so operators can jump straight from the summary to `update intake`, `import manifest`, `update profile`, one-shot `import text --refresh-foundation`, or `update foundation`
   - when the repo includes `samples/harry-materials.json`, the same block now advertises a real `sampleManifestCommand` instead of only a placeholder manifest path
   - sample-manifest diagnostics now also surface `sampleManifestMaterialTypes`, and the prompt line renders that typed mix (for example `message:1, text:1`) so the checked-in starter's coverage is visible before import
   - when the manifest includes explicit `displayName` metadata, the same ingestion entrance now also exposes `sampleManifestProfileLabels` and uses those human-readable labels in the prompt preview instead of only raw profile ids
   - that same sample-manifest path now also collapses into a shorter `sampleStarterCommand` (`node src/index.js import sample`) so first-run operators and the cron work loop can use one stable bootstrap command instead of reconstructing the longer manifest call
   - when the repo also includes `samples/harry-post.txt`, the same block now advertises a real `sampleTextCommand` (`node src/index.js import text --person <sample-person> --file samples/harry-post.txt --refresh-foundation`) so the entrance exposes both a batch and one-shot bootstrap path
-  - the ingestion block now stays visible even for empty repos, which makes the user-facing bootstrap path discoverable before any target profile has been created
+  - the ingestion block now stays visible even for empty repos, which makes the user-facing bootstrap path discoverable before any target profile has been created, and that empty-repo bootstrap now points at `update intake` so the first action creates real starter files instead of only a metadata stub
   - the top-level `workLoop` queue now mirrors those sample asset paths when ingestion is the current priority, so cron-style runs can see the concrete `samples/...` files backing the next import slice
 - top-level `foundation.core` repo diagnostics for the base memory / skills / soul / voice scaffold, including an `overview` block (`readyAreaCount`, `missingAreas`, `thinAreas`) that the prompt preview mirrors as a compact coverage line
   - `foundation.core.memory` now also exposes bucket coverage across `daily`, `long-term`, and `scratch` via `readyBucketCount`, `totalBucketCount`, `populatedBuckets`, and `emptyBuckets`, so partial repo memory scaffolds remain visibly thin until all three lanes are seeded

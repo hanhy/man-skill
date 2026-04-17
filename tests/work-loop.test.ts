@@ -37,7 +37,7 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.equal(summary.workLoop.queuedPriorityCount, 3);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update profile --person <person-id> --display-name "<Display Name>"');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"');
   assert.match(summary.workLoop.currentPriority.summary, /0 imported/);
   assert.deepEqual(
     summary.workLoop.priorities.map((priority: { id: string }) => priority.id),
@@ -51,7 +51,7 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.match(summary.promptPreview, /Work loop:/);
   assert.match(summary.promptPreview, /priorities: 4 total \(1 ready, 3 queued\)/);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js update profile --person <person-id> --display-name "<Display Name>"/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
 

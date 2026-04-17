@@ -694,6 +694,18 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
       : result;
   }
 
+  if (subcommand === 'intake') {
+    if (!personId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return ingestion.scaffoldProfileIntake({
+      personId,
+      displayName: typeof options['display-name'] === 'string' ? options['display-name'] : undefined,
+      summary: typeof options.summary === 'string' ? options.summary : undefined,
+    });
+  }
+
   if (subcommand === 'foundation' && options.all) {
     const result = ingestion.refreshAllFoundationDrafts();
     return {
@@ -898,6 +910,7 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
     '  node src/index.js update foundation --all',
@@ -935,6 +948,10 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'update' && subcommand === 'profile') {
     return 'Usage: node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]';
+  }
+
+  if (command === 'update' && subcommand === 'intake') {
+    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]';
   }
 
   if (command === 'update' && subcommand === 'foundation') {
