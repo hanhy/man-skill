@@ -859,6 +859,18 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleTextPersonId, 'harry-han');
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
+  assert.deepEqual(summary.ingestion.helperCommands, {
+    bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    scaffoldAll: 'node src/index.js update intake --all',
+    scaffoldStale: 'node src/index.js update intake --stale',
+    importManifest: 'node src/index.js import manifest --file <manifest.json>',
+    importIntakeAll: 'node src/index.js import intake --all',
+    importIntakeStale: 'node src/index.js import intake --stale',
+    refreshStaleFoundation: 'node src/index.js update foundation --stale',
+    sampleStarter: 'node src/index.js import sample',
+    sampleManifest: "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation",
+    sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
+  });
   assert.deepEqual(allProfileCommandLabels, [
     'Jane Doe (jane-doe)',
     'Metadata Only (metadata-only)',
@@ -957,6 +969,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
+  assert.match(summary.promptPreview, /helpers: scaffold node src\/index\.js update intake --stale \| import node src\/index\.js import intake --stale \| refresh node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\] for Harry Han \(harry-han\)/);
@@ -1072,6 +1085,18 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleTextPersonId: null,
     sampleTextCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    helperCommands: {
+      bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+      scaffoldAll: 'node src/index.js update intake --all',
+      scaffoldStale: 'node src/index.js update intake --stale',
+      importManifest: 'node src/index.js import manifest --file <manifest.json>',
+      importIntakeAll: 'node src/index.js import intake --all',
+      importIntakeStale: 'node src/index.js import intake --stale',
+      refreshStaleFoundation: 'node src/index.js update foundation --stale',
+      sampleStarter: null,
+      sampleManifest: null,
+      sampleText: null,
+    },
     profileCommands: [],
     allProfileCommands: [],
     metadataProfileCommands: [],
@@ -1082,6 +1107,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
+  assert.match(summary.promptPreview, /helpers: scaffold node src\/index\.js update intake --stale \| import node src\/index\.js import intake --stale \| refresh node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
 });
 

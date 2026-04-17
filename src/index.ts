@@ -1049,7 +1049,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(4200),
+    promptPreview: prompt.buildPreview(5200),
   };
 }
 

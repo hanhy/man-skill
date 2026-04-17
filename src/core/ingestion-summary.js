@@ -284,6 +284,23 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     })
     .slice(0, 2);
 
+  const helperCommands = {
+    bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    scaffoldAll: 'node src/index.js update intake --all',
+    scaffoldStale: 'node src/index.js update intake --stale',
+    importManifest: 'node src/index.js import manifest --file <manifest.json>',
+    importIntakeAll: 'node src/index.js import intake --all',
+    importIntakeStale: 'node src/index.js import intake --stale',
+    refreshStaleFoundation: 'node src/index.js update foundation --stale',
+    sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? 'node src/index.js import sample'
+      : null,
+    sampleManifest: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
+      : null,
+    sampleText: sampleText.command,
+  };
+
   return {
     profileCount: safeProfiles.length,
     importedProfileCount: importedProfiles.length,
@@ -330,6 +347,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleTextPersonId: sampleText.personId,
     sampleTextCommand: sampleText.command,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    helperCommands,
     profileCommands: orderedProfileCommands,
     allProfileCommands,
     metadataProfileCommands,

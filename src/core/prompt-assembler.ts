@@ -309,6 +309,19 @@ type IngestionProfileCommand = {
   importMaterialCommand?: string | null;
 };
 
+type IngestionHelperCommands = {
+  bootstrap?: string | null;
+  scaffoldAll?: string | null;
+  scaffoldStale?: string | null;
+  importManifest?: string | null;
+  importIntakeAll?: string | null;
+  importIntakeStale?: string | null;
+  refreshStaleFoundation?: string | null;
+  sampleStarter?: string | null;
+  sampleManifest?: string | null;
+  sampleText?: string | null;
+};
+
 type IngestionSummary = {
   profileCount?: number;
   importedProfileCount?: number;
@@ -342,6 +355,7 @@ type IngestionSummary = {
   sampleTextPersonId?: string | null;
   sampleTextCommand?: string | null;
   staleRefreshCommand?: string | null;
+  helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
   metadataProfileCommands?: IngestionProfileCommand[];
@@ -679,14 +693,20 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
 }
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
+  const helperCommands = ingestion?.helperCommands ?? {};
   const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
   const hasBootstrapData = Boolean(
     ingestion?.bootstrapProfileCommand
+      || helperCommands.bootstrap
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
+      || helperCommands.importManifest
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.staleRefreshCommand
+      || helperCommands.scaffoldStale
+      || helperCommands.importIntakeStale
+      || helperCommands.refreshStaleFoundation
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
@@ -703,6 +723,13 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       : null,
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
+      : null,
+    (helperCommands.scaffoldStale || helperCommands.importIntakeStale || helperCommands.refreshStaleFoundation)
+      ? `- helpers: ${[
+        helperCommands.scaffoldStale ? `scaffold ${helperCommands.scaffoldStale}` : null,
+        helperCommands.importIntakeStale ? `import ${helperCommands.importIntakeStale}` : null,
+        helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
+      ].filter(Boolean).join(' | ')}`
       : null,
     (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
       ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
