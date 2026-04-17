@@ -12,6 +12,19 @@ function normalizeRelativePaths(paths: unknown): string[] {
   return paths.filter((value): value is string => typeof value === 'string' && value.length > 0);
 }
 
+function quotePaths(paths: string[]): string {
+  return paths.map(shellSingleQuote).join(' ');
+}
+
+const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
+
+function quoteShellPath(value: string): string {
+  // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
+  return value === DAILY_MEMORY_SEED_PATH
+    ? `"${value}"`
+    : shellSingleQuote(value);
+}
+
 function buildSkillsStarterCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
   if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/') {
@@ -24,21 +37,11 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
 function buildMemorySeedCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
   const needsRootDocument = normalizedPaths.includes('memory/README.md');
-  const bucketSeedFiles = normalizedPaths.flatMap((value) => {
-    if (value === 'memory/daily') {
-      return ['memory/daily/$(date +%F).md'];
-    }
-
-    if (value === 'memory/long-term') {
-      return ['memory/long-term/notes.md'];
-    }
-
-    if (value === 'memory/scratch') {
-      return ['memory/scratch/draft.md'];
-    }
-
-    return [];
-  });
+  const bucketSeedFiles = [
+    normalizedPaths.includes('memory/daily') ? 'memory/daily/$(date +%F).md' : null,
+    normalizedPaths.includes('memory/long-term') ? 'memory/long-term/notes.md' : null,
+    normalizedPaths.includes('memory/scratch') ? 'memory/scratch/draft.md' : null,
+  ].filter((value): value is string => typeof value === 'string');
 
   if (!needsRootDocument && bucketSeedFiles.length === 0) {
     return null;
@@ -52,11 +55,11 @@ function buildMemorySeedCommand(paths: string[]): string | null {
   const commandSegments: string[] = [];
 
   if (mkdirPaths.length > 0) {
-    commandSegments.push(`mkdir -p ${mkdirPaths.join(' ')}`);
+    commandSegments.push(`mkdir -p ${quotePaths(mkdirPaths)}`);
   }
 
   if (touchPaths.length > 0) {
-    commandSegments.push(`touch ${touchPaths.join(' ')}`);
+    commandSegments.push(`touch ${touchPaths.map(quoteShellPath).join(' ')}`);
   }
 
   return commandSegments.join(' && ');
@@ -123,7 +126,7 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   }
 
   if (area === 'memory' && paths.length === 1 && paths[0] === 'memory/README.md') {
-    return 'touch memory/README.md';
+    return `touch ${shellSingleQuote('memory/README.md')}`;
   }
 
   return null;

@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 
@@ -10,8 +14,40 @@ test('buildCoreFoundationCommand scaffolds missing memory buckets with seed file
       status: 'missing',
       paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
     }),
-    'mkdir -p memory/daily memory/long-term memory/scratch && touch memory/README.md memory/daily/$(date +%F).md memory/long-term/notes.md memory/scratch/draft.md',
+    "mkdir -p 'memory/daily' 'memory/long-term' 'memory/scratch' && touch 'memory/README.md' \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
+});
+
+test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'memory',
+      status: 'thin',
+      paths: ['memory/scratch', 'memory/README.md', 'memory/long-term', 'memory/scratch'],
+    }),
+    "mkdir -p 'memory/long-term' 'memory/scratch' && touch 'memory/README.md' 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+  );
+});
+
+test('buildCoreFoundationCommand daily memory scaffold expands the date at execution time', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'missing',
+    paths: ['memory/README.md', 'memory/daily'],
+  });
+
+  assert.equal(
+    command,
+    "mkdir -p 'memory/daily' && touch 'memory/README.md' \"memory/daily/$(date +%F).md\"",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-command-'));
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  const today = execSync('date +%F', { cwd: rootDir, shell: '/bin/bash' }).toString().trim();
+  assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'daily', `${today}.md`)), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'daily', '$(date +%F).md')), false);
 });
 
 test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {

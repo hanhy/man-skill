@@ -387,7 +387,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     recommendedActions: ['add at least one entry under memory/long-term and memory/scratch'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p memory\/long-term memory\/scratch && touch memory\/long-term\/notes\.md memory\/scratch\/draft\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
@@ -471,7 +471,7 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     ],
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch memory\/README\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch 'memory\/README\.md'/);
 });
 
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {
