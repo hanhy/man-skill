@@ -438,6 +438,12 @@ function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[]
     : Object.keys(draftPathByKey).sort().map((draftKey) => draftPathByKey[draftKey]);
 }
 
+function collectFoundationDraftPaths(profiles: ProfileSummaryLike[]): string[] {
+  return Array.from(new Set(
+    profiles.flatMap((profile) => buildFoundationDraftPaths(profile)),
+  ));
+}
+
 function buildFoundationRefreshLabel(
   reasonsSource: { refreshReasons?: string[] } | null,
   label: string | null = null,
@@ -484,6 +490,18 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const bulkRefreshLabel = queuedProfileLabel
     ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
     : 'refresh stale or incomplete target profiles';
+  const queuedProfileSummaries = useBulkRefreshCommand
+    ? (Array.isArray(maintenance.queuedProfiles)
+      ? maintenance.queuedProfiles
+        .map((profile: any) => profile?.id
+          ? profiles.find((summary) => summary?.id === profile.id) ?? null
+          : null)
+        .filter((profile): profile is ProfileSummaryLike => Boolean(profile?.id))
+      : [])
+    : [];
+  const bulkRefreshPaths = useBulkRefreshCommand
+    ? collectFoundationDraftPaths(queuedProfileSummaries)
+    : [];
   const bulkCoreScaffoldCommand = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
     ? coreMaintenance.helperCommands.scaffoldAll
     : null;
@@ -511,7 +529,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
       : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand),
     paths: queuedProfile?.refreshCommand
-      ? buildFoundationDraftPaths(queuedProfileSummary)
+      ? (useBulkRefreshCommand
+          ? bulkRefreshPaths
+          : buildFoundationDraftPaths(queuedProfileSummary))
       : (useBulkCoreScaffoldCommand
           ? bulkCoreScaffoldPaths
           : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [])),
