@@ -29,15 +29,33 @@ function buildProfileImportCommands(profileId, options = {}) {
   const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
     ? options.sampleTextPersonId
     : null;
+  const sampleFileCommands = Array.isArray(options.sampleFileCommands)
+    ? options.sampleFileCommands.filter((entry) => entry && typeof entry === 'object')
+    : [];
   const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
+  const matchingSampleFileCommands = sampleFileCommands.filter((entry) =>
+    entry.personId === normalizedProfileId
+    && typeof entry.type === 'string'
+    && typeof entry.command === 'string'
+    && entry.command.trim().length > 0,
+  );
+  const runnableSampleCommandByType = matchingSampleFileCommands.reduce((commands, entry) => {
+    if (!commands[entry.type]) {
+      commands[entry.type] = entry.command;
+    }
+
+    return commands;
+  }, {});
 
   return {
-    text: runnableTextPath
-      ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
-      : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`,
+    text: runnableSampleCommandByType.text
+      ?? (runnableTextPath
+        ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
+        : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`),
     message: `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
     talk: `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
+    screenshot: runnableSampleCommandByType.screenshot
+      ?? `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
   };
 }
 
@@ -236,6 +254,9 @@ function buildProfileCommands(profile, options = {}) {
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
+  const runnableScreenshotImportCommand = typeof importCommands.screenshot === 'string' && !importCommands.screenshot.includes('<')
+    ? importCommands.screenshot
+    : null;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
   const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
     ? intake.starterManifestPath
@@ -243,7 +264,11 @@ function buildProfileCommands(profile, options = {}) {
   const intakeImportManifestCommand = intakeManifestPath
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
-  const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
+  const defaultImportCommand = runnableTextImportCommand
+    ?? runnableScreenshotImportCommand
+    ?? intakeImportManifestCommand
+    ?? importCommands.message
+    ?? importCommands.text;
   const updateProfileCommand = buildUpdateProfileCommand(profile);
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
@@ -328,6 +353,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
     })
     .map((profile) => buildProfileCommands(profile, {
+      sampleFileCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
@@ -357,6 +383,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     });
   const allProfileCommands = sortedProfiles
     .map((profile) => buildProfileCommands(profile, {
+      sampleFileCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))

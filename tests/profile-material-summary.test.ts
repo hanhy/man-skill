@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { FileSystemLoader } from '../src/core/fs-loader.js';
-import { buildSummary } from '../src/index.js';
+import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { PromptAssembler } from '../src/core/prompt-assembler.ts';
 
@@ -998,6 +998,53 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+});
+
+test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'metadata-only-chat.png'), 'fake image bytes');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'screenshot',
+          file: 'metadata-only-chat.png',
+        },
+      ],
+    }, null, 2),
+  );
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
+
+  assert.equal(summary.ingestion.sampleTextPath, null);
+  assert.deepEqual(summary.ingestion.sampleFileCommands, [
+    {
+      type: 'screenshot',
+      path: 'samples/metadata-only-chat.png',
+      personId: 'metadata-only',
+      command: "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation",
+    },
+  ]);
+  assert.equal(metadataOnlyCommand?.importCommands?.screenshot, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
+  assert.equal(metadataOnlyCommand?.helperCommands?.directImports?.screenshot, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
+  assert.equal(metadataOnlyCommand?.importMaterialCommand, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
 });
 
 test('buildSummary prefers a profile-local starter manifest once intake scaffolding is ready', () => {

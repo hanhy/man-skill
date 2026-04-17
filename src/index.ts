@@ -559,6 +559,9 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const sampleTextPersonId = typeof ingestionSummary?.sampleTextPersonId === 'string' && ingestionSummary.sampleTextPersonId.length > 0
       ? ingestionSummary.sampleTextPersonId
       : null;
+    const sampleFileCommands = Array.isArray(ingestionSummary?.sampleFileCommands)
+      ? ingestionSummary.sampleFileCommands.filter((entry: any) => entry && typeof entry === 'object')
+      : [];
 
     if (metadataOnlyProfileNeedingScaffold) {
       const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
@@ -608,9 +611,24 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         ? (Array.isArray(metadataOnlyProfile?.intakePaths)
           ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
           : [])
-        : (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
-          ? [sampleTextPath]
-          : []);
+        : (() => {
+          const matchingSampleFile = sampleFileCommands.find((entry: any) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.path === 'string'
+            && entry.path.length > 0,
+          );
+
+          if (matchingSampleFile) {
+            return [matchingSampleFile.path];
+          }
+
+          if (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId) {
+            return [sampleTextPath];
+          }
+
+          return [];
+        })();
     } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
