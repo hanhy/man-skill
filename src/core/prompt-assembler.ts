@@ -101,7 +101,12 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
+  helperCommands?: {
+    refreshAll?: string | null;
+    refreshStale?: string | null;
+  };
   queuedProfiles?: MaintenanceQueueItem[];
 };
 
@@ -546,8 +551,15 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   }
 
   const queuedProfiles = maintenance.queuedProfiles ?? [];
+  const helperLine = [
+    maintenance.helperCommands?.refreshAll ? `refresh-all ${maintenance.helperCommands.refreshAll}` : null,
+    maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
+  ].filter(Boolean).join(' | ');
+
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    helperLine ? `- helpers: ${helperLine}` : null,
+    maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
     ...queuedProfiles.map((profile) => {
       const reasonSuffix = (profile.refreshReasons ?? []).length > 0
         ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
@@ -557,7 +569,6 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
         : '';
       return `- ${profile.label ?? profile.id}: ${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
     }),
-    maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
   ].filter(Boolean).join('\n');
 }
 
