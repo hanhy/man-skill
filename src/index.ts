@@ -591,11 +591,19 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
     const sampleStarterCommand = ingestionSummary?.sampleStarterCommand ?? null;
     const samplePaths = collectSampleManifestPaths(ingestionSummary);
+    const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
+      ? ingestionSummary.sampleManifestPath
+      : null;
+    const sampleManifestInvalid = ingestionSummary?.sampleManifestStatus === 'invalid' && sampleManifestPath;
 
     if (sampleStarterCommand) {
       nextAction = buildSampleImportNextAction(ingestionSummary);
       command = sampleStarterCommand;
       paths = samplePaths;
+    } else if (sampleManifestInvalid) {
+      nextAction = 'fix the checked-in sample manifest for first imports';
+      command = null;
+      paths = [sampleManifestPath];
     } else {
       nextAction = 'bootstrap a target profile';
       command = ingestionSummary?.bootstrapProfileCommand ?? null;
