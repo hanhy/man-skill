@@ -36,6 +36,14 @@ node src/index.js import sample
 
 This shortcut auto-loads `samples/harry-materials.json`, runs the manifest import, and refreshes the derived foundation drafts in one step. Use it when you want the fastest end-to-end sanity check of the ingestion entrance on a fresh checkout.
 
+### Import every ready profile-local intake scaffold that still has no imported materials
+
+```bash
+node src/index.js import intake --stale
+```
+
+This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
+
 ### Import a JSON manifest of mixed materials
 
 ```bash
@@ -103,6 +111,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts
+- `import intake --stale` bulk-imports only ready metadata-only intake scaffolds, so the profile-local entrance can be processed without re-importing profiles that already have stored materials
 - manifest imports can span multiple target profiles in one pass
 - manifest import results now also include per-profile summaries with imported material counts/types, the stored display label/summary, `needsRefresh`, sorted `missingDrafts`, and direct follow-up commands for `update profile` and `update foundation`
 - when `import manifest` is paired with `--refresh-foundation`, those per-profile summaries are recomputed after draft generation so freshly imported profiles report `needsRefresh: false` instead of stale pre-refresh status

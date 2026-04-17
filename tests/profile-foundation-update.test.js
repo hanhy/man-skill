@@ -295,6 +295,69 @@ test('CLI import intake --all loads every ready profile-local starter manifest a
   assert.deepEqual(result.results.flatMap((entry) => entry.profileIds), ['alpha-ready', 'beta-ready']);
 });
 
+test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Alpha Ready',
+    displayName: 'Alpha Ready',
+    summary: 'Ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Another ready intake manifest.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, so no intake rerun needed.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Already',
+    displayName: 'Imported Already',
+    summary: 'Should be skipped because materials already exist.',
+  });
+  ingestion.updateProfile({
+    personId: 'Gamma Missing',
+    displayName: 'Gamma Missing',
+    summary: 'Needs intake scaffolding first.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'sample.txt'), 'Alpha sample.\n');
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'sample.txt'), 'Beta sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Alpha Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Beta Ready',
+      entries: [{ type: 'message', text: 'Beta keeps it terse.' }],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--stale'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready']);
+  assert.deepEqual(result.results.map((entry) => entry.manifestFile), [
+    'profiles/alpha-ready/imports/materials.template.json',
+    'profiles/beta-ready/imports/materials.template.json',
+  ]);
+  assert.equal(result.results.some((entry) => entry.profileIds.includes('imported-already')), false);
+});
+
 test('CLI import sample command loads the checked-in sample manifest and refreshes foundation drafts', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });

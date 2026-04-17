@@ -542,11 +542,15 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
           ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
           : []);
-    } else if (readyIntakeProfiles.length > 1 && typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0) {
+    } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
         : 'import source materials for ready intake profiles';
-      command = ingestionSummary.intakeImportAllCommand;
+      command = typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
+        ? ingestionSummary.intakeImportStaleCommand
+        : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
+            ? ingestionSummary.intakeImportAllCommand
+            : null);
       paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
         ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
         : []);
@@ -711,6 +715,10 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   if (subcommand === 'intake') {
     if (options.all) {
       return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+    }
+
+    if (options.stale) {
+      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests());
     }
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
@@ -1019,6 +1027,7 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import intake --stale             Import every ready metadata-only intake manifest and refresh drafts',
     '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
@@ -1049,7 +1058,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'intake') {
-    return 'Usage: node src/index.js import intake --person <person-id> | --all';
+    return 'Usage: node src/index.js import intake --person <person-id> | --stale | --all';
   }
 
   if (command === 'import' && subcommand === 'text') {

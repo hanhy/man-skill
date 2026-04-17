@@ -450,7 +450,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import intake --all');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import intake --stale');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/alpha-ready/imports/sample.txt',
@@ -458,7 +458,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
     'profiles/beta-ready/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import intake --all/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import intake --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt/);
 });
 
