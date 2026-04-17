@@ -1049,6 +1049,67 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
   assert.doesNotMatch(summary.promptPreview, /outside-provider\.js'.*touch/);
 });
 
+test('buildSummary work loop omits outside-repo implementation paths when bundling provider scaffolds', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'active' },
+    { id: 'telegram', status: 'active' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned', implementationPath: 'src/models/openai.js' },
+    { id: 'anthropic', status: 'planned', implementationPath: 'src/models/anthropic.js' },
+    { id: 'kimi', status: 'active' },
+    { id: 'minimax', status: 'active' },
+    { id: 'glm', status: 'active' },
+    { id: 'qwen', status: 'active' },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      status: 'candidate',
+      models: ['deepseek-chat'],
+      features: ['chat'],
+      defaultModel: 'deepseek-chat',
+      authEnvVar: 'DEEPSEEK_API_KEY',
+      modalities: ['chat'],
+      implementationPath: '../outside-provider.js',
+      nextStep: 'implement deepseek transport adapter',
+    },
+  ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'openai.js'), 'export const providerId = \'openai\';\n');
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'anthropic.js'), 'export const providerId = \'anthropic\';\n');
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'openai.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'anthropic.js'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'providers');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "(mkdir -p 'src/models' && touch 'src/models/openai.js') && (mkdir -p 'src/models' && touch 'src/models/anthropic.js')",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'manifests/providers.json',
+    'src/models/openai.js',
+    'src/models/anthropic.js',
+  ]);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*outside-provider\.js/);
+  assert.doesNotMatch(summary.promptPreview, /outside-provider\.js'.*touch/);
+});
+
 test('buildSummary work loop points foundation refreshes at the stale profile draft paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

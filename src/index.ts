@@ -869,7 +869,9 @@ function buildDeliveryPriority({
   const bundledImplementationPaths = Array.isArray(queue)
     ? queue
       .filter((item) => item?.implementationPresent === false)
-      .map((item) => typeof item?.implementationPath === 'string' && item.implementationPath.length > 0 ? item.implementationPath : null)
+      .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
+        ? item.implementationScaffoldPath
+        : null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
