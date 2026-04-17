@@ -90,6 +90,49 @@ test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', ()
       status: 'thin',
       paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
     }),
-    "touch 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'",
+    "mkdir -p 'skills/slack' 'skills/telegram' && for file in 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
+  );
+});
+
+test('buildCoreFoundationCommand seeds missing skill docs without clobbering existing content', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-skill-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Existing skill\n\nKeep this content.\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), 'utf8'),
+    '# Existing skill\n\nKeep this content.\n',
+  );
+});
+
+test('buildCoreFoundationCommand preserves shell quoting for skill docs with spaces and apostrophes', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ["skills/harry's notes/SKILL.md", 'skills/team sync/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-skill-quote-command-'));
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', "harry's notes", 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'team sync', 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
   );
 });

@@ -34,6 +34,19 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
   return `mkdir -p skills/starter && printf %s ${shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n')} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
 }
 
+function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length === 0 || !normalizedPaths.every((value) => value.endsWith('/SKILL.md'))) {
+    return null;
+  }
+
+  const mkdirPaths = Array.from(new Set(normalizedPaths.map((value) => path.posix.dirname(value))));
+  const starterTemplate = shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n');
+  const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
+
+  return `mkdir -p ${quotePaths(mkdirPaths)} && for file in ${fileList}; do [ -f "$file" ] || printf %s ${starterTemplate} > "$file"; done`;
+}
+
 function buildMemorySeedCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
   const needsRootDocument = normalizedPaths.includes('memory/README.md');
@@ -100,7 +113,7 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   const paths = normalizeRelativePaths(record.paths).map((value) => value.split(path.sep).join('/'));
 
   if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
-    return `touch ${paths.map(shellSingleQuote).join(' ')}`;
+    return buildSkillDocumentationSeedCommand(paths);
   }
 
   if (area === 'skills' && status === 'missing') {
