@@ -490,8 +490,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
 
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
+  const bootstrapProfileCommand = 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"';
   const helperCommands = {
-    bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
     scaffoldBundle: buildCommandBundle(
@@ -541,7 +542,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeImportAllCommand: 'node src/index.js import intake --all --refresh-foundation',
     intakeImportStaleCommand: 'node src/index.js import intake --stale --refresh-foundation',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
-    bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    bootstrapProfileCommand,
     intakeAllCommand: 'node src/index.js update intake --all',
     intakeStaleCommand: 'node src/index.js update intake --stale',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
