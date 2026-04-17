@@ -842,6 +842,60 @@ test('CLI update intake preserves existing starter entries and customized entry 
   });
 });
 
+test('CLI update intake preserves custom README notes on rerun while refreshing generated commands', () => {
+  const rootDir = makeTempRepo();
+
+  const initialOutput = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const initial = JSON.parse(initialOutput);
+  const readmePath = path.join(rootDir, initial.intakeReadmePath);
+  const originalReadme = fs.readFileSync(readmePath, 'utf8');
+  const customizedReadme = originalReadme.replace(
+    'Add notes about where future materials should come from.',
+    '- Keep pulling from the founder memo folder.\n- Weekly voice notes live in iCloud Drive.',
+  );
+  fs.writeFileSync(readmePath, customizedReadme);
+
+  execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Forward',
+      '--summary',
+      'Direct operator with faster loops.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+
+  const rerunReadme = fs.readFileSync(readmePath, 'utf8');
+  assert.match(rerunReadme, /# Intake scaffold for Harry Forward/);
+  assert.match(rerunReadme, /node src\/index\.js import manifest --file profiles\/harry-han\/imports\/materials\.template\.json --refresh-foundation/);
+  assert.match(rerunReadme, /- Keep pulling from the founder memo folder\./);
+  assert.match(rerunReadme, /- Weekly voice notes live in iCloud Drive\./);
+});
+
 test('CLI import manifest can seed profile metadata before importing materials', () => {
   const rootDir = makeTempRepo();
 

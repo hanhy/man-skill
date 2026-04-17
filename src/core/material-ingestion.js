@@ -234,8 +234,40 @@ function buildStarterManifestDocument({
   };
 }
 
-function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands }) {
+const INTAKE_CUSTOM_NOTES_START = '<!-- man-skill:intake-custom-notes:start -->';
+const INTAKE_CUSTOM_NOTES_END = '<!-- man-skill:intake-custom-notes:end -->';
+const DEFAULT_INTAKE_CUSTOM_NOTES = 'Add notes about where future materials should come from.';
+
+function extractIntakeCustomNotes(existingReadme) {
+  if (typeof existingReadme !== 'string' || existingReadme.length === 0) {
+    return DEFAULT_INTAKE_CUSTOM_NOTES;
+  }
+
+  const startIndex = existingReadme.indexOf(INTAKE_CUSTOM_NOTES_START);
+  const endIndex = existingReadme.indexOf(INTAKE_CUSTOM_NOTES_END);
+  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+    return DEFAULT_INTAKE_CUSTOM_NOTES;
+  }
+
+  const extracted = existingReadme
+    .slice(startIndex + INTAKE_CUSTOM_NOTES_START.length, endIndex)
+    .replace(/^\s+|\s+$/g, '');
+
+  return extracted.length > 0 ? extracted : DEFAULT_INTAKE_CUSTOM_NOTES;
+}
+
+function normalizeBlockText(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.replace(/^\s+|\s+$/g, '');
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands, customNotes }) {
   const label = normalizeText(displayName) ?? personId;
+  const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
   return [
     `# Intake scaffold for ${label}`,
     '',
@@ -255,6 +287,11 @@ function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleT
     `- message: ${importCommands?.message}`,
     `- talk: ${importCommands?.talk}`,
     `- screenshot: ${importCommands?.screenshot}`,
+    '',
+    'Custom notes:',
+    INTAKE_CUSTOM_NOTES_START,
+    managedCustomNotes,
+    INTAKE_CUSTOM_NOTES_END,
     '',
   ].join('\n');
 }
@@ -355,6 +392,9 @@ export class MaterialIngestion {
     }
 
     const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
+      ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
+      : null;
     fs.writeFileSync(
       this.resolve(intakePaths.intakeReadmePath),
       buildIntakeReadme({
@@ -364,6 +404,7 @@ export class MaterialIngestion {
         sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
         importCommands,
+        customNotes: extractIntakeCustomNotes(existingReadme),
       }),
     );
 
