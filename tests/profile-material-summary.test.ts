@@ -616,6 +616,42 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });
 
+test('PromptAssembler falls back to ingestion helperCommands for sample helper lines', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    ingestion: {
+      profileCount: 0,
+      importedProfileCount: 0,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 0,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
+      helperCommands: {
+        sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
+        sampleMessage: "node src/index.js import message --person harry-han --text 'Ship the thin slice first.' --refresh-foundation",
+        sampleTalk: "node src/index.js import talk --person harry-han --text 'Keep the loop tight.' --refresh-foundation",
+        sampleScreenshot: "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation",
+      },
+      sampleFileCommands: [],
+      sampleInlineCommands: [],
+    },
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /helpers: .*sample-text node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
+  assert.match(prompt, /helpers: .*sample-message node src\/index\.js import message --person harry-han --text 'Ship the thin slice first\.' --refresh-foundation/);
+  assert.match(prompt, /helpers: .*sample-talk node src\/index\.js import talk --person harry-han --text 'Keep the loop tight\.' --refresh-foundation/);
+  assert.match(prompt, /helpers: .*sample-screenshot node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
+});
+
 test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

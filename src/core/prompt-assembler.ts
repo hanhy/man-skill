@@ -827,37 +827,46 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
     (() => {
-      const helperEntries = [
-        helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
-        helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
-        helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null,
-        helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
-        helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
-        helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
-        helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null,
-        helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
-        helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
-        helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null,
-        helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
-        helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
-        helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,
-        ...((ingestion.sampleFileCommands ?? [])
-          .filter((entry) => {
-            if (!entry?.command || !entry?.type) {
-              return false;
-            }
+      const helperEntries: string[] = [];
+      const pushHelperEntry = (entry: string | null | undefined) => {
+        if (entry && !helperEntries.includes(entry)) {
+          helperEntries.push(entry);
+        }
+      };
 
-            if (entry.type !== 'text') {
-              return true;
-            }
+      pushHelperEntry(helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null);
+      pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
+      pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
+      pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
+      pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
+      pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
+      pushHelperEntry(helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null);
+      pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
+      pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
+      pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
+      pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
+      pushHelperEntry(helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null);
+      pushHelperEntry(helperCommands.sampleMessage ? `sample-message ${helperCommands.sampleMessage}` : null);
+      pushHelperEntry(helperCommands.sampleTalk ? `sample-talk ${helperCommands.sampleTalk}` : null);
+      pushHelperEntry(helperCommands.sampleScreenshot ? `sample-screenshot ${helperCommands.sampleScreenshot}` : null);
 
-            return entry.command !== ingestion.sampleTextCommand;
-          })
-          .map((entry) => `sample-${entry.type} ${entry.command}`)),
-        ...((ingestion.sampleInlineCommands ?? [])
-          .filter((entry) => entry?.command && entry?.type)
-          .map((entry) => `sample-${entry.type} ${entry.command}`)),
-      ].filter(Boolean);
+      (ingestion.sampleFileCommands ?? [])
+        .filter((entry) => {
+          if (!entry?.command || !entry?.type) {
+            return false;
+          }
+
+          if (entry.type !== 'text') {
+            return true;
+          }
+
+          return entry.command !== ingestion.sampleTextCommand;
+        })
+        .forEach((entry) => pushHelperEntry(`sample-${entry.type} ${entry.command}`));
+      (ingestion.sampleInlineCommands ?? [])
+        .filter((entry) => entry?.command && entry?.type)
+        .forEach((entry) => pushHelperEntry(`sample-${entry.type} ${entry.command}`));
 
       return helperEntries.length > 0
         ? `- helpers: ${helperEntries.join(' | ')}`
