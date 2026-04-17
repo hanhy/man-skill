@@ -206,6 +206,7 @@ test('CLI import manifest rejects manifest entries that point outside the repo r
     () => execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', 'materials.json'], {
       cwd: rootDir,
       encoding: 'utf8',
+      stdio: 'pipe',
     }),
     /outside the repo root/,
   );
@@ -215,6 +216,39 @@ test('CLI import manifest rejects manifest entries that point outside the repo r
     : [];
   assert.deepEqual(materialFiles, []);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('CLI --help prints a concise usage guide instead of the repo summary JSON', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync('node', [cliEntrypoint, '--help'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+
+  assert.match(output, /^Usage: node src\/index\.js /);
+  assert.match(output, /Commands:/);
+  assert.match(output, /node src\/index\.js import sample/);
+  assert.doesNotMatch(output, /"profile": \{/);
+});
+
+test('CLI command errors print a concise usage hint without a stack trace', () => {
+  const rootDir = makeTempRepo();
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'manifest'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Error: manifestFile is required for manifest import/);
+      assert.match(error.stderr, /Usage: node src\/index\.js import manifest --file <manifest\.json>/);
+      assert.doesNotMatch(error.stderr, /at MaterialIngestion\.importManifest/);
+      return true;
+    },
+  );
 });
 
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {

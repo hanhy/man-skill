@@ -884,22 +884,105 @@ export function buildSummary(rootDir: string) {
   };
 }
 
+function buildCliUsageLines(): string[] {
+  return [
+    'Usage: node src/index.js [command] [subcommand] [options]',
+    '',
+    'Commands:',
+    '  node src/index.js                                  Show the repo summary JSON',
+    '  node src/index.js --help                           Show this usage guide',
+    '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
+    '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
+    '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update foundation --person <person-id>',
+    '  node src/index.js update foundation --stale',
+    '  node src/index.js update foundation --all',
+  ];
+}
+
+function formatCliUsage(): string {
+  return `${buildCliUsageLines().join('\n')}\n`;
+}
+
+function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
+  if (command === 'import' && subcommand === 'manifest') {
+    return 'Usage: node src/index.js import manifest --file <manifest.json>';
+  }
+
+  if (command === 'import' && subcommand === 'sample') {
+    return 'Usage: node src/index.js import sample';
+  }
+
+  if (command === 'import' && subcommand === 'text') {
+    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'message') {
+    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'talk') {
+    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'screenshot') {
+    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--refresh-foundation]';
+  }
+
+  if (command === 'update' && subcommand === 'profile') {
+    return 'Usage: node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]';
+  }
+
+  if (command === 'update' && subcommand === 'foundation') {
+    return 'Usage: node src/index.js update foundation --person <person-id> | --stale | --all';
+  }
+
+  if (command === 'import' || command === 'update') {
+    return buildCliUsageLines().find((line) => line.startsWith(`  node src/index.js ${command} `))?.trim() ?? null;
+  }
+
+  return null;
+}
+
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
   const { command, subcommand, options } = parseArgs(argv);
 
-  if (command === 'import') {
-    const result = runImportCommand(rootDir, subcommand, options);
-    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+  if (command === '--help' || command === 'help' || options.help) {
+    console.log(formatCliUsage());
     return;
   }
 
-  if (command === 'update') {
-    const result = runUpdateCommand(rootDir, subcommand, options);
-    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
-    return;
-  }
+  try {
+    if (command === 'import') {
+      const result = runImportCommand(rootDir, subcommand, options);
+      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      return;
+    }
 
-  console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+    if (command === 'update') {
+      const result = runUpdateCommand(rootDir, subcommand, options);
+      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      return;
+    }
+
+    console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const usageHint = buildCommandUsageHint(command, subcommand);
+    const lines = [`Error: ${message}`];
+
+    if (usageHint) {
+      lines.push(usageHint);
+    }
+
+    lines.push('Run `node src/index.js --help` for more commands.');
+    console.error(lines.join('\n'));
+    process.exitCode = 1;
+  }
 }
 
 const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
