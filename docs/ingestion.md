@@ -45,6 +45,30 @@ node src/index.js import intake --stale
 
 This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
 
+### Re-import every ready profile-local intake manifest, even for already-imported profiles
+
+```bash
+node src/index.js import intake --all
+```
+
+Use this broader path when you intentionally want to replay every ready `profiles/<person-id>/imports/materials.template.json` starter manifest, including profiles that already have imported materials on disk.
+
+### Complete missing or partial intake landing zones for metadata-only profiles
+
+```bash
+node src/index.js update intake --stale
+```
+
+This repair path fills in only metadata-only profiles whose `imports/` starter area is missing files or still partial.
+
+### Rebuild intake landing zones for every metadata-only profile
+
+```bash
+node src/index.js update intake --all
+```
+
+Use this when you want to refresh the checked-in `imports/README.md`, `materials.template.json`, and `sample.txt` starter assets across every metadata-only profile, even if some of them are already complete.
+
 ### Import a JSON manifest of mixed materials
 
 ```bash

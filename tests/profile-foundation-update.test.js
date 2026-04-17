@@ -531,6 +531,10 @@ test('CLI --help prints a concise usage guide instead of the repo summary JSON',
   assert.match(output, /^Usage: node src\/index\.js /);
   assert.match(output, /Commands:/);
   assert.match(output, /node src\/index\.js import sample/);
+  assert.match(output, /import intake --stale\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
+  assert.match(output, /import intake --all\s+Import every ready profile-local intake manifest, including already-imported profiles/);
+  assert.match(output, /update intake --stale\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
+  assert.match(output, /update intake --all\s+Rebuild intake scaffolds for every metadata-only profile/);
   assert.doesNotMatch(output, /"profile": \{/);
 });
 
