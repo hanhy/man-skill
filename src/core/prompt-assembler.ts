@@ -390,6 +390,7 @@ type IngestionSummary = {
     type?: 'text' | 'screenshot' | string;
     path?: string | null;
     personId?: string | null;
+    sourcePath?: string | null;
     command?: string | null;
   }>;
   sampleInlineCommands?: Array<{
@@ -763,6 +764,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const helperCommands = ingestion?.helperCommands ?? {};
+  const sampleTextSourcePath = (ingestion?.sampleFileCommands ?? []).find(
+    (entry) => entry?.type === 'text' && entry?.command === ingestion?.sampleTextCommand,
+  )?.sourcePath ?? null;
   const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
   const hasBootstrapData = Boolean(
     ingestion?.bootstrapProfileCommand
@@ -842,7 +846,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`
       : null,
     ingestion.sampleTextPresent && ingestion.sampleTextCommand
-      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
+      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}${sampleTextSourcePath ? ` @ ${sampleTextSourcePath}` : ''}`
       : null,
     ...((ingestion.sampleFileCommands ?? [])
       .filter((entry) => {
@@ -856,7 +860,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
 
         return entry.command !== ingestion.sampleTextCommand;
       })
-      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),
     ...((ingestion.sampleInlineCommands ?? [])
       .filter((entry) => entry?.command && entry?.type)
       .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),

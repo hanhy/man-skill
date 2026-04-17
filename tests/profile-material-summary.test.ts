@@ -1132,6 +1132,7 @@ test('buildSummary uses matching sample screenshot imports in ingestion profile 
       type: 'screenshot',
       path: 'samples/metadata-only-chat.png',
       personId: 'metadata-only',
+      sourcePath: 'samples/metadata-only-materials.json',
       command: "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation",
     },
   ]);
@@ -1465,12 +1466,14 @@ test('buildSummary surfaces additional file-backed sample commands from the sele
       type: 'text',
       path: 'samples/harry-post.txt',
       personId: 'harry-han',
+      sourcePath: 'samples/harry-materials.json',
       command: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
     },
     {
       type: 'screenshot',
       path: 'samples/harry-chat.png',
       personId: 'harry-han',
+      sourcePath: 'samples/harry-materials.json',
       command: "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation",
     },
   ]);
@@ -1480,8 +1483,8 @@ test('buildSummary surfaces additional file-backed sample commands from the sele
   assert.equal(summary.ingestion.helperCommands?.sampleScreenshot, "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation");
   assert.match(summary.promptPreview, /helpers: .*sample-text node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /helpers: .*sample-screenshot node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
-  assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation @ samples\/harry-materials\.json/);
+  assert.match(summary.promptPreview, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation @ samples\/harry-materials\.json/);
 });
 
 test('buildSummary ignores the canonical sample text path when it does not belong to the selected sample manifest', () => {

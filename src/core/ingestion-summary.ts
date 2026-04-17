@@ -93,6 +93,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         type: typeof entry.type === 'string' && (entry.type === 'text' || entry.type === 'screenshot') ? entry.type : null,
         path: typeof entry.filePath === 'string' && entry.filePath.trim().length > 0 ? entry.filePath : null,
         personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+        sourcePath: normalizedPath,
       }))
       .filter((entry) => entry.type && entry.path && entry.personId)
       .sort((left, right) => {
@@ -196,6 +197,7 @@ function buildSampleFileCommand(entry) {
   const type = entry.type === 'text' || entry.type === 'screenshot' ? entry.type : null;
   const filePath = typeof entry.path === 'string' && entry.path.trim().length > 0 ? entry.path : null;
   const personId = typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null;
+  const sourcePath = typeof entry.sourcePath === 'string' && entry.sourcePath.trim().length > 0 ? entry.sourcePath.trim() : null;
   if (!type || !filePath || !personId) {
     return null;
   }
@@ -204,6 +206,7 @@ function buildSampleFileCommand(entry) {
     type,
     path: filePath,
     personId,
+    sourcePath,
     command: `node src/index.js import ${type} --person ${personId} --file ${shellQuote(filePath)} --refresh-foundation`,
   };
 }
