@@ -550,6 +550,19 @@ export class MaterialIngestion {
       });
   }
 
+  listProfilesWithReadyIntake({ includeImported = true } = {}) {
+    return new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => {
+        if (!includeImported && (profile?.materialCount ?? 0) > 0) {
+          return false;
+        }
+
+        return profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath);
+      })
+      .sort((left, right) => (left?.id ?? '').localeCompare(right?.id ?? ''));
+  }
+
   scaffoldAllProfileIntakes() {
     const profiles = this.listMetadataOnlyProfiles();
 
@@ -583,10 +596,11 @@ export class MaterialIngestion {
       throw new Error('personId is required for intake import');
     }
 
-    const profile = this.listMetadataOnlyProfiles()
+    const profile = new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
       .find((entry) => entry?.id === normalizedPersonId);
     if (!profile) {
-      throw new Error(`No metadata-only profile found for intake import: ${personId}`);
+      throw new Error(`No profile found for intake import: ${personId}`);
     }
 
     if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
@@ -600,8 +614,7 @@ export class MaterialIngestion {
   }
 
   importAllProfileIntakeManifests() {
-    const profiles = this.listMetadataOnlyProfiles()
-      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const profiles = this.listProfilesWithReadyIntake();
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
 
     return {
@@ -613,8 +626,7 @@ export class MaterialIngestion {
   }
 
   importStaleProfileIntakeManifests() {
-    const profiles = this.listMetadataOnlyProfiles()
-      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
 
     return {

@@ -244,7 +244,43 @@ test('CLI import intake --person loads a profile-local starter manifest and refr
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
 });
 
-test('CLI import intake --all loads every ready profile-local starter manifest and skips incomplete intake scaffolds', () => {
+test('CLI import intake --person reruns a ready profile-local starter manifest for an already-imported profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Already',
+    displayName: 'Imported Already',
+    summary: 'Should be rerunnable through the intake shortcut.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, but the intake shortcut should still work.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-already', 'imports', 'sample.txt'), 'Imported intake rerun.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-already', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Already',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/imported-already/imports/materials.template.json');
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['imported-already']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+});
+
+test('CLI import intake --all loads every ready profile-local starter manifest, including already-imported profiles, and skips incomplete intake scaffolds', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -258,6 +294,15 @@ test('CLI import intake --all loads every ready profile-local starter manifest a
     displayName: 'Beta Ready',
     summary: 'Another ready intake manifest.',
   });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Already',
+    displayName: 'Imported Already',
+    summary: 'Ready intake manifest with existing materials.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, so --all should rerun this intake manifest too.',
+  });
   ingestion.updateProfile({
     personId: 'Gamma Missing',
     displayName: 'Gamma Missing',
@@ -266,6 +311,7 @@ test('CLI import intake --all loads every ready profile-local starter manifest a
 
   fs.writeFileSync(path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'sample.txt'), 'Alpha sample.\n');
   fs.writeFileSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'sample.txt'), 'Beta sample.\n');
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-already', 'imports', 'sample.txt'), 'Imported again.\n');
   fs.writeFileSync(
     path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'materials.template.json'),
     JSON.stringify({
@@ -280,6 +326,13 @@ test('CLI import intake --all loads every ready profile-local starter manifest a
       entries: [{ type: 'message', text: 'Beta keeps it terse.' }],
     }, null, 2),
   );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-already', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Already',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
 
   const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all'], {
     cwd: rootDir,
@@ -288,15 +341,16 @@ test('CLI import intake --all loads every ready profile-local starter manifest a
   const result = JSON.parse(output);
 
   assert.equal(result.ok, true);
-  assert.equal(result.profileCount, 2);
-  assert.equal(result.entryCount, 2);
-  assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready']);
+  assert.equal(result.profileCount, 3);
+  assert.equal(result.entryCount, 3);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready', 'imported-already']);
   assert.deepEqual(result.results.map((entry) => entry.manifestFile), [
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/materials.template.json',
+    'profiles/imported-already/imports/materials.template.json',
   ]);
-  assert.deepEqual(result.results.map((entry) => entry.profileIds), [['alpha-ready'], ['beta-ready']]);
-  assert.deepEqual(result.results.flatMap((entry) => entry.profileIds), ['alpha-ready', 'beta-ready']);
+  assert.deepEqual(result.results.map((entry) => entry.profileIds), [['alpha-ready'], ['beta-ready'], ['imported-already']]);
+  assert.deepEqual(result.results.flatMap((entry) => entry.profileIds), ['alpha-ready', 'beta-ready', 'imported-already']);
 });
 
 test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests', () => {
