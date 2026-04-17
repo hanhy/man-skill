@@ -703,9 +703,10 @@ test('buildSummary work loop scaffolds the channel manifest once the queue leade
     assert.equal(summary.workLoop.currentPriority.id, 'channels');
     assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; credentials present; next: implement inbound event handling and outbound thread replies');
     assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
-    assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', 'manifests/channels.json', 'src/channels/slack.js']);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
     assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; credentials present; next: implement inbound event handling and outbound thread replies/);
     assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -794,6 +795,92 @@ test('buildSummary work loop bundles missing channel implementations once the ch
     assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured/);
     assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/slack\.js; credentials present; next: implement inbound event handling and outbound thread replies/);
     assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\)/);
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+    if (originalEnv.TELEGRAM_BOT_TOKEN === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    }
+    if (originalEnv.WHATSAPP_ACCESS_TOKEN === undefined) {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    }
+    if (originalEnv.WHATSAPP_PHONE_NUMBER_ID === undefined) {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    }
+    if (originalEnv.FEISHU_APP_ID === undefined) {
+      delete process.env.FEISHU_APP_ID;
+    } else {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    }
+    if (originalEnv.FEISHU_APP_SECRET === undefined) {
+      delete process.env.FEISHU_APP_SECRET;
+    } else {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    }
+  }
+});
+
+test('buildSummary work loop omits env bootstrap paths when implementation scaffolding is the real next step', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([{ id: 'slack', status: 'planned' }], null, 2));
+  fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nSLACK_SIGNING_SECRET=\n');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
+  process.env.WHATSAPP_ACCESS_TOKEN='***';
+  process.env.WHATSAPP_PHONE_NUMBER_ID='***';
+  process.env.FEISHU_APP_ID='***';
+  process.env.FEISHU_APP_SECRET='***';
+
+  try {
+    runImportCommand(rootDir, 'text', {
+      person: 'harry-han',
+      file: 'samples/harry-post.txt',
+      'refresh-foundation': true,
+    });
+
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldChannelImplementationBundle);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, [
+      'manifests/channels.json',
+      'src/channels/slack.js',
+      'src/channels/telegram.js',
+      'src/channels/whatsapp.js',
+      'src/channels/feishu.js',
+    ]);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;

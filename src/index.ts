@@ -809,8 +809,9 @@ function buildDeliveryPriority({
     ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
     : 0;
   const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
+  const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
   const paths = [
-    envTemplatePath,
+    includeEnvTemplatePath ? envTemplatePath : null,
     typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
     ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
     ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
