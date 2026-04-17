@@ -288,6 +288,12 @@ type IngestionProfileCommand = {
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
   refreshFoundationCommand?: string | null;
+  importCommands?: {
+    text?: string | null;
+    message?: string | null;
+    talk?: string | null;
+    screenshot?: string | null;
+  };
   importMaterialCommand?: string | null;
 };
 

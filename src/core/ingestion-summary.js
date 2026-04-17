@@ -12,6 +12,35 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
+function buildProfileImportCommands(profileId, options = {}) {
+  if (typeof profileId !== 'string' || profileId.trim().length === 0) {
+    return {
+      text: null,
+      message: null,
+      talk: null,
+      screenshot: null,
+    };
+  }
+
+  const normalizedProfileId = profileId.trim();
+  const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
+    ? options.sampleTextPath
+    : null;
+  const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
+    ? options.sampleTextPersonId
+    : null;
+  const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
+
+  return {
+    text: runnableTextPath
+      ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
+      : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`,
+    message: `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
+    talk: `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
+  };
+}
+
 function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedPath = normalizeRelativePath(sampleManifestPath);
   const normalizedProfileIds = Array.isArray(sampleManifest?.profileIds)
@@ -73,13 +102,11 @@ function buildProfileCommands(profile, options = {}) {
 
   const materialCount = profile.materialCount ?? 0;
   const imported = materialCount > 0;
-  const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
-    ? options.sampleTextPath
+  const importCommands = buildProfileImportCommands(profile.id, options);
+  const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
+    ? importCommands.text
     : null;
-  const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
-    ? options.sampleTextPersonId
-    : null;
-  const runnableSampleTextPath = sampleTextPath && sampleTextPersonId === profile.id ? sampleTextPath : null;
+  const defaultImportCommand = runnableTextImportCommand ?? importCommands.message ?? importCommands.text;
 
   return {
     personId: profile.id,
@@ -92,11 +119,10 @@ function buildProfileCommands(profile, options = {}) {
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
     refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
+    importCommands,
     importMaterialCommand: imported
       ? null
-      : (runnableSampleTextPath
-        ? `node src/index.js import text --person ${profile.id} --file ${shellQuote(runnableSampleTextPath)} --refresh-foundation`
-        : `node src/index.js import text --person ${profile.id} --file <sample.txt> --refresh-foundation`),
+      : defaultImportCommand,
   };
 }
 
