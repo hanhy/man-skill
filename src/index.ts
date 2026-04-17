@@ -463,7 +463,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
   const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
-  const queuedAreaCommand = buildCoreFoundationCommand(queuedArea);
+  const queuedAreaCommand = queuedArea?.command ?? buildCoreFoundationCommand(queuedArea);
   const queuedProfileSummary = queuedProfile?.id
     ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
     : null;
@@ -1155,7 +1155,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(5600),
+    promptPreview: prompt.buildPreview(6200),
   };
 }
 

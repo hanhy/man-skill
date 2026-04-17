@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildFoundationRollup } from '../src/core/foundation-rollup.js';
+import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { buildSummary } from '../src/index.js';
 
@@ -284,6 +285,9 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     readyAreaCount: 4,
     missingAreaCount: 0,
     thinAreaCount: 0,
+    helperCommands: {
+      scaffoldAll: null,
+    },
     queuedAreas: [],
   });
   assert.match(summary.promptPreview, /Core foundation:/);
@@ -318,11 +322,23 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
       'create voice/README.md',
     ],
   });
+
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/'] });
+  const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
+  const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
+  const scaffoldAllCommand = [memoryCommand, skillsCommand, soulCommand, voiceCommand]
+    .map((command) => `(${command})`)
+    .join(' && ');
+
   assert.deepEqual(summary.foundation.core.maintenance, {
     areaCount: 4,
     readyAreaCount: 0,
     missingAreaCount: 2,
     thinAreaCount: 2,
+    helperCommands: {
+      scaffoldAll: scaffoldAllCommand,
+    },
     queuedAreas: [
       {
         area: 'memory',
@@ -330,6 +346,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         summary: 'README yes, daily 0, long-term 0, scratch 0',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
         paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+        command: memoryCommand,
       },
       {
         area: 'skills',
@@ -337,6 +354,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         summary: '0 registered, 0 documented',
         action: 'create skills/<name>/SKILL.md for at least one repo skill',
         paths: ['skills/'],
+        command: skillsCommand,
       },
       {
         area: 'soul',
@@ -344,6 +362,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         summary: 'present, 0 lines',
         action: 'add non-heading guidance to SOUL.md',
         paths: ['SOUL.md'],
+        command: soulCommand,
       },
       {
         area: 'voice',
@@ -351,11 +370,13 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         summary: 'missing, 0 lines',
         action: 'create voice/README.md',
         paths: ['voice/README.md'],
+        command: voiceCommand,
       },
     ],
   });
-  assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
+
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
+  assert.match(summary.promptPreview, /helpers: scaffold-all \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\)[\s\S]*voice\/README\.md\)/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
@@ -472,6 +493,9 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    helperCommands: {
+      scaffoldAll: "touch 'memory/README.md'",
+    },
     queuedAreas: [
       {
         area: 'memory',
@@ -479,6 +503,7 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
         summary: 'README no, daily 1, long-term 1, scratch 1',
         action: 'create memory/README.md',
         paths: ['memory/README.md'],
+        command: "touch 'memory/README.md'",
       },
     ],
   });
@@ -548,6 +573,9 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    helperCommands: {
+      scaffoldAll: "touch 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'",
+    },
     queuedAreas: [
       {
         area: 'skills',
@@ -555,6 +583,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
         summary: '2 registered, 0 documented',
         action: 'create skills/slack/SKILL.md and skills/telegram/SKILL.md',
         paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+        command: "touch 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'",
       },
     ],
   });
@@ -603,6 +632,9 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    helperCommands: {
+      scaffoldAll: "touch 'skills/slack/SKILL.md'",
+    },
     queuedAreas: [
       {
         area: 'skills',
@@ -610,6 +642,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
         summary: '2 registered, 1 documented',
         action: 'create skills/slack/SKILL.md',
         paths: ['skills/slack/SKILL.md'],
+        command: "touch 'skills/slack/SKILL.md'",
       },
     ],
   });
@@ -669,6 +702,7 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
         'skills/gamma/SKILL.md',
         'skills/zeta/SKILL.md',
       ],
+      command: "touch 'skills/alpha/SKILL.md' 'skills/beta/SKILL.md' 'skills/delta/SKILL.md' 'skills/epsilon/SKILL.md' 'skills/gamma/SKILL.md' 'skills/zeta/SKILL.md'",
     },
   ]);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/alpha\/SKILL\.md, skills\/beta\/SKILL\.md, skills\/delta\/SKILL\.md, skills\/epsilon\/SKILL\.md, skills\/gamma\/SKILL\.md, and skills\/zeta\/SKILL\.md/);

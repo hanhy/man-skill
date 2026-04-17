@@ -1,5 +1,20 @@
+import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function buildFoundationScaffoldBundle(commands: Array<string | null | undefined>): string | null {
+  const normalizedCommands = commands.filter((value): value is string => typeof value === 'string' && value.length > 0);
+  if (normalizedCommands.length === 0) {
+    return null;
+  }
+
+  if (normalizedCommands.length === 1) {
+    return normalizedCommands[0];
+  }
+
+  return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
 function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
@@ -280,8 +295,12 @@ function buildCoreFoundationMaintenance({
   ];
 
   areas.forEach((area) => {
+    const command = buildCoreFoundationCommand(area);
     if (area.status !== 'ready') {
-      queue.push(area);
+      queue.push({
+        ...area,
+        command,
+      });
     }
   });
 
@@ -290,6 +309,9 @@ function buildCoreFoundationMaintenance({
     readyAreaCount: areas.filter((area) => area.status === 'ready').length,
     missingAreaCount: areas.filter((area) => area.status === 'missing').length,
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
+    helperCommands: {
+      scaffoldAll: buildFoundationScaffoldBundle(queue.map((area) => area.command)),
+    },
     queuedAreas: queue,
   };
 }
@@ -339,6 +361,11 @@ export interface CoreFoundationMaintenanceQueueItem {
   summary: string;
   action: string | null;
   paths: string[];
+  command?: string | null;
+}
+
+export interface CoreFoundationMaintenanceHelperCommands {
+  scaffoldAll: string | null;
 }
 
 export interface CoreFoundationMaintenanceSummary {
@@ -346,6 +373,7 @@ export interface CoreFoundationMaintenanceSummary {
   readyAreaCount: number;
   missingAreaCount: number;
   thinAreaCount: number;
+  helperCommands: CoreFoundationMaintenanceHelperCommands;
   queuedAreas: CoreFoundationMaintenanceQueueItem[];
 }
 

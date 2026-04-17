@@ -139,6 +139,7 @@ type FoundationCoreMaintenanceQueueItem = {
   summary?: string;
   action?: string | null;
   paths?: string[];
+  command?: string | null;
 };
 
 type FoundationCoreMaintenance = {
@@ -146,6 +147,9 @@ type FoundationCoreMaintenance = {
   readyAreaCount?: number;
   missingAreaCount?: number;
   thinAreaCount?: number;
+  helperCommands?: {
+    scaffoldAll?: string | null;
+  };
   queuedAreas?: FoundationCoreMaintenanceQueueItem[];
 };
 
@@ -888,8 +892,11 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
+    maintenance?.helperCommands?.scaffoldAll
+      ? `- helpers: scaffold-all ${maintenance.helperCommands.scaffoldAll}`
+      : null,
     ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
-      const command = buildCoreFoundationCommand(area);
+      const command = area.command ?? buildCoreFoundationCommand(area);
       return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
     }),
     memory
