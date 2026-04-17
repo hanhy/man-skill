@@ -6,7 +6,11 @@ function readTextIfExists(filePath) {
     return null;
   }
 
-  return fs.readFileSync(filePath, 'utf8');
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 function listFilesIfExists(dirPath) {
@@ -33,15 +37,35 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function extractDocumentExcerpt(document, maxLength = 160) {
+  if (!isNonEmptyString(document)) {
+    return null;
+  }
+
+  const candidate = document
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
+
+  return buildExcerpt(candidate, maxLength);
+}
+
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
   const documented = skillNames.filter((skillName) => fs.existsSync(path.join(rootDir, 'skills', skillName, 'SKILL.md')));
   const undocumented = skillNames.filter((skillName) => !documented.includes(skillName));
+  const documentedExcerpts = Object.fromEntries(
+    documented.map((skillName) => {
+      const document = readTextIfExists(path.join(rootDir, 'skills', skillName, 'SKILL.md'));
+      return [skillName, extractDocumentExcerpt(document)];
+    }),
+  );
 
   return {
     names: skillNames,
     documented,
     undocumented,
+    documentedExcerpts,
   };
 }
 

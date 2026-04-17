@@ -228,8 +228,8 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'obsidian'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill\n\nCapture durable operator notes.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
@@ -258,6 +258,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     undocumentedCount: 0,
     sample: ['obsidian', 'telegram'],
     samplePaths: ['skills/obsidian/SKILL.md', 'skills/telegram/SKILL.md'],
+    sampleExcerpts: ['obsidian: Capture durable operator notes.', 'telegram: Deliver concise thread updates.'],
     undocumentedSample: [],
     undocumentedPaths: [],
   });
@@ -298,7 +299,7 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
 });
@@ -601,6 +602,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     undocumentedCount: 2,
     sample: ['slack', 'telegram'],
     samplePaths: [],
+    sampleExcerpts: [],
     undocumentedSample: ['slack', 'telegram'],
     undocumentedPaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
   });
@@ -648,7 +650,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
@@ -665,6 +667,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     undocumentedCount: 1,
     sample: ['slack', 'telegram'],
     samplePaths: ['skills/telegram/SKILL.md'],
+    sampleExcerpts: ['telegram: Deliver concise thread updates.'],
     undocumentedSample: ['slack'],
     undocumentedPaths: ['skills/slack/SKILL.md'],
   });
@@ -700,7 +703,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; missing docs: slack @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; excerpts: telegram: Deliver concise thread updates\.\; missing docs: slack @ skills\/slack\/SKILL\.md/);
 });
 
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
@@ -740,6 +743,7 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     undocumentedCount: 6,
     sample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
     samplePaths: [],
+    sampleExcerpts: [],
     undocumentedSample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
     undocumentedPaths: ['skills/alpha/SKILL.md', 'skills/beta/SKILL.md', 'skills/delta/SKILL.md', 'skills/epsilon/SKILL.md', 'skills/gamma/SKILL.md'],
   });

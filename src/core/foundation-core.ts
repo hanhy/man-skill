@@ -340,6 +340,7 @@ export interface CoreSkillsFoundationSummary {
   undocumentedCount: number;
   sample: string[];
   samplePaths: string[];
+  sampleExcerpts: string[];
   undocumentedSample: string[];
   undocumentedPaths: string[];
 }
@@ -408,6 +409,7 @@ export interface BuildCoreFoundationSummaryOptions {
     names?: string[];
     documented?: string[];
     undocumented?: string[];
+    documentedExcerpts?: Record<string, string | null>;
   } | null;
 }
 
@@ -434,6 +436,7 @@ export function buildCoreFoundationSummary({
   const documentedSkillNames = Array.isArray(skillInventory?.documented)
     ? [...skillInventory.documented].sort((left, right) => left.localeCompare(right))
     : [...safeSkillNames];
+  const documentedSkillExcerpts = skillInventory?.documentedExcerpts ?? {};
   const undocumentedSkillNames = Array.isArray(skillInventory?.undocumented)
     ? [...skillInventory.undocumented].sort((left, right) => left.localeCompare(right))
     : safeSkillNames.filter((skillName) => !documentedSkillNames.includes(skillName));
@@ -456,6 +459,13 @@ export function buildCoreFoundationSummary({
     undocumentedCount: undocumentedSkillNames.length,
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
+    sampleExcerpts: documentedSkillNames
+      .slice(0, 5)
+      .map((skillName) => {
+        const excerpt = documentedSkillExcerpts[skillName];
+        return isNonEmptyString(excerpt) ? `${skillName}: ${excerpt}` : null;
+      })
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
     undocumentedSample: undocumentedSkillNames.slice(0, 5),
     undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
   };
