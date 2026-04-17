@@ -425,6 +425,32 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
 
+test('buildSummary work loop surfaces a bundled scaffold command when multiple core foundation areas are queued', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
+
+  const summary = buildSummary(rootDir);
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/'] });
+  const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
+  const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
+  const scaffoldAllCommand = [memoryCommand, skillsCommand, soulCommand, voiceCommand]
+    .map((command) => `(${command})`)
+    .join(' && ');
+
+  assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch');
+  assert.equal(summary.workLoop.currentPriority?.command, scaffoldAllCommand);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
+
+  assert.match(summary.promptPreview, /helpers: scaffold-all \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\)[\s\S]*voice\/README\.md\)/);
+});
+
 test('buildSummary work loop surfaces runnable commands for thin soul and missing voice scaffolds', () => {
   const voiceRootDir = makeTempRepo();
 

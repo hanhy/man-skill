@@ -65,8 +65,9 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.match(summary.workLoop.currentPriority.summary, /core .* ready/i);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.priorities[1].status, 'queued');
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch/);

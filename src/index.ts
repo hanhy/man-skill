@@ -462,7 +462,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreMaintenance = coreFoundation?.maintenance ?? {};
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
-  const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const queuedAreas = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas : [];
+  const queuedArea = queuedAreas[0] ?? null;
   const queuedAreaCommand = queuedArea?.command ?? buildCoreFoundationCommand(queuedArea);
   const queuedProfileSummary = queuedProfile?.id
     ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
@@ -483,6 +484,20 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const bulkRefreshLabel = queuedProfileLabel
     ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
     : 'refresh stale or incomplete target profiles';
+  const bulkCoreScaffoldCommand = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
+    ? coreMaintenance.helperCommands.scaffoldAll
+    : null;
+  const useBulkCoreScaffoldCommand = !queuedProfile?.refreshCommand && queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
+  const bulkCoreScaffoldPaths = useBulkCoreScaffoldCommand
+    ? Array.from(new Set(
+      queuedAreas.flatMap((area: any) => Array.isArray(area?.paths)
+        ? area.paths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+        : []),
+    ))
+    : [];
+  const bulkCoreScaffoldLabel = queuedArea?.action
+    ? `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`
+    : 'scaffold missing or thin core foundation areas';
 
   return {
     id: 'foundation',
@@ -491,13 +506,15 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
-      : queuedArea?.action ?? null,
+      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null)),
     command: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
-      : queuedAreaCommand,
+      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand),
     paths: queuedProfile?.refreshCommand
       ? buildFoundationDraftPaths(queuedProfileSummary)
-      : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),
+      : (useBulkCoreScaffoldCommand
+          ? bulkCoreScaffoldPaths
+          : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [])),
   };
 }
 
