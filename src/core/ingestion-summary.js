@@ -119,6 +119,31 @@ function buildUpdateIntakeCommand(profile) {
   return commandParts.join(' ');
 }
 
+function summarizeIntakeStatus(intake) {
+  if (!intake || typeof intake !== 'object') {
+    return 'missing — create imports, README.md, materials.template.json, sample.txt';
+  }
+
+  if (intake.ready) {
+    return 'ready';
+  }
+
+  const missingPaths = Array.isArray(intake.missingPaths)
+    ? intake.missingPaths.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    : [];
+  const missingLabels = missingPaths.map((value) => value.split('/').filter(Boolean).slice(-1)[0] ?? value);
+
+  if ((intake.completion ?? 'missing') === 'partial') {
+    return missingLabels.length > 0
+      ? `partial — missing ${missingLabels.join(', ')}`
+      : 'partial — missing intake scaffold files';
+  }
+
+  return missingLabels.length > 0
+    ? `missing — create ${missingLabels.join(', ')}`
+    : 'missing — create imports/, README.md, materials.template.json, sample.txt';
+}
+
 function buildProfileCommands(profile, options = {}) {
   if (!profile?.id) {
     return null;
@@ -152,6 +177,7 @@ function buildProfileCommands(profile, options = {}) {
     updateIntakeCommand: buildUpdateIntakeCommand(profile),
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
+    intakeStatusSummary: summarizeIntakeStatus(intake),
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestCommand: imported ? null : intakeImportManifestCommand,

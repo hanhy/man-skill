@@ -898,6 +898,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateIntakeCommand: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     intakeReady: false,
     intakeCompletion: 'missing',
+    intakeStatusSummary: 'missing — create imports, README.md, materials.template.json, sample.txt',
     intakePaths: [
       'profiles/metadata-only/imports',
       'profiles/metadata-only/imports/README.md',
@@ -934,7 +935,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample manifest: 2 entries for Harry Han \(harry-han\) \(message:1, text:1\) -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
 });
 
 test('buildSummary prefers a profile-local starter manifest once intake scaffolding is ready', () => {
@@ -959,6 +960,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
   assert.equal(metadataOnlyCommand.personId, 'metadata-only');
   assert.equal(metadataOnlyCommand.intakeReady, true);
   assert.equal(metadataOnlyCommand.intakeCompletion, 'ready');
+  assert.equal(metadataOnlyCommand.intakeStatusSummary, 'ready');
   assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importMaterialCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(metadataOnlyCommand.intakePaths, [
@@ -968,6 +970,34 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
     'profiles/metadata-only/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\) \| import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person metadata-only/);
+});
+
+test('buildSummary summarizes partially scaffolded intake status for metadata-only profiles', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'README.md'),
+    '# Partial intake scaffold\n',
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands[0];
+
+  assert.equal(metadataOnlyCommand.intakeReady, false);
+  assert.equal(metadataOnlyCommand.intakeCompletion, 'partial');
+  assert.equal(metadataOnlyCommand.intakeStatusSummary, 'partial — missing materials.template.json, sample.txt');
+  assert.match(
+    summary.promptPreview,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake partial — missing materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+  );
 });
 
 test('buildSummary keeps the ingestion entrance visible for empty repos', () => {

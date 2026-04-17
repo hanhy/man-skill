@@ -295,6 +295,7 @@ type IngestionProfileCommand = {
   updateIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
+  intakeStatusSummary?: string | null;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   refreshFoundationCommand?: string | null;
@@ -725,12 +726,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
+      const intakeStatusSegment = (profile.materialCount ?? 0) <= 0 && typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
+        ? `, intake ${profile.intakeStatusSummary}`
+        : '';
       const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const updateSegment = profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '';
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${scaffoldSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${actionSegment}${updateSegment}`;
     }),
   ].filter(Boolean).join('\n');
 }
