@@ -134,7 +134,7 @@ test('buildIngestionSummary exposes a per-profile foundation refresh bundle for 
 
   assert.equal(
     summary.helperCommands.refreshFoundationBundle,
-    "(node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person jane-doe)",
+    "(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)",
   );
 });
 

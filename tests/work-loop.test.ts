@@ -1432,16 +1432,16 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   );
   assert.equal(
     summary.workLoop.priorities[1].command,
-    '(node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person jane-doe)',
+    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
   );
   assert.deepEqual(summary.workLoop.priorities[1].paths, [
-    'profiles/harry-han/memory/long-term/foundation.json',
-    'profiles/harry-han/skills/README.md',
-    'profiles/harry-han/soul/README.md',
-    'profiles/harry-han/voice/README.md',
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
     'profiles/jane-doe/soul/README.md',
     'profiles/jane-doe/voice/README.md',
+    'profiles/harry-han/memory/long-term/foundation.json',
+    'profiles/harry-han/skills/README.md',
+    'profiles/harry-han/soul/README.md',
+    'profiles/harry-han/voice/README.md',
   ]);
 });

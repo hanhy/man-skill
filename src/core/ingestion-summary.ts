@@ -25,6 +25,27 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
+
+function countGeneratedDrafts(profile) {
+  return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
+}
+
+function compareFoundationRefreshPriority(left, right) {
+  const missingDraftDifference = (right?.foundationDraftStatus?.missingDrafts?.length ?? 0) - (left?.foundationDraftStatus?.missingDrafts?.length ?? 0);
+  if (missingDraftDifference !== 0) {
+    return missingDraftDifference;
+  }
+
+  const generatedDraftDifference = countGeneratedDrafts(left) - countGeneratedDrafts(right);
+  if (generatedDraftDifference !== 0) {
+    return generatedDraftDifference;
+  }
+
+  return (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '')
+    || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
+}
+
 function buildProfileImportCommands(profileId: string, options: any = {}) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return {
@@ -456,13 +477,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .sort((left, right) => {
       const leftImported = Number((left?.materialCount ?? 0) > 0);
       const rightImported = Number((right?.materialCount ?? 0) > 0);
-      const leftActionRank = leftImported
-        ? Number(Boolean(left?.foundationDraftStatus?.needsRefresh) || !left?.foundationDraftStatus?.complete)
-        : 1;
-      const rightActionRank = rightImported
-        ? Number(Boolean(right?.foundationDraftStatus?.needsRefresh) || !right?.foundationDraftStatus?.complete)
-        : 1;
-      const actionDelta = rightActionRank - leftActionRank;
+      const leftNeedsAction = leftImported
+        ? Boolean(left?.foundationDraftStatus?.needsRefresh) || !left?.foundationDraftStatus?.complete
+        : true;
+      const rightNeedsAction = rightImported
+        ? Boolean(right?.foundationDraftStatus?.needsRefresh) || !right?.foundationDraftStatus?.complete
+        : true;
+      const actionDelta = Number(rightNeedsAction) - Number(leftNeedsAction);
       if (actionDelta !== 0) {
         return actionDelta;
       }
@@ -470,6 +491,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       const importDelta = rightImported - leftImported;
       if (importDelta !== 0) {
         return importDelta;
+      }
+
+      if (leftImported && rightImported && leftNeedsAction && rightNeedsAction) {
+        const refreshPriorityDelta = compareFoundationRefreshPriority(left, right);
+        if (refreshPriorityDelta !== 0) {
+          return refreshPriorityDelta;
+        }
       }
 
       return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
