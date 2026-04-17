@@ -920,7 +920,8 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/delivery\/SKILL\.md @ skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); thin docs: delivery @ skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /grep -Fqx -- '- Describe when to use this skill\.' 'skills\/delivery\/SKILL\.md' \|\| printf %s '/);
-  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add non-heading guidance to skills\/delivery\/SKILL\.md/);
 });
 

@@ -528,11 +528,15 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`
     : 'scaffold missing or thin core foundation areas';
 
+  const coreQueueSummary = thinAreaCount > 0 || missingAreaCount > 0
+    ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
+    : '';
+
   return {
     id: 'foundation',
     label: 'Foundation',
     status,
-    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
+    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
       : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null)),
@@ -1416,7 +1420,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(8000),
+    promptPreview: prompt.buildPreview(9000),
   };
 }
 
