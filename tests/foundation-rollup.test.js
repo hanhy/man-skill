@@ -345,7 +345,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
-  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\//);
+  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
 });
@@ -472,6 +472,29 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch memory\/README\.md/);
+});
+
+test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'create skills/<name>/SKILL.md for at least one repo skill');
+  assert.equal(summary.workLoop.currentPriority?.command, "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'");
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/']);
+  assert.match(summary.promptPreview, /command: mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {

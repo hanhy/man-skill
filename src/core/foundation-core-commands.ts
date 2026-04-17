@@ -12,6 +12,15 @@ function normalizeRelativePaths(paths: unknown): string[] {
   return paths.filter((value): value is string => typeof value === 'string' && value.length > 0);
 }
 
+function buildSkillsStarterCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/') {
+    return null;
+  }
+
+  return `mkdir -p skills/starter && printf %s ${shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n')} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
+}
+
 function buildMemorySeedCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
   const needsRootDocument = normalizedPaths.includes('memory/README.md');
@@ -89,6 +98,13 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
 
   if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
     return `touch ${paths.map(shellSingleQuote).join(' ')}`;
+  }
+
+  if (area === 'skills' && status === 'missing') {
+    const skillsStarterCommand = buildSkillsStarterCommand(paths);
+    if (skillsStarterCommand) {
+      return skillsStarterCommand;
+    }
   }
 
   if (area === 'voice') {

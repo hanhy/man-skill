@@ -36,6 +36,17 @@ test('buildCoreFoundationCommand scaffolds missing soul guidance with starter co
   );
 });
 
+test('buildCoreFoundationCommand scaffolds a starter skill when the skills area is missing entirely', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'skills',
+      status: 'missing',
+      paths: ['skills/'],
+    }),
+    "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'",
+  );
+});
+
 test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', () => {
   assert.equal(
     buildCoreFoundationCommand({
