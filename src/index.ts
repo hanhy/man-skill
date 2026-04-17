@@ -517,7 +517,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const bulkCoreScaffoldCommand = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
     ? coreMaintenance.helperCommands.scaffoldAll
     : null;
-  const useBulkCoreScaffoldCommand = !queuedProfile?.refreshCommand && queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
+  const useBulkCoreScaffoldCommand = queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
   const bulkCoreScaffoldPaths = useBulkCoreScaffoldCommand
     ? Array.from(new Set(
       queuedAreas.flatMap((area: any) => Array.isArray(area?.paths)
@@ -532,29 +532,36 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreQueueSummary = thinAreaCount > 0 || missingAreaCount > 0
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
     : '';
+  const hasQueuedCoreFoundation = queuedAreas.length > 0;
+  const coreNextAction = useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null);
+  const coreCommand = useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand;
+  const corePaths = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldPaths
+    : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []);
+  const profileNextAction = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
+    : null;
+  const profileCommand = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand
+      ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
+        ? maintenance.refreshBundleCommand
+        : maintenance.staleRefreshCommand)
+      : queuedProfile.refreshCommand)
+    : null;
+  const profilePaths = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand
+      ? bulkRefreshPaths
+      : buildFoundationDraftPaths(queuedProfileSummary))
+    : [];
 
   return {
     id: 'foundation',
     label: 'Foundation',
     status,
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
-    nextAction: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
-      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null)),
-    command: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand
-        ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
-          ? maintenance.refreshBundleCommand
-          : maintenance.staleRefreshCommand)
-        : queuedProfile.refreshCommand)
-      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand),
-    paths: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand
-          ? bulkRefreshPaths
-          : buildFoundationDraftPaths(queuedProfileSummary))
-      : (useBulkCoreScaffoldCommand
-          ? bulkCoreScaffoldPaths
-          : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [])),
+    nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
+    command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
+    paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
   };
 }
 
@@ -1443,7 +1450,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(9000),
+    promptPreview: prompt.buildPreview(11000),
   };
 }
 

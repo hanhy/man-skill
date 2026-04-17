@@ -1341,6 +1341,31 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
 
+test('buildSummary work loop keeps repo-core foundation ahead of stale profile refresh when the base scaffold is still thin', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Only one bucket seeded.\n');
+
+  runImportCommand(rootDir, 'message', {
+    person: 'jane-doe',
+    text: 'Tight loops beat big plans.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
+  assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
+  assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /next action: scaffold missing or thin core foundation areas — starting with create memory\/README\.md \| add at least one entry under memory\/long-term and memory\/scratch/);
+  assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch, skills\/, SOUL\.md, voice\/README\.md/);
+});
+
 test('buildSummary work loop prioritizes the most incomplete stale foundation profile first', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
