@@ -42,6 +42,7 @@ interface SampleManifestSummary {
   profileLabels: string[];
   materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
+  filePaths: string[];
   error: string | null;
 }
 
@@ -93,6 +94,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      filePaths: [],
       error: null,
     };
   }
@@ -106,6 +108,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      filePaths: [],
       error: null,
     };
   }
@@ -121,6 +124,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
     };
   }
@@ -129,6 +133,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const profileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
+    const filePaths = new Set<string>();
     const profileDisplayNames = new Map<string, string>();
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
@@ -230,8 +235,11 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
           throw new Error(`Manifest entry ${index} references a file outside the repo: ${entryRecord.file}`);
         }
 
+        const normalizedRelativeFilePath = relativeFilePath.split(path.sep).join('/');
+        filePaths.add(normalizedRelativeFilePath);
+
         if (entryRecord.type === 'text') {
-          textFilePersonIds[relativeFilePath.split(path.sep).join('/')] = normalizedPersonId;
+          textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
         }
       }
 
@@ -247,6 +255,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
       materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
+      filePaths: [...filePaths].sort(),
       error: null,
     };
   } catch (error) {
@@ -257,6 +266,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }
@@ -443,6 +453,24 @@ function buildSampleImportNextAction(ingestionSummary: any) {
     : `import the checked-in sample target profile for ${sampleStarterLabel}`;
 }
 
+function collectSampleManifestPaths(ingestionSummary: any) {
+  const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
+    ? ingestionSummary.sampleManifestPath
+    : null;
+  const sampleManifestFilePaths = Array.isArray(ingestionSummary?.sampleManifestFilePaths)
+    ? ingestionSummary.sampleManifestFilePaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
+    ? ingestionSummary.sampleTextPath
+    : null;
+
+  return Array.from(new Set([
+    sampleManifestPath,
+    ...sampleManifestFilePaths,
+    sampleTextPath,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
+}
+
 function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
@@ -459,23 +487,16 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
 
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
     const sampleStarterCommand = ingestionSummary?.sampleStarterCommand ?? null;
-    const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
-      ? ingestionSummary.sampleManifestPath
-      : null;
-    const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
-      ? ingestionSummary.sampleTextPath
-      : null;
+    const samplePaths = collectSampleManifestPaths(ingestionSummary);
 
     if (sampleStarterCommand) {
       nextAction = buildSampleImportNextAction(ingestionSummary);
       command = sampleStarterCommand;
-      paths = [sampleManifestPath, sampleTextPath]
-        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+      paths = samplePaths;
     } else {
       nextAction = 'bootstrap a target profile';
       command = ingestionSummary?.bootstrapProfileCommand ?? null;
-      paths = [sampleManifestPath, sampleTextPath]
-        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+      paths = samplePaths;
     }
   } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
     nextAction = 'refresh stale or incomplete target profiles';
@@ -495,9 +516,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
-    const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
-      ? ingestionSummary.sampleManifestPath
-      : null;
+    const sampleManifestPaths = collectSampleManifestPaths(ingestionSummary);
     const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
       ? ingestionSummary.sampleTextPath
       : null;
@@ -547,8 +566,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
       paths = ingestionSummary?.sampleManifestCommand
-        ? [sampleManifestPath, sampleTextPath]
-          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        ? sampleManifestPaths
         : [];
     } else {
       nextAction = metadataOnlyProfile?.label

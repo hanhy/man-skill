@@ -847,6 +847,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleManifestEntryCount, 2);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
   assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt']);
   assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, { message: 1, text: 1 });
   assert.equal(summary.ingestion.sampleManifestError, null);
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
@@ -1032,6 +1033,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleManifestEntryCount: 0,
     sampleManifestProfileIds: [],
     sampleManifestProfileLabels: [],
+    sampleManifestFilePaths: [],
     sampleManifestMaterialTypes: {},
     sampleManifestError: null,
     sampleStarterCommand: null,
@@ -1110,6 +1112,7 @@ test('buildSummary falls back to another valid sample manifest when the canonica
   assert.equal(summary.ingestion.sampleManifestEntryCount, 1);
   assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['starter-person']);
   assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['starter-person']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/starter-post.txt']);
   assert.equal(summary.ingestion.sampleManifestError, null);
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
   assert.equal(summary.ingestion.sampleStarterLabel, 'starter-person');

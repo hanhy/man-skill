@@ -330,6 +330,7 @@ type IngestionSummary = {
   sampleManifestEntryCount?: number;
   sampleManifestProfileIds?: string[];
   sampleManifestProfileLabels?: string[];
+  sampleManifestFilePaths?: string[];
   sampleManifestMaterialTypes?: MaterialTypes;
   sampleManifestError?: string | null;
   sampleStarterCommand?: string | null;

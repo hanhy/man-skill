@@ -63,6 +63,9 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedProfileLabels = Array.isArray(sampleManifest?.profileLabels)
     ? sampleManifest.profileLabels.filter((value) => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const normalizedFilePaths = Array.isArray(sampleManifest?.filePaths)
+    ? sampleManifest.filePaths.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    : [];
   const starterTargets = normalizedProfileLabels.length > 0 ? normalizedProfileLabels : normalizedProfileIds;
 
   return {
@@ -72,6 +75,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     entryCount: Number.isFinite(sampleManifest?.entryCount) ? sampleManifest.entryCount : 0,
     profileIds: normalizedProfileIds,
     profileLabels: normalizedProfileLabels,
+    filePaths: normalizedFilePaths,
     starterLabel: starterTargets.length > 0 ? starterTargets.join(', ') : null,
     materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
@@ -293,6 +297,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleManifestEntryCount: sampleManifest.entryCount,
     sampleManifestProfileIds: sampleManifest.profileIds,
     sampleManifestProfileLabels: sampleManifest.profileLabels,
+    sampleManifestFilePaths: sampleManifest.filePaths,
     sampleManifestMaterialTypes: sampleManifest.materialTypes,
     sampleManifestError: sampleManifest.error,
     sampleStarterCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
