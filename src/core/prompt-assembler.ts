@@ -295,6 +295,8 @@ type DeliverySummary = {
   pendingProviderCount?: number;
   configuredChannelCount?: number;
   configuredProviderCount?: number;
+  authBlockedChannelCount?: number;
+  authBlockedProviderCount?: number;
   readyChannelScaffoldCount?: number;
   readyProviderScaffoldCount?: number;
   missingChannelScaffoldCount?: number;
@@ -813,7 +815,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
     enrichedChannelQueue.length > 0
-      ? `- channel queue: ${delivery?.pendingChannelCount ?? enrichedChannelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+      ? `- channel queue: ${delivery?.pendingChannelCount ?? enrichedChannelQueue.length} pending${typeof delivery?.authBlockedChannelCount === 'number' ? ` (${delivery.authBlockedChannelCount} auth-blocked)` : ''} via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
       : null,
     ...visibleChannelQueue.map((channel) => {
       const authDetails = [
@@ -835,7 +837,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
     providerQueue.length > 0
-      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
+      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending${typeof delivery?.authBlockedProviderCount === 'number' ? ` (${delivery.authBlockedProviderCount} auth-blocked)` : ''} via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
       : null,
     ...visibleProviderQueue.map((provider) => {
       const providerDetails = [

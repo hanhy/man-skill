@@ -44,9 +44,9 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
     ['foundation', 'ingestion', 'channels', 'providers'],
   );
   assert.equal(summary.workLoop.priorities[0].status, 'ready');
-  assert.match(summary.workLoop.priorities[2].summary, /4 pending/);
+  assert.match(summary.workLoop.priorities[2].summary, /4 pending, 0 configured, 4 auth-blocked/);
   assert.deepEqual(summary.workLoop.priorities[2].paths, ['manifests/channels.json', 'src/channels/slack.js']);
-  assert.match(summary.workLoop.priorities[3].summary, /6 pending/);
+  assert.match(summary.workLoop.priorities[3].summary, /6 pending, 0 configured, 6 auth-blocked/);
   assert.deepEqual(summary.workLoop.priorities[3].paths, ['manifests/providers.json', 'src/models/openai.js']);
   assert.match(summary.promptPreview, /Work loop:/);
   assert.match(summary.promptPreview, /priorities: 4 total \(1 ready, 3 queued\)/);
@@ -789,7 +789,7 @@ test('buildSummary work loop falls back to channel scaffolding when the env temp
   assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
-  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, manifest missing, impl 0\/4 present/);
+  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest missing, impl 0\/4 present/);
   assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
@@ -990,7 +990,7 @@ test('buildSummary work loop bundles missing channel implementations once the ch
       'src/channels/whatsapp.js',
       'src/channels/feishu.js',
     ]);
-    assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, manifest ready, impl 0\/4 present/);
+    assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, 0 auth-blocked, manifest ready, impl 0\/4 present/);
     assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/slack\.js; credentials present; next: implement inbound event handling and outbound thread replies/);
     assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\)/);
   } finally {
@@ -1146,7 +1146,7 @@ test('buildSummary work loop bundles missing provider implementations once the p
   assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldProviderImplementationBundle);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js', 'src/models/anthropic.js', 'src/models/kimi.js', 'src/models/minimax.js', 'src/models/glm.js', 'src/models/qwen.js']);
-  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured, manifest ready, impl 0\/6 present/);
+  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, impl 0\/6 present/);
   assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
   assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/minimax\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/glm\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/qwen\.js'\)/);
 });

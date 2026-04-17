@@ -93,6 +93,8 @@ export type DeliverySummary = {
   pendingProviderCount: number;
   configuredChannelCount: number;
   configuredProviderCount: number;
+  authBlockedChannelCount: number;
+  authBlockedProviderCount: number;
   readyChannelScaffoldCount: number;
   readyProviderScaffoldCount: number;
   missingChannelScaffoldCount: number;
@@ -323,6 +325,8 @@ export function buildDeliverySummary(
     pendingProviderCount: providerQueue.length,
     configuredChannelCount: channelQueue.filter((channel) => channel.configured).length,
     configuredProviderCount: providerQueue.filter((provider) => provider.configured).length,
+    authBlockedChannelCount: channelQueue.filter((channel) => channel.missingEnvVars.length > 0).length,
+    authBlockedProviderCount: providerQueue.filter((provider) => provider.missingEnvVars.length > 0).length,
     readyChannelScaffoldCount: channelScaffoldCoverage.filter(Boolean).length,
     readyProviderScaffoldCount: providerScaffoldCoverage.filter(Boolean).length,
     missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,

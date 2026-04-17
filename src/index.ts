@@ -72,6 +72,7 @@ type QueueLike = {
   manifestPath?: string | null;
   manifestPresent?: boolean;
   manifestScaffoldPath?: string | null;
+  missingEnvVars?: string[];
 };
 
 type ProfileSummaryLike = {
@@ -905,6 +906,7 @@ function buildDeliveryPriority({
   label,
   pendingCount,
   configuredCount,
+  authBlockedCount,
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
@@ -915,6 +917,7 @@ function buildDeliveryPriority({
   label: 'Channels' | 'Providers';
   pendingCount: number;
   configuredCount: number;
+  authBlockedCount?: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
@@ -944,6 +947,11 @@ function buildDeliveryPriority({
   const bundledImplementationCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
     : 0;
+  const normalizedAuthBlockedCount = typeof authBlockedCount === 'number'
+    ? authBlockedCount
+    : Array.isArray(queue)
+      ? queue.filter((item) => Array.isArray(item?.missingEnvVars) && item.missingEnvVars.length > 0).length
+      : Math.max(pendingCount - configuredCount, 0);
   const implementationPresentCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === true).length
     : 0;
@@ -989,7 +997,7 @@ function buildDeliveryPriority({
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
     summary: pendingCount > 0
-      ? `${pendingCount} pending, ${configuredCount} configured, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
+      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
@@ -1365,6 +1373,7 @@ export function buildSummary(rootDir: string) {
         label: 'Channels',
         pendingCount: deliverySummary.pendingChannelCount,
         configuredCount: deliverySummary.configuredChannelCount,
+        authBlockedCount: deliverySummary.authBlockedChannelCount,
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
@@ -1376,6 +1385,7 @@ export function buildSummary(rootDir: string) {
         label: 'Providers',
         pendingCount: deliverySummary.pendingProviderCount,
         configuredCount: deliverySummary.configuredProviderCount,
+        authBlockedCount: deliverySummary.authBlockedProviderCount,
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
