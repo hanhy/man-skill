@@ -109,12 +109,14 @@ The project aims to keep personal-agent construction simple:
 - add examples and templates for a real user profile
 
 ### Phase 3 — channels
-- add adapter skeletons and docs for Slack, Telegram, Feishu, and WhatsApp
+- keep Slack, Telegram, Feishu, and WhatsApp adapter manifests/implementations visible in the delivery summary
+- tighten auth-readiness hints, manifest diagnostics, and scaffold helper commands for chat rollout work
 
 ### Phase 4 — model providers
-- add provider skeletons and docs for OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen
+- keep OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen provider manifests/implementations visible in the delivery summary
+- tighten provider auth-readiness hints plus manifest/implementation scaffold commands for rollout work
 
 ### Phase 5 — runtime and packaging
 - improve the work loop
 - add better inspection commands and tests
-- document end-to-end usage
+- document end-to-end usage with the richer ingestion + delivery helper surfaces
