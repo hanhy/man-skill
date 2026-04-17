@@ -115,7 +115,7 @@ node src/index.js update profile --person harry-han --display-name "Harry Han" -
 node src/index.js update profile --person harry-han --summary "Direct operator with a bias for fast feedback loops." --refresh-foundation
 ```
 
-`update intake` bootstraps a profile-local landing zone at `profiles/<person-id>/imports/` with a `README.md`, a `sample.txt` placeholder, and a `materials.template.json` starter manifest so users have an obvious place to drop target-person materials before import. `update profile` updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
+`update intake` bootstraps a profile-local landing zone at `profiles/<person-id>/imports/` with a `README.md`, a `sample.txt` placeholder, and a `materials.template.json` starter manifest so users have an obvious place to drop target-person materials before import. That starter manifest now includes `entryTemplates` for `text`, `message`, `talk`, and `screenshot`, while the generated README mirrors direct one-shot import commands for the same four paths so the first user-facing intake move does not require reconstructing CLI syntax by hand. `update profile` updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
 
 ## What happens
 

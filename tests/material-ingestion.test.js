@@ -477,6 +477,12 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.equal(result.profile.displayName, 'Harry Han');
   assert.equal(result.profile.summary, 'Direct operator with a bias for momentum.');
   assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+  assert.deepEqual(result.importCommands, {
+    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
+    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
+    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+  });
 
   const templatePath = path.join(rootDir, result.starterManifestPath);
   const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
@@ -484,6 +490,35 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.equal(template.displayName, 'Harry Han');
   assert.equal(template.summary, 'Direct operator with a bias for momentum.');
   assert.deepEqual(template.entries, []);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+
+  const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Direct import commands:/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);

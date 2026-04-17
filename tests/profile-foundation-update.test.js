@@ -694,6 +694,12 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
   assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+  assert.deepEqual(result.importCommands, {
+    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
+    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
+    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+  });
   assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
   assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);
   assert.match(result.sampleTextPath, /profiles\/harry-han\/imports\/sample\.txt$/);
@@ -703,6 +709,32 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.equal(template.displayName, 'Harry Han');
   assert.equal(template.summary, 'Direct operator with a bias for momentum.');
   assert.deepEqual(template.entries, []);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+
+  const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Direct import commands:/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('CLI import manifest can seed profile metadata before importing materials', () => {

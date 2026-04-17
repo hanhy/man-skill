@@ -160,6 +160,19 @@ function buildManifestImportCommand(manifestPath) {
   return `node src/index.js import manifest --file ${manifestPath}`;
 }
 
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildDirectImportCommands({ personId, sampleTextPath }) {
+  return {
+    text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
+    message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
+    talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${personId} --file <image.png> --refresh-foundation`,
+  };
+}
+
 function buildIntakePaths(personId) {
   const basePath = path.join('profiles', personId, 'imports');
   return {
@@ -170,16 +183,38 @@ function buildIntakePaths(personId) {
   };
 }
 
-function buildStarterManifestDocument({ personId, displayName, summary, existingEntries = [] }) {
+function buildStarterManifestDocument({ personId, displayName, summary, existingEntries = [], sampleTextPath = 'sample.txt' }) {
   return {
     personId,
     displayName: normalizeText(displayName) ?? personId,
     summary: summary === undefined ? null : (normalizeText(summary) ?? null),
     entries: Array.isArray(existingEntries) ? existingEntries : [],
+    entryTemplates: {
+      text: {
+        type: 'text',
+        file: sampleTextPath,
+        notes: 'long-form writing sample',
+      },
+      message: {
+        type: 'message',
+        text: '<paste a representative short message>',
+        notes: 'chat sample',
+      },
+      talk: {
+        type: 'talk',
+        text: '<paste a transcript snippet>',
+        notes: 'voice memo transcript',
+      },
+      screenshot: {
+        type: 'screenshot',
+        file: '<relative-path-to-image.png>',
+        notes: 'chat screenshot',
+      },
+    },
   };
 }
 
-function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand }) {
+function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands }) {
   const label = normalizeText(displayName) ?? personId;
   return [
     `# Intake scaffold for ${label}`,
@@ -192,8 +227,14 @@ function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleT
     '',
     'Suggested flow:',
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
-    '2. Add message / talk / screenshot entries to materials.template.json.',
+    '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Direct import commands:',
+    `- text: ${importCommands?.text}`,
+    `- message: ${importCommands?.message}`,
+    `- talk: ${importCommands?.talk}`,
+    `- screenshot: ${importCommands?.screenshot}`,
     '',
   ].join('\n');
 }
@@ -269,6 +310,11 @@ export class MaterialIngestion {
     const profileUpdate = this.updateProfile({ personId, displayName, summary });
     const intakePaths = buildIntakePaths(profileUpdate.personId);
     ensureDir(this.resolve(intakePaths.importsDir));
+    const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
+    const importCommands = buildDirectImportCommands({
+      personId: profileUpdate.personId,
+      sampleTextPath: relativeSampleTextPath,
+    });
 
     const existingTemplate = readJsonIfExists(this.resolve(intakePaths.starterManifestPath));
     const starterManifest = buildStarterManifestDocument({
@@ -276,6 +322,7 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
       existingEntries: existingTemplate?.entries,
+      sampleTextPath: path.basename(relativeSampleTextPath),
     });
     fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));
 
@@ -293,8 +340,9 @@ export class MaterialIngestion {
         displayName: profileUpdate.profile?.displayName,
         personId: profileUpdate.personId,
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
-        sampleTextPath: intakePaths.sampleTextPath.split(path.sep).join('/'),
+        sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
+        importCommands,
       }),
     );
 
@@ -302,8 +350,9 @@ export class MaterialIngestion {
       ...profileUpdate,
       intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
-      sampleTextPath: intakePaths.sampleTextPath.split(path.sep).join('/'),
+      sampleTextPath: relativeSampleTextPath,
       importManifestCommand,
+      importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
     };
   }
