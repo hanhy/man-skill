@@ -260,11 +260,14 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     count: 2,
     documentedCount: 2,
     undocumentedCount: 0,
+    thinCount: 0,
     sample: ['obsidian', 'telegram'],
     samplePaths: ['skills/obsidian/SKILL.md', 'skills/telegram/SKILL.md'],
     sampleExcerpts: ['obsidian: Capture durable operator notes.', 'telegram: Deliver concise thread updates.'],
     undocumentedSample: [],
     undocumentedPaths: [],
+    thinSample: [],
+    thinPaths: [],
   });
   assert.deepEqual(summary.foundation.core.soul, {
     present: true,
@@ -333,11 +336,14 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
     count: 1,
     documentedCount: 1,
     undocumentedCount: 0,
+    thinCount: 0,
     sample: ['cron'],
     samplePaths: ['skills/cron/SKILL.md'],
     sampleExcerpts: ['cron: Keep scheduled follow-ups reliable.'],
     undocumentedSample: [],
     undocumentedPaths: [],
+    thinSample: [],
+    thinPaths: [],
   });
   assert.deepEqual(summary.skills.skills, [
     {
@@ -724,11 +730,14 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     count: 2,
     documentedCount: 0,
     undocumentedCount: 2,
+    thinCount: 0,
     sample: ['slack', 'telegram'],
     samplePaths: [],
     sampleExcerpts: [],
     undocumentedSample: ['slack', 'telegram'],
     undocumentedPaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+    thinSample: [],
+    thinPaths: [],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -790,11 +799,14 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     count: 2,
     documentedCount: 1,
     undocumentedCount: 1,
+    thinCount: 0,
     sample: ['slack', 'telegram'],
     samplePaths: ['skills/telegram/SKILL.md'],
     sampleExcerpts: ['telegram: Deliver concise thread updates.'],
     undocumentedSample: ['slack'],
     undocumentedPaths: ['skills/slack/SKILL.md'],
+    thinSample: [],
+    thinPaths: [],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -859,12 +871,15 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.deepEqual(summary.foundation.core.skills, {
     count: 1,
     documentedCount: 0,
-    undocumentedCount: 1,
+    undocumentedCount: 0,
+    thinCount: 1,
     sample: ['delivery'],
     samplePaths: [],
     sampleExcerpts: [],
-    undocumentedSample: ['delivery'],
-    undocumentedPaths: ['skills/delivery/SKILL.md'],
+    undocumentedSample: [],
+    undocumentedPaths: [],
+    thinSample: ['delivery'],
+    thinPaths: ['skills/delivery/SKILL.md'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -903,6 +918,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/delivery/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/delivery\/SKILL\.md @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); thin docs: delivery @ skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /grep -Fqx -- '- Describe when to use this skill\.' 'skills\/delivery\/SKILL\.md' \|\| printf %s '/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add non-heading guidance to skills\/delivery\/SKILL\.md/);
@@ -943,11 +959,14 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     count: 6,
     documentedCount: 0,
     undocumentedCount: 6,
+    thinCount: 0,
     sample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
     samplePaths: [],
     sampleExcerpts: [],
     undocumentedSample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
     undocumentedPaths: ['skills/alpha/SKILL.md', 'skills/beta/SKILL.md', 'skills/delta/SKILL.md', 'skills/epsilon/SKILL.md', 'skills/gamma/SKILL.md'],
+    thinSample: [],
+    thinPaths: [],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,

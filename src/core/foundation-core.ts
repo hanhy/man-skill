@@ -356,11 +356,14 @@ export interface CoreSkillsFoundationSummary {
   count: number;
   documentedCount: number;
   undocumentedCount: number;
+  thinCount: number;
   sample: string[];
   samplePaths: string[];
   sampleExcerpts: string[];
   undocumentedSample: string[];
   undocumentedPaths: string[];
+  thinSample: string[];
+  thinPaths: string[];
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -464,7 +467,7 @@ export function buildCoreFoundationSummary({
   const thinSkillNames = Array.isArray(skillInventory?.thin)
     ? [...skillInventory.thin].sort((left, right) => left.localeCompare(right))
     : [];
-  const undocumentedSkillNames = Array.from(new Set([...missingSkillNames, ...thinSkillNames]));
+  const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
     rootPath: 'memory/README.md',
@@ -482,6 +485,7 @@ export function buildCoreFoundationSummary({
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
+    thinCount: thinSkillNames.length,
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     sampleExcerpts: documentedSkillNames
@@ -493,6 +497,8 @@ export function buildCoreFoundationSummary({
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
     undocumentedSample: undocumentedSkillNames.slice(0, 5),
     undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
+    thinSample: thinSkillNames.slice(0, 5),
+    thinPaths: thinSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
   };
   const soul = {
     present: isNonEmptyString(soulDocument),
