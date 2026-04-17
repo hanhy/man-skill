@@ -52,6 +52,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftStatus.needsRefresh, false);
   assert.equal(profile.foundationDraftStatus.generatedAt !== null, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, []);
   assert.equal(profile.foundationDraftSummaries.memory.generated, true);
   assert.equal(profile.foundationDraftSummaries.memory.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialAt, profile.latestMaterialAt);
@@ -137,6 +138,7 @@ test('loadProfilesIndex marks malformed markdown foundation drafts as stale and 
   assert.equal(profile.foundationDraftStatus.complete, false);
   assert.equal(profile.foundationDraftStatus.needsRefresh, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['voice']);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['missing drafts']);
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
     generatedAt: null,
@@ -173,6 +175,7 @@ test('loadProfilesIndex marks valid markdown drafts as stale when their target-p
   assert.equal(profile.foundationDraftStatus.complete, true);
   assert.equal(profile.foundationDraftStatus.needsRefresh, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['draft metadata drift']);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights, ['- [message] Ship the first slice.']);

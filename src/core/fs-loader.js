@@ -313,12 +313,19 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
+  const refreshReasons = [
+    missingDrafts.size > 0 ? 'missing drafts' : null,
+    hasNewerMaterial ? 'new materials' : null,
+    hasProfileMetadataMismatch ? 'profile metadata drift' : null,
+    hasMarkdownMetadataMismatch ? 'draft metadata drift' : null,
+  ].filter(Boolean);
   const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch || hasMarkdownMetadataMismatch;
 
   return {
     generatedAt,
     complete: missingDrafts.size === 0,
     missingDrafts: [...missingDrafts].sort(),
+    refreshReasons,
     needsRefresh,
   };
 }

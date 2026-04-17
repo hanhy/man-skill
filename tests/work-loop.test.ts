@@ -309,7 +309,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
 
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han) — reasons profile metadata drift + draft metadata drift');
   assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person harry-han');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/memory/long-term/foundation.json',
@@ -318,7 +318,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
     'profiles/harry-han/voice/README.md',
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /next action: refresh Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /next action: refresh Harry Han \(harry-han\) — reasons profile metadata drift \+ draft metadata drift/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person harry-han/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });

@@ -17,7 +17,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'harry-han',
       materialCount: 2,
-      foundationDraftStatus: { needsRefresh: false, complete: true, missingDrafts: [] },
+      foundationDraftStatus: { needsRefresh: false, complete: true, missingDrafts: [], refreshReasons: [] },
       foundationDraftSummaries: {
         memory: { generated: true, entryCount: 2, latestSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
         voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
@@ -34,7 +34,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'jane-doe',
       materialCount: 1,
-      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory', 'skills', 'soul', 'voice'] },
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory', 'skills', 'soul', 'voice'], refreshReasons: ['missing drafts'] },
       foundationDraftSummaries: {
         memory: { generated: false, entryCount: 0, latestSummaries: [] },
         voice: { generated: false, highlights: [] },
@@ -89,6 +89,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         label: 'jane-doe',
         status: 'stale',
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
         refreshCommand: 'node src/index.js update foundation --person jane-doe',
       },
@@ -157,6 +158,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         label: 'Jane Doe (jane-doe)',
         status: 'stale',
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
         refreshCommand: 'node src/index.js update foundation --person jane-doe',
       },
@@ -165,7 +167,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(summary.promptPreview, /Foundation maintenance:/);
   assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
 });
 

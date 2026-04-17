@@ -63,6 +63,7 @@ type ProfileSummaryLike = {
   foundationDrafts?: Record<string, string> | null;
   foundationDraftStatus?: {
     missingDrafts?: string[];
+    refreshReasons?: string[];
   } | null;
 };
 
@@ -362,6 +363,25 @@ function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[]
     : Object.keys(draftPathByKey).sort().map((draftKey) => draftPathByKey[draftKey]);
 }
 
+function buildFoundationRefreshLabel(
+  reasonsSource: { refreshReasons?: string[] } | null,
+  label: string | null = null,
+): string | null {
+  const normalizedLabel = typeof label === 'string' && label.length > 0 ? label : null;
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  const reasons = Array.isArray(reasonsSource?.refreshReasons)
+    ? reasonsSource.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const refreshLabel = `refresh ${normalizedLabel}`;
+
+  return reasons.length > 0
+    ? `${refreshLabel} — reasons ${reasons.join(' + ')}`
+    : refreshLabel;
+}
+
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
@@ -385,7 +405,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     status,
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: queuedProfile?.refreshCommand
-      ? `refresh ${queuedProfile.label ?? queuedProfile.id ?? 'stale profiles'}`
+      ? buildFoundationRefreshLabel(queuedProfile, queuedProfile.label ?? queuedProfile.id ?? null)
       : queuedArea?.action ?? null,
     command: queuedProfile?.refreshCommand ?? null,
     paths: queuedProfile?.refreshCommand

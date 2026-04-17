@@ -9,6 +9,7 @@ type FoundationDraftStatus = {
   needsRefresh?: boolean;
   complete?: boolean;
   missingDrafts?: string[];
+  refreshReasons?: string[];
   generatedAt?: string | null;
 };
 
@@ -85,6 +86,7 @@ type MaintenanceQueueItem = {
   label?: string | null;
   status?: string;
   missingDrafts?: string[];
+  refreshReasons?: string[];
   latestMaterialAt?: string | null;
   refreshCommand?: string | null;
 };
@@ -493,7 +495,12 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const queuedProfiles = maintenance.queuedProfiles ?? [];
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
-    ...queuedProfiles.map((profile) => `- ${profile.label ?? profile.id}: ${profile.status}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}`),
+    ...queuedProfiles.map((profile) => {
+      const reasonSuffix = (profile.refreshReasons ?? []).length > 0
+        ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
+        : '';
+      return `- ${profile.label ?? profile.id}: ${profile.status}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
+    }),
     maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
   ].filter(Boolean).join('\n');
 }

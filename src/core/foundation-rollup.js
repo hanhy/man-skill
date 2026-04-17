@@ -51,6 +51,7 @@ function summarizeMaintenanceQueue(profiles) {
       label: buildProfileLabel(profile),
       status: 'stale',
       missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+      refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
       latestMaterialAt: profile.latestMaterialAt ?? null,
       refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
     }));
