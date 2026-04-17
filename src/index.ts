@@ -584,17 +584,57 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
     ? 'ready'
     : 'queued';
 
-  const collectReadyIntakeImportPaths = (profile: any) => {
+  const getReadyIntakeManifestSummary = (profile: any) => {
     const intakePaths = Array.isArray(profile?.intakePaths)
       ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
       : [];
     const starterManifestPath = intakePaths.find((value) => value.endsWith('materials.template.json')) ?? null;
     if (!starterManifestPath) {
-      return intakePaths;
+      return {
+        intakePaths,
+        starterManifestPath: null,
+        manifestSummary: null,
+      };
     }
 
     const manifestSummary = readSampleManifestSummary(rootDir, starterManifestPath);
-    if (manifestSummary.status !== 'loaded') {
+    if (manifestSummary.status === 'invalid') {
+      try {
+        const parsedManifest = JSON.parse(fs.readFileSync(path.join(rootDir, starterManifestPath), 'utf8')) as {
+          entries?: unknown;
+          entryTemplates?: unknown;
+        };
+        const hasStarterTemplates = parsedManifest
+          && typeof parsedManifest === 'object'
+          && !Array.isArray(parsedManifest)
+          && Array.isArray(parsedManifest.entries)
+          && parsedManifest.entries.length === 0
+          && parsedManifest.entryTemplates
+          && typeof parsedManifest.entryTemplates === 'object'
+          && !Array.isArray(parsedManifest.entryTemplates)
+          && Object.keys(parsedManifest.entryTemplates).length > 0;
+        if (hasStarterTemplates) {
+          return {
+            intakePaths,
+            starterManifestPath,
+            manifestSummary: null,
+          };
+        }
+      } catch {
+        // Preserve the invalid manifest summary below.
+      }
+    }
+
+    return {
+      intakePaths,
+      starterManifestPath,
+      manifestSummary,
+    };
+  };
+
+  const collectReadyIntakeImportPaths = (profile: any) => {
+    const { intakePaths, manifestSummary } = getReadyIntakeManifestSummary(profile);
+    if (!manifestSummary || manifestSummary.status !== 'loaded') {
       return intakePaths;
     }
 
@@ -643,7 +683,25 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
       && profile.importManifestCommand === profile.importMaterialCommand
       && !profile.importManifestCommand.includes('<'),
     );
-    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? null;
+    const invalidReadyIntakeProfiles = metadataProfileCommands
+      .map((profile: any) => {
+        if (profile?.intakeReady !== true || !profile?.importManifestCommand) {
+          return null;
+        }
+
+        const { starterManifestPath, manifestSummary } = getReadyIntakeManifestSummary(profile);
+        if (!starterManifestPath || !manifestSummary || manifestSummary.status !== 'invalid') {
+          return null;
+        }
+
+        return {
+          profile,
+          starterManifestPath,
+          manifestSummary,
+        };
+      })
+      .filter((entry: any): entry is { profile: any; starterManifestPath: string; manifestSummary: SampleManifestSummary } => Boolean(entry));
+    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? invalidReadyIntakeProfiles[0]?.profile ?? null;
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
@@ -693,6 +751,17 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
           .filter((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand)
           .flatMap((profile: any) => collectIntakePaths(profile))
         : collectIntakePaths(metadataOnlyProfileNeedingScaffold);
+    } else if (invalidReadyIntakeProfiles.length > 0) {
+      const [firstInvalidReadyIntakeProfile] = invalidReadyIntakeProfiles;
+      nextAction = invalidReadyIntakeProfiles.length > 1
+        ? (firstInvalidReadyIntakeProfile?.profile?.label
+          ? `fix invalid profile-local intake manifests — starting with ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'fix invalid profile-local intake manifests')
+        : (firstInvalidReadyIntakeProfile?.profile?.label
+          ? `fix the invalid intake manifest for ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'fix the invalid profile-local intake manifest');
+      command = null;
+      paths = Array.from(new Set(invalidReadyIntakeProfiles.map((entry: any) => entry.starterManifestPath)));
     } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`

@@ -541,6 +541,51 @@ test('buildSummary work loop ignores broken sample manifests when a profile-loca
   assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
+test('buildSummary work loop points at fixing an invalid ready intake manifest before import commands', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'missing-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the invalid intake manifest for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+  ]);
+  assert.match(summary.promptPreview, /next action: fix the invalid intake manifest for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
+});
+
 test('buildSummary work loop includes manifest-backed file assets when a ready intake manifest is the next import step', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
