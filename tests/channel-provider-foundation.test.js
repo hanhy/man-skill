@@ -353,6 +353,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestScaffoldPath: 'manifests/channels.json',
       setupHint: 'credentials present',
       nextStep: 'implement inbound event handling and outbound thread replies',
+      helperCommands: {
+        bootstrapEnv: null,
+        scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
+        scaffoldImplementation: null,
+      },
     });
     assert.deepEqual(summary.delivery.providerQueue[0], {
       id: 'openai',
@@ -373,6 +378,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestScaffoldPath: 'manifests/providers.json',
       setupHint: 'auth configured for gpt-5',
       nextStep: 'implement chat/tool request translation and response normalization',
+      helperCommands: {
+        bootstrapEnv: null,
+        scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
+        scaffoldImplementation: null,
+      },
     });
     assert.match(summary.promptPreview, /Delivery foundation:/);
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
@@ -381,11 +391,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, impl 4\/4 present via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, impl 6\/6 present via manifests\/providers\.json/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic, Kimi, Minimax, GLM, Qwen/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
@@ -432,7 +442,9 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldProviderImplementation: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
     scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
+  assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: env cp \.env\.example \.env \| impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
 
 test('buildSummary delivery helper commands skip scaffolded queue leaders and target the first missing provider implementation', () => {
@@ -455,6 +467,7 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
 
   assert.equal(summary.delivery.providerQueue[0].implementationPresent, true);
   assert.equal(summary.delivery.providerQueue[1].implementationPresent, false);
+  assert.equal(summary.delivery.providerQueue[1].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);

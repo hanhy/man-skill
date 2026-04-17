@@ -291,6 +291,11 @@ type DeliveryQueueItem = {
   manifestPresent?: boolean;
   setupHint?: string;
   nextStep?: string | null;
+  helperCommands?: {
+    bootstrapEnv?: string | null;
+    scaffoldManifest?: string | null;
+    scaffoldImplementation?: string | null;
+  };
 };
 
 type DeliverySummary = {
@@ -877,7 +882,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       const flow = ((channel.deliveryModes ?? []).length > 0 || channel.outboundMode || channel.inboundPath)
         ? ` via ${formatChannelFlow(channel)}`
         : '';
-      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`;
+      const helperLine = [
+        channel.helperCommands?.bootstrapEnv ? `env ${channel.helperCommands.bootstrapEnv}` : null,
+        channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
+        channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
+      ].filter(Boolean).join(' | ');
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingChannelQueueSummary,
     providerManifestSummary,
@@ -897,7 +907,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         (provider.features ?? []).length > 0 ? `features: ${(provider.features ?? []).join(', ')}` : null,
         (provider.models ?? []).length > 0 ? `models: ${(provider.models ?? []).join(', ')}` : null,
       ].filter(Boolean).join('; ');
-      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`;
+      const helperLine = [
+        provider.helperCommands?.bootstrapEnv ? `env ${provider.helperCommands.bootstrapEnv}` : null,
+        provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
+        provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
+      ].filter(Boolean).join(' | ');
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
