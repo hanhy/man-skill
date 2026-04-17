@@ -503,6 +503,25 @@ test('CLI command errors print a concise usage hint without a stack trace', () =
   );
 });
 
+test('CLI update intake errors advertise the full usage surface for person, stale, and all modes', () => {
+  const rootDir = makeTempRepo();
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'update', 'intake'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Error: update intake requires --person, --stale, or --all/);
+      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --all/);
+      assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
+      return true;
+    },
+  );
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

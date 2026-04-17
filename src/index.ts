@@ -859,7 +859,7 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
     }
 
     if (!personId) {
-      throw new Error('Missing required --person argument');
+      throw new Error('update intake requires --person, --stale, or --all');
     }
 
     return ingestion.scaffoldProfileIntake({
@@ -1128,7 +1128,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'update' && subcommand === 'intake') {
-    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]';
+    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all';
   }
 
   if (command === 'update' && subcommand === 'foundation') {
