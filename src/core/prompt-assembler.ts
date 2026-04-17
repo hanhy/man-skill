@@ -347,6 +347,7 @@ type IngestionHelperCommands = {
   scaffoldStale?: string | null;
   scaffoldBundle?: string | null;
   importManifest?: string | null;
+  importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
   importIntakeBundle?: string | null;
@@ -377,6 +378,7 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  importManifestAndRefreshCommand?: string | null;
   refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
   sampleManifestPresent?: boolean;
@@ -796,7 +798,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.bootstrap
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
+      || ingestion?.importManifestAndRefreshCommand
       || helperCommands.importManifest
+      || helperCommands.importManifestAndRefresh
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.refreshAllFoundationCommand
@@ -844,6 +848,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
+      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
@@ -878,8 +883,13 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[ingestion.importManifestCommand, ingestion.refreshAllFoundationCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+    (ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[
+        ingestion.importManifestCommand,
+        ingestion.importManifestAndRefreshCommand,
+        ingestion.refreshAllFoundationCommand,
+        ingestion.staleRefreshCommand,
+      ].filter(Boolean).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`

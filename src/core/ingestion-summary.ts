@@ -501,6 +501,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .map((profile) => profile?.updateIntakeCommand),
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
+    importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
     importIntakeStale: 'node src/index.js import intake --stale --refresh-foundation',
     importIntakeBundle: buildCommandBundle(
@@ -547,6 +548,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeStaleCommand: 'node src/index.js update intake --stale',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     refreshAllFoundationCommand: 'node src/index.js update foundation --all',
     sampleManifestPath,
     sampleManifestPresent,
