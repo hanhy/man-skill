@@ -5,7 +5,9 @@
     "transport": "chat",
     "direction": ["inbound", "outbound"],
     "status": "planned",
-    "capabilities": ["threads", "mentions", "bot-token"]
+    "capabilities": ["threads", "mentions", "bot-token"],
+    "inboundPath": "/hooks/slack/events",
+    "outboundMode": "thread-reply"
   },
   {
     "id": "telegram",
@@ -13,7 +15,9 @@
     "transport": "chat",
     "direction": ["inbound", "outbound"],
     "status": "planned",
-    "capabilities": ["bot-token", "webhook", "polling"]
+    "capabilities": ["bot-token", "webhook", "polling"],
+    "inboundPath": "/hooks/telegram",
+    "outboundMode": "chat-send"
   },
   {
     "id": "whatsapp",
@@ -21,7 +25,9 @@
     "transport": "chat",
     "direction": ["inbound", "outbound"],
     "status": "planned",
-    "capabilities": ["session", "group-chat"]
+    "capabilities": ["session", "group-chat"],
+    "inboundPath": "/hooks/whatsapp",
+    "outboundMode": "session-send"
   },
   {
     "id": "feishu",
@@ -29,6 +35,8 @@
     "transport": "chat",
     "direction": ["inbound", "outbound"],
     "status": "planned",
-    "capabilities": ["tenant-app", "docs", "bot"]
+    "capabilities": ["tenant-app", "docs", "bot"],
+    "inboundPath": "/hooks/feishu/events",
+    "outboundMode": "bot-message"
   }
 ]

@@ -560,6 +560,8 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           name: 'Slack',
           status: 'planned',
           deliveryModes: ['events-api', 'web-api'],
+          inboundPath: '/hooks/slack/events',
+          outboundMode: 'thread-reply',
           auth: { type: 'bot-token', envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'] },
         },
         {
@@ -567,6 +569,8 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           name: 'Telegram',
           status: 'active',
           deliveryModes: ['polling', 'webhook'],
+          inboundPath: '/hooks/telegram',
+          outboundMode: 'chat-send',
           auth: { type: 'bot-token', envVars: ['TELEGRAM_BOT_TOKEN'] },
         },
       ],
@@ -607,11 +611,11 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /\+1 more profile: Harry Han \(harry-han\)/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
-  assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(prompt, /Slack via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
   assert.match(prompt, /models: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Anthropic default claude-3.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
   assert.match(prompt, /channel queue: 1 pending via manifests\/channels\.json/);
-  assert.match(prompt, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api/);
+  assert.match(prompt, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
   assert.match(prompt, /provider queue: 1 pending via manifests\/providers\.json/);
   assert.match(prompt, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });

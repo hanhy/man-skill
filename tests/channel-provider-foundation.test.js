@@ -115,6 +115,8 @@ test('default channel and provider scaffold modules stay aligned with registry m
       capabilities: registryRecord.capabilities,
       auth: registryRecord.auth,
       deliveryModes: registryRecord.deliveryModes,
+      inboundPath: registryRecord.inboundPath,
+      outboundMode: registryRecord.outboundMode,
       implementationPath: registryRecord.implementationPath,
       nextStep: registryRecord.nextStep,
     });
@@ -163,6 +165,8 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
     envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
   });
   assert.deepEqual(slack.deliveryModes, ['events-api', 'web-api']);
+  assert.equal(slack.inboundPath, '/hooks/slack/events');
+  assert.equal(slack.outboundMode, 'thread-reply');
   assert.equal(slack.implementationPath, 'src/channels/slack.js');
   assert.equal(slack.nextStep, 'implement inbound event handling and outbound thread replies');
   assert.deepEqual(telegram.auth, {
@@ -170,6 +174,8 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
     envVars: ['TELEGRAM_BOT_TOKEN'],
   });
   assert.deepEqual(telegram.deliveryModes, ['polling', 'webhook']);
+  assert.equal(telegram.inboundPath, '/hooks/telegram');
+  assert.equal(telegram.outboundMode, 'chat-send');
   assert.equal(telegram.implementationPath, 'src/channels/telegram.js');
   assert.equal(telegram.nextStep, 'wire bot webhook intake and outbound chat sends');
 });
@@ -294,6 +300,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
       capabilities: ['threads', 'mentions', 'bot-token'],
       deliveryModes: ['events-api', 'web-api'],
+      inboundPath: '/hooks/slack/events',
+      outboundMode: 'thread-reply',
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
       implementationScaffoldPath: 'src/channels/slack.js',
@@ -332,7 +340,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
@@ -717,6 +725,8 @@ test('JS registry shims preserve merged channel and provider defaults', () => {
         envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
       },
       deliveryModes: ['events-api', 'web-api', 'socket-mode'],
+      inboundPath: '/hooks/slack/events',
+      outboundMode: 'thread-reply',
       implementationPath: 'src/channels/slack.js',
       nextStep: 'ship slash-command routing',
     },

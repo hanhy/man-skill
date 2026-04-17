@@ -12,6 +12,8 @@ type ChannelSummaryRecord = {
   status?: string;
   capabilities?: string[];
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   implementationPath?: string | null;
   nextStep?: string | null;
   auth?: {
@@ -51,6 +53,8 @@ export type DeliveryChannelQueueItem = {
   authEnvVars: string[];
   capabilities: string[];
   deliveryModes: string[];
+  inboundPath: string | null;
+  outboundMode: string | null;
   implementationPath: string | null;
   implementationPresent: boolean;
   implementationScaffoldPath: string | null;
@@ -249,6 +253,8 @@ export function buildDeliverySummary(
         authEnvVars,
         capabilities: (channel.capabilities ?? []).filter(Boolean),
         deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
+        inboundPath: typeof channel.inboundPath === 'string' && channel.inboundPath.trim().length > 0 ? channel.inboundPath.trim() : null,
+        outboundMode: typeof channel.outboundMode === 'string' && channel.outboundMode.trim().length > 0 ? channel.outboundMode.trim() : null,
         implementationPath,
         implementationPresent: isImplementationPresent(implementationPath, rootDir),
         implementationScaffoldPath,

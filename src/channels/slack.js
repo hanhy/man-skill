@@ -10,6 +10,8 @@ export const slackChannelScaffold = {
     envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
   },
   deliveryModes: ['events-api', 'web-api'],
+  inboundPath: '/hooks/slack/events',
+  outboundMode: 'thread-reply',
   implementationPath: 'src/channels/slack.js',
   nextStep: 'implement inbound event handling and outbound thread replies',
 };

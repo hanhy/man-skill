@@ -213,6 +213,8 @@ type ChannelSummaryRecord = {
   name?: string;
   status?: string;
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   implementationPath?: string | null;
   nextStep?: string | null;
   auth?: ChannelAuth | null;
@@ -272,6 +274,8 @@ type DeliveryQueueItem = {
   authEnvVars?: string[];
   capabilities?: string[];
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   defaultModel?: string | null;
   authEnvVar?: string | null;
   models?: string[];
@@ -656,6 +660,22 @@ function formatChannelAuth(auth: ChannelAuth | null | undefined) {
   return envVars.length > 0 ? `${auth.type}: ${envVars.join(', ')}` : auth.type;
 }
 
+function formatChannelFlow(channel: {
+  deliveryModes?: string[];
+  outboundMode?: string | null;
+  inboundPath?: string | null;
+}) {
+  const deliveryModes = (channel.deliveryModes ?? []).join('/') || 'unspecified';
+  const outboundMode = typeof channel.outboundMode === 'string' && channel.outboundMode.length > 0
+    ? ` -> ${channel.outboundMode}`
+    : '';
+  const inboundPath = typeof channel.inboundPath === 'string' && channel.inboundPath.length > 0
+    ? ` @ ${channel.inboundPath}`
+    : '';
+
+  return `${deliveryModes}${outboundMode}${inboundPath}`;
+}
+
 function formatManifestSummary(label: string, manifest: ChannelManifestSummary | ProviderManifestSummary | undefined) {
   if (!manifest?.path) {
     return null;
@@ -675,6 +695,9 @@ function formatManifestSummary(label: string, manifest: ChannelManifestSummary |
 function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
+  const channelRecordsById = new Map(channelRecords
+    .filter((channel) => channel?.id)
+    .map((channel) => [channel.id, channel]));
   const helperCommands = delivery?.helperCommands ?? {};
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
@@ -701,6 +724,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       id: channel.id,
       status: channel.status ?? 'unknown',
       deliveryModes: channel.deliveryModes ?? [],
+      inboundPath: channel.inboundPath ?? null,
+      outboundMode: channel.outboundMode ?? null,
       implementationPath: channel.implementationPath ?? null,
       implementationPresent: false,
       setupHint: (channel.auth?.envVars ?? []).length > 0
@@ -708,6 +733,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         : 'define channel credentials',
       nextStep: channel.nextStep ?? null,
     }));
+  const enrichedChannelQueue = channelQueue.map((channel) => {
+    const registryRecord = channel.id ? channelRecordsById.get(channel.id) : null;
+    return {
+      ...channel,
+      inboundPath: channel.inboundPath ?? registryRecord?.inboundPath ?? null,
+      outboundMode: channel.outboundMode ?? registryRecord?.outboundMode ?? null,
+      deliveryModes: (channel.deliveryModes ?? []).length > 0 ? channel.deliveryModes : (registryRecord?.deliveryModes ?? []),
+    };
+  });
   const providerQueue = delivery?.providerQueue ?? providerRecords
     .filter((provider) => provider?.status !== 'active')
     .map((provider) => ({
@@ -726,7 +760,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
             : 'choose auth and default model',
       nextStep: provider.nextStep ?? null,
     }));
-  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && channelQueue.length === 0 && providerQueue.length === 0) {
+  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && enrichedChannelQueue.length === 0 && providerQueue.length === 0) {
     return null;
   }
 
@@ -736,8 +770,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
-  const visibleChannelQueue = channelQueue.slice(0, 1);
-  const remainingChannelQueue = channelQueue.slice(1);
+  const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
+  const remainingChannelQueue = enrichedChannelQueue.slice(1);
   const remainingChannelQueueSummary = remainingChannelQueue.length > 0
     ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => channel.name ?? channel.id ?? 'unknown-channel').join(', ')}`
     : null;
@@ -776,17 +810,20 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
     ...channelRecords.slice(0, 2).map((channel) =>
-      `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
+      `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
-    channelQueue.length > 0
-      ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+    enrichedChannelQueue.length > 0
+      ? `- channel queue: ${delivery?.pendingChannelCount ?? enrichedChannelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
       : null,
     ...visibleChannelQueue.map((channel) => {
       const authDetails = [
         channel.authType ?? null,
         (channel.capabilities ?? []).length > 0 ? `caps ${(channel.capabilities ?? []).join(', ')}` : null,
       ].filter(Boolean).join('; ');
-      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`;
+      const flow = ((channel.deliveryModes ?? []).length > 0 || channel.outboundMode || channel.inboundPath)
+        ? ` via ${formatChannelFlow(channel)}`
+        : '';
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`;
     }),
     remainingChannelQueueSummary,
     providerManifestSummary,

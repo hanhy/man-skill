@@ -10,6 +10,8 @@ export const whatsappChannelScaffold = {
     envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
   },
   deliveryModes: ['cloud-api', 'session-bridge'],
+  inboundPath: '/hooks/whatsapp',
+  outboundMode: 'session-send',
   implementationPath: 'src/channels/whatsapp.js',
   nextStep: 'map business-api webhooks and outbound message delivery',
 };
