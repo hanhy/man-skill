@@ -47,9 +47,12 @@ export type DeliveryChannelQueueItem = {
   deliveryModes: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
   manifestPath: string;
+  manifestPresent: boolean;
+  manifestScaffoldPath: string | null;
   setupHint: string;
   nextStep: string | null;
 };
@@ -63,9 +66,12 @@ export type DeliveryProviderQueueItem = {
   modalities: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
   manifestPath: string;
+  manifestPresent: boolean;
+  manifestScaffoldPath: string | null;
   setupHint: string;
   nextStep: string | null;
 };
@@ -87,6 +93,13 @@ export type DeliverySummary = {
   envTemplatePath: string | null;
   envTemplatePresent: boolean;
   envTemplateCommand: string | null;
+  helperCommands: {
+    bootstrapEnv: string | null;
+    scaffoldChannelManifest: string | null;
+    scaffoldProviderManifest: string | null;
+    scaffoldChannelImplementation: string | null;
+    scaffoldProviderImplementation: string | null;
+  };
   channelQueue: DeliveryChannelQueueItem[];
   providerQueue: DeliveryProviderQueueItem[];
 };
@@ -99,20 +112,51 @@ function collectMissingEnvVars(envVars: string[], environment: NodeJS.ProcessEnv
   return envVars.filter((envVar) => !environment[envVar]);
 }
 
-function isImplementationPresent(implementationPath: string | null | undefined, rootDir?: string | null): boolean {
-  if (!implementationPath || !rootDir) {
-    return false;
+function normalizeRepoRelativePath(relativePath: string | null | undefined, rootDir?: string | null): string | null {
+  if (!relativePath || !rootDir) {
+    return null;
   }
 
   const resolvedRootDir = path.resolve(rootDir);
-  const resolvedImplementationPath = path.resolve(rootDir, implementationPath);
-  const relativeImplementationPath = path.relative(resolvedRootDir, resolvedImplementationPath);
+  const resolvedTargetPath = path.resolve(rootDir, relativePath);
+  const normalizedRelativePath = path.relative(resolvedRootDir, resolvedTargetPath);
 
-  if (relativeImplementationPath.startsWith('..') || path.isAbsolute(relativeImplementationPath)) {
+  if (normalizedRelativePath.startsWith('..') || path.isAbsolute(normalizedRelativePath)) {
+    return null;
+  }
+
+  return normalizedRelativePath.split(path.sep).join('/');
+}
+
+function isRepoRelativePathPresent(relativePath: string | null | undefined, rootDir?: string | null): boolean {
+  const normalizedPath = normalizeRepoRelativePath(relativePath, rootDir);
+  if (!normalizedPath || !rootDir) {
     return false;
   }
 
-  return fs.existsSync(resolvedImplementationPath);
+  return fs.existsSync(path.resolve(rootDir, normalizedPath));
+}
+
+function isImplementationPresent(implementationPath: string | null | undefined, rootDir?: string | null): boolean {
+  return isRepoRelativePathPresent(implementationPath, rootDir);
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildRelativeFileTouchCommand(relativePath: string | null | undefined): string | null {
+  if (typeof relativePath !== 'string' || relativePath.length === 0) {
+    return null;
+  }
+
+  const normalizedPath = relativePath.split(path.sep).join('/');
+  const directory = path.posix.dirname(normalizedPath);
+  if (!directory || directory === '.') {
+    return `touch ${shellSingleQuote(normalizedPath)}`;
+  }
+
+  return `mkdir -p ${shellSingleQuote(directory)} && touch ${shellSingleQuote(normalizedPath)}`;
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
@@ -169,6 +213,9 @@ export function buildDeliverySummary(
       const authEnvVars = (channel.auth?.envVars ?? []).filter(Boolean);
       const missingEnvVars = collectMissingEnvVars(authEnvVars, environment);
       const implementationPath = channel.implementationPath ?? null;
+      const manifestPresent = isRepoRelativePathPresent(channelManifestPath, rootDir);
+      const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
+      const manifestScaffoldPath = normalizeRepoRelativePath(channelManifestPath, rootDir);
       return {
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
@@ -177,9 +224,12 @@ export function buildDeliverySummary(
         deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
         implementationPath,
         implementationPresent: isImplementationPresent(implementationPath, rootDir),
+        implementationScaffoldPath,
         configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
         missingEnvVars,
         manifestPath: channelManifestPath,
+        manifestPresent,
+        manifestScaffoldPath,
         setupHint: buildChannelSetupHint(channel, environment),
         nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
       };
@@ -189,6 +239,9 @@ export function buildDeliverySummary(
     .map((provider) => {
       const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
       const implementationPath = provider.implementationPath ?? null;
+      const manifestPresent = isRepoRelativePathPresent(providerManifestPath, rootDir);
+      const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
+      const manifestScaffoldPath = normalizeRepoRelativePath(providerManifestPath, rootDir);
       return {
         id: provider.id ?? null,
         name: provider.name ?? provider.id ?? null,
@@ -198,9 +251,12 @@ export function buildDeliverySummary(
         modalities: (provider.modalities ?? []).filter(Boolean),
         implementationPath,
         implementationPresent: isImplementationPresent(implementationPath, rootDir),
+        implementationScaffoldPath,
         configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
         missingEnvVars,
         manifestPath: providerManifestPath,
+        manifestPresent,
+        manifestScaffoldPath,
         setupHint: buildProviderSetupHint(provider, environment),
         nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
       };
@@ -212,6 +268,10 @@ export function buildDeliverySummary(
   ].filter(Boolean);
   const channelScaffoldCoverage = allChannelRecords.map((channel) => isImplementationPresent(channel.implementationPath ?? null, rootDir));
   const providerScaffoldCoverage = allProviderRecords.map((provider) => isImplementationPresent(provider.implementationPath ?? null, rootDir));
+  const firstChannelMissingManifest = channelQueue.find((channel) => channel.manifestPresent === false) ?? null;
+  const firstProviderMissingManifest = providerQueue.find((provider) => provider.manifestPresent === false) ?? null;
+  const firstChannelMissingImplementation = channelQueue.find((channel) => channel.implementationPresent === false) ?? null;
+  const firstProviderMissingImplementation = providerQueue.find((provider) => provider.implementationPresent === false) ?? null;
 
   return {
     pendingChannelCount: channelQueue.length,
@@ -230,6 +290,21 @@ export function buildDeliverySummary(
     envTemplatePath: null,
     envTemplatePresent: false,
     envTemplateCommand: null,
+    helperCommands: {
+      bootstrapEnv: null,
+      scaffoldChannelManifest: firstChannelMissingManifest
+        ? buildRelativeFileTouchCommand(firstChannelMissingManifest.manifestScaffoldPath)
+        : null,
+      scaffoldProviderManifest: firstProviderMissingManifest
+        ? buildRelativeFileTouchCommand(firstProviderMissingManifest.manifestScaffoldPath)
+        : null,
+      scaffoldChannelImplementation: firstChannelMissingImplementation
+        ? buildRelativeFileTouchCommand(firstChannelMissingImplementation.implementationScaffoldPath)
+        : null,
+      scaffoldProviderImplementation: firstProviderMissingImplementation
+        ? buildRelativeFileTouchCommand(firstProviderMissingImplementation.implementationScaffoldPath)
+        : null,
+    },
     channelQueue,
     providerQueue,
   };

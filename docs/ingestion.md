@@ -36,6 +36,14 @@ node src/index.js import sample
 
 This shortcut auto-loads `samples/harry-materials.json`, runs the manifest import, and refreshes the derived foundation drafts in one step. Use it when you want the fastest end-to-end sanity check of the ingestion entrance on a fresh checkout.
 
+### Import every ready profile-local intake scaffold that still has no imported materials
+
+```bash
+node src/index.js import intake --stale
+```
+
+This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
+
 ### Import a JSON manifest of mixed materials
 
 ```bash
@@ -103,6 +111,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts
+- `import intake --stale` bulk-imports only ready metadata-only intake scaffolds, so the profile-local entrance can be processed without re-importing profiles that already have stored materials
 - manifest imports can span multiple target profiles in one pass
 - manifest import results now also include per-profile summaries with imported material counts/types, the stored display label/summary, `needsRefresh`, sorted `missingDrafts`, and direct follow-up commands for `update profile` and `update foundation`
 - when `import manifest` is paired with `--refresh-foundation`, those per-profile summaries are recomputed after draft generation so freshly imported profiles report `needsRefresh: false` instead of stale pre-refresh status
@@ -160,8 +169,10 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - each queued profile now includes its own `refreshCommand`, which keeps the user-facing ingestion/update entrance operational instead of requiring operators to reconstruct the right CLI call by hand
   - queued profiles now also surface `generatedDraftCount`, `expectedDraftCount`, and `candidateDraftCount`, so the maintenance queue can prioritize the most incomplete profiles and show concrete draft coverage before you refresh anything
 - `update foundation --stale` now also repairs malformed generated markdown drafts (`voice/README.md`, `soul/README.md`, `skills/README.md`) when their provenance headers are missing or corrupted, instead of only refreshing fully missing/stale profiles
-- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `profileCommands`, `allProfileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
-  - each profile command bundle now also carries `importCommands.text|message|talk|screenshot`, `intakeStatusSummary`, and an `importManifestCommand` when a profile-local intake scaffold is ready, which makes the first usable entrance explicit for every target profile instead of only exposing a single fallback command
+- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `helperCommands`, `profileCommands`, `allProfileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
+  - `helperCommands` now groups the repo-level intake/update/import shortcuts (`bootstrap`, `scaffoldAll`, `scaffoldStale`, `importManifest`, `importIntakeAll`, `importIntakeStale`, `refreshStaleFoundation`, plus any runnable sample starter/manifest/text commands) so downstream prompt builders and operators can lift a stable command bundle without reconstructing it from scattered top-level fields
+  - each profile command bundle now also carries `importCommands.text|message|talk|screenshot`, `intakeStatusSummary`, `importManifestCommand`, and a grouped `helperCommands` block (`scaffold`, `importIntake`, `importManifest`, `updateProfile`, `refreshFoundation`, `directImports`) so downstream tooling can surface one stable intake/update palette per target profile instead of stitching individual command fields together
+  - `updateProfileCommand` / `helperCommands.updateProfile` now preserve the profile's current `displayName` and optional `summary`, making the surfaced metadata-edit command copy-pasteable without reconstructing those fields by hand
   - when a metadata-only profile already has `profiles/<id>/imports/materials.template.json`, both the prompt preview and work loop now prefer that profile-local starter manifest over unrelated sample bundles, while still preferring a runnable direct text import when one exists for the same profile
   - `profileCommands` stays focused on the top actionable queue for prompt previews, while `allProfileCommands` exposes the full sorted per-profile command catalog so operators can inspect ready profiles too without recomputing command bundles downstream
   - metadata-only profiles now default their primary `importMaterialCommand` to `import message --person <id> --text <message> --refresh-foundation` unless a checked-in sample text file gives them a runnable text import, so the entrance stays copy-pasteable even when no local sample file exists yet

@@ -11,6 +11,7 @@ import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
+import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
@@ -42,6 +43,11 @@ interface SampleManifestSummary {
   profileLabels: string[];
   materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
+  fileEntries: Array<{
+    type: 'text' | 'screenshot';
+    filePath: string;
+    personId: string;
+  }>;
   filePaths: string[];
   error: string | null;
 }
@@ -56,7 +62,11 @@ type QueueLike = {
   setupHint?: string | null;
   nextStep?: string | null;
   implementationPath?: string | null;
+  implementationPresent?: boolean;
+  implementationScaffoldPath?: string | null;
   manifestPath?: string | null;
+  manifestPresent?: boolean;
+  manifestScaffoldPath?: string | null;
 };
 
 type ProfileSummaryLike = {
@@ -94,6 +104,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: null,
     };
@@ -108,6 +119,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: null,
     };
@@ -124,6 +136,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
     };
@@ -133,6 +146,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const profileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
+    const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
     const filePaths = new Set<string>();
     const profileDisplayNames = new Map<string, string>();
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
@@ -241,6 +255,12 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         if (entryRecord.type === 'text') {
           textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
         }
+
+        fileEntries.push({
+          type: entryRecord.type,
+          filePath: normalizedRelativeFilePath,
+          personId: normalizedPersonId,
+        });
       }
 
       materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
@@ -255,6 +275,20 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
       materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
+      fileEntries: fileEntries.slice().sort((left, right) => {
+        const typeRank = (value: 'text' | 'screenshot') => (value === 'text' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const pathDelta = left.filePath.localeCompare(right.filePath);
+        if (pathDelta !== 0) {
+          return pathDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      }),
       filePaths: [...filePaths].sort(),
       error: null,
     };
@@ -266,6 +300,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
@@ -398,6 +433,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
   const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const queuedAreaCommand = buildCoreFoundationCommand(queuedArea);
   const queuedProfileSummary = queuedProfile?.id
     ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
     : null;
@@ -428,7 +464,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       : queuedArea?.action ?? null,
     command: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
-      : null,
+      : queuedAreaCommand,
     paths: queuedProfile?.refreshCommand
       ? buildFoundationDraftPaths(queuedProfileSummary)
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),
@@ -523,6 +559,9 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const sampleTextPersonId = typeof ingestionSummary?.sampleTextPersonId === 'string' && ingestionSummary.sampleTextPersonId.length > 0
       ? ingestionSummary.sampleTextPersonId
       : null;
+    const sampleFileCommands = Array.isArray(ingestionSummary?.sampleFileCommands)
+      ? ingestionSummary.sampleFileCommands.filter((entry: any) => entry && typeof entry === 'object')
+      : [];
 
     if (metadataOnlyProfileNeedingScaffold) {
       const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
@@ -534,19 +573,32 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
           : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
         : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
       command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
-      const missingIntakePaths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakeMissingPaths)
-        ? metadataOnlyProfileNeedingScaffold.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      paths = missingIntakePaths.length > 0
-        ? missingIntakePaths
-        : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
-          ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-          : []);
-    } else if (readyIntakeProfiles.length > 1 && typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0) {
+      const collectIntakePaths = (profile: any) => {
+        const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
+          ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        if (missingIntakePaths.length > 0) {
+          return missingIntakePaths;
+        }
+
+        return Array.isArray(profile?.intakePaths)
+          ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+      };
+      paths = useBulkIntakeCommand
+        ? metadataProfileCommands
+          .filter((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand)
+          .flatMap((profile: any) => collectIntakePaths(profile))
+        : collectIntakePaths(metadataOnlyProfileNeedingScaffold);
+    } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
         : 'import source materials for ready intake profiles';
-      command = ingestionSummary.intakeImportAllCommand;
+      command = typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
+        ? ingestionSummary.intakeImportStaleCommand
+        : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
+            ? ingestionSummary.intakeImportAllCommand
+            : null);
       paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
         ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
         : []);
@@ -559,9 +611,24 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         ? (Array.isArray(metadataOnlyProfile?.intakePaths)
           ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
           : [])
-        : (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
-          ? [sampleTextPath]
-          : []);
+        : (() => {
+          const matchingSampleFile = sampleFileCommands.find((entry: any) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.path === 'string'
+            && entry.path.length > 0,
+          );
+
+          if (matchingSampleFile) {
+            return [matchingSampleFile.path];
+          }
+
+          if (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId) {
+            return [sampleTextPath];
+          }
+
+          return [];
+        })();
     } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
@@ -585,6 +652,24 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     command,
     paths,
   };
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildRelativeFileTouchCommand(relativePath: string | null | undefined): string | null {
+  if (typeof relativePath !== 'string' || relativePath.length === 0) {
+    return null;
+  }
+
+  const normalizedPath = relativePath.split(path.sep).join('/');
+  const directory = path.posix.dirname(normalizedPath);
+  if (!directory || directory === '.') {
+    return `touch ${shellSingleQuote(normalizedPath)}`;
+  }
+
+  return `mkdir -p ${shellSingleQuote(directory)} && touch ${shellSingleQuote(normalizedPath)}`;
 }
 
 function buildDeliveryPriority({
@@ -611,17 +696,37 @@ function buildDeliveryPriority({
     typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
-  const needsCredentialBootstrap = pendingCount > configuredCount;
+  const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
+  const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
+  const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
+    ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const needsCredentialBootstrap = firstQueuedMissingEnvVars.length > 0 && pendingCount > configuredCount;
+  const followUpParts = [
+    firstQueued?.setupHint,
+    firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  let nextAction = firstQueued ? followUpParts.join('; ') : null;
+  let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
+
+  if (!command && manifestMissing) {
+    const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
+    nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
+    command = buildRelativeFileTouchCommand(manifestPath);
+  } else if (!command && implementationMissing) {
+    const implementationPath = typeof firstQueued?.implementationScaffoldPath === 'string' ? firstQueued.implementationScaffoldPath : null;
+    nextAction = [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
+    command = buildRelativeFileTouchCommand(implementationPath);
+  }
 
   return {
     id,
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
     summary: `${pendingCount} pending, ${configuredCount} configured`,
-    nextAction: firstQueued
-      ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
-      : null,
-    command: needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null,
+    nextAction,
+    command,
     paths,
   };
 }
@@ -711,6 +816,10 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   if (subcommand === 'intake') {
     if (options.all) {
       return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+    }
+
+    if (options.stale) {
+      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests());
     }
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
@@ -810,7 +919,7 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
     }
 
     if (!personId) {
-      throw new Error('Missing required --person argument');
+      throw new Error('update intake requires --person, --stale, or --all');
     }
 
     return ingestion.scaffoldProfileIntake({
@@ -938,11 +1047,16 @@ export function buildSummary(rootDir: string) {
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
   const deliverySummary = {
-    ...buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir }),
+    ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
     envTemplatePresent,
     envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+    helperCommands: {
+      ...baseDeliverySummary.helperCommands,
+      bootstrapEnv: envTemplatePresent ? 'cp .env.example .env' : null,
+    },
   };
   const workLoop = new WorkLoop({
     intervalMinutes: 10,
@@ -1006,7 +1120,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(4200),
+    promptPreview: prompt.buildPreview(5200),
   };
 }
 
@@ -1019,6 +1133,7 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import intake --stale             Import every ready metadata-only intake manifest and refresh drafts',
     '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
@@ -1041,7 +1156,7 @@ function formatCliUsage(): string {
 
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
   if (command === 'import' && subcommand === 'manifest') {
-    return 'Usage: node src/index.js import manifest --file <manifest.json>';
+    return 'Usage: node src/index.js import manifest --file <manifest.json> [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'sample') {
@@ -1049,23 +1164,23 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'intake') {
-    return 'Usage: node src/index.js import intake --person <person-id> | --all';
+    return 'Usage: node src/index.js import intake --person <person-id> | --stale | --all';
   }
 
   if (command === 'import' && subcommand === 'text') {
-    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--refresh-foundation]';
+    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'message') {
-    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--refresh-foundation]';
+    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'talk') {
-    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--refresh-foundation]';
+    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'screenshot') {
-    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--refresh-foundation]';
+    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'update' && subcommand === 'profile') {
@@ -1073,7 +1188,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'update' && subcommand === 'intake') {
-    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]';
+    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all';
   }
 
   if (command === 'update' && subcommand === 'foundation') {

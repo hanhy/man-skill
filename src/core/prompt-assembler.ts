@@ -1,3 +1,5 @@
+import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+
 type MaterialTypes = Record<string, number>;
 
 type ProfileMetadata = {
@@ -278,6 +280,13 @@ type DeliverySummary = {
   envTemplatePath?: string | null;
   envTemplatePresent?: boolean;
   envTemplateCommand?: string | null;
+  helperCommands?: {
+    bootstrapEnv?: string | null;
+    scaffoldChannelManifest?: string | null;
+    scaffoldProviderManifest?: string | null;
+    scaffoldChannelImplementation?: string | null;
+    scaffoldProviderImplementation?: string | null;
+  };
   channelQueue?: DeliveryQueueItem[];
   providerQueue?: DeliveryQueueItem[];
 } | null;
@@ -292,7 +301,9 @@ type IngestionProfileCommand = {
   needsRefresh?: boolean;
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  importIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -307,6 +318,20 @@ type IngestionProfileCommand = {
     screenshot?: string | null;
   };
   importMaterialCommand?: string | null;
+};
+
+type IngestionHelperCommands = {
+  bootstrap?: string | null;
+  scaffoldAll?: string | null;
+  scaffoldStale?: string | null;
+  importManifest?: string | null;
+  importIntakeAll?: string | null;
+  importIntakeStale?: string | null;
+  refreshStaleFoundation?: string | null;
+  sampleStarter?: string | null;
+  sampleManifest?: string | null;
+  sampleText?: string | null;
+  updateProfileAndRefresh?: string | null;
 };
 
 type IngestionSummary = {
@@ -341,7 +366,14 @@ type IngestionSummary = {
   sampleTextPresent?: boolean;
   sampleTextPersonId?: string | null;
   sampleTextCommand?: string | null;
+  sampleFileCommands?: Array<{
+    type?: 'text' | 'screenshot' | string;
+    path?: string | null;
+    personId?: string | null;
+    command?: string | null;
+  }>;
   staleRefreshCommand?: string | null;
+  helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
   metadataProfileCommands?: IngestionProfileCommand[];
@@ -590,8 +622,17 @@ function formatManifestSummary(label: string, manifest: ChannelManifestSummary |
 function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
+  const helperCommands = delivery?.helperCommands ?? {};
+  const helperLine = [
+    helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
+    helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
+    helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
+    helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
+    helperCommands.scaffoldProviderImplementation ? `provider impl ${helperCommands.scaffoldProviderImplementation}` : null,
+  ].filter(Boolean).join(' | ');
   const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
   const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
+
   const channelQueue = delivery?.channelQueue ?? channelRecords
     .filter((channel) => channel?.status !== 'active')
     .map((channel) => ({
@@ -646,6 +687,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     delivery?.envTemplatePresent && delivery.envTemplateCommand
       ? `- env bootstrap: ${delivery.envTemplateCommand}`
       : null,
+    helperLine ? `- helpers: ${helperLine}` : null,
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
       ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
       : null,
@@ -679,14 +721,20 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
 }
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
+  const helperCommands = ingestion?.helperCommands ?? {};
   const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
   const hasBootstrapData = Boolean(
     ingestion?.bootstrapProfileCommand
+      || helperCommands.bootstrap
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
+      || helperCommands.importManifest
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.staleRefreshCommand
+      || helperCommands.scaffoldStale
+      || helperCommands.importIntakeStale
+      || helperCommands.refreshStaleFoundation
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
@@ -704,6 +752,36 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
+    (() => {
+      const helperEntries = [
+        helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
+        helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
+        helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
+        helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
+        helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
+        helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
+        helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
+        helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
+        helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,
+        ...((ingestion.sampleFileCommands ?? [])
+          .filter((entry) => {
+            if (!entry?.command || !entry?.type) {
+              return false;
+            }
+
+            if (entry.type !== 'text') {
+              return true;
+            }
+
+            return entry.command !== ingestion.sampleTextCommand;
+          })
+          .map((entry) => `sample-${entry.type} ${entry.command}`)),
+      ].filter(Boolean);
+
+      return helperEntries.length > 0
+        ? `- helpers: ${helperEntries.join(' | ')}`
+        : null;
+    })(),
     (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
       ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
       : null,
@@ -719,6 +797,19 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.sampleTextPresent && ingestion.sampleTextCommand
       ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
       : null,
+    ...((ingestion.sampleFileCommands ?? [])
+      .filter((entry) => {
+        if (!entry?.command || !entry?.type) {
+          return false;
+        }
+
+        if (entry.type !== 'text') {
+          return true;
+        }
+
+        return entry.command !== ingestion.sampleTextCommand;
+      })
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
@@ -733,9 +824,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
+      const intakeShortcutSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === true && profile.importIntakeCommand
+        ? ` | shortcut ${profile.importIntakeCommand}`
+        : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
-      const updateSegment = profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '';
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${actionSegment}${updateSegment}`;
+      const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
+      const updateSegment = syncCommand
+        ? ` | sync ${syncCommand}`
+        : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
   ].filter(Boolean).join('\n');
 }
@@ -763,9 +860,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
-    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) =>
-      `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}`,
-    ),
+    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
+      const command = buildCoreFoundationCommand(area);
+      return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
+    }),
     memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
       : null,

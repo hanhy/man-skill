@@ -29,15 +29,33 @@ function buildProfileImportCommands(profileId, options = {}) {
   const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
     ? options.sampleTextPersonId
     : null;
+  const sampleFileCommands = Array.isArray(options.sampleFileCommands)
+    ? options.sampleFileCommands.filter((entry) => entry && typeof entry === 'object')
+    : [];
   const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
+  const matchingSampleFileCommands = sampleFileCommands.filter((entry) =>
+    entry.personId === normalizedProfileId
+    && typeof entry.type === 'string'
+    && typeof entry.command === 'string'
+    && entry.command.trim().length > 0,
+  );
+  const runnableSampleCommandByType = matchingSampleFileCommands.reduce((commands, entry) => {
+    if (!commands[entry.type]) {
+      commands[entry.type] = entry.command;
+    }
+
+    return commands;
+  }, {});
 
   return {
-    text: runnableTextPath
-      ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
-      : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`,
+    text: runnableSampleCommandByType.text
+      ?? (runnableTextPath
+        ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
+        : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`),
     message: `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
     talk: `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
+    screenshot: runnableSampleCommandByType.screenshot
+      ?? `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
   };
 }
 
@@ -52,6 +70,31 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         .filter(([filePath, personId]) => typeof filePath === 'string' && filePath.trim().length > 0 && typeof personId === 'string' && personId.trim().length > 0),
     )
     : {};
+  const normalizedFileEntries = Array.isArray(sampleManifest?.fileEntries)
+    ? sampleManifest.fileEntries
+      .filter((entry) => entry && typeof entry === 'object')
+      .map((entry) => ({
+        type: typeof entry.type === 'string' && (entry.type === 'text' || entry.type === 'screenshot') ? entry.type : null,
+        path: typeof entry.filePath === 'string' && entry.filePath.trim().length > 0 ? entry.filePath : null,
+        personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+      }))
+      .filter((entry) => entry.type && entry.path && entry.personId)
+      .sort((left, right) => {
+        const typeRank = (value) => (value === 'text' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const pathDelta = left.path.localeCompare(right.path);
+        if (pathDelta !== 0) {
+          return pathDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      })
+    : Object.entries(normalizedTextFilePersonIds)
+      .map(([path, personId]) => ({ type: 'text', path, personId }));
   const normalizedMaterialTypes = sampleManifest?.materialTypes && typeof sampleManifest.materialTypes === 'object'
     ? Object.fromEntries(
       Object.entries(sampleManifest.materialTypes)
@@ -79,23 +122,47 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     starterLabel: starterTargets.length > 0 ? starterTargets.join(', ') : null,
     materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
+    fileEntries: normalizedFileEntries,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
   };
 }
 
 function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
   const normalizedPath = normalizeRelativePath(sampleTextPath);
-  const samplePersonId = normalizedPath && sampleManifest?.status === 'loaded' && sampleManifest?.textFilePersonIds
-    ? sampleManifest.textFilePersonIds[normalizedPath] ?? null
+  const textEntry = Array.isArray(sampleManifest?.fileEntries)
+    ? sampleManifest.fileEntries.find((entry) => entry?.type === 'text' && (!normalizedPath || entry.path === normalizedPath))
+      ?? sampleManifest.fileEntries.find((entry) => entry?.type === 'text')
     : null;
+  const samplePersonId = textEntry?.personId ?? null;
+  const selectedPath = textEntry?.path ?? normalizedPath;
 
   return {
-    path: normalizedPath,
-    present: Boolean(normalizedPath),
+    path: selectedPath,
+    present: Boolean(selectedPath),
     personId: samplePersonId,
-    command: normalizedPath && samplePersonId
-      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(normalizedPath)} --refresh-foundation`
+    command: selectedPath && samplePersonId
+      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(selectedPath)} --refresh-foundation`
       : null,
+  };
+}
+
+function buildSampleFileCommand(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const type = entry.type === 'text' || entry.type === 'screenshot' ? entry.type : null;
+  const filePath = typeof entry.path === 'string' && entry.path.trim().length > 0 ? entry.path : null;
+  const personId = typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null;
+  if (!type || !filePath || !personId) {
+    return null;
+  }
+
+  return {
+    type,
+    path: filePath,
+    personId,
+    command: `node src/index.js import ${type} --person ${personId} --file ${shellQuote(filePath)} --refresh-foundation`,
   };
 }
 
@@ -118,6 +185,34 @@ function buildUpdateIntakeCommand(profile) {
 
   if (summary) {
     commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
+function buildUpdateProfileCommand(profile, options = {}) {
+  if (!profile?.id) {
+    return null;
+  }
+
+  const commandParts = ['node src/index.js update profile', '--person', shellQuote(profile.id)];
+  const displayName = typeof profile?.profile?.displayName === 'string' && profile.profile.displayName.trim().length > 0
+    ? profile.profile.displayName
+    : null;
+  const summary = typeof profile?.profile?.summary === 'string' && profile.profile.summary.trim().length > 0
+    ? profile.profile.summary
+    : null;
+
+  if (displayName) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (summary) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  if (options.refreshFoundation) {
+    commandParts.push('--refresh-foundation');
   }
 
   return commandParts.join(' ');
@@ -159,6 +254,9 @@ function buildProfileCommands(profile, options = {}) {
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
+  const runnableScreenshotImportCommand = typeof importCommands.screenshot === 'string' && !importCommands.screenshot.includes('<')
+    ? importCommands.screenshot
+    : null;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
   const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
     ? intake.starterManifestPath
@@ -166,7 +264,16 @@ function buildProfileCommands(profile, options = {}) {
   const intakeImportManifestCommand = intakeManifestPath
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
-  const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
+  const defaultImportCommand = runnableTextImportCommand
+    ?? runnableScreenshotImportCommand
+    ?? intakeImportManifestCommand
+    ?? importCommands.message
+    ?? importCommands.text;
+  const updateProfileCommand = buildUpdateProfileCommand(profile);
+  const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
+  const updateIntakeCommand = buildUpdateIntakeCommand(profile);
+  const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
+  const importIntakeCommand = `node src/index.js import intake --person ${shellQuote(profile.id)}`;
 
   return {
     personId: profile.id,
@@ -177,16 +284,27 @@ function buildProfileCommands(profile, options = {}) {
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
-    updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
-    updateIntakeCommand: buildUpdateIntakeCommand(profile),
+    updateProfileCommand,
+    updateProfileAndRefreshCommand,
+    updateIntakeCommand,
+    importIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
     intakeStatusSummary: summarizeIntakeStatus(intake),
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestCommand: imported ? null : intakeImportManifestCommand,
-    refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
+    refreshFoundationCommand,
     importCommands,
+    helperCommands: {
+      scaffold: updateIntakeCommand,
+      importIntake: importIntakeCommand,
+      importManifest: imported ? null : intakeImportManifestCommand,
+      updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
+      refreshFoundation: refreshFoundationCommand,
+      directImports: importCommands,
+    },
     importMaterialCommand: imported
       ? null
       : defaultImportCommand,
@@ -210,6 +328,9 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
   const sampleText = normalizeSampleTextSummary(options?.sampleTextPath, sampleManifest);
+  const sampleFileCommands = (sampleManifest.fileEntries ?? [])
+    .map((entry) => buildSampleFileCommand(entry))
+    .filter(Boolean);
   const metadataProfileCommands = metadataOnlyProfiles
     .slice()
     .sort((left, right) => {
@@ -232,6 +353,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
     })
     .map((profile) => buildProfileCommands(profile, {
+      sampleFileCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
@@ -261,6 +383,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     });
   const allProfileCommands = sortedProfiles
     .map((profile) => buildProfileCommands(profile, {
+      sampleFileCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
@@ -271,6 +394,23 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0;
     })
     .slice(0, 2);
+
+  const helperCommands = {
+    bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    scaffoldAll: 'node src/index.js update intake --all',
+    scaffoldStale: 'node src/index.js update intake --stale',
+    importManifest: 'node src/index.js import manifest --file <manifest.json>',
+    importIntakeAll: 'node src/index.js import intake --all',
+    importIntakeStale: 'node src/index.js import intake --stale',
+    refreshStaleFoundation: 'node src/index.js update foundation --stale',
+    sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? 'node src/index.js import sample'
+      : null,
+    sampleManifest: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
+      : null,
+    sampleText: sampleText.command,
+  };
 
   return {
     profileCount: safeProfiles.length,
@@ -285,6 +425,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     intakeScaffoldProfileCount,
     intakeStaleProfileCount,
     intakeImportAllCommand: 'node src/index.js import intake --all',
+    intakeImportStaleCommand: 'node src/index.js import intake --stale',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     intakeAllCommand: 'node src/index.js update intake --all',
@@ -316,7 +457,9 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleTextPresent: sampleText.present,
     sampleTextPersonId: sampleText.personId,
     sampleTextCommand: sampleText.command,
+    sampleFileCommands,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    helperCommands,
     profileCommands: orderedProfileCommands,
     allProfileCommands,
     metadataProfileCommands,

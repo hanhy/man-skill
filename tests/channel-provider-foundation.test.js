@@ -261,6 +261,13 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.equal(summary.delivery.envTemplatePath, '.env.example');
     assert.equal(summary.delivery.envTemplatePresent, true);
     assert.equal(summary.delivery.envTemplateCommand, 'cp .env.example .env');
+    assert.deepEqual(summary.delivery.helperCommands, {
+      bootstrapEnv: 'cp .env.example .env',
+      scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
+      scaffoldProviderManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
+      scaffoldChannelImplementation: null,
+      scaffoldProviderImplementation: null,
+    });
     assert.deepEqual(summary.delivery.channelQueue[0], {
       id: 'slack',
       name: 'Slack',
@@ -269,9 +276,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       deliveryModes: ['events-api', 'web-api'],
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
+      implementationScaffoldPath: 'src/channels/slack.js',
       configured: true,
       missingEnvVars: [],
       manifestPath: 'manifests/channels.json',
+      manifestPresent: false,
+      manifestScaffoldPath: 'manifests/channels.json',
       setupHint: 'credentials present',
       nextStep: 'implement inbound event handling and outbound thread replies',
     });
@@ -284,9 +294,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       modalities: ['chat', 'reasoning', 'vision'],
       implementationPath: 'src/models/openai.js',
       implementationPresent: true,
+      implementationScaffoldPath: 'src/models/openai.js',
       configured: true,
       missingEnvVars: [],
       manifestPath: 'manifests/providers.json',
+      manifestPresent: false,
+      manifestScaffoldPath: 'manifests/providers.json',
       setupHint: 'auth configured for gpt-5',
       nextStep: 'implement chat/tool request translation and response normalization',
     });
@@ -294,6 +307,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13 vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
+    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
     assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api @ src\/channels\/slack\.js/);
@@ -319,6 +333,55 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
     }
   }
+});
+
+test('buildSummary exposes delivery helper commands for first missing implementation scaffolds', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'active' },
+    { id: 'telegram', status: 'active' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([{ id: 'openai', status: 'planned' }], null, 2));
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'openai.js'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.helperCommands, {
+    bootstrapEnv: 'cp .env.example .env',
+    scaffoldChannelManifest: null,
+    scaffoldProviderManifest: null,
+    scaffoldChannelImplementation: null,
+    scaffoldProviderImplementation: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
+  });
+  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+});
+
+test('buildSummary delivery helper commands skip scaffolded queue leaders and target the first missing provider implementation', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'active' },
+    { id: 'telegram', status: 'active' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned' },
+    { id: 'anthropic', status: 'planned' },
+  ], null, 2));
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'anthropic.js'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.providerQueue[0].implementationPresent, true);
+  assert.equal(summary.delivery.providerQueue[1].implementationPresent, false);
+  assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
+  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
 });
 
 test('buildSummary prompt preview surfaces candidate delivery integrations from manifests', () => {
@@ -551,7 +614,9 @@ test('buildSummary keeps scaffold coverage global and ignores manifest implement
   assert.equal(summary.delivery.missingChannelScaffoldCount, 1);
   assert.equal(summary.delivery.missingProviderScaffoldCount, 1);
   assert.equal(discordQueueItem.implementationPresent, false);
+  assert.equal(discordQueueItem.implementationScaffoldPath, null);
   assert.equal(deepseekQueueItem.implementationPresent, false);
+  assert.equal(deepseekQueueItem.implementationScaffoldPath, null);
   assert.match(summary.promptPreview, /code scaffolds: 4\/5 channels, 6\/7 providers present/);
 });
 

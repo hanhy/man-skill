@@ -173,6 +173,42 @@ function buildDirectImportCommands({ personId, sampleTextPath }) {
   };
 }
 
+function buildUpdateIntakeCommand({ personId, displayName, summary }) {
+  const commandParts = ['node src/index.js update intake', '--person', shellQuote(personId)];
+
+  if (isNonEmptyString(displayName)) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (isNonEmptyString(summary)) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
+function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation = false }) {
+  const commandParts = ['node src/index.js update profile', '--person', shellQuote(personId)];
+
+  if (isNonEmptyString(displayName)) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (isNonEmptyString(summary)) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  if (refreshFoundation) {
+    commandParts.push('--refresh-foundation');
+  }
+
+  return commandParts.join(' ');
+}
+
+function buildImportIntakeCommand(personId) {
+  return `node src/index.js import intake --person ${personId}`;
+}
+
 function buildIntakePaths(personId) {
   const basePath = path.join('profiles', personId, 'imports');
   return {
@@ -265,7 +301,17 @@ function normalizeBlockText(value) {
   return normalized.length > 0 ? normalized : null;
 }
 
-function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands, customNotes }) {
+function buildIntakeReadme({
+  displayName,
+  personId,
+  starterManifestPath,
+  sampleTextPath,
+  importManifestCommand,
+  importCommands,
+  updateIntakeCommand,
+  importIntakeCommand,
+  customNotes,
+}) {
   const label = normalizeText(displayName) ?? personId;
   const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
   return [
@@ -281,6 +327,10 @@ function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleT
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
     '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Recommended helper commands:',
+    `- refresh this intake scaffold: ${updateIntakeCommand}`,
+    `- import via the profile-local intake shortcut: ${importIntakeCommand}`,
     '',
     'Direct import commands:',
     `- text: ${importCommands?.text}`,
@@ -303,19 +353,35 @@ function buildProfileLabel({ personId, displayName }) {
 function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCount, materialTypes }) {
   const personId = profileSummary?.id;
   const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
+  const summary = profileSummary?.profile?.summary ?? null;
+  const importCommand = buildManifestImportCommand(manifestPath);
+  const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
+  const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
+  const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
+  const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
+  const importIntakeCommand = buildImportIntakeCommand(personId);
 
   return {
     personId,
     displayName,
     label: buildProfileLabel({ personId, displayName }),
-    summary: profileSummary?.profile?.summary ?? null,
+    summary,
     materialCount,
     materialTypes,
     needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
     missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
-    importCommand: buildManifestImportCommand(manifestPath),
-    updateProfileCommand: `node src/index.js update profile --person ${personId}`,
-    refreshFoundationCommand: `node src/index.js update foundation --person ${personId}`,
+    importCommand,
+    updateProfileCommand,
+    updateProfileAndRefreshCommand,
+    refreshFoundationCommand,
+    helperCommands: {
+      scaffold: scaffoldCommand,
+      importIntake: importIntakeCommand,
+      importManifest: importCommand,
+      updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
+      refreshFoundation: refreshFoundationCommand,
+    },
   };
 }
 
@@ -392,6 +458,17 @@ export class MaterialIngestion {
     }
 
     const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const updateProfileCommand = buildUpdateProfileCommand({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+    });
+    const updateIntakeCommand = buildUpdateIntakeCommand({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+    });
+    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId);
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
@@ -404,6 +481,8 @@ export class MaterialIngestion {
         sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
         importCommands,
+        updateIntakeCommand,
+        importIntakeCommand,
         customNotes: extractIntakeCustomNotes(existingReadme),
       }),
     );
@@ -414,8 +493,19 @@ export class MaterialIngestion {
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
       importManifestCommand,
+      importIntakeCommand,
+      updateIntakeCommand,
       importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+      updateProfileCommand,
+      helperCommands: {
+        scaffold: updateIntakeCommand,
+        importIntake: importIntakeCommand,
+        importManifest: importManifestCommand,
+        updateProfile: updateProfileCommand,
+        refreshFoundation: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+        directImports: importCommands,
+      },
     };
   }
 
@@ -496,6 +586,19 @@ export class MaterialIngestion {
   }
 
   importAllProfileIntakeManifests() {
+    const profiles = this.listMetadataOnlyProfiles()
+      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+
+    return {
+      profileCount: profiles.length,
+      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
+      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
+      results,
+    };
+  }
+
+  importStaleProfileIntakeManifests() {
     const profiles = this.listMetadataOnlyProfiles()
       .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
@@ -958,6 +1061,32 @@ export class MaterialIngestion {
       ].join('\n'),
     );
 
+    const updateProfileCommand = buildUpdateProfileCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+    });
+    const updateProfileAndRefreshCommand = buildUpdateProfileCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+      refreshFoundation: true,
+    });
+    const refreshFoundationCommand = `node src/index.js update foundation --person ${normalized.personId}`;
+    const updateIntakeCommand = buildUpdateIntakeCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+    });
+    const importIntakeCommand = buildImportIntakeCommand(normalized.personId);
+    const helperCommands = {
+      refreshFoundation: refreshFoundationCommand,
+      updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
+      updateIntake: updateIntakeCommand,
+      importIntake: importIntakeCommand,
+    };
+
     return {
       personId: normalized.personId,
       memoryDraftPath,
@@ -965,6 +1094,12 @@ export class MaterialIngestion {
       soulDraftPath,
       skillsDraftPath,
       generatedAt,
+      refreshFoundationCommand,
+      updateProfileCommand,
+      updateProfileAndRefreshCommand,
+      updateIntakeCommand,
+      importIntakeCommand,
+      helperCommands,
     };
   }
 

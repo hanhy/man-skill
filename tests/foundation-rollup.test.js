@@ -424,7 +424,7 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     ],
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch memory\/README\.md/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
@@ -477,7 +477,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     ],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md; command touch 'skills\/slack\/SKILL\.md' 'skills\/telegram\/SKILL\.md'/);
   assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
 });
 
@@ -590,4 +590,75 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     },
   ]);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/alpha\/SKILL\.md, skills\/beta\/SKILL\.md, skills\/delta\/SKILL\.md, skills\/epsilon\/SKILL\.md, skills\/gamma\/SKILL\.md, and skills\/zeta\/SKILL\.md/);
+});
+
+test('buildSummary work loop surfaces a runnable command for thin core skills coverage', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'create skills/slack/SKILL.md');
+  assert.equal(summary.workLoop.currentPriority?.command, "touch 'skills/slack/SKILL.md'");
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/slack/SKILL.md']);
+  assert.match(summary.promptPreview, /Work loop:/);
+  assert.match(summary.promptPreview, /command: touch 'skills\/slack\/SKILL\.md'/);
+});
+
+test('buildSummary work loop includes all stale intake paths when bulk intake scaffolding is the next step', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), '# Slack skill');
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'Needs a fresh intake scaffold.',
+  });
+  ingestion.updateProfile({
+    personId: 'Beta Partial',
+    displayName: 'Beta Partial',
+    summary: 'Needs the intake scaffold completed.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'beta-partial', 'imports'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'beta-partial', 'imports', 'README.md'), '# Partial intake scaffold\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority?.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority?.command, 'node src/index.js update intake --stale');
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, [
+    'profiles/beta-partial/imports/materials.template.json',
+    'profiles/beta-partial/imports/sample.txt',
+    'profiles/alpha-missing/imports',
+    'profiles/alpha-missing/imports/README.md',
+    'profiles/alpha-missing/imports/materials.template.json',
+    'profiles/alpha-missing/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --stale/);
+  assert.match(summary.promptPreview, /paths: profiles\/beta-partial\/imports\/materials\.template\.json, profiles\/beta-partial\/imports\/sample\.txt, profiles\/alpha-missing\/imports, profiles\/alpha-missing\/imports\/README\.md, profiles\/alpha-missing\/imports\/materials\.template\.json, profiles\/alpha-missing\/imports\/sample\.txt/);
 });
