@@ -74,6 +74,42 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch/);
 });
 
+test('buildSummary work loop uses missing-only foundation helper bundles when multiple core areas are absent', () => {
+  const rootDir = makeTempRepo();
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldMissing);
+  assert.match(summary.workLoop.currentPriority.nextAction, /^scaffold missing core foundation areas — starting with /);
+  assert.match(summary.promptPreview, /next action: scaffold missing core foundation areas — starting with /);
+});
+
+test('buildSummary work loop uses thin-only foundation helper bundles when multiple core areas need repairs', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nRepo memory guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.foundation.core.maintenance.helperCommands.scaffoldThin, "(grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md') && (grep -Fqx -- '- Describe the target cadence, directness, and emotional texture here.' 'voice/README.md' || { if grep -Fqx -- '## Tone' 'voice/README.md'; then grep -Fqx -- '- Describe the target cadence, directness, and emotional texture here.' 'voice/README.md' || printf %s '- Describe the target cadence, directness, and emotional texture here.\n' >> 'voice/README.md'; else printf %s '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n' >> 'voice/README.md'; fi; if grep -Fqx -- '## Signature moves' 'voice/README.md'; then grep -Fqx -- '- Capture recurring phrasing, structure, or rhetorical habits here.' 'voice/README.md' || printf %s '- Capture recurring phrasing, structure, or rhetorical habits here.\n' >> 'voice/README.md'; else printf %s '\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n' >> 'voice/README.md'; fi; if grep -Fqx -- '## Avoid' 'voice/README.md'; then grep -Fqx -- '- List wording, hedges, or habits that break the voice.' 'voice/README.md' || printf %s '- List wording, hedges, or habits that break the voice.\n' >> 'voice/README.md'; else printf %s '\n## Avoid\n- List wording, hedges, or habits that break the voice.\n' >> 'voice/README.md'; fi; })");
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldThin);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair thin core foundation areas — starting with add non-heading guidance to skills/delivery/SKILL.md');
+  assert.match(summary.promptPreview, /next action: repair thin core foundation areas — starting with add non-heading guidance to skills\/delivery\/SKILL\.md/);
+});
+
 test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -514,9 +514,32 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const bulkRefreshPaths = useBulkRefreshCommand
     ? collectFoundationDraftPaths(queuedProfileSummaries)
     : [];
-  const bulkCoreScaffoldCommand = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
-    ? coreMaintenance.helperCommands.scaffoldAll
-    : null;
+  const bulkCoreScaffoldCommand = (() => {
+    if (queuedAreas.length <= 1) {
+      return null;
+    }
+
+    const scaffoldMissing = typeof coreMaintenance?.helperCommands?.scaffoldMissing === 'string' && coreMaintenance.helperCommands.scaffoldMissing.length > 0
+      ? coreMaintenance.helperCommands.scaffoldMissing
+      : null;
+    const scaffoldThin = typeof coreMaintenance?.helperCommands?.scaffoldThin === 'string' && coreMaintenance.helperCommands.scaffoldThin.length > 0
+      ? coreMaintenance.helperCommands.scaffoldThin
+      : null;
+    const scaffoldAll = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
+      ? coreMaintenance.helperCommands.scaffoldAll
+      : null;
+    const queuedStatuses = new Set(queuedAreas.map((area: any) => area?.status).filter((value: unknown): value is string => typeof value === 'string' && value.length > 0));
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing') && scaffoldMissing) {
+      return scaffoldMissing;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin') && scaffoldThin) {
+      return scaffoldThin;
+    }
+
+    return scaffoldAll;
+  })();
   const useBulkCoreScaffoldCommand = queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
   const bulkCoreScaffoldPaths = useBulkCoreScaffoldCommand
     ? Array.from(new Set(
@@ -525,9 +548,29 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
         : []),
     ))
     : [];
-  const bulkCoreScaffoldLabel = queuedArea?.action
-    ? `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`
-    : 'scaffold missing or thin core foundation areas';
+  const bulkCoreScaffoldLabel = (() => {
+    if (!queuedArea?.action) {
+      if (missingAreaCount > 0 && thinAreaCount === 0) {
+        return 'scaffold missing core foundation areas';
+      }
+
+      if (thinAreaCount > 0 && missingAreaCount === 0) {
+        return 'repair thin core foundation areas';
+      }
+
+      return 'scaffold missing or thin core foundation areas';
+    }
+
+    if (missingAreaCount > 0 && thinAreaCount === 0) {
+      return `scaffold missing core foundation areas — starting with ${queuedArea.action}`;
+    }
+
+    if (thinAreaCount > 0 && missingAreaCount === 0) {
+      return `repair thin core foundation areas — starting with ${queuedArea.action}`;
+    }
+
+    return `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`;
+  })();
 
   const coreQueueSummary = thinAreaCount > 0 || missingAreaCount > 0
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
