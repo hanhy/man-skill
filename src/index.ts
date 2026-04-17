@@ -609,7 +609,7 @@ function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
   )).sort((left, right) => left.localeCompare(right));
 }
 
-function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPriority {
+function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
@@ -712,6 +712,18 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
     command = typeof ingestionSummary?.refreshFoundationBundleCommand === 'string' && ingestionSummary.refreshFoundationBundleCommand.length > 0
       ? ingestionSummary.refreshFoundationBundleCommand
       : (ingestionSummary?.staleRefreshCommand ?? null);
+    const refreshProfileIds = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands
+        .filter((profile: any) => profile?.refreshFoundationCommand && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0))
+        .map((profile: any) => profile.personId)
+        .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const refreshProfiles = refreshProfileIds.length > 0
+      ? refreshProfileIds
+        .map((profileId) => profiles.find((profile) => profile?.id === profileId) ?? null)
+        .filter((profile): profile is ProfileSummaryLike => Boolean(profile?.id))
+      : [];
+    paths = collectFoundationDraftPaths(refreshProfiles);
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
@@ -1368,7 +1380,7 @@ export function buildSummary(rootDir: string) {
     objectives: workLoopObjectives,
     priorities: [
       buildFoundationPriority(foundation, coreFoundation, profiles),
-      buildIngestionPriority(ingestionSummary, rootDir),
+      buildIngestionPriority(ingestionSummary, rootDir, profiles),
       buildDeliveryPriority({
         id: 'channels',
         label: 'Channels',

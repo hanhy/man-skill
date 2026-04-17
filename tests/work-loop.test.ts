@@ -1364,6 +1364,12 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     text: 'Tight loops beat big plans.',
   });
 
+  runImportCommand(rootDir, 'message', {
+    person: 'ready-pal',
+    text: 'Already refreshed and should stay out of stale refresh paths.',
+    'refresh-foundation': true,
+  });
+
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
@@ -1403,4 +1409,14 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     summary.workLoop.priorities[1].command,
     '(node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person jane-doe)',
   );
+  assert.deepEqual(summary.workLoop.priorities[1].paths, [
+    'profiles/harry-han/memory/long-term/foundation.json',
+    'profiles/harry-han/skills/README.md',
+    'profiles/harry-han/soul/README.md',
+    'profiles/harry-han/voice/README.md',
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
 });
