@@ -859,6 +859,19 @@ export function relativizeDraftPaths(rootDir: string, result: DraftRefreshResult
   };
 }
 
+function readOptionalStringOption(options: ParsedOptions, key: string): string | undefined {
+  if (!(key in options)) {
+    return undefined;
+  }
+
+  const value = options[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Missing value for --${key}`);
+  }
+
+  return value;
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -884,8 +897,9 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   });
 
   if (subcommand === 'manifest') {
+    const manifestFile = readOptionalStringOption(options, 'file');
     const result = ingestion.importManifest({
-      manifestFile: typeof options.file === 'string' ? options.file : undefined,
+      manifestFile,
       refreshFoundation: Boolean(options['refresh-foundation']),
     });
 
@@ -893,9 +907,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'sample') {
-    const requestedSampleManifestPath = typeof options.file === 'string' && options.file.trim().length > 0
-      ? options.file.trim()
-      : null;
+    const requestedSampleManifestPath = readOptionalStringOption(options, 'file')?.trim() ?? null;
     const sampleManifestRelativePath = requestedSampleManifestPath ?? detectSampleManifestRelativePath(rootDir);
     const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
     if (sampleManifest.status !== 'loaded' || !sampleManifestRelativePath) {

@@ -582,8 +582,18 @@ test('CLI import command errors keep usage hints aligned with optional refresh a
       expectedUsage: /Usage: node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
     },
     {
+      args: ['import', 'manifest', '--file'],
+      expectedError: /Error: Missing value for --file/,
+      expectedUsage: /Usage: node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+    },
+    {
       args: ['import', 'sample', '--file'],
-      expectedError: /Error: No valid sample manifest found under samples\//,
+      expectedError: /Error: Missing value for --file/,
+      expectedUsage: /Usage: node src\/index\.js import sample \[--file <manifest\.json>\]/,
+    },
+    {
+      args: ['import', 'sample', '--file', '   '],
+      expectedError: /Error: Missing value for --file/,
       expectedUsage: /Usage: node src\/index\.js import sample \[--file <manifest\.json>\]/,
     },
     {
