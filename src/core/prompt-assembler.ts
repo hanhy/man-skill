@@ -807,8 +807,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     return null;
   }
 
-  const visibleProfileCommands = (ingestion.profileCommands ?? []).slice(0, 2);
-  const remainingProfileCommands = (ingestion.profileCommands ?? []).slice(2);
+  const profileCommandRecords = (ingestion.allProfileCommands?.length ?? 0) > 0
+    ? (ingestion.allProfileCommands ?? [])
+    : (ingestion.profileCommands ?? []);
+  const visibleProfileCommands = profileCommandRecords.slice(0, 2);
+  const remainingProfileCommands = profileCommandRecords.slice(2);
   const remainingProfileSummary = remainingProfileCommands.length > 0
     ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => profile?.label ?? profile?.personId ?? 'unknown-profile').join(', ')}`
     : null;

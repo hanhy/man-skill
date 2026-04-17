@@ -486,8 +486,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;
       return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0;
-    })
-    .slice(0, 2);
+    });
 
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;

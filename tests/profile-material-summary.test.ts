@@ -989,6 +989,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   const summary = buildSummary(rootDir);
   const janeCommand = summary.ingestion.profileCommands[0];
   const metadataOnlyCommand = summary.ingestion.profileCommands[1];
+  const actionableProfileCommandLabels = summary.ingestion.profileCommands.map((profile: { label: string }) => profile.label);
   const allProfileCommandLabels = summary.ingestion.allProfileCommands.map((profile: { label: string }) => profile.label);
   const readyProfileCommand = summary.ingestion.allProfileCommands.find((profile: { personId: string }) => profile.personId === 'harry-han');
   const metadataOnlyProfileCommand = summary.ingestion.metadataProfileCommands[0];
@@ -1047,6 +1048,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     sampleTalk: null,
     sampleScreenshot: null,
   });
+  assert.deepEqual(actionableProfileCommandLabels, [
+    'Jane Doe (jane-doe)',
+    'Metadata Only (metadata-only)',
+  ]);
   assert.deepEqual(allProfileCommandLabels, [
     'Jane Doe (jane-doe)',
     'Metadata Only (metadata-only)',
@@ -1158,6 +1163,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\)/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
