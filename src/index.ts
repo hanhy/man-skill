@@ -1285,13 +1285,15 @@ export function buildSummary(rootDir: string) {
   const channelManifest = manifestLoader.loadChannelManifestSummary();
   const providerManifest = manifestLoader.loadProviderManifestSummary();
 
-  const voice = new VoiceProfile({
-    tone: 'human',
-    style: 'person-specific',
-    constraints: ['stay faithful to learned voice'],
-    signatures: ['consistent persona', 'compact but vivid phrasing'],
-    languageHints: ['preserve bilingual or multilingual behavior when present'],
-  });
+  const voice = typeof voiceDocument === 'string' && voiceDocument.trim().length > 0
+    ? VoiceProfile.fromDocument(voiceDocument)
+    : new VoiceProfile({
+      tone: 'human',
+      style: 'person-specific',
+      constraints: ['stay faithful to learned voice'],
+      signatures: ['consistent persona', 'compact but vivid phrasing'],
+      languageHints: ['preserve bilingual or multilingual behavior when present'],
+    });
   const soul = SoulProfile.fromDocument(soulDocument);
 
   const profile = new AgentProfile({
