@@ -1346,10 +1346,11 @@ export function buildSummary(rootDir: string) {
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const envConfigPresent = fs.existsSync(path.join(rootDir, '.env'));
   const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
   const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
-  const completeEnvBootstrapCommand = envTemplatePresent ? 'cp .env.example .env' : null;
+  const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
