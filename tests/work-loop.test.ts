@@ -97,10 +97,10 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
   assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile for Harry Han (harry-han)');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import sample');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
   assert.match(summary.promptPreview, /next action: import the checked-in sample target profile for Harry Han \(harry-han\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import sample/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt/);
 });
 
@@ -138,9 +138,10 @@ test('buildSummary work loop uses plural wording when the checked-in sample mani
   assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt', 'samples/jane-post.txt']);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profiles for Harry Han (harry-han), Jane Doe (jane-doe)');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import sample');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt', 'samples/jane-post.txt']);
   assert.match(summary.promptPreview, /next action: import the checked-in sample target profiles for Harry Han \(harry-han\), Jane Doe \(jane-doe\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
 });
 
 test('buildSummary work loop points first-run ingestion at an invalid checked-in sample manifest before generic bootstrap', () => {
