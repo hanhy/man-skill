@@ -752,16 +752,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
-    (helperCommands.scaffoldAll
-      || helperCommands.scaffoldStale
-      || helperCommands.importManifest
-      || helperCommands.importIntakeAll
-      || helperCommands.importIntakeStale
-      || helperCommands.refreshStaleFoundation
-      || helperCommands.sampleStarter
-      || helperCommands.sampleManifest
-      || helperCommands.sampleText)
-      ? `- helpers: ${[
+    (() => {
+      const helperEntries = [
         helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
         helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
         helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
@@ -771,8 +763,25 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
         helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
         helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,
-      ].filter(Boolean).join(' | ')}`
-      : null,
+        ...((ingestion.sampleFileCommands ?? [])
+          .filter((entry) => {
+            if (!entry?.command || !entry?.type) {
+              return false;
+            }
+
+            if (entry.type !== 'text') {
+              return true;
+            }
+
+            return entry.command !== ingestion.sampleTextCommand;
+          })
+          .map((entry) => `sample-${entry.type} ${entry.command}`)),
+      ].filter(Boolean);
+
+      return helperEntries.length > 0
+        ? `- helpers: ${helperEntries.join(' | ')}`
+        : null;
+    })(),
     (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
       ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
       : null,
