@@ -335,6 +335,14 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
     undocumentedSample: [],
     undocumentedPaths: [],
   });
+  assert.deepEqual(summary.skills.skills, [
+    {
+      id: 'cron',
+      name: 'cron',
+      description: 'Keep scheduled follow-ups reliable.',
+      status: 'discovered',
+    },
+  ]);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /cron: name: cron/);
 });

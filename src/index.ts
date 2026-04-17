@@ -1175,6 +1175,12 @@ export function buildSummary(rootDir: string) {
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
+  const skillRecords = skillNames.map((skillName) => ({
+    id: skillName,
+    name: skillName,
+    description: skillInventory.documentedExcerpts?.[skillName] ?? null,
+    status: 'discovered',
+  }));
   const channelManifest = manifestLoader.loadChannelManifestSummary();
   const providerManifest = manifestLoader.loadProviderManifestSummary();
 
@@ -1202,7 +1208,7 @@ export function buildSummary(rootDir: string) {
     shortTerm: memoryIndex.daily,
     longTerm: memoryIndex.longTerm,
   });
-  const skills = new SkillRegistry(skillNames);
+  const skills = new SkillRegistry(skillRecords);
   const channels = new ChannelRegistry();
   if (Array.isArray(channelManifest.records)) {
     channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
