@@ -738,28 +738,26 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand);
     const readyIntakeProfiles = metadataProfileCommands.filter((profile: any) =>
       profile?.intakeReady === true
+      && profile?.intakeManifestStatus !== 'invalid'
       && profile?.importManifestCommand
       && profile.importManifestCommand === profile.importMaterialCommand
       && !profile.importManifestCommand.includes('<'),
     );
     const invalidReadyIntakeProfiles = metadataProfileCommands
-      .map((profile: any) => {
-        if (profile?.intakeReady !== true || !profile?.importManifestCommand) {
-          return null;
-        }
-
-        const { starterManifestPath, manifestSummary } = getReadyIntakeManifestSummary(profile);
-        if (!starterManifestPath || !manifestSummary || manifestSummary.status !== 'invalid') {
-          return null;
-        }
-
-        return {
-          profile,
-          starterManifestPath,
-          manifestSummary,
-        };
-      })
-      .filter((entry: any): entry is { profile: any; starterManifestPath: string; manifestSummary: SampleManifestSummary } => Boolean(entry));
+      .filter((profile: any) =>
+        profile?.intakeReady === true
+        && profile?.intakeManifestStatus === 'invalid'
+        && typeof profile?.intakeManifestPath === 'string'
+        && profile.intakeManifestPath.length > 0,
+      )
+      .map((profile: any) => ({
+        profile,
+        starterManifestPath: profile.intakeManifestPath,
+        manifestSummary: {
+          status: 'invalid',
+          error: profile.intakeManifestError ?? null,
+        },
+      }));
     const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? invalidReadyIntakeProfiles[0]?.profile ?? null;
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
@@ -1335,6 +1333,7 @@ export function buildSummary(rootDir: string) {
   const sampleText = readSampleTextSummary(rootDir, sampleTextRelativePath);
   const foundation = buildFoundationRollup(profiles) as any;
   const ingestionSummary = buildIngestionSummary(profiles, {
+    rootDir,
     sampleManifestPath: sampleManifestRelativePath,
     sampleManifest,
     sampleTextPath: sampleText.present ? sampleText.path : null,

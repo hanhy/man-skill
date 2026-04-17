@@ -1192,6 +1192,9 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     intakeReady: false,
     intakeCompletion: 'missing',
     intakeStatusSummary: 'missing — create imports, README.md, materials.template.json, sample.txt',
+    intakeManifestStatus: 'missing',
+    intakeManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    intakeManifestError: null,
     intakePaths: [
       'profiles/metadata-only/imports',
       'profiles/metadata-only/imports/README.md',
@@ -1405,6 +1408,54 @@ test('buildSummary summarizes partially scaffolded intake status for metadata-on
     summary.promptPreview,
     /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake partial — missing materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
   );
+});
+
+test('buildSummary suppresses broken intake import shortcuts when a profile-local starter manifest is invalid', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'missing-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands[0];
+
+  assert.equal(metadataOnlyCommand.intakeReady, true);
+  assert.equal(metadataOnlyCommand.intakeManifestStatus, 'invalid');
+  assert.match(metadataOnlyCommand.intakeManifestError, /missing file/);
+  assert.equal(metadataOnlyCommand.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(metadataOnlyCommand.importIntakeCommand, null);
+  assert.equal(metadataOnlyCommand.importManifestCommand, null);
+  assert.equal(metadataOnlyCommand.importMaterialCommand, null);
+  assert.equal(metadataOnlyCommand.helperCommands.importIntake, null);
+  assert.equal(metadataOnlyCommand.helperCommands.importManifest, null);
+  assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
+  assert.match(
+    summary.promptPreview,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+  );
+  assert.doesNotMatch(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('buildSummary keeps the ingestion entrance visible for empty repos', () => {
