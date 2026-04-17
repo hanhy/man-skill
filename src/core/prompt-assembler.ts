@@ -288,6 +288,7 @@ type DeliveryQueueItem = {
   configured?: boolean;
   missingEnvVars?: string[];
   manifestPath?: string;
+  manifestPresent?: boolean;
   setupHint?: string;
   nextStep?: string | null;
 };
@@ -734,6 +735,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       outboundMode: channel.outboundMode ?? null,
       implementationPath: channel.implementationPath ?? null,
       implementationPresent: false,
+      manifestPath: channels?.manifest?.path ?? 'manifests/channels.json',
+      manifestPresent: channels?.manifest?.status === 'loaded',
       setupHint: (channel.auth?.envVars ?? []).length > 0
         ? `set ${(channel.auth?.envVars ?? []).join(', ')}`
         : 'define channel credentials',
@@ -757,6 +760,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       modalities: provider.modalities ?? [],
       implementationPath: provider.implementationPath ?? null,
       implementationPresent: false,
+      manifestPath: models?.manifest?.path ?? 'manifests/providers.json',
+      manifestPresent: models?.manifest?.status === 'loaded',
       setupHint: provider.authEnvVar && provider.defaultModel
         ? `set ${provider.authEnvVar} for ${provider.defaultModel}`
         : provider.authEnvVar
@@ -786,6 +791,38 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const remainingProviderQueueSummary = remainingProviderQueue.length > 0
     ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
     : null;
+  const formatDeliveryQueueSummary = (queue: DeliveryQueueItem[], {
+    pendingCount,
+    authBlockedCount,
+    manifestPath,
+  }: {
+    pendingCount?: number;
+    authBlockedCount?: number;
+    manifestPath: string;
+  }) => {
+    if (queue.length === 0) {
+      return null;
+    }
+
+    const queuePendingCount = typeof pendingCount === 'number' ? pendingCount : queue.length;
+    const queueAuthBlockedCount = typeof authBlockedCount === 'number'
+      ? authBlockedCount
+      : undefined;
+    const manifestReady = queue.every((item) => item?.manifestPresent === true);
+    const implementationPresentCount = queue.filter((item) => item?.implementationPresent === true).length;
+
+    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
+  };
+  const channelQueueSummary = formatDeliveryQueueSummary(enrichedChannelQueue, {
+    pendingCount: delivery?.pendingChannelCount,
+    authBlockedCount: delivery?.authBlockedChannelCount,
+    manifestPath: delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json',
+  });
+  const providerQueueSummary = formatDeliveryQueueSummary(providerQueue, {
+    pendingCount: delivery?.pendingProviderCount,
+    authBlockedCount: delivery?.authBlockedProviderCount,
+    manifestPath: delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json',
+  });
   const envTemplateVarCount = (delivery?.envTemplateVarNames ?? []).length;
   const missingTemplateVars = (delivery?.envTemplateMissingRequiredVars ?? []).filter(Boolean);
   const requiredEnvVars = (delivery?.requiredEnvVars ?? []).filter(Boolean);
@@ -818,8 +855,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     ...channelRecords.slice(0, 2).map((channel) =>
       `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
-    enrichedChannelQueue.length > 0
-      ? `- channel queue: ${delivery?.pendingChannelCount ?? enrichedChannelQueue.length} pending${typeof delivery?.authBlockedChannelCount === 'number' ? ` (${delivery.authBlockedChannelCount} auth-blocked)` : ''} via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+    channelQueueSummary
+      ? `- channel queue: ${channelQueueSummary}`
       : null,
     ...visibleChannelQueue.map((channel) => {
       const authDetails = [
@@ -840,8 +877,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       const modalities = (provider.modalities ?? []).join(', ');
       return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
-    providerQueue.length > 0
-      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending${typeof delivery?.authBlockedProviderCount === 'number' ? ` (${delivery.authBlockedProviderCount} auth-blocked)` : ''} via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
+    providerQueueSummary
+      ? `- provider queue: ${providerQueueSummary}`
       : null,
     ...visibleProviderQueue.map((provider) => {
       const providerDetails = [
