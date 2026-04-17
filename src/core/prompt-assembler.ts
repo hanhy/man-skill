@@ -396,6 +396,7 @@ type IngestionSummary = {
     type?: 'message' | 'talk' | string;
     text?: string | null;
     personId?: string | null;
+    sourcePath?: string | null;
     command?: string | null;
   }>;
   staleRefreshCommand?: string | null;
@@ -850,7 +851,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
     ...((ingestion.sampleInlineCommands ?? [])
       .filter((entry) => entry?.command && entry?.type)
-      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,

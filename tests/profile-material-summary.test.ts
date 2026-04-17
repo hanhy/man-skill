@@ -1172,6 +1172,7 @@ test('buildSummary uses matching sample talk imports in ingestion profile comman
       type: 'talk',
       text: 'Ship the first slice from the sample manifest.',
       personId: 'metadata-only',
+      sourcePath: 'samples/metadata-only-materials.json',
       command: "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation",
     },
   ]);
@@ -1181,7 +1182,7 @@ test('buildSummary uses matching sample talk imports in ingestion profile comman
   assert.equal(metadataOnlyCommand?.importCommands?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
   assert.equal(metadataOnlyCommand?.helperCommands?.directImports?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
   assert.equal(metadataOnlyCommand?.importMaterialCommand, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
-  assert.match(summary.promptPreview, /sample talk: metadata-only -> node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample talk: metadata-only -> node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation @ samples\/metadata-only-materials\.json/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
 });
 

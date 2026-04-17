@@ -118,6 +118,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         type: typeof entry.type === 'string' && (entry.type === 'message' || entry.type === 'talk') ? entry.type : null,
         text: typeof entry.text === 'string' && entry.text.trim().length > 0 ? entry.text.trim() : null,
         personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+        sourcePath: normalizedPath,
       }))
       .filter((entry) => entry.type && entry.text && entry.personId)
       .sort((left, right) => {
@@ -215,6 +216,7 @@ function buildSampleInlineCommand(entry) {
   const type = entry.type === 'message' || entry.type === 'talk' ? entry.type : null;
   const text = typeof entry.text === 'string' && entry.text.trim().length > 0 ? entry.text.trim() : null;
   const personId = typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null;
+  const sourcePath = typeof entry.sourcePath === 'string' && entry.sourcePath.trim().length > 0 ? entry.sourcePath.trim() : null;
   if (!type || !text || !personId) {
     return null;
   }
@@ -223,6 +225,7 @@ function buildSampleInlineCommand(entry) {
     type,
     text,
     personId,
+    sourcePath,
     command: `node src/index.js import ${type} --person ${personId} --text ${shellQuote(text)} --refresh-foundation`,
   };
 }
