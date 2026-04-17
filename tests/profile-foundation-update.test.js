@@ -624,6 +624,9 @@ test('CLI update intake errors advertise the full usage surface for person, stal
       assert.equal(error.status, 1);
       assert.match(error.stderr, /Error: update intake requires --person, --stale, or --all/);
       assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --all/);
+      assert.match(error.stderr, /Examples:/);
+      assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+      assert.match(error.stderr, /node src\/index\.js update intake --stale/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
@@ -638,15 +641,25 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
       args: ['import', 'intake'],
       expectedError: /Error: import intake requires --person, --stale, or --all/,
       expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \| --stale \| --all/,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
+        /node src\/index\.js import intake --stale --refresh-foundation/,
+      ],
     },
     {
       args: ['update', 'foundation'],
       expectedError: /Error: update foundation requires --person, --stale, or --all/,
       expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js update foundation --person 'harry-han'/,
+        /node src\/index\.js update foundation --stale/,
+      ],
     },
   ];
 
-  cases.forEach(({ args, expectedError, expectedUsage }) => {
+  cases.forEach(({ args, expectedError, expectedUsage, expectedExamples }) => {
     assert.throws(
       () => execFileSync('node', [cliEntrypoint, ...args], {
         cwd: rootDir,
@@ -657,6 +670,9 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         assert.equal(error.status, 1);
         assert.match(error.stderr, expectedError);
         assert.match(error.stderr, expectedUsage);
+        expectedExamples.forEach((pattern) => {
+          assert.match(error.stderr, pattern);
+        });
         assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
         return true;
       },

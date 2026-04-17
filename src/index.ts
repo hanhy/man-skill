@@ -1454,6 +1454,18 @@ function formatCliUsage(): string {
   return `${buildCliUsageLines().join('\n')}\n`;
 }
 
+function formatUsageHint(usage: string, examples: string[] = []): string {
+  if (examples.length === 0) {
+    return usage;
+  }
+
+  return [
+    usage,
+    'Examples:',
+    ...examples.map((example) => `  ${example}`),
+  ].join('\n');
+}
+
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
   if (command === 'import' && subcommand === 'manifest') {
     return 'Usage: node src/index.js import manifest --file <manifest.json> [--refresh-foundation]';
@@ -1464,7 +1476,13 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'intake') {
-    return 'Usage: node src/index.js import intake --person <person-id> | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js import intake --person <person-id> | --stale | --all',
+      [
+        "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+        'node src/index.js import intake --stale --refresh-foundation',
+      ],
+    );
   }
 
   if (command === 'import' && subcommand === 'text') {
@@ -1488,11 +1506,23 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'update' && subcommand === 'intake') {
-    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all',
+      [
+        "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        'node src/index.js update intake --stale',
+      ],
+    );
   }
 
   if (command === 'update' && subcommand === 'foundation') {
-    return 'Usage: node src/index.js update foundation --person <person-id> | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js update foundation --person <person-id> | --stale | --all',
+      [
+        "node src/index.js update foundation --person 'harry-han'",
+        'node src/index.js update foundation --stale',
+      ],
+    );
   }
 
   if (command === 'import' || command === 'update') {
