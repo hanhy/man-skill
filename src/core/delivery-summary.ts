@@ -101,6 +101,8 @@ export type DeliverySummary = {
   envTemplatePath: string | null;
   envTemplatePresent: boolean;
   envTemplateCommand: string | null;
+  envTemplateVarNames: string[];
+  envTemplateMissingRequiredVars: string[];
   helperCommands: {
     bootstrapEnv: string | null;
     scaffoldChannelManifest: string | null;
@@ -327,6 +329,8 @@ export function buildDeliverySummary(
     envTemplatePath: null,
     envTemplatePresent: false,
     envTemplateCommand: null,
+    envTemplateVarNames: [],
+    envTemplateMissingRequiredVars: [],
     helperCommands: {
       bootstrapEnv: null,
       scaffoldChannelManifest: firstChannelMissingManifest

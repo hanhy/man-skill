@@ -261,6 +261,22 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.equal(summary.delivery.envTemplatePath, '.env.example');
     assert.equal(summary.delivery.envTemplatePresent, true);
     assert.equal(summary.delivery.envTemplateCommand, 'cp .env.example .env');
+    assert.deepEqual(summary.delivery.envTemplateVarNames, [
+      'ANTHROPIC_API_KEY',
+      'FEISHU_APP_ID',
+      'FEISHU_APP_SECRET',
+      'GLM_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'OPENAI_API_KEY',
+      'QWEN_API_KEY',
+      'SLACK_BOT_TOKEN',
+      'SLACK_SIGNING_SECRET',
+      'TELEGRAM_BOT_TOKEN',
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+    ]);
+    assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
@@ -311,7 +327,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     });
     assert.match(summary.promptPreview, /Delivery foundation:/);
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
-    assert.match(summary.promptPreview, /env template: \.env\.example \(13 vars\)/);
+    assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);

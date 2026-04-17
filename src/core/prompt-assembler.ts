@@ -303,6 +303,8 @@ type DeliverySummary = {
   envTemplatePath?: string | null;
   envTemplatePresent?: boolean;
   envTemplateCommand?: string | null;
+  envTemplateVarNames?: string[];
+  envTemplateMissingRequiredVars?: string[];
   helperCommands?: {
     bootstrapEnv?: string | null;
     scaffoldChannelManifest?: string | null;
@@ -744,6 +746,16 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const remainingProviderQueueSummary = remainingProviderQueue.length > 0
     ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
     : null;
+  const envTemplateVarCount = (delivery?.envTemplateVarNames ?? []).length;
+  const missingTemplateVars = (delivery?.envTemplateMissingRequiredVars ?? []).filter(Boolean);
+  const requiredEnvVars = (delivery?.requiredEnvVars ?? []).filter(Boolean);
+  const coveredRequiredEnvVarCount = requiredEnvVars.filter((envVar, index, values) => values.indexOf(envVar) === index && (delivery?.envTemplateVarNames ?? []).includes(envVar)).length;
+  const requiredEnvVarCount = requiredEnvVars.length;
+  const envTemplateCoverageSuffix = requiredEnvVarCount > 0
+    ? ` (${coveredRequiredEnvVarCount}/${requiredEnvVarCount} required vars${missingTemplateVars.length > 0 ? `; missing ${missingTemplateVars.join(', ')}` : ''})`
+    : envTemplateVarCount > 0
+      ? ` (${envTemplateVarCount} vars)`
+      : '';
 
   return [
     channelManifestSummary,
@@ -751,10 +763,10 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
       : null,
     (delivery?.envTemplatePresent && delivery.envTemplatePath)
-      ? `- env template: ${delivery.envTemplatePath}${(delivery.requiredEnvVars ?? []).length > 0 ? ` (${delivery.requiredEnvVars.length} vars)` : ''}`
+      ? `- env template: ${delivery.envTemplatePath}${envTemplateCoverageSuffix}`
       : null,
-    delivery?.envTemplatePresent && delivery.envTemplateCommand
-      ? `- env bootstrap: ${delivery.envTemplateCommand}`
+    delivery?.helperCommands?.bootstrapEnv
+      ? `- env bootstrap: ${delivery.helperCommands.bootstrapEnv}`
       : null,
     helperLine ? `- helpers: ${helperLine}` : null,
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)

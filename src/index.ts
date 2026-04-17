@@ -589,6 +589,21 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
+function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
+  if (!fs.existsSync(envTemplateAbsolutePath)) {
+    return [];
+  }
+
+  return Array.from(new Set(
+    fs.readFileSync(envTemplateAbsolutePath, 'utf8')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#'))
+      .map((line) => line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1] ?? null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  )).sort((left, right) => left.localeCompare(right));
+}
+
 function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
@@ -889,6 +904,7 @@ function buildDeliveryPriority({
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
+  envTemplateVarNames = [],
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
@@ -898,6 +914,7 @@ function buildDeliveryPriority({
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
+  envTemplateVarNames?: string[];
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
@@ -914,7 +931,12 @@ function buildDeliveryPriority({
   const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
     ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const needsCredentialBootstrap = firstQueuedMissingEnvVars.length > 0 && pendingCount > configuredCount;
+  const normalizedEnvTemplateVarNames = Array.isArray(envTemplateVarNames)
+    ? envTemplateVarNames.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const templateCoversLeaderCredentials = firstQueuedMissingEnvVars.length > 0
+    && firstQueuedMissingEnvVars.every((envVar) => normalizedEnvTemplateVarNames.includes(envVar));
+  const needsCredentialBootstrap = templateCoversLeaderCredentials && pendingCount > configuredCount;
   const bundledImplementationCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
     : 0;
@@ -1303,15 +1325,20 @@ export function buildSummary(rootDir: string) {
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
+  const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
+  const completeEnvBootstrapCommand = envTemplatePresent ? 'cp .env.example .env' : null;
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
     envTemplatePresent,
-    envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+    envTemplateCommand: completeEnvBootstrapCommand,
+    envTemplateVarNames,
+    envTemplateMissingRequiredVars,
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
-      bootstrapEnv: envTemplatePresent ? 'cp .env.example .env' : null,
+      bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,
     },
   };
   const workLoop = new WorkLoop({
@@ -1328,6 +1355,7 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplateVarNames: deliverySummary.envTemplateVarNames,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1338,6 +1366,7 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplateVarNames: deliverySummary.envTemplateVarNames,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],

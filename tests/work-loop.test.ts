@@ -752,7 +752,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
-test('buildSummary work loop points delivery setup at the env template once foundation and ingestion are ready', () => {
+test('buildSummary work loop falls back to channel scaffolding when the env template misses the leader credentials', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
@@ -770,13 +770,65 @@ test('buildSummary work loop points delivery setup at the env template once foun
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
-  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', 'manifests/channels.json', 'src/channels/slack.js']);
+  assert.deepEqual(summary.delivery.envTemplateVarNames, ['OPENAI_API_KEY', 'SLACK_BOT_TOKEN']);
+  assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, [
+    'ANTHROPIC_API_KEY',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'GLM_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'QWEN_API_KEY',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+  ]);
+  assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured/);
-  assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
-  assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /paths: \.env\.example, manifests\/channels\.json, src\/channels\/slack\.js/);
+  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
+  assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+});
+
+test('buildSummary work loop reports required env coverage from matching vars only when the template includes extras', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=',
+    'EXTRA_ALPHA=',
+    'EXTRA_BETA=',
+    'EXTRA_GAMMA=',
+    'EXTRA_DELTA=',
+    'EXTRA_EPSILON=',
+    'EXTRA_ZETA=',
+    'EXTRA_ETA=',
+    'EXTRA_THETA=',
+    'EXTRA_IOTA=',
+    'EXTRA_KAPPA=',
+    'EXTRA_LAMBDA=',
+    'EXTRA_MU=',
+    'EXTRA_NU=',
+    '',
+  ].join('\n'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.match(summary.promptPreview, /env template: \.env\.example \(1\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, OPENAI_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
 });
 
 test('buildSummary work loop scaffolds the channel manifest once the queue leader is already configured', () => {
