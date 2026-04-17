@@ -352,9 +352,9 @@ function buildProfileCommands(profile, options = {}) {
     : null;
   const defaultImportCommand = runnableTextImportCommand
     ?? runnableScreenshotImportCommand
-    ?? intakeImportManifestCommand
     ?? runnableMessageImportCommand
     ?? runnableTalkImportCommand
+    ?? intakeImportManifestCommand
     ?? importCommands.message
     ?? importCommands.talk
     ?? importCommands.text;

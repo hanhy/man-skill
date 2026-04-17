@@ -376,6 +376,50 @@ test('buildSummary work loop prefers a matching sample screenshot import when no
   assert.match(summary.promptPreview, /paths: samples\/metadata-only-chat\.png/);
 });
 
+test('buildSummary work loop keeps the sample manifest path visible for matching inline message imports', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'message',
+          text: 'Ship the first useful reply, then expand from real usage.',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import message --person metadata-only --text 'Ship the first useful reply, then expand from real usage.' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only-materials.json']);
+  assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import message --person metadata-only --text 'Ship the first useful reply, then expand from real usage\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json/);
+});
+
 test('buildSummary work loop still scaffolds intake before inline sample talk imports become runnable', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -799,6 +799,20 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
             return [matchingSampleFile.path];
           }
 
+          const sampleInlineCommands = Array.isArray(ingestionSummary?.sampleInlineCommands)
+            ? ingestionSummary.sampleInlineCommands.filter((entry: any) => entry && typeof entry === 'object')
+            : [];
+          const matchingSampleInline = sampleInlineCommands.find((entry: any) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.sourcePath === 'string'
+            && entry.sourcePath.length > 0,
+          );
+
+          if (matchingSampleInline) {
+            return [matchingSampleInline.sourcePath];
+          }
+
           if (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId) {
             return [sampleTextPath];
           }
