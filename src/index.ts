@@ -43,6 +43,11 @@ interface SampleManifestSummary {
   profileLabels: string[];
   materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
+  fileEntries: Array<{
+    type: 'text' | 'screenshot';
+    filePath: string;
+    personId: string;
+  }>;
   filePaths: string[];
   error: string | null;
 }
@@ -99,6 +104,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: null,
     };
@@ -113,6 +119,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: null,
     };
@@ -129,6 +136,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
     };
@@ -138,6 +146,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const profileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
+    const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
     const filePaths = new Set<string>();
     const profileDisplayNames = new Map<string, string>();
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
@@ -246,6 +255,12 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         if (entryRecord.type === 'text') {
           textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
         }
+
+        fileEntries.push({
+          type: entryRecord.type,
+          filePath: normalizedRelativeFilePath,
+          personId: normalizedPersonId,
+        });
       }
 
       materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
@@ -260,6 +275,20 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
       materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
+      fileEntries: fileEntries.slice().sort((left, right) => {
+        const typeRank = (value: 'text' | 'screenshot') => (value === 'text' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const pathDelta = left.filePath.localeCompare(right.filePath);
+        if (pathDelta !== 0) {
+          return pathDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      }),
       filePaths: [...filePaths].sort(),
       error: null,
     };
@@ -271,6 +300,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };

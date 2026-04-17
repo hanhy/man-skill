@@ -366,6 +366,12 @@ type IngestionSummary = {
   sampleTextPresent?: boolean;
   sampleTextPersonId?: string | null;
   sampleTextCommand?: string | null;
+  sampleFileCommands?: Array<{
+    type?: 'text' | 'screenshot' | string;
+    path?: string | null;
+    personId?: string | null;
+    command?: string | null;
+  }>;
   staleRefreshCommand?: string | null;
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
@@ -782,6 +788,19 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.sampleTextPresent && ingestion.sampleTextCommand
       ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
       : null,
+    ...((ingestion.sampleFileCommands ?? [])
+      .filter((entry) => {
+        if (!entry?.command || !entry?.type) {
+          return false;
+        }
+
+        if (entry.type !== 'text') {
+          return true;
+        }
+
+        return entry.command !== ingestion.sampleTextCommand;
+      })
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,

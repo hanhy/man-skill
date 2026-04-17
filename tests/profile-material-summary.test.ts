@@ -343,6 +343,20 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
       sampleTextPresent: true,
       sampleTextPersonId: 'harry-han',
       sampleTextCommand: 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation',
+      sampleFileCommands: [
+        {
+          type: 'text',
+          path: 'samples/harry-post.txt',
+          personId: 'harry-han',
+          command: 'node src/index.js import text --person harry-han --file samples/harry-post.txt --refresh-foundation',
+        },
+        {
+          type: 'screenshot',
+          path: 'samples/harry-chat.png',
+          personId: 'harry-han',
+          command: 'node src/index.js import screenshot --person harry-han --file samples/harry-chat.png --refresh-foundation',
+        },
+      ],
       staleRefreshCommand: 'node src/index.js update foundation --stale',
       profileCommands: [
         {
@@ -437,6 +451,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
   assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(prompt, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
+  assert.match(prompt, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file samples\/harry-chat\.png --refresh-foundation/);
   assert.match(prompt, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest 2026-04-16T16:00:00\.000Z \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(prompt, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(prompt, /Delivery foundation:/);
@@ -1091,6 +1106,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleTextPresent: false,
     sampleTextPersonId: null,
     sampleTextCommand: null,
+    sampleFileCommands: [],
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
@@ -1225,6 +1241,49 @@ test('buildSummary derives the sample text command from the matching manifest te
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /sample text: anna-ace/);
+});
+
+test('buildSummary surfaces additional file-backed sample commands from the selected manifest', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(path.join(sampleDir, 'harry-chat.png'), 'fake image bytes');
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+        {
+          type: 'screenshot',
+          file: 'harry-chat.png',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.ingestion.sampleFileCommands, [
+    {
+      type: 'text',
+      path: 'samples/harry-post.txt',
+      personId: 'harry-han',
+      command: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
+    },
+    {
+      type: 'screenshot',
+      path: 'samples/harry-chat.png',
+      personId: 'harry-han',
+      command: "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation",
+    },
+  ]);
+  assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
 });
 
 test('buildSummary ignores the canonical sample text path when it does not belong to the selected sample manifest', () => {

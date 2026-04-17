@@ -52,6 +52,31 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         .filter(([filePath, personId]) => typeof filePath === 'string' && filePath.trim().length > 0 && typeof personId === 'string' && personId.trim().length > 0),
     )
     : {};
+  const normalizedFileEntries = Array.isArray(sampleManifest?.fileEntries)
+    ? sampleManifest.fileEntries
+      .filter((entry) => entry && typeof entry === 'object')
+      .map((entry) => ({
+        type: typeof entry.type === 'string' && (entry.type === 'text' || entry.type === 'screenshot') ? entry.type : null,
+        path: typeof entry.filePath === 'string' && entry.filePath.trim().length > 0 ? entry.filePath : null,
+        personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+      }))
+      .filter((entry) => entry.type && entry.path && entry.personId)
+      .sort((left, right) => {
+        const typeRank = (value) => (value === 'text' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const pathDelta = left.path.localeCompare(right.path);
+        if (pathDelta !== 0) {
+          return pathDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      })
+    : Object.entries(normalizedTextFilePersonIds)
+      .map(([path, personId]) => ({ type: 'text', path, personId }));
   const normalizedMaterialTypes = sampleManifest?.materialTypes && typeof sampleManifest.materialTypes === 'object'
     ? Object.fromEntries(
       Object.entries(sampleManifest.materialTypes)
@@ -79,23 +104,47 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     starterLabel: starterTargets.length > 0 ? starterTargets.join(', ') : null,
     materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
+    fileEntries: normalizedFileEntries,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
   };
 }
 
 function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
   const normalizedPath = normalizeRelativePath(sampleTextPath);
-  const samplePersonId = normalizedPath && sampleManifest?.status === 'loaded' && sampleManifest?.textFilePersonIds
-    ? sampleManifest.textFilePersonIds[normalizedPath] ?? null
+  const textEntry = Array.isArray(sampleManifest?.fileEntries)
+    ? sampleManifest.fileEntries.find((entry) => entry?.type === 'text' && (!normalizedPath || entry.path === normalizedPath))
+      ?? sampleManifest.fileEntries.find((entry) => entry?.type === 'text')
     : null;
+  const samplePersonId = textEntry?.personId ?? null;
+  const selectedPath = textEntry?.path ?? normalizedPath;
 
   return {
-    path: normalizedPath,
-    present: Boolean(normalizedPath),
+    path: selectedPath,
+    present: Boolean(selectedPath),
     personId: samplePersonId,
-    command: normalizedPath && samplePersonId
-      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(normalizedPath)} --refresh-foundation`
+    command: selectedPath && samplePersonId
+      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(selectedPath)} --refresh-foundation`
       : null,
+  };
+}
+
+function buildSampleFileCommand(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const type = entry.type === 'text' || entry.type === 'screenshot' ? entry.type : null;
+  const filePath = typeof entry.path === 'string' && entry.path.trim().length > 0 ? entry.path : null;
+  const personId = typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null;
+  if (!type || !filePath || !personId) {
+    return null;
+  }
+
+  return {
+    type,
+    path: filePath,
+    personId,
+    command: `node src/index.js import ${type} --person ${personId} --file ${shellQuote(filePath)} --refresh-foundation`,
   };
 }
 
@@ -254,6 +303,9 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
   const sampleText = normalizeSampleTextSummary(options?.sampleTextPath, sampleManifest);
+  const sampleFileCommands = (sampleManifest.fileEntries ?? [])
+    .map((entry) => buildSampleFileCommand(entry))
+    .filter(Boolean);
   const metadataProfileCommands = metadataOnlyProfiles
     .slice()
     .sort((left, right) => {
@@ -378,6 +430,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleTextPresent: sampleText.present,
     sampleTextPersonId: sampleText.personId,
     sampleTextCommand: sampleText.command,
+    sampleFileCommands,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     helperCommands,
     profileCommands: orderedProfileCommands,
