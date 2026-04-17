@@ -141,6 +141,35 @@ test('buildSummary work loop uses plural wording when the checked-in sample mani
   assert.match(summary.promptPreview, /next action: import the checked-in sample target profiles for Harry Han \(harry-han\), Jane Doe \(jane-doe\)/);
 });
 
+test('buildSummary work loop points first-run ingestion at an invalid checked-in sample manifest before generic bootstrap', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'missing-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the checked-in sample manifest for first imports');
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json']);
+  assert.match(summary.promptPreview, /next action: fix the checked-in sample manifest for first imports/);
+  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json/);
+  assert.match(summary.promptPreview, /sample manifest invalid: .* @ samples\/harry-materials\.json/);
+});
+
 test('buildSummary work loop scaffolds intake before suggesting imports for metadata-only profiles', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
