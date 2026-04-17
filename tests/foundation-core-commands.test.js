@@ -7,6 +7,13 @@ import { execSync } from 'node:child_process';
 
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
+const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
+const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+
 test('buildCoreFoundationCommand scaffolds missing memory buckets with seed files', () => {
   assert.equal(
     buildCoreFoundationCommand({
@@ -79,7 +86,7 @@ test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
       status: 'thin',
       paths: ['voice/README.md'],
     }),
-    "grep -Fqx -- '- Add voice guidance here.' voice/README.md || printf %s '\n- Add voice guidance here.\n' >> voice/README.md",
+    `grep -Fqx -- '${VOICE_GUIDANCE_SENTINEL}' voice/README.md || printf %s '${VOICE_GUIDANCE_APPEND_TEMPLATE}' >> voice/README.md`,
   );
 });
 
@@ -90,7 +97,66 @@ test('buildCoreFoundationCommand scaffolds missing soul guidance with starter co
       status: 'missing',
       paths: ['SOUL.md'],
     }),
-    "printf %s '# Soul\n\nAdd soul guidance here.\n' > SOUL.md",
+    `printf %s '${SOUL_STARTER_TEMPLATE}' > SOUL.md`,
+  );
+});
+
+test('buildCoreFoundationCommand scaffolds missing voice guidance with richer starter sections', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'voice',
+      status: 'missing',
+      paths: ['voice/README.md'],
+    }),
+    `mkdir -p voice && printf %s '${VOICE_STARTER_TEMPLATE}' > voice/README.md`,
+  );
+});
+
+test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'soul',
+      status: 'thin',
+      paths: ['SOUL.md'],
+    }),
+    `grep -Fqx -- '${SOUL_GUIDANCE_SENTINEL}' SOUL.md || printf %s '${SOUL_GUIDANCE_APPEND_TEMPLATE}' >> SOUL.md`,
+  );
+});
+
+test('buildCoreFoundationCommand repairs heading-only thin voice scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-command-'));
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core values\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 

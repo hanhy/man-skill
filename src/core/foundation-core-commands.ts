@@ -21,6 +21,12 @@ const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
 const SKILL_GUIDANCE_APPEND_TEMPLATE = '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
+const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
+const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -103,11 +109,11 @@ function buildMemorySeedCommand(paths: string[]): string | null {
 
 function buildVoiceCommand(status: string | null): string | null {
   if (status === 'missing') {
-    return `mkdir -p voice && printf %s ${shellSingleQuote('# Voice\n\n- Add voice guidance here.\n')} > voice/README.md`;
+    return `mkdir -p voice && printf %s ${shellSingleQuote(VOICE_STARTER_TEMPLATE)} > voice/README.md`;
   }
 
   if (status === 'thin') {
-    return `grep -Fqx -- ${shellSingleQuote('- Add voice guidance here.')} voice/README.md || printf %s ${shellSingleQuote('\n- Add voice guidance here.\n')} >> voice/README.md`;
+    return `grep -Fqx -- ${shellSingleQuote(VOICE_GUIDANCE_SENTINEL)} voice/README.md || printf %s ${shellSingleQuote(VOICE_GUIDANCE_APPEND_TEMPLATE)} >> voice/README.md`;
   }
 
   return null;
@@ -115,11 +121,11 @@ function buildVoiceCommand(status: string | null): string | null {
 
 function buildSoulCommand(status: string | null): string | null {
   if (status === 'missing') {
-    return `printf %s ${shellSingleQuote('# Soul\n\nAdd soul guidance here.\n')} > SOUL.md`;
+    return `printf %s ${shellSingleQuote(SOUL_STARTER_TEMPLATE)} > SOUL.md`;
   }
 
   if (status === 'thin') {
-    return `grep -Fqx -- ${shellSingleQuote('Add soul guidance here.')} SOUL.md || printf %s ${shellSingleQuote('\nAdd soul guidance here.\n')} >> SOUL.md`;
+    return `grep -Fqx -- ${shellSingleQuote(SOUL_GUIDANCE_SENTINEL)} SOUL.md || printf %s ${shellSingleQuote(SOUL_GUIDANCE_APPEND_TEMPLATE)} >> SOUL.md`;
   }
 
   return null;

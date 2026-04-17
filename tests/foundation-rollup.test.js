@@ -9,6 +9,11 @@ import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { buildSummary } from '../src/index.js';
 
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
+const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
+const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-foundation-rollup-'));
 }
@@ -521,10 +526,10 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /\| scaffold-missing \(mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- 'Add soul guidance here\.' SOUL\.md \|\| printf %s '/);
+  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
   assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| soul grep -Fqx -- 'Add soul guidance here\.' SOUL\.md \|\| printf %s '/);
-  assert.match(summary.promptPreview, /\| voice mkdir -p voice && printf %s '# Voice/);
+  assert.match(summary.promptPreview, /\| soul grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
+  assert.match(summary.promptPreview, /\| voice mkdir -p voice && printf %s '# Voice\n\n## Tone/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\], voice \[missing\]/);
@@ -618,9 +623,9 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
 
   assert.equal(voiceSummary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(voiceSummary.workLoop.currentPriority?.nextAction, 'create voice/README.md');
-  assert.equal(voiceSummary.workLoop.currentPriority?.command, "mkdir -p voice && printf %s '# Voice\n\n- Add voice guidance here.\n' > voice/README.md");
+  assert.equal(voiceSummary.workLoop.currentPriority?.command, `mkdir -p voice && printf %s '${VOICE_STARTER_TEMPLATE}' > voice/README.md`);
   assert.deepEqual(voiceSummary.workLoop.currentPriority?.paths, ['voice/README.md']);
-  assert.match(voiceSummary.promptPreview, /voice \[missing\]: create voice\/README\.md @ voice\/README\.md; command mkdir -p voice && printf %s '# Voice\n\n- Add voice guidance here\.\n' > voice\/README\.md/);
+  assert.match(voiceSummary.promptPreview, /voice \[missing\]: create voice\/README\.md @ voice\/README\.md; command mkdir -p voice && printf %s '# Voice\n\n## Tone/);
 
   const soulRootDir = makeTempRepo();
 
@@ -641,9 +646,9 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
 
   assert.equal(soulSummary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
-  assert.equal(soulSummary.workLoop.currentPriority?.command, "grep -Fqx -- 'Add soul guidance here.' SOUL.md || printf %s '\nAdd soul guidance here.\n' >> SOUL.md");
+  assert.equal(soulSummary.workLoop.currentPriority?.command, `grep -Fqx -- '${SOUL_GUIDANCE_SENTINEL}' SOUL.md || printf %s '${SOUL_GUIDANCE_APPEND_TEMPLATE}' >> SOUL.md`);
   assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
-  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- 'Add soul guidance here\.' SOUL\.md \|\| printf %s '\nAdd soul guidance here\.\n' >> SOUL\.md/);
+  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
 });
 
 test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
