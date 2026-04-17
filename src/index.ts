@@ -574,7 +574,7 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
-function buildIngestionPriority(ingestionSummary: any): WorkPriority {
+function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
@@ -583,6 +583,26 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
     ? 'ready'
     : 'queued';
+
+  const collectReadyIntakeImportPaths = (profile: any) => {
+    const intakePaths = Array.isArray(profile?.intakePaths)
+      ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+      : [];
+    const starterManifestPath = intakePaths.find((value) => value.endsWith('materials.template.json')) ?? null;
+    if (!starterManifestPath) {
+      return intakePaths;
+    }
+
+    const manifestSummary = readSampleManifestSummary(rootDir, starterManifestPath);
+    if (manifestSummary.status !== 'loaded') {
+      return intakePaths;
+    }
+
+    return Array.from(new Set([
+      ...intakePaths,
+      ...manifestSummary.filePaths,
+    ]));
+  };
 
   let nextAction: string | null = null;
   let command: string | null = null;
@@ -674,18 +694,14 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
             ? ingestionSummary.intakeImportAllCommand
             : null);
-      paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
-        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
-        : []);
+      paths = readyIntakeProfiles.flatMap((profile: any) => collectReadyIntakeImportPaths(profile));
     } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`
         : 'import source materials for metadata-only profiles';
       command = runnableImportCommand;
       paths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
-        ? (Array.isArray(metadataOnlyProfile?.intakePaths)
-          ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
-          : [])
+        ? collectReadyIntakeImportPaths(metadataOnlyProfile)
         : (() => {
           const matchingSampleFile = sampleFileCommands.find((entry: any) =>
             entry?.personId === metadataOnlyProfile?.personId
@@ -1174,7 +1190,7 @@ export function buildSummary(rootDir: string) {
     objectives: workLoopObjectives,
     priorities: [
       buildFoundationPriority(foundation, coreFoundation, profiles),
-      buildIngestionPriority(ingestionSummary),
+      buildIngestionPriority(ingestionSummary, rootDir),
       buildDeliveryPriority({
         id: 'channels',
         label: 'Channels',

@@ -538,14 +538,63 @@ test('buildSummary work loop ignores broken sample manifests when a profile-loca
   assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
+test('buildSummary work loop includes manifest-backed file assets when a ready intake manifest is the next import step', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const intakeDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.writeFileSync(path.join(intakeDir, 'metadata-shot.png'), 'fake screenshot bytes\n');
+  fs.writeFileSync(
+    path.join(intakeDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      entries: [
+        { type: 'text', file: 'sample.txt' },
+        { type: 'screenshot', file: 'metadata-shot.png' },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/sample.txt',
+    'profiles/metadata-only/imports/metadata-shot.png',
+  ]);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
+});
+
 test('buildSummary work loop bundles ready intake manifest imports when multiple metadata-only profiles are ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
 
   ['Alpha Ready', 'Beta Ready'].forEach((personId) => {
-    fs.mkdirSync(path.join(rootDir, 'profiles', personId.toLowerCase().replace(/[^a-z0-9]+/g, '-')), { recursive: true });
+    const personSlug = personId.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const profileDir = path.join(rootDir, 'profiles', personSlug);
+    fs.mkdirSync(profileDir, { recursive: true });
     fs.writeFileSync(
-      path.join(rootDir, 'profiles', personId.toLowerCase().replace(/[^a-z0-9]+/g, '-'), 'profile.json'),
+      path.join(profileDir, 'profile.json'),
       JSON.stringify({
         personId,
         displayName: personId,
@@ -559,6 +608,21 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
       'display-name': personId,
       summary: `${personId} profile scaffold without imported materials yet.`,
     });
+
+    if (personSlug === 'beta-ready') {
+      const intakeDir = path.join(profileDir, 'imports');
+      fs.writeFileSync(path.join(intakeDir, 'beta-shot.png'), 'fake screenshot bytes\n');
+      fs.writeFileSync(
+        path.join(intakeDir, 'materials.template.json'),
+        JSON.stringify({
+          personId,
+          entries: [
+            { type: 'text', file: 'sample.txt' },
+            { type: 'screenshot', file: 'beta-shot.png' },
+          ],
+        }, null, 2),
+      );
+    }
   });
 
   const summary = buildSummary(rootDir);
@@ -571,10 +635,11 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
     'profiles/alpha-ready/imports/sample.txt',
     'profiles/beta-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/sample.txt',
+    'profiles/beta-ready/imports/beta-shot.png',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import intake --stale/);
-  assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
 test('buildSummary work loop points delivery setup at the env template once foundation and ingestion are ready', () => {
