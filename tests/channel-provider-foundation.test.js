@@ -274,7 +274,9 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       id: 'slack',
       name: 'Slack',
       status: 'planned',
+      authType: 'bot-token',
       authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+      capabilities: ['threads', 'mentions', 'bot-token'],
       deliveryModes: ['events-api', 'web-api'],
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
@@ -293,6 +295,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       status: 'planned',
       defaultModel: 'gpt-5',
       authEnvVar: 'OPENAI_API_KEY',
+      models: ['gpt-4.1', 'gpt-4o', 'gpt-5'],
+      features: ['chat', 'tools', 'reasoning'],
       modalities: ['chat', 'reasoning', 'vision'],
       implementationPath: 'src/models/openai.js',
       implementationPresent: true,
@@ -312,11 +316,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api @ src\/channels\/slack\.js/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} @ src\/models\/openai\.js/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js/);
     assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic, Kimi, Minimax, GLM, Qwen/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {

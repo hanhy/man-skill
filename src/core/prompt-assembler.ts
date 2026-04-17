@@ -268,10 +268,14 @@ type DeliveryQueueItem = {
   id?: string | null;
   name?: string | null;
   status?: string;
+  authType?: string | null;
   authEnvVars?: string[];
+  capabilities?: string[];
   deliveryModes?: string[];
   defaultModel?: string | null;
   authEnvVar?: string | null;
+  models?: string[];
+  features?: string[];
   modalities?: string[];
   implementationPath?: string | null;
   implementationPresent?: boolean;
@@ -765,9 +769,13 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     channelQueue.length > 0
       ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
       : null,
-    ...visibleChannelQueue.map((channel) =>
-      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`,
-    ),
+    ...visibleChannelQueue.map((channel) => {
+      const authDetails = [
+        channel.authType ?? null,
+        (channel.capabilities ?? []).length > 0 ? `caps ${(channel.capabilities ?? []).join(', ')}` : null,
+      ].filter(Boolean).join('; ');
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`;
+    }),
     remainingChannelQueueSummary,
     providerManifestSummary,
     providerRecords.length > 0
@@ -780,9 +788,13 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     providerQueue.length > 0
       ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
       : null,
-    ...visibleProviderQueue.map((provider) =>
-      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`,
-    ),
+    ...visibleProviderQueue.map((provider) => {
+      const providerDetails = [
+        (provider.features ?? []).length > 0 ? `features: ${(provider.features ?? []).join(', ')}` : null,
+        (provider.models ?? []).length > 0 ? `models: ${(provider.models ?? []).join(', ')}` : null,
+      ].filter(Boolean).join('; ');
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`;
+    }),
     remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
 }

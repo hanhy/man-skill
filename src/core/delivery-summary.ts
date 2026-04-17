@@ -10,10 +10,12 @@ type ChannelSummaryRecord = {
   id?: string;
   name?: string;
   status?: string;
+  capabilities?: string[];
   deliveryModes?: string[];
   implementationPath?: string | null;
   nextStep?: string | null;
   auth?: {
+    type?: string;
     envVars?: string[];
   } | null;
 };
@@ -29,6 +31,8 @@ type ProviderSummaryRecord = {
   status?: string;
   defaultModel?: string | null;
   authEnvVar?: string | null;
+  models?: string[];
+  features?: string[];
   modalities?: string[];
   implementationPath?: string | null;
   nextStep?: string | null;
@@ -43,7 +47,9 @@ export type DeliveryChannelQueueItem = {
   id: string | null;
   name: string | null;
   status: string;
+  authType: string | null;
   authEnvVars: string[];
+  capabilities: string[];
   deliveryModes: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
@@ -63,6 +69,8 @@ export type DeliveryProviderQueueItem = {
   status: string;
   defaultModel: string | null;
   authEnvVar: string | null;
+  models: string[];
+  features: string[];
   modalities: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
@@ -235,7 +243,9 @@ export function buildDeliverySummary(
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
         status: channel.status ?? 'unknown',
+        authType: channel.auth?.type ?? null,
         authEnvVars,
+        capabilities: (channel.capabilities ?? []).filter(Boolean),
         deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
         implementationPath,
         implementationPresent: isImplementationPresent(implementationPath, rootDir),
@@ -263,6 +273,8 @@ export function buildDeliverySummary(
         status: provider.status ?? 'unknown',
         defaultModel: provider.defaultModel ?? null,
         authEnvVar: provider.authEnvVar ?? null,
+        models: (provider.models ?? []).filter(Boolean),
+        features: (provider.features ?? []).filter(Boolean),
         modalities: (provider.modalities ?? []).filter(Boolean),
         implementationPath,
         implementationPresent: isImplementationPresent(implementationPath, rootDir),
