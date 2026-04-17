@@ -661,7 +661,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
     helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
     helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
+    helperCommands.scaffoldChannelImplementationBundle
+      && helperCommands.scaffoldChannelImplementationBundle !== helperCommands.scaffoldChannelImplementation
+      ? `channel impl-all ${helperCommands.scaffoldChannelImplementationBundle}`
+      : null,
     helperCommands.scaffoldProviderImplementation ? `provider impl ${helperCommands.scaffoldProviderImplementation}` : null,
+    helperCommands.scaffoldProviderImplementationBundle
+      && helperCommands.scaffoldProviderImplementationBundle !== helperCommands.scaffoldProviderImplementation
+      ? `provider impl-all ${helperCommands.scaffoldProviderImplementationBundle}`
+      : null,
   ].filter(Boolean).join(' | ');
   const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
   const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
