@@ -138,7 +138,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
-        importIntake: 'node src/index.js import intake --person harry-han',
+        importIntake: "node src/index.js import intake --person 'harry-han'",
         importManifest: 'node src/index.js import manifest --file materials.json',
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
@@ -162,7 +162,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
-        importIntake: 'node src/index.js import intake --person jane-doe',
+        importIntake: "node src/index.js import intake --person 'jane-doe'",
         importManifest: 'node src/index.js import manifest --file materials.json',
         updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -239,7 +239,7 @@ test('importManifest supports a single-target shorthand profile and inherits per
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
-        importIntake: 'node src/index.js import intake --person harry-han',
+        importIntake: "node src/index.js import intake --person 'harry-han'",
         importManifest: 'node src/index.js import manifest --file materials.json',
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
@@ -423,7 +423,7 @@ test('importManifest profile summaries keep current manifest counts while surfac
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
-        importIntake: 'node src/index.js import intake --person harry-han',
+        importIntake: "node src/index.js import intake --person 'harry-han'",
         importManifest: 'node src/index.js import manifest --file materials.json',
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
@@ -479,7 +479,7 @@ test('importManifest can refresh foundation drafts before returning profile summ
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
-        importIntake: 'node src/index.js import intake --person harry-han',
+        importIntake: "node src/index.js import intake --person 'harry-han'",
         importManifest: 'node src/index.js import manifest --file materials.json',
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
@@ -531,7 +531,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   });
   assert.deepEqual(result.helperCommands, {
     scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
-    importIntake: 'node src/index.js import intake --person harry-han',
+    importIntake: "node src/index.js import intake --person 'harry-han'",
     importManifest: 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation',
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     refreshFoundation: 'node src/index.js update foundation --person harry-han',
