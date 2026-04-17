@@ -387,8 +387,55 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     recommendedActions: ['add at least one entry under memory/long-term and memory/scratch'],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p memory\/long-term memory\/scratch && touch memory\/long-term\/notes\.md memory\/scratch\/draft\.md/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
+});
+
+test('buildSummary work loop surfaces runnable commands for thin soul and missing voice scaffolds', () => {
+  const voiceRootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(voiceRootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(voiceRootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(voiceRootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(voiceRootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(voiceRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(voiceRootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(voiceRootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(voiceRootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(voiceRootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(voiceRootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const voiceSummary = buildSummary(voiceRootDir);
+
+  assert.equal(voiceSummary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(voiceSummary.workLoop.currentPriority?.nextAction, 'create voice/README.md');
+  assert.equal(voiceSummary.workLoop.currentPriority?.command, "mkdir -p voice && printf %s '# Voice\n\n- Add voice guidance here.\n' > voice/README.md");
+  assert.deepEqual(voiceSummary.workLoop.currentPriority?.paths, ['voice/README.md']);
+  assert.match(voiceSummary.promptPreview, /voice \[missing\]: create voice\/README\.md @ voice\/README\.md; command mkdir -p voice && printf %s '# Voice\n\n- Add voice guidance here\.\n' > voice\/README\.md/);
+
+  const soulRootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(soulRootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(soulRootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(soulRootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(soulRootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(soulRootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(soulRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(soulRootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(soulRootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(soulRootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(soulRootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(soulRootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(soulRootDir, 'SOUL.md'), '# Soul');
+
+  const soulSummary = buildSummary(soulRootDir);
+
+  assert.equal(soulSummary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
+  assert.equal(soulSummary.workLoop.currentPriority?.command, "grep -Fqx -- 'Add soul guidance here.' SOUL.md || printf %s '\nAdd soul guidance here.\n' >> SOUL.md");
+  assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
+  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- 'Add soul guidance here\.' SOUL\.md \|\| printf %s '\nAdd soul guidance here\.\n' >> SOUL\.md/);
 });
 
 test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
