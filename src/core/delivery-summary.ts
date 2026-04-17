@@ -93,6 +93,13 @@ export type DeliverySummary = {
   envTemplatePath: string | null;
   envTemplatePresent: boolean;
   envTemplateCommand: string | null;
+  helperCommands: {
+    bootstrapEnv: string | null;
+    scaffoldChannelManifest: string | null;
+    scaffoldProviderManifest: string | null;
+    scaffoldChannelImplementation: string | null;
+    scaffoldProviderImplementation: string | null;
+  };
   channelQueue: DeliveryChannelQueueItem[];
   providerQueue: DeliveryProviderQueueItem[];
 };
@@ -132,6 +139,24 @@ function isRepoRelativePathPresent(relativePath: string | null | undefined, root
 
 function isImplementationPresent(implementationPath: string | null | undefined, rootDir?: string | null): boolean {
   return isRepoRelativePathPresent(implementationPath, rootDir);
+}
+
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildRelativeFileTouchCommand(relativePath: string | null | undefined): string | null {
+  if (typeof relativePath !== 'string' || relativePath.length === 0) {
+    return null;
+  }
+
+  const normalizedPath = relativePath.split(path.sep).join('/');
+  const directory = path.posix.dirname(normalizedPath);
+  if (!directory || directory === '.') {
+    return `touch ${shellSingleQuote(normalizedPath)}`;
+  }
+
+  return `mkdir -p ${shellSingleQuote(directory)} && touch ${shellSingleQuote(normalizedPath)}`;
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
@@ -243,6 +268,10 @@ export function buildDeliverySummary(
   ].filter(Boolean);
   const channelScaffoldCoverage = allChannelRecords.map((channel) => isImplementationPresent(channel.implementationPath ?? null, rootDir));
   const providerScaffoldCoverage = allProviderRecords.map((provider) => isImplementationPresent(provider.implementationPath ?? null, rootDir));
+  const firstChannelMissingManifest = channelQueue.find((channel) => channel.manifestPresent === false) ?? null;
+  const firstProviderMissingManifest = providerQueue.find((provider) => provider.manifestPresent === false) ?? null;
+  const firstChannelMissingImplementation = channelQueue.find((channel) => channel.implementationPresent === false) ?? null;
+  const firstProviderMissingImplementation = providerQueue.find((provider) => provider.implementationPresent === false) ?? null;
 
   return {
     pendingChannelCount: channelQueue.length,
@@ -261,6 +290,21 @@ export function buildDeliverySummary(
     envTemplatePath: null,
     envTemplatePresent: false,
     envTemplateCommand: null,
+    helperCommands: {
+      bootstrapEnv: null,
+      scaffoldChannelManifest: firstChannelMissingManifest
+        ? buildRelativeFileTouchCommand(firstChannelMissingManifest.manifestScaffoldPath)
+        : null,
+      scaffoldProviderManifest: firstProviderMissingManifest
+        ? buildRelativeFileTouchCommand(firstProviderMissingManifest.manifestScaffoldPath)
+        : null,
+      scaffoldChannelImplementation: firstChannelMissingImplementation
+        ? buildRelativeFileTouchCommand(firstChannelMissingImplementation.implementationScaffoldPath)
+        : null,
+      scaffoldProviderImplementation: firstProviderMissingImplementation
+        ? buildRelativeFileTouchCommand(firstProviderMissingImplementation.implementationScaffoldPath)
+        : null,
+    },
     channelQueue,
     providerQueue,
   };

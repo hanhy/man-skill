@@ -1020,11 +1020,16 @@ export function buildSummary(rootDir: string) {
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
   const deliverySummary = {
-    ...buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir }),
+    ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
     envTemplatePresent,
     envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+    helperCommands: {
+      ...baseDeliverySummary.helperCommands,
+      bootstrapEnv: envTemplatePresent ? 'cp .env.example .env' : null,
+    },
   };
   const workLoop = new WorkLoop({
     intervalMinutes: 10,

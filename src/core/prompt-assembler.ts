@@ -278,6 +278,13 @@ type DeliverySummary = {
   envTemplatePath?: string | null;
   envTemplatePresent?: boolean;
   envTemplateCommand?: string | null;
+  helperCommands?: {
+    bootstrapEnv?: string | null;
+    scaffoldChannelManifest?: string | null;
+    scaffoldProviderManifest?: string | null;
+    scaffoldChannelImplementation?: string | null;
+    scaffoldProviderImplementation?: string | null;
+  };
   channelQueue?: DeliveryQueueItem[];
   providerQueue?: DeliveryQueueItem[];
 } | null;
@@ -604,8 +611,17 @@ function formatManifestSummary(label: string, manifest: ChannelManifestSummary |
 function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
+  const helperCommands = delivery?.helperCommands ?? {};
+  const helperLine = [
+    helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
+    helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
+    helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
+    helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
+    helperCommands.scaffoldProviderImplementation ? `provider impl ${helperCommands.scaffoldProviderImplementation}` : null,
+  ].filter(Boolean).join(' | ');
   const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
   const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
+
   const channelQueue = delivery?.channelQueue ?? channelRecords
     .filter((channel) => channel?.status !== 'active')
     .map((channel) => ({
@@ -660,6 +676,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     delivery?.envTemplatePresent && delivery.envTemplateCommand
       ? `- env bootstrap: ${delivery.envTemplateCommand}`
       : null,
+    helperLine ? `- helpers: ${helperLine}` : null,
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
       ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
       : null,
