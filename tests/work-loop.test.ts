@@ -1191,4 +1191,14 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].generatedDraftCount, 0);
   assert.equal(summary.foundation.maintenance.queuedProfiles[1].id, 'harry-han');
   assert.equal(summary.foundation.maintenance.queuedProfiles[1].generatedDraftCount, 4);
+  assert.equal(summary.workLoop.priorities[1].id, 'ingestion');
+  assert.equal(summary.workLoop.priorities[1].nextAction, 'refresh stale or incomplete target profiles');
+  assert.equal(
+    summary.workLoop.priorities[1].command,
+    summary.ingestion.refreshFoundationBundleCommand,
+  );
+  assert.equal(
+    summary.workLoop.priorities[1].command,
+    '(node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person jane-doe)',
+  );
 });

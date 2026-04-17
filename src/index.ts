@@ -675,7 +675,9 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
     }
   } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
     nextAction = 'refresh stale or incomplete target profiles';
-    command = ingestionSummary?.staleRefreshCommand ?? null;
+    command = typeof ingestionSummary?.refreshFoundationBundleCommand === 'string' && ingestionSummary.refreshFoundationBundleCommand.length > 0
+      ? ingestionSummary.refreshFoundationBundleCommand
+      : (ingestionSummary?.staleRefreshCommand ?? null);
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
