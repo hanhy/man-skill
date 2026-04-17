@@ -310,6 +310,8 @@ function buildIntakeReadme({
   importCommands,
   updateIntakeCommand,
   importIntakeCommand,
+  updateProfileCommand,
+  updateProfileAndRefreshCommand,
   customNotes,
 }) {
   const label = normalizeText(displayName) ?? personId;
@@ -331,6 +333,8 @@ function buildIntakeReadme({
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
     `- import via the profile-local intake shortcut: ${importIntakeCommand}`,
+    `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
+    `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
     'Direct import commands:',
     `- text: ${importCommands?.text}`,
@@ -463,6 +467,12 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
     });
+    const updateProfileAndRefreshCommand = buildUpdateProfileCommand({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+      refreshFoundation: true,
+    });
     const updateIntakeCommand = buildUpdateIntakeCommand({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -483,6 +493,8 @@ export class MaterialIngestion {
         importCommands,
         updateIntakeCommand,
         importIntakeCommand,
+        updateProfileCommand,
+        updateProfileAndRefreshCommand,
         customNotes: extractIntakeCustomNotes(existingReadme),
       }),
     );
@@ -498,11 +510,13 @@ export class MaterialIngestion {
       importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
       updateProfileCommand,
+      updateProfileAndRefreshCommand,
       helperCommands: {
         scaffold: updateIntakeCommand,
         importIntake: importIntakeCommand,
         importManifest: importManifestCommand,
         updateProfile: updateProfileCommand,
+        updateProfileAndRefresh: updateProfileAndRefreshCommand,
         refreshFoundation: `node src/index.js update foundation --person ${profileUpdate.personId}`,
         directImports: importCommands,
       },
