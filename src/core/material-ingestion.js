@@ -187,7 +187,7 @@ function buildUpdateIntakeCommand({ personId, displayName, summary }) {
   return commandParts.join(' ');
 }
 
-function buildUpdateProfileCommand({ personId, displayName, summary }) {
+function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation = false }) {
   const commandParts = ['node src/index.js update profile', '--person', shellQuote(personId)];
 
   if (isNonEmptyString(displayName)) {
@@ -196,6 +196,10 @@ function buildUpdateProfileCommand({ personId, displayName, summary }) {
 
   if (isNonEmptyString(summary)) {
     commandParts.push('--summary', shellQuote(summary));
+  }
+
+  if (refreshFoundation) {
+    commandParts.push('--refresh-foundation');
   }
 
   return commandParts.join(' ');
@@ -352,6 +356,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const summary = profileSummary?.profile?.summary ?? null;
   const importCommand = buildManifestImportCommand(manifestPath);
   const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
+  const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
   const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
   const importIntakeCommand = buildImportIntakeCommand(personId);
@@ -367,12 +372,14 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
     missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
     importCommand,
     updateProfileCommand,
+    updateProfileAndRefreshCommand,
     refreshFoundationCommand,
     helperCommands: {
       scaffold: scaffoldCommand,
       importIntake: importIntakeCommand,
       importManifest: importCommand,
       updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,
     },
   };
@@ -1059,6 +1066,12 @@ export class MaterialIngestion {
       displayName: profileDocument?.displayName,
       summary: profileDocument?.summary,
     });
+    const updateProfileAndRefreshCommand = buildUpdateProfileCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+      refreshFoundation: true,
+    });
     const refreshFoundationCommand = `node src/index.js update foundation --person ${normalized.personId}`;
     const updateIntakeCommand = buildUpdateIntakeCommand({
       personId: normalized.personId,
@@ -1069,6 +1082,7 @@ export class MaterialIngestion {
     const helperCommands = {
       refreshFoundation: refreshFoundationCommand,
       updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
       updateIntake: updateIntakeCommand,
       importIntake: importIntakeCommand,
     };
@@ -1082,6 +1096,7 @@ export class MaterialIngestion {
       generatedAt,
       refreshFoundationCommand,
       updateProfileCommand,
+      updateProfileAndRefreshCommand,
       updateIntakeCommand,
       importIntakeCommand,
       helperCommands,

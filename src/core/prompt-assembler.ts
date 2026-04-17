@@ -299,6 +299,7 @@ type IngestionProfileCommand = {
   needsRefresh?: boolean;
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
@@ -327,6 +328,7 @@ type IngestionHelperCommands = {
   sampleStarter?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
+  updateProfileAndRefresh?: string | null;
 };
 
 type IngestionSummary = {
@@ -778,7 +780,10 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
-      const updateSegment = profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '';
+      const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
+      const updateSegment = syncCommand
+        ? ` | sync ${syncCommand}`
+        : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
       return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${actionSegment}${updateSegment}`;
     }),
   ].filter(Boolean).join('\n');

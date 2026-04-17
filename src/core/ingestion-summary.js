@@ -123,7 +123,7 @@ function buildUpdateIntakeCommand(profile) {
   return commandParts.join(' ');
 }
 
-function buildUpdateProfileCommand(profile) {
+function buildUpdateProfileCommand(profile, options = {}) {
   if (!profile?.id) {
     return null;
   }
@@ -142,6 +142,10 @@ function buildUpdateProfileCommand(profile) {
 
   if (summary) {
     commandParts.push('--summary', shellQuote(summary));
+  }
+
+  if (options.refreshFoundation) {
+    commandParts.push('--refresh-foundation');
   }
 
   return commandParts.join(' ');
@@ -192,6 +196,7 @@ function buildProfileCommands(profile, options = {}) {
     : null;
   const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
   const updateProfileCommand = buildUpdateProfileCommand(profile);
+  const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
   const importIntakeCommand = `node src/index.js import intake --person ${profile.id}`;
@@ -206,6 +211,7 @@ function buildProfileCommands(profile, options = {}) {
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     updateProfileCommand,
+    updateProfileAndRefreshCommand,
     updateIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
@@ -220,6 +226,7 @@ function buildProfileCommands(profile, options = {}) {
       importIntake: importIntakeCommand,
       importManifest: imported ? null : intakeImportManifestCommand,
       updateProfile: updateProfileCommand,
+      updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,
       directImports: importCommands,
     },
