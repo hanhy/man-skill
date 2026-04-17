@@ -644,7 +644,96 @@ test('buildSummary work loop scaffolds the channel manifest when delivery setup 
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
 });
 
-test('buildSummary work loop scaffolds the first provider implementation once the provider manifest exists', () => {
+test('buildSummary work loop bundles missing channel implementations once the channel manifest exists and credentials are configured', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([{ id: 'slack', status: 'planned' }], null, 2));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
+  process.env.WHATSAPP_ACCESS_TOKEN='***';
+  process.env.WHATSAPP_PHONE_NUMBER_ID='***';
+  process.env.FEISHU_APP_ID='***';
+  process.env.FEISHU_APP_SECRET='***';
+
+  try {
+    runImportCommand(rootDir, 'text', {
+      person: 'harry-han',
+      file: 'samples/harry-post.txt',
+      'refresh-foundation': true,
+    });
+
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.helperCommands.scaffoldChannelImplementationBundle, "(mkdir -p 'src/channels' && touch 'src/channels/slack.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/feishu.js')");
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/slack.js; credentials present; next: implement inbound event handling and outbound thread replies');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldChannelImplementationBundle);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, [
+      'manifests/channels.json',
+      'src/channels/slack.js',
+      'src/channels/telegram.js',
+      'src/channels/whatsapp.js',
+      'src/channels/feishu.js',
+    ]);
+    assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured/);
+    assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/slack\.js; credentials present; next: implement inbound event handling and outbound thread replies/);
+    assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\)/);
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+    if (originalEnv.TELEGRAM_BOT_TOKEN === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    }
+    if (originalEnv.WHATSAPP_ACCESS_TOKEN === undefined) {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    }
+    if (originalEnv.WHATSAPP_PHONE_NUMBER_ID === undefined) {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    }
+    if (originalEnv.FEISHU_APP_ID === undefined) {
+      delete process.env.FEISHU_APP_ID;
+    } else {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    }
+    if (originalEnv.FEISHU_APP_SECRET === undefined) {
+      delete process.env.FEISHU_APP_SECRET;
+    } else {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    }
+  }
+});
+
+test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -667,13 +756,14 @@ test('buildSummary work loop scaffolds the first provider implementation once th
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "(mkdir -p 'src/models' && touch 'src/models/openai.js') && (mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js') && (mkdir -p 'src/models' && touch 'src/models/minimax.js') && (mkdir -p 'src/models' && touch 'src/models/glm.js') && (mkdir -p 'src/models' && touch 'src/models/qwen.js')");
   assert.equal(summary.workLoop.currentPriority.id, 'providers');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
-  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
+  assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldProviderImplementationBundle);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js', 'src/models/anthropic.js', 'src/models/kimi.js', 'src/models/minimax.js', 'src/models/glm.js', 'src/models/qwen.js']);
   assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured/);
-  assert.match(summary.promptPreview, /next action: create src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
-  assert.match(summary.promptPreview, /command: mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/minimax\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/glm\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/qwen\.js'\)/);
 });
 
 test('buildSummary work loop refuses to scaffold outside-repo provider implementation paths', () => {

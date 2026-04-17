@@ -294,7 +294,9 @@ type DeliverySummary = {
     scaffoldChannelManifest?: string | null;
     scaffoldProviderManifest?: string | null;
     scaffoldChannelImplementation?: string | null;
+    scaffoldChannelImplementationBundle?: string | null;
     scaffoldProviderImplementation?: string | null;
+    scaffoldProviderImplementationBundle?: string | null;
   };
   channelQueue?: DeliveryQueueItem[];
   providerQueue?: DeliveryQueueItem[];

@@ -727,6 +727,7 @@ function buildDeliveryPriority({
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
+  implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
   label: 'Channels' | 'Providers';
@@ -735,20 +736,34 @@ function buildDeliveryPriority({
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
+  implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
-  const paths = [
-    envTemplatePath,
-    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
-    typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
-  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-
+  const bundledImplementationPaths = Array.isArray(queue)
+    ? queue
+      .filter((item) => item?.implementationPresent === false)
+      .map((item) => typeof item?.implementationPath === 'string' && item.implementationPath.length > 0 ? item.implementationPath : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
   const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
   const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
     ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const needsCredentialBootstrap = firstQueuedMissingEnvVars.length > 0 && pendingCount > configuredCount;
+  const bundledImplementationCount = Array.isArray(queue)
+    ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
+    : 0;
+  const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
+  const paths = [
+    envTemplatePath,
+    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
+    ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
+    ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
+      ? [firstQueued.implementationPath]
+      : []),
+  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+
   const followUpParts = [
     firstQueued?.setupHint,
     firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
@@ -763,8 +778,12 @@ function buildDeliveryPriority({
     command = buildRelativeFileTouchCommand(manifestPath);
   } else if (!command && implementationMissing) {
     const implementationPath = typeof firstQueued?.implementationScaffoldPath === 'string' ? firstQueued.implementationScaffoldPath : null;
-    nextAction = [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
-    command = buildRelativeFileTouchCommand(implementationPath);
+    nextAction = shouldUseImplementationBundle
+      ? [`create pending ${id === 'channels' ? 'channel' : 'provider'} implementations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
+      : [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
+    command = shouldUseImplementationBundle
+      ? implementationBundleCommand
+      : buildRelativeFileTouchCommand(implementationPath);
   }
 
   return {
@@ -1124,6 +1143,7 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
         id: 'providers',
@@ -1133,6 +1153,7 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],
   });

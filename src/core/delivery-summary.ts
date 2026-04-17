@@ -98,7 +98,9 @@ export type DeliverySummary = {
     scaffoldChannelManifest: string | null;
     scaffoldProviderManifest: string | null;
     scaffoldChannelImplementation: string | null;
+    scaffoldChannelImplementationBundle: string | null;
     scaffoldProviderImplementation: string | null;
+    scaffoldProviderImplementationBundle: string | null;
   };
   channelQueue: DeliveryChannelQueueItem[];
   providerQueue: DeliveryProviderQueueItem[];
@@ -157,6 +159,19 @@ function buildRelativeFileTouchCommand(relativePath: string | null | undefined):
   }
 
   return `mkdir -p ${shellSingleQuote(directory)} && touch ${shellSingleQuote(normalizedPath)}`;
+}
+
+function buildCommandBundle(commands: Array<string | null | undefined>): string | null {
+  const normalizedCommands = commands.filter((command): command is string => typeof command === 'string' && command.length > 0);
+  if (normalizedCommands.length === 0) {
+    return null;
+  }
+
+  if (normalizedCommands.length === 1) {
+    return normalizedCommands[0];
+  }
+
+  return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
@@ -272,6 +287,16 @@ export function buildDeliverySummary(
   const firstProviderMissingManifest = providerQueue.find((provider) => provider.manifestPresent === false) ?? null;
   const firstChannelMissingImplementation = channelQueue.find((channel) => channel.implementationPresent === false) ?? null;
   const firstProviderMissingImplementation = providerQueue.find((provider) => provider.implementationPresent === false) ?? null;
+  const channelImplementationBundle = buildCommandBundle(
+    channelQueue
+      .filter((channel) => channel.implementationPresent === false)
+      .map((channel) => buildRelativeFileTouchCommand(channel.implementationScaffoldPath)),
+  );
+  const providerImplementationBundle = buildCommandBundle(
+    providerQueue
+      .filter((provider) => provider.implementationPresent === false)
+      .map((provider) => buildRelativeFileTouchCommand(provider.implementationScaffoldPath)),
+  );
 
   return {
     pendingChannelCount: channelQueue.length,
@@ -301,9 +326,11 @@ export function buildDeliverySummary(
       scaffoldChannelImplementation: firstChannelMissingImplementation
         ? buildRelativeFileTouchCommand(firstChannelMissingImplementation.implementationScaffoldPath)
         : null,
+      scaffoldChannelImplementationBundle: channelImplementationBundle,
       scaffoldProviderImplementation: firstProviderMissingImplementation
         ? buildRelativeFileTouchCommand(firstProviderMissingImplementation.implementationScaffoldPath)
         : null,
+      scaffoldProviderImplementationBundle: providerImplementationBundle,
     },
     channelQueue,
     providerQueue,
