@@ -101,7 +101,12 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
+  helperCommands?: {
+    refreshAll?: string | null;
+    refreshStale?: string | null;
+  };
   queuedProfiles?: MaintenanceQueueItem[];
 };
 
@@ -134,6 +139,7 @@ type FoundationCoreMaintenanceQueueItem = {
   summary?: string;
   action?: string | null;
   paths?: string[];
+  command?: string | null;
 };
 
 type FoundationCoreMaintenance = {
@@ -141,6 +147,13 @@ type FoundationCoreMaintenance = {
   readyAreaCount?: number;
   missingAreaCount?: number;
   thinAreaCount?: number;
+  helperCommands?: {
+    scaffoldAll?: string | null;
+    memory?: string | null;
+    skills?: string | null;
+    soul?: string | null;
+    voice?: string | null;
+  };
   queuedAreas?: FoundationCoreMaintenanceQueueItem[];
 };
 
@@ -285,7 +298,9 @@ type DeliverySummary = {
     scaffoldChannelManifest?: string | null;
     scaffoldProviderManifest?: string | null;
     scaffoldChannelImplementation?: string | null;
+    scaffoldChannelImplementationBundle?: string | null;
     scaffoldProviderImplementation?: string | null;
+    scaffoldProviderImplementationBundle?: string | null;
   };
   channelQueue?: DeliveryQueueItem[];
   providerQueue?: DeliveryQueueItem[];
@@ -327,10 +342,14 @@ type IngestionHelperCommands = {
   importManifest?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  refreshAllFoundation?: string | null;
   refreshStaleFoundation?: string | null;
   sampleStarter?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
+  sampleMessage?: string | null;
+  sampleTalk?: string | null;
+  sampleScreenshot?: string | null;
   updateProfileAndRefresh?: string | null;
 };
 
@@ -349,6 +368,7 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
   sampleManifestPresent?: boolean;
   sampleManifestStatus?: 'loaded' | 'missing' | 'invalid' | string;
@@ -370,6 +390,13 @@ type IngestionSummary = {
     type?: 'text' | 'screenshot' | string;
     path?: string | null;
     personId?: string | null;
+    command?: string | null;
+  }>;
+  sampleInlineCommands?: Array<{
+    type?: 'message' | 'talk' | string;
+    text?: string | null;
+    personId?: string | null;
+    sourcePath?: string | null;
     command?: string | null;
   }>;
   staleRefreshCommand?: string | null;
@@ -540,8 +567,15 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   }
 
   const queuedProfiles = maintenance.queuedProfiles ?? [];
+  const helperLine = [
+    maintenance.helperCommands?.refreshAll ? `refresh-all ${maintenance.helperCommands.refreshAll}` : null,
+    maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
+  ].filter(Boolean).join(' | ');
+
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    helperLine ? `- helpers: ${helperLine}` : null,
+    maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
     ...queuedProfiles.map((profile) => {
       const reasonSuffix = (profile.refreshReasons ?? []).length > 0
         ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
@@ -551,7 +585,6 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
         : '';
       return `- ${profile.label ?? profile.id}: ${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
     }),
-    maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
   ].filter(Boolean).join('\n');
 }
 
@@ -628,7 +661,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
     helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
     helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
+    helperCommands.scaffoldChannelImplementationBundle
+      && helperCommands.scaffoldChannelImplementationBundle !== helperCommands.scaffoldChannelImplementation
+      ? `channel impl-all ${helperCommands.scaffoldChannelImplementationBundle}`
+      : null,
     helperCommands.scaffoldProviderImplementation ? `provider impl ${helperCommands.scaffoldProviderImplementation}` : null,
+    helperCommands.scaffoldProviderImplementationBundle
+      && helperCommands.scaffoldProviderImplementationBundle !== helperCommands.scaffoldProviderImplementation
+      ? `provider impl-all ${helperCommands.scaffoldProviderImplementationBundle}`
+      : null,
   ].filter(Boolean).join(' | ');
   const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
   const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
@@ -731,9 +772,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.importManifest
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
+      || ingestion?.refreshAllFoundationCommand
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
       || helperCommands.importIntakeStale
+      || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
@@ -759,6 +802,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
         helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
         helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
+        helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
         helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
         helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
@@ -776,14 +820,17 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
             return entry.command !== ingestion.sampleTextCommand;
           })
           .map((entry) => `sample-${entry.type} ${entry.command}`)),
+        ...((ingestion.sampleInlineCommands ?? [])
+          .filter((entry) => entry?.command && entry?.type)
+          .map((entry) => `sample-${entry.type} ${entry.command}`)),
       ].filter(Boolean);
 
       return helperEntries.length > 0
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+    (ingestion.importManifestCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[ingestion.importManifestCommand, ingestion.refreshAllFoundationCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
@@ -810,6 +857,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         return entry.command !== ingestion.sampleTextCommand;
       })
       .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
+    ...((ingestion.sampleInlineCommands ?? [])
+      .filter((entry) => entry?.command && entry?.type)
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
@@ -860,15 +910,28 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
+    (() => {
+      const helperEntries = [
+        maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
+        maintenance?.helperCommands?.memory ? `memory ${maintenance.helperCommands.memory}` : null,
+        maintenance?.helperCommands?.skills ? `skills ${maintenance.helperCommands.skills}` : null,
+        maintenance?.helperCommands?.soul ? `soul ${maintenance.helperCommands.soul}` : null,
+        maintenance?.helperCommands?.voice ? `voice ${maintenance.helperCommands.voice}` : null,
+      ].filter(Boolean);
+
+      return helperEntries.length > 0
+        ? `- helpers: ${helperEntries.join(' | ')}`
+        : null;
+    })(),
     ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
-      const command = buildCoreFoundationCommand(area);
+      const command = area.command ?? buildCoreFoundationCommand(area);
       return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
     }),
     memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
       : null,
     skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; placeholders: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}`
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}`
       : null,
     soul
       ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`

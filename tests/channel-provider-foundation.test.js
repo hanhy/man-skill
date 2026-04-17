@@ -266,7 +266,9 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
       scaffoldProviderManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
       scaffoldChannelImplementation: null,
+      scaffoldChannelImplementationBundle: null,
       scaffoldProviderImplementation: null,
+      scaffoldProviderImplementationBundle: null,
     });
     assert.deepEqual(summary.delivery.channelQueue[0], {
       id: 'slack',
@@ -355,7 +357,9 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldChannelManifest: null,
     scaffoldProviderManifest: null,
     scaffoldChannelImplementation: null,
+    scaffoldChannelImplementationBundle: null,
     scaffoldProviderImplementation: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
+    scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
@@ -381,7 +385,42 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
   assert.equal(summary.delivery.providerQueue[0].implementationPresent, true);
   assert.equal(summary.delivery.providerQueue[1].implementationPresent, false);
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
+  assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
+});
+
+test('buildSummary prompt preview surfaces delivery implementation bundles when multiple scaffolds are missing', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'planned' },
+    { id: 'telegram', status: 'planned' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned' },
+    { id: 'anthropic', status: 'planned' },
+    { id: 'kimi', status: 'planned' },
+  ], null, 2));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'slack.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'telegram.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'anthropic.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'kimi.js'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(
+    summary.delivery.helperCommands.scaffoldChannelImplementationBundle,
+    "(mkdir -p 'src/channels' && touch 'src/channels/slack.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js')",
+  );
+  assert.equal(
+    summary.delivery.helperCommands.scaffoldProviderImplementationBundle,
+    "(mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js')",
+  );
+  assert.match(summary.promptPreview, /channel impl-all \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\)/);
+  assert.match(summary.promptPreview, /provider impl-all \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\)/);
 });
 
 test('buildSummary prompt preview surfaces candidate delivery integrations from manifests', () => {

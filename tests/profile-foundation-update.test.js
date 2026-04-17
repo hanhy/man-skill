@@ -49,13 +49,13 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
-  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
+  assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han'");
   assert.deepEqual(result.helperCommands, {
     refreshFoundation: 'node src/index.js update foundation --person harry-han',
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
-    importIntake: 'node src/index.js import intake --person harry-han',
+    importIntake: "node src/index.js import intake --person 'harry-han'",
   });
 
   const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
@@ -122,13 +122,13 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
-  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
+  assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han'");
   assert.deepEqual(result.helperCommands, {
     refreshFoundation: 'node src/index.js update foundation --person harry-han',
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
-    importIntake: 'node src/index.js import intake --person harry-han',
+    importIntake: "node src/index.js import intake --person 'harry-han'",
   });
   assert.match(result.voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
@@ -435,6 +435,56 @@ test('CLI import sample command falls back to another valid sample manifest when
   assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
 });
 
+test('CLI import sample command accepts an explicit sample manifest path override', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.writeFileSync(path.join(rootDir, 'samples', 'starter-post.txt'), 'Keep the feedback loop short.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample', '--file', 'samples/starter-materials.json'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/starter-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['starter-person']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/starter-person\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han')), false);
+});
+
 test('CLI import manifest rejects manifest entries that point outside the repo root', () => {
   const rootDir = makeTempRepo();
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-cli-outside-${Date.now()}.txt`);
@@ -530,6 +580,11 @@ test('CLI import command errors keep usage hints aligned with optional refresh a
       args: ['import', 'manifest'],
       expectedError: /Error: manifestFile is required for manifest import/,
       expectedUsage: /Usage: node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'sample', '--file'],
+      expectedError: /Error: No valid sample manifest found under samples\//,
+      expectedUsage: /Usage: node src\/index\.js import sample \[--file <manifest\.json>\]/,
     },
     {
       args: ['import', 'text'],
@@ -1014,8 +1069,24 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
-  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
-  assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+  assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
+  assert.equal(result.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.deepEqual(result.helperCommands, {
+    scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    importIntake: "node src/index.js import intake --person 'harry-han'",
+    importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+    updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
+    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    directImports: {
+      text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
+      talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
+      screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+    },
+  });
   assert.deepEqual(result.importCommands, {
     text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
     message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
@@ -1057,7 +1128,9 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
-  assert.match(intakeReadme, /node src\/index\.js import intake --person harry-han/);
+  assert.match(intakeReadme, /node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
   assert.match(intakeReadme, /Direct import commands:/);
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
@@ -1216,7 +1289,7 @@ test('CLI update intake preserves custom README notes on rerun while refreshing 
 
   const rerunReadme = fs.readFileSync(readmePath, 'utf8');
   assert.match(rerunReadme, /# Intake scaffold for Harry Forward/);
-  assert.match(rerunReadme, /node src\/index\.js import manifest --file profiles\/harry-han\/imports\/materials\.template\.json --refresh-foundation/);
+  assert.match(rerunReadme, /node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(rerunReadme, /- Keep pulling from the founder memo folder\./);
   assert.match(rerunReadme, /- Weekly voice notes live in iCloud Drive\./);
 });
@@ -1321,14 +1394,14 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
       },
       needsRefresh: false,
       missingDrafts: [],
-      importCommand: 'node src/index.js import manifest --file materials.json',
+      importCommand: "node src/index.js import manifest --file 'materials.json'",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
-        importIntake: 'node src/index.js import intake --person harry-han',
-        importManifest: 'node src/index.js import manifest --file materials.json',
+        importIntake: "node src/index.js import intake --person 'harry-han'",
+        importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
         refreshFoundation: 'node src/index.js update foundation --person harry-han',

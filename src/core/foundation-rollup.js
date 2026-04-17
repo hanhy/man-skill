@@ -88,7 +88,12 @@ function summarizeMaintenanceQueue(profiles) {
     readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: queuedProfiles.length,
     incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    refreshAllCommand: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
     staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
+    helperCommands: {
+      refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
+      refreshStale: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
+    },
     queuedProfiles,
   };
 }
