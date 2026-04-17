@@ -166,14 +166,18 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         return null;
       }
 
-      const normalized = slugifyPersonId(value);
+      const trimmedValue = value.trim();
+      const normalized = slugifyPersonId(trimmedValue);
       if (!normalized) {
         return null;
       }
 
       profileIds.add(normalized);
-      if (typeof displayName === 'string' && displayName.trim().length > 0) {
-        profileDisplayNames.set(normalized, displayName.trim());
+      const normalizedDisplayName = typeof displayName === 'string' && displayName.trim().length > 0
+        ? displayName.trim()
+        : (trimmedValue !== normalized ? trimmedValue : null);
+      if (normalizedDisplayName && normalizedDisplayName !== normalized) {
+        profileDisplayNames.set(normalized, normalizedDisplayName);
       }
       return normalized;
     };
