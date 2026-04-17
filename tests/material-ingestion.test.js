@@ -183,6 +183,52 @@ test('importManifest imports mixed material entries across profiles from a JSON 
   assert.equal(janeMaterials.length, 1);
 });
 
+test('importManifest uses the checked-in Harry starter manifest as a runnable multimodal sample fixture', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const fixtureDir = path.resolve('samples');
+  const targetSamplesDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(targetSamplesDir, { recursive: true });
+
+  for (const fileName of ['harry-materials.json', 'harry-post.txt', 'harry-chat.png']) {
+    fs.copyFileSync(path.join(fixtureDir, fileName), path.join(targetSamplesDir, fileName));
+  }
+
+  const result = ingestion.importManifest({
+    manifestFile: path.join('samples', 'harry-materials.json'),
+    refreshFoundation: true,
+  });
+
+  assert.equal(result.entryCount, 4);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.profileSummaries[0]?.materialCount, 4);
+  assert.deepEqual(result.profileSummaries[0]?.materialTypes, {
+    message: 1,
+    screenshot: 1,
+    talk: 1,
+    text: 1,
+  });
+  assert.equal(result.profileSummaries[0]?.needsRefresh, false);
+  assert.deepEqual(result.profileSummaries[0]?.missingDrafts, []);
+  assert.equal(result.results.map((entry) => entry.type).sort().join(','), 'message,screenshot,talk,text');
+
+  const summary = buildSummary(rootDir);
+  const harryProfile = summary.profiles.find((profile) => profile.id === 'harry-han');
+  assert.equal(summary.ingestion.sampleManifestEntryCount, 4);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-chat.png', 'samples/harry-post.txt']);
+  assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, {
+    message: 1,
+    screenshot: 1,
+    talk: 1,
+    text: 1,
+  });
+  assert.equal(summary.ingestion.helperCommands?.sampleScreenshot, "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation");
+  assert.match(summary.promptPreview, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
+  assert.equal(harryProfile?.materialCount, 4);
+  assert.equal(harryProfile?.foundationDraftStatus?.complete, true);
+  assert.equal(harryProfile?.screenshotCount, 1);
+});
+
 test('importManifest supports a single-target shorthand profile and inherits personId into entries', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

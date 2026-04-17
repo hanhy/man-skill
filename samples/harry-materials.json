@@ -17,6 +17,11 @@
       "type": "text",
       "file": "./harry-post.txt",
       "notes": "short writing sample"
+    },
+    {
+      "type": "screenshot",
+      "file": "./harry-chat.png",
+      "notes": "chat screenshot sample"
     }
   ]
 }
