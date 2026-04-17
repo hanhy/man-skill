@@ -36,13 +36,18 @@ interface DraftRefreshResult {
   [key: string]: unknown;
 }
 
-interface SampleManifestSummary {
+type SampleManifestSummary = {
   status: 'loaded' | 'missing' | 'invalid';
   entryCount: number;
   profileIds: string[];
   profileLabels: string[];
   materialTypes: Record<string, number>;
   textFilePersonIds: Record<string, string>;
+  inlineEntries: Array<{
+    type: 'message' | 'talk';
+    text: string;
+    personId: string;
+  }>;
   fileEntries: Array<{
     type: 'text' | 'screenshot';
     filePath: string;
@@ -104,6 +109,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      inlineEntries: [],
       fileEntries: [],
       filePaths: [],
       error: null,
@@ -119,6 +125,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      inlineEntries: [],
       fileEntries: [],
       filePaths: [],
       error: null,
@@ -136,6 +143,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      inlineEntries: [],
       fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
@@ -146,6 +154,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const profileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
+    const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
     const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
     const filePaths = new Set<string>();
     const profileDisplayNames = new Map<string, string>();
@@ -226,6 +235,12 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         if (typeof entryRecord.text !== 'string' || entryRecord.text.trim().length === 0) {
           throw new Error(`Manifest entry ${index} is missing text for ${entryRecord.type} import`);
         }
+
+        inlineEntries.push({
+          type: entryRecord.type,
+          text: entryRecord.text.trim(),
+          personId: normalizedPersonId,
+        });
       }
 
       if (entryRecord.type === 'text' || entryRecord.type === 'screenshot') {
@@ -275,6 +290,20 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
       materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
       textFilePersonIds,
+      inlineEntries: inlineEntries.slice().sort((left, right) => {
+        const typeRank = (value: 'message' | 'talk') => (value === 'message' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const textDelta = left.text.localeCompare(right.text);
+        if (textDelta !== 0) {
+          return textDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      }),
       fileEntries: fileEntries.slice().sort((left, right) => {
         const typeRank = (value: 'text' | 'screenshot') => (value === 'text' ? 0 : 1);
         const typeDelta = typeRank(left.type) - typeRank(right.type);
@@ -300,6 +329,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       profileLabels: [],
       materialTypes: {},
       textFilePersonIds: {},
+      inlineEntries: [],
       fileEntries: [],
       filePaths: [],
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',

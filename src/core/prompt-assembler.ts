@@ -372,6 +372,12 @@ type IngestionSummary = {
     personId?: string | null;
     command?: string | null;
   }>;
+  sampleInlineCommands?: Array<{
+    type?: 'message' | 'talk' | string;
+    text?: string | null;
+    personId?: string | null;
+    command?: string | null;
+  }>;
   staleRefreshCommand?: string | null;
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
@@ -776,6 +782,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
             return entry.command !== ingestion.sampleTextCommand;
           })
           .map((entry) => `sample-${entry.type} ${entry.command}`)),
+        ...((ingestion.sampleInlineCommands ?? [])
+          .filter((entry) => entry?.command && entry?.type)
+          .map((entry) => `sample-${entry.type} ${entry.command}`)),
       ].filter(Boolean);
 
       return helperEntries.length > 0
@@ -809,6 +818,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
 
         return entry.command !== ingestion.sampleTextCommand;
       })
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
+    ...((ingestion.sampleInlineCommands ?? [])
+      .filter((entry) => entry?.command && entry?.type)
       .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`

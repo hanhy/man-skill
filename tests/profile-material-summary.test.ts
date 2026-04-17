@@ -444,6 +444,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           command: 'node src/index.js import screenshot --person harry-han --file samples/harry-chat.png --refresh-foundation',
         },
       ],
+      sampleInlineCommands: [],
       staleRefreshCommand: 'node src/index.js update foundation --stale',
       profileCommands: [
         {
@@ -1134,6 +1135,48 @@ test('buildSummary uses matching sample screenshot imports in ingestion profile 
   assert.equal(metadataOnlyCommand?.importMaterialCommand, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
 });
 
+test('buildSummary uses matching sample talk imports in ingestion profile commands when available', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'talk',
+          text: 'Ship the first slice from the sample manifest.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
+
+  assert.deepEqual(summary.ingestion.sampleInlineCommands, [
+    {
+      type: 'talk',
+      text: 'Ship the first slice from the sample manifest.',
+      personId: 'metadata-only',
+      command: "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation",
+    },
+  ]);
+  assert.equal(metadataOnlyCommand?.importCommands?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
+  assert.equal(metadataOnlyCommand?.helperCommands?.directImports?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
+  assert.equal(metadataOnlyCommand?.importMaterialCommand, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
+  assert.match(summary.promptPreview, /sample talk: metadata-only -> node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
+});
+
 test('buildSummary prefers a profile-local starter manifest once intake scaffolding is ready', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1241,6 +1284,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleTextPersonId: null,
     sampleTextCommand: null,
     sampleFileCommands: [],
+    sampleInlineCommands: [],
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',

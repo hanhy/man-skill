@@ -32,8 +32,17 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
   const sampleFileCommands = Array.isArray(options.sampleFileCommands)
     ? options.sampleFileCommands.filter((entry) => entry && typeof entry === 'object')
     : [];
+  const sampleInlineCommands = Array.isArray(options.sampleInlineCommands)
+    ? options.sampleInlineCommands.filter((entry) => entry && typeof entry === 'object')
+    : [];
   const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
   const matchingSampleFileCommands = sampleFileCommands.filter((entry) =>
+    entry.personId === normalizedProfileId
+    && typeof entry.type === 'string'
+    && typeof entry.command === 'string'
+    && entry.command.trim().length > 0,
+  );
+  const matchingSampleInlineCommands = sampleInlineCommands.filter((entry) =>
     entry.personId === normalizedProfileId
     && typeof entry.type === 'string'
     && typeof entry.command === 'string'
@@ -46,14 +55,21 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
 
     return commands;
   }, {});
+  matchingSampleInlineCommands.forEach((entry) => {
+    if (!runnableSampleCommandByType[entry.type]) {
+      runnableSampleCommandByType[entry.type] = entry.command;
+    }
+  });
 
   return {
     text: runnableSampleCommandByType.text
       ?? (runnableTextPath
         ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
         : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`),
-    message: `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
-    talk: `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
+    message: runnableSampleCommandByType.message
+      ?? `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
+    talk: runnableSampleCommandByType.talk
+      ?? `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
     screenshot: runnableSampleCommandByType.screenshot
       ?? `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
   };
@@ -95,6 +111,30 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
       })
     : Object.entries(normalizedTextFilePersonIds)
       .map(([path, personId]) => ({ type: 'text', path, personId }));
+  const normalizedInlineEntries = Array.isArray(sampleManifest?.inlineEntries)
+    ? sampleManifest.inlineEntries
+      .filter((entry) => entry && typeof entry === 'object')
+      .map((entry) => ({
+        type: typeof entry.type === 'string' && (entry.type === 'message' || entry.type === 'talk') ? entry.type : null,
+        text: typeof entry.text === 'string' && entry.text.trim().length > 0 ? entry.text.trim() : null,
+        personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+      }))
+      .filter((entry) => entry.type && entry.text && entry.personId)
+      .sort((left, right) => {
+        const typeRank = (value) => (value === 'message' ? 0 : 1);
+        const typeDelta = typeRank(left.type) - typeRank(right.type);
+        if (typeDelta !== 0) {
+          return typeDelta;
+        }
+
+        const textDelta = left.text.localeCompare(right.text);
+        if (textDelta !== 0) {
+          return textDelta;
+        }
+
+        return left.personId.localeCompare(right.personId);
+      })
+    : [];
   const normalizedMaterialTypes = sampleManifest?.materialTypes && typeof sampleManifest.materialTypes === 'object'
     ? Object.fromEntries(
       Object.entries(sampleManifest.materialTypes)
@@ -122,6 +162,7 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
     starterLabel: starterTargets.length > 0 ? starterTargets.join(', ') : null,
     materialTypes: normalizedMaterialTypes,
     textFilePersonIds: normalizedTextFilePersonIds,
+    inlineEntries: normalizedInlineEntries,
     fileEntries: normalizedFileEntries,
     error: typeof sampleManifest?.error === 'string' && sampleManifest.error.trim().length > 0 ? sampleManifest.error : null,
   };
@@ -163,6 +204,26 @@ function buildSampleFileCommand(entry) {
     path: filePath,
     personId,
     command: `node src/index.js import ${type} --person ${personId} --file ${shellQuote(filePath)} --refresh-foundation`,
+  };
+}
+
+function buildSampleInlineCommand(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+
+  const type = entry.type === 'message' || entry.type === 'talk' ? entry.type : null;
+  const text = typeof entry.text === 'string' && entry.text.trim().length > 0 ? entry.text.trim() : null;
+  const personId = typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null;
+  if (!type || !text || !personId) {
+    return null;
+  }
+
+  return {
+    type,
+    text,
+    personId,
+    command: `node src/index.js import ${type} --person ${personId} --text ${shellQuote(text)} --refresh-foundation`,
   };
 }
 
@@ -254,6 +315,12 @@ function buildProfileCommands(profile, options = {}) {
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
+  const runnableMessageImportCommand = typeof importCommands.message === 'string' && !importCommands.message.includes('<')
+    ? importCommands.message
+    : null;
+  const runnableTalkImportCommand = typeof importCommands.talk === 'string' && !importCommands.talk.includes('<')
+    ? importCommands.talk
+    : null;
   const runnableScreenshotImportCommand = typeof importCommands.screenshot === 'string' && !importCommands.screenshot.includes('<')
     ? importCommands.screenshot
     : null;
@@ -267,7 +334,10 @@ function buildProfileCommands(profile, options = {}) {
   const defaultImportCommand = runnableTextImportCommand
     ?? runnableScreenshotImportCommand
     ?? intakeImportManifestCommand
+    ?? runnableMessageImportCommand
+    ?? runnableTalkImportCommand
     ?? importCommands.message
+    ?? importCommands.talk
     ?? importCommands.text;
   const updateProfileCommand = buildUpdateProfileCommand(profile);
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
@@ -331,6 +401,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const sampleFileCommands = (sampleManifest.fileEntries ?? [])
     .map((entry) => buildSampleFileCommand(entry))
     .filter(Boolean);
+  const sampleInlineCommands = (sampleManifest.inlineEntries ?? [])
+    .map((entry) => buildSampleInlineCommand(entry))
+    .filter(Boolean);
   const metadataProfileCommands = metadataOnlyProfiles
     .slice()
     .sort((left, right) => {
@@ -354,6 +427,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     })
     .map((profile) => buildProfileCommands(profile, {
       sampleFileCommands,
+      sampleInlineCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
@@ -384,6 +458,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const allProfileCommands = sortedProfiles
     .map((profile) => buildProfileCommands(profile, {
       sampleFileCommands,
+      sampleInlineCommands,
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
@@ -458,6 +533,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleTextPersonId: sampleText.personId,
     sampleTextCommand: sampleText.command,
     sampleFileCommands,
+    sampleInlineCommands,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     helperCommands,
     profileCommands: orderedProfileCommands,
