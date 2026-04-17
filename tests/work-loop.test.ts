@@ -170,6 +170,81 @@ test('buildSummary work loop scaffolds intake before suggesting imports for meta
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports, profiles\/metadata-only\/imports\/README\.md, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
+test('buildSummary work loop completes partially scaffolded intake landing zones before suggesting imports', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'README.md'),
+    '# Partial intake scaffold\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'complete the intake landing zone for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /next action: complete the intake landing zone for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+});
+
+test('buildSummary work loop prioritizes partially scaffolded intake profiles over fully missing ones', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'alpha-missing'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'alpha-missing', 'profile.json'),
+    JSON.stringify({
+      personId: 'alpha-missing',
+      displayName: 'Alpha Missing',
+      summary: 'No intake scaffold yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'zeta-partial', 'profile.json'),
+    JSON.stringify({
+      personId: 'zeta-partial',
+      displayName: 'Zeta Partial',
+      summary: 'Needs the intake scaffold completed.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'README.md'),
+    '# Partial intake scaffold\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'complete the intake landing zone for Zeta Partial (zeta-partial)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'zeta-partial' --display-name 'Zeta Partial' --summary 'Needs the intake scaffold completed.'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/zeta-partial/imports/materials.template.json',
+    'profiles/zeta-partial/imports/sample.txt',
+  ]);
+});
+
 test('buildSummary work loop targets metadata-only profiles with their direct import command when one is runnable', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -145,7 +145,9 @@ function buildProfileCommands(profile, options = {}) {
     updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
     updateIntakeCommand: buildUpdateIntakeCommand(profile),
     intakeReady: intake?.ready ?? false,
+    intakeCompletion: intake?.completion ?? 'missing',
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
+    intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
     importCommands,
     importMaterialCommand: imported
@@ -159,13 +161,38 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
   const metadataOnlyProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) <= 0);
   const metadataOnlyProfileCount = metadataOnlyProfiles.length;
+  const metadataOnlyProfilesWithReadyIntake = metadataOnlyProfiles.filter((profile) => profile?.intake?.ready);
+  const metadataOnlyProfilesWithPartialIntake = metadataOnlyProfiles.filter((profile) => profile?.intake?.completion === 'partial');
+  const metadataOnlyProfilesWithMissingIntake = metadataOnlyProfiles.filter((profile) => (profile?.intake?.completion ?? 'missing') === 'missing');
+  const intakeReadyProfileCount = metadataOnlyProfilesWithReadyIntake.length;
+  const intakePartialProfileCount = metadataOnlyProfilesWithPartialIntake.length;
+  const intakeMissingProfileCount = metadataOnlyProfilesWithMissingIntake.length;
+  const intakeScaffoldProfileCount = metadataOnlyProfileCount - intakeReadyProfileCount;
   const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
   const sampleText = normalizeSampleTextSummary(options?.sampleTextPath, sampleManifest);
   const metadataProfileCommands = metadataOnlyProfiles
     .slice()
-    .sort((left, right) => buildProfileLabel(left).localeCompare(buildProfileLabel(right)))
+    .sort((left, right) => {
+      const intakeRank = (profile) => {
+        const completion = profile?.intake?.completion;
+        if (completion === 'partial') {
+          return 0;
+        }
+        if (profile?.intake?.ready) {
+          return 2;
+        }
+        return 1;
+      };
+
+      const rankDelta = intakeRank(left) - intakeRank(right);
+      if (rankDelta !== 0) {
+        return rankDelta;
+      }
+
+      return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
+    })
     .map((profile) => buildProfileCommands(profile, {
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
@@ -214,6 +241,10 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     readyProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    intakeReadyProfileCount,
+    intakePartialProfileCount,
+    intakeMissingProfileCount,
+    intakeScaffoldProfileCount,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',

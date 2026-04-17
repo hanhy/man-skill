@@ -167,17 +167,32 @@ function loadProfileIntake(rootDir, profileId) {
   const intakeReadmePresent = fs.existsSync(paths.intakeReadmePath);
   const starterManifestPresent = fs.existsSync(paths.starterManifestPath);
   const sampleTextPresent = fs.existsSync(paths.sampleTextPath);
+  const relativePaths = {
+    importsDir: path.relative(rootDir, paths.importsDir),
+    intakeReadmePath: path.relative(rootDir, paths.intakeReadmePath),
+    starterManifestPath: path.relative(rootDir, paths.starterManifestPath),
+    sampleTextPath: path.relative(rootDir, paths.sampleTextPath),
+  };
+  const ready = importsDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent;
+  const completion = ready
+    ? 'ready'
+    : (importsDirPresent || intakeReadmePresent || starterManifestPresent || sampleTextPresent ? 'partial' : 'missing');
+  const missingPaths = [
+    importsDirPresent ? null : relativePaths.importsDir,
+    intakeReadmePresent ? null : relativePaths.intakeReadmePath,
+    starterManifestPresent ? null : relativePaths.starterManifestPath,
+    sampleTextPresent ? null : relativePaths.sampleTextPath,
+  ].filter(Boolean);
 
   return {
-    ready: importsDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent,
+    ready,
+    completion,
     importsDirPresent,
     intakeReadmePresent,
     starterManifestPresent,
     sampleTextPresent,
-    importsDir: path.relative(rootDir, paths.importsDir),
-    intakeReadmePath: intakeReadmePresent ? path.relative(rootDir, paths.intakeReadmePath) : path.relative(rootDir, paths.intakeReadmePath),
-    starterManifestPath: starterManifestPresent ? path.relative(rootDir, paths.starterManifestPath) : path.relative(rootDir, paths.starterManifestPath),
-    sampleTextPath: sampleTextPresent ? path.relative(rootDir, paths.sampleTextPath) : path.relative(rootDir, paths.sampleTextPath),
+    missingPaths,
+    ...relativePaths,
   };
 }
 

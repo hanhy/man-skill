@@ -44,10 +44,17 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.match(profile.latestMaterialId, /^\d{4}-\d{2}-\d{2}T.+-(message|screenshot|text)$/);
   assert.deepEqual(profile.intake, {
     ready: false,
+    completion: 'missing',
     importsDirPresent: false,
     intakeReadmePresent: false,
     starterManifestPresent: false,
     sampleTextPresent: false,
+    missingPaths: [
+      'profiles/harry-han/imports',
+      'profiles/harry-han/imports/README.md',
+      'profiles/harry-han/imports/materials.template.json',
+      'profiles/harry-han/imports/sample.txt',
+    ],
     importsDir: 'profiles/harry-han/imports',
     intakeReadmePath: 'profiles/harry-han/imports/README.md',
     starterManifestPath: 'profiles/harry-han/imports/materials.template.json',
@@ -825,6 +832,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.readyProfileCount, 1);
   assert.equal(summary.ingestion.refreshProfileCount, 1);
   assert.equal(summary.ingestion.incompleteProfileCount, 1);
+  assert.equal(summary.ingestion.intakeReadyProfileCount, 0);
+  assert.equal(summary.ingestion.intakePartialProfileCount, 0);
+  assert.equal(summary.ingestion.intakeMissingProfileCount, 1);
+  assert.equal(summary.ingestion.intakeScaffoldProfileCount, 1);
   assert.deepEqual(summary.ingestion.supportedImportTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.ingestion.bootstrapProfileCommand, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"');
   assert.equal(summary.ingestion.sampleImportCommand, 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation');
@@ -886,7 +897,14 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateProfileCommand: 'node src/index.js update profile --person metadata-only',
     updateIntakeCommand: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     intakeReady: false,
+    intakeCompletion: 'missing',
     intakePaths: [
+      'profiles/metadata-only/imports',
+      'profiles/metadata-only/imports/README.md',
+      'profiles/metadata-only/imports/materials.template.json',
+      'profiles/metadata-only/imports/sample.txt',
+    ],
+    intakeMissingPaths: [
       'profiles/metadata-only/imports',
       'profiles/metadata-only/imports/README.md',
       'profiles/metadata-only/imports/materials.template.json',
@@ -906,6 +924,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --stale/);
@@ -929,6 +948,10 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     readyProfileCount: 0,
     refreshProfileCount: 0,
     incompleteProfileCount: 0,
+    intakeReadyProfileCount: 0,
+    intakePartialProfileCount: 0,
+    intakeMissingProfileCount: 0,
+    intakeScaffoldProfileCount: 0,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
@@ -957,6 +980,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
 
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 0 total \(0 imported, 0 metadata-only\)/);
+  assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);

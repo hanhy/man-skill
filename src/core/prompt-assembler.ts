@@ -291,7 +291,9 @@ type IngestionProfileCommand = {
   updateProfileCommand?: string | null;
   updateIntakeCommand?: string | null;
   intakeReady?: boolean;
+  intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakePaths?: string[];
+  intakeMissingPaths?: string[];
   refreshFoundationCommand?: string | null;
   importCommands?: {
     text?: string | null;
@@ -309,6 +311,10 @@ type IngestionSummary = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  intakeReadyProfileCount?: number;
+  intakePartialProfileCount?: number;
+  intakeMissingProfileCount?: number;
+  intakeScaffoldProfileCount?: number;
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
@@ -682,6 +688,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
+    `- intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
@@ -711,7 +718,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
-      const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
+      const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';

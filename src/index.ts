@@ -488,13 +488,20 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       : null;
 
     if (metadataOnlyProfileNeedingScaffold) {
+      const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
+      const isPartialIntake = intakeCompletion === 'partial';
       nextAction = metadataOnlyProfileNeedingScaffold?.label
-        ? `scaffold the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`
-        : 'scaffold intake landing zones for metadata-only profiles';
+        ? `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`
+        : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
       command = metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
-      paths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
-        ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+      const missingIntakePaths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakeMissingPaths)
+        ? metadataOnlyProfileNeedingScaffold.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
         : [];
+      paths = missingIntakePaths.length > 0
+        ? missingIntakePaths
+        : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
+          ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : []);
     } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`
