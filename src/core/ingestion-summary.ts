@@ -470,6 +470,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     })
     .slice(0, 2);
 
+  const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
+  const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
   const helperCommands = {
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     scaffoldAll: 'node src/index.js update intake --all',
@@ -486,6 +488,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
       : null,
     sampleText: sampleText.command,
+    sampleMessage: findSampleInlineCommand('message'),
+    sampleTalk: findSampleInlineCommand('talk'),
+    sampleScreenshot: findSampleFileCommand('screenshot'),
   };
 
   return {

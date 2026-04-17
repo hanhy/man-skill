@@ -976,6 +976,9 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     sampleStarter: 'node src/index.js import sample',
     sampleManifest: "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation",
     sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
+    sampleMessage: "node src/index.js import message --person harry-han --text 'Ship the thin slice first.' --refresh-foundation",
+    sampleTalk: null,
+    sampleScreenshot: null,
   });
   assert.deepEqual(allProfileCommandLabels, [
     'Jane Doe (jane-doe)',
@@ -1172,6 +1175,9 @@ test('buildSummary uses matching sample talk imports in ingestion profile comman
       command: "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation",
     },
   ]);
+  assert.equal(summary.ingestion.helperCommands?.sampleMessage ?? null, null);
+  assert.equal(summary.ingestion.helperCommands?.sampleTalk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
+  assert.equal(summary.ingestion.helperCommands?.sampleScreenshot ?? null, null);
   assert.equal(metadataOnlyCommand?.importCommands?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
   assert.equal(metadataOnlyCommand?.helperCommands?.directImports?.talk, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
   assert.equal(metadataOnlyCommand?.importMaterialCommand, "node src/index.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest.' --refresh-foundation");
@@ -1301,6 +1307,9 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       sampleStarter: null,
       sampleManifest: null,
       sampleText: null,
+      sampleMessage: null,
+      sampleTalk: null,
+      sampleScreenshot: null,
     },
     profileCommands: [],
     allProfileCommands: [],
@@ -1464,6 +1473,10 @@ test('buildSummary surfaces additional file-backed sample commands from the sele
       command: "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation",
     },
   ]);
+  assert.equal(summary.ingestion.helperCommands?.sampleText, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
+  assert.equal(summary.ingestion.helperCommands?.sampleMessage ?? null, null);
+  assert.equal(summary.ingestion.helperCommands?.sampleTalk ?? null, null);
+  assert.equal(summary.ingestion.helperCommands?.sampleScreenshot, "node src/index.js import screenshot --person harry-han --file 'samples/harry-chat.png' --refresh-foundation");
   assert.match(summary.promptPreview, /helpers: .*sample-text node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /helpers: .*sample-screenshot node src\/index\.js import screenshot --person harry-han --file 'samples\/harry-chat\.png' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);

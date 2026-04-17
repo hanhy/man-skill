@@ -347,6 +347,9 @@ type IngestionHelperCommands = {
   sampleStarter?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
+  sampleMessage?: string | null;
+  sampleTalk?: string | null;
+  sampleScreenshot?: string | null;
   updateProfileAndRefresh?: string | null;
 };
 
