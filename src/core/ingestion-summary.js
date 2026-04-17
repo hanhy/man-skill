@@ -167,6 +167,10 @@ function buildProfileCommands(profile, options = {}) {
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
   const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
+  const updateProfileCommand = `node src/index.js update profile --person ${profile.id}`;
+  const updateIntakeCommand = buildUpdateIntakeCommand(profile);
+  const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
+  const importIntakeCommand = `node src/index.js import intake --person ${profile.id}`;
 
   return {
     personId: profile.id,
@@ -177,16 +181,24 @@ function buildProfileCommands(profile, options = {}) {
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
-    updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
-    updateIntakeCommand: buildUpdateIntakeCommand(profile),
+    updateProfileCommand,
+    updateIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
     intakeStatusSummary: summarizeIntakeStatus(intake),
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestCommand: imported ? null : intakeImportManifestCommand,
-    refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
+    refreshFoundationCommand,
     importCommands,
+    helperCommands: {
+      scaffold: updateIntakeCommand,
+      importIntake: importIntakeCommand,
+      importManifest: imported ? null : intakeImportManifestCommand,
+      updateProfile: updateProfileCommand,
+      refreshFoundation: refreshFoundationCommand,
+      directImports: importCommands,
+    },
     importMaterialCommand: imported
       ? null
       : defaultImportCommand,

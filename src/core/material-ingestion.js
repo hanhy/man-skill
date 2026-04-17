@@ -335,19 +335,32 @@ function buildProfileLabel({ personId, displayName }) {
 function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCount, materialTypes }) {
   const personId = profileSummary?.id;
   const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
+  const summary = profileSummary?.profile?.summary ?? null;
+  const importCommand = buildManifestImportCommand(manifestPath);
+  const updateProfileCommand = `node src/index.js update profile --person ${personId}`;
+  const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
+  const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
+  const importIntakeCommand = buildImportIntakeCommand(personId);
 
   return {
     personId,
     displayName,
     label: buildProfileLabel({ personId, displayName }),
-    summary: profileSummary?.profile?.summary ?? null,
+    summary,
     materialCount,
     materialTypes,
     needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
     missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
-    importCommand: buildManifestImportCommand(manifestPath),
-    updateProfileCommand: `node src/index.js update profile --person ${personId}`,
-    refreshFoundationCommand: `node src/index.js update foundation --person ${personId}`,
+    importCommand,
+    updateProfileCommand,
+    refreshFoundationCommand,
+    helperCommands: {
+      scaffold: scaffoldCommand,
+      importIntake: importIntakeCommand,
+      importManifest: importCommand,
+      updateProfile: updateProfileCommand,
+      refreshFoundation: refreshFoundationCommand,
+    },
   };
 }
 
@@ -458,6 +471,14 @@ export class MaterialIngestion {
       updateIntakeCommand,
       importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+      helperCommands: {
+        scaffold: updateIntakeCommand,
+        importIntake: importIntakeCommand,
+        importManifest: importManifestCommand,
+        updateProfile: `node src/index.js update profile --person ${profileUpdate.personId}`,
+        refreshFoundation: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+        directImports: importCommands,
+      },
     };
   }
 

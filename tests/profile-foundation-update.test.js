@@ -1169,6 +1169,13 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
       importCommand: 'node src/index.js import manifest --file materials.json',
       updateProfileCommand: 'node src/index.js update profile --person harry-han',
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      helperCommands: {
+        scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        importIntake: 'node src/index.js import intake --person harry-han',
+        importManifest: 'node src/index.js import manifest --file materials.json',
+        updateProfile: 'node src/index.js update profile --person harry-han',
+        refreshFoundation: 'node src/index.js update foundation --person harry-han',
+      },
     },
   ]);
 

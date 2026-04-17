@@ -886,6 +886,19 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     talk: 'node src/index.js import talk --person jane-doe --text <snippet> --refresh-foundation',
     screenshot: 'node src/index.js import screenshot --person jane-doe --file <image.png> --refresh-foundation',
   });
+  assert.deepEqual(janeCommand.helperCommands, {
+    scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
+    importIntake: 'node src/index.js import intake --person jane-doe',
+    importManifest: null,
+    updateProfile: 'node src/index.js update profile --person jane-doe',
+    refreshFoundation: 'node src/index.js update foundation --person jane-doe',
+    directImports: {
+      text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
+      message: 'node src/index.js import message --person jane-doe --text <message> --refresh-foundation',
+      talk: 'node src/index.js import talk --person jane-doe --text <snippet> --refresh-foundation',
+      screenshot: 'node src/index.js import screenshot --person jane-doe --file <image.png> --refresh-foundation',
+    },
+  });
 
   assert.deepEqual(metadataOnlyCommand, {
     personId: 'metadata-only',
@@ -920,6 +933,19 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
       message: 'node src/index.js import message --person metadata-only --text <message> --refresh-foundation',
       talk: 'node src/index.js import talk --person metadata-only --text <snippet> --refresh-foundation',
       screenshot: 'node src/index.js import screenshot --person metadata-only --file <image.png> --refresh-foundation',
+    },
+    helperCommands: {
+      scaffold: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
+      importIntake: 'node src/index.js import intake --person metadata-only',
+      importManifest: null,
+      updateProfile: 'node src/index.js update profile --person metadata-only',
+      refreshFoundation: null,
+      directImports: {
+        text: 'node src/index.js import text --person metadata-only --file <sample.txt> --refresh-foundation',
+        message: 'node src/index.js import message --person metadata-only --text <message> --refresh-foundation',
+        talk: 'node src/index.js import talk --person metadata-only --text <snippet> --refresh-foundation',
+        screenshot: 'node src/index.js import screenshot --person metadata-only --file <image.png> --refresh-foundation',
+      },
     },
     importMaterialCommand: 'node src/index.js import message --person metadata-only --text <message> --refresh-foundation',
   });
