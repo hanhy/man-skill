@@ -6,12 +6,99 @@ import path from 'node:path';
 
 import { FileSystemLoader } from '../src/core/fs-loader.js';
 import { buildSummary, runUpdateCommand } from '../src/index.js';
+import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
+import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { PromptAssembler } from '../src/core/prompt-assembler.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
 }
+
+test('JS ingestion summary shim stays aligned with the TypeScript implementation', () => {
+  const profiles = [
+    {
+      id: 'alpha-ready',
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: 'Alpha Ready',
+        summary: 'Starter intake is ready to import.',
+      },
+      intake: {
+        ready: true,
+        completion: 'ready',
+        importsDir: 'profiles/alpha-ready/imports',
+        intakeReadmePath: 'profiles/alpha-ready/imports/README.md',
+        starterManifestPath: 'profiles/alpha-ready/imports/materials.template.json',
+        sampleTextPath: 'profiles/alpha-ready/imports/sample.txt',
+        missingPaths: [],
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+    {
+      id: 'beta-imported',
+      materialCount: 2,
+      materialTypes: {
+        message: 1,
+        talk: 1,
+      },
+      latestMaterialAt: '2026-04-17T00:00:00.000Z',
+      profile: {
+        displayName: 'Beta Imported',
+        summary: 'Imported materials waiting on a refresh.',
+      },
+      intake: {
+        ready: false,
+        completion: 'missing',
+        importsDir: 'profiles/beta-imported/imports',
+        intakeReadmePath: 'profiles/beta-imported/imports/README.md',
+        starterManifestPath: 'profiles/beta-imported/imports/materials.template.json',
+        sampleTextPath: 'profiles/beta-imported/imports/sample.txt',
+        missingPaths: [
+          'profiles/beta-imported/imports',
+          'profiles/beta-imported/imports/README.md',
+          'profiles/beta-imported/imports/materials.template.json',
+          'profiles/beta-imported/imports/sample.txt',
+        ],
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills'],
+      },
+    },
+  ];
+  const options = {
+    sampleManifestPath: 'samples/starter.json',
+    sampleManifest: {
+      status: 'loaded',
+      entryCount: 1,
+      profileIds: ['alpha-ready'],
+      profileLabels: ['Alpha Ready (alpha-ready)'],
+      filePaths: ['samples/alpha-ready.txt'],
+      materialTypes: { text: 1 },
+      textFilePersonIds: {
+        'samples/alpha-ready.txt': 'alpha-ready',
+      },
+      fileEntries: [
+        {
+          type: 'text',
+          filePath: 'samples/alpha-ready.txt',
+          personId: 'alpha-ready',
+        },
+      ],
+      error: null,
+    },
+    sampleTextPath: 'samples/alpha-ready.txt',
+  };
+
+  assert.deepEqual(buildJsIngestionSummary(profiles, options), buildTsIngestionSummary(profiles, options));
+});
 
 test('loadProfilesIndex summarizes material types and latest material timestamp per profile', () => {
   const rootDir = makeTempRepo();
