@@ -637,13 +637,112 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the invalid intake manifest for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
-  assert.match(summary.promptPreview, /next action: fix the invalid intake manifest for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
+});
+
+test('update intake backs up invalid starter manifests before rebuilding the scaffold', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const invalidManifestPath = path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json');
+  fs.writeFileSync(invalidManifestPath, '{ invalid json\n');
+
+  const result = runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  assert.match(result.invalidStarterManifestBackupPath, /^profiles\/metadata-only\/imports\/materials\.template\.json\.invalid-.*\.bak$/);
+  const backupPath = path.join(rootDir, result.invalidStarterManifestBackupPath);
+  assert.equal(fs.readFileSync(backupPath, 'utf8'), '{ invalid json\n');
+  assert.deepEqual(JSON.parse(fs.readFileSync(invalidManifestPath, 'utf8')), {
+    personId: 'metadata-only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+    entries: [],
+    entryTemplates: {
+      message: {
+        type: 'message',
+        text: '<paste a representative short message>',
+        notes: 'chat sample',
+      },
+      screenshot: {
+        type: 'screenshot',
+        file: '<relative-path-to-image.png>',
+        notes: 'chat screenshot',
+      },
+      talk: {
+        type: 'talk',
+        text: '<paste a transcript snippet>',
+        notes: 'voice memo transcript',
+      },
+      text: {
+        type: 'text',
+        file: 'sample.txt',
+        notes: 'long-form writing sample',
+      },
+    },
+  });
+});
+
+test('update intake does not create invalid-json backups for parseable placeholder manifests', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const manifestPath = path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json');
+  fs.writeFileSync(manifestPath, 'null\n');
+
+  const result = runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  assert.equal(result.invalidStarterManifestBackupPath, null);
+  const intakeDirEntries = fs.readdirSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports')).sort();
+  assert.equal(intakeDirEntries.some((entry) => entry.includes('.invalid-')), false);
 });
 
 test('buildSummary work loop includes manifest-backed file assets when a ready intake manifest is the next import step', () => {

@@ -19,6 +19,30 @@ function readJsonIfExists(filePath) {
   }
 }
 
+function readJsonFileState(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return {
+      exists: false,
+      parsed: null,
+      parseError: null,
+    };
+  }
+
+  try {
+    return {
+      exists: true,
+      parsed: JSON.parse(fs.readFileSync(filePath, 'utf8')),
+      parseError: null,
+    };
+  } catch (error) {
+    return {
+      exists: true,
+      parsed: null,
+      parseError: error instanceof Error ? error.message : 'Unable to parse JSON file',
+    };
+  }
+}
+
 function slugifyPersonId(value) {
   return value
     .trim()
@@ -217,6 +241,16 @@ function buildIntakePaths(personId) {
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
   };
+}
+
+function backupInvalidJsonFile(filePath) {
+  if (!isNonEmptyString(filePath) || !fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const backupPath = `${filePath}.invalid-${timestampId()}.bak`;
+  fs.copyFileSync(filePath, backupPath);
+  return backupPath;
 }
 
 function buildStarterManifestDocument({
@@ -443,7 +477,14 @@ export class MaterialIngestion {
       sampleTextPath: relativeSampleTextPath,
     });
 
-    const existingTemplate = readJsonIfExists(this.resolve(intakePaths.starterManifestPath));
+    const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
+    const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
+    const existingTemplate = existingTemplateState.parsed && typeof existingTemplateState.parsed === 'object' && !Array.isArray(existingTemplateState.parsed)
+      ? existingTemplateState.parsed
+      : null;
+    const invalidStarterManifestBackupPath = existingTemplateState.parseError
+      ? backupInvalidJsonFile(starterManifestAbsolutePath)
+      : null;
     const starterManifest = buildStarterManifestDocument({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -452,7 +493,7 @@ export class MaterialIngestion {
       existingEntryTemplates: existingTemplate?.entryTemplates,
       sampleTextPath: path.basename(relativeSampleTextPath),
     });
-    fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));
+    fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
     if (!fs.existsSync(this.resolve(intakePaths.sampleTextPath))) {
       fs.writeFileSync(
@@ -504,6 +545,9 @@ export class MaterialIngestion {
       intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
+      invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'
+        ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
+        : null,
       importManifestCommand,
       importIntakeCommand,
       updateIntakeCommand,

@@ -814,12 +814,14 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
       const [firstInvalidReadyIntakeProfile] = invalidReadyIntakeProfiles;
       nextAction = invalidReadyIntakeProfiles.length > 1
         ? (firstInvalidReadyIntakeProfile?.profile?.label
-          ? `fix invalid profile-local intake manifests — starting with ${firstInvalidReadyIntakeProfile.profile.label}`
-          : 'fix invalid profile-local intake manifests')
+          ? `repair invalid profile-local intake manifests — starting with ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'repair invalid profile-local intake manifests')
         : (firstInvalidReadyIntakeProfile?.profile?.label
-          ? `fix the invalid intake manifest for ${firstInvalidReadyIntakeProfile.profile.label}`
-          : 'fix the invalid profile-local intake manifest');
-      command = null;
+          ? `repair the invalid intake manifest for ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'repair the invalid profile-local intake manifest');
+      command = typeof firstInvalidReadyIntakeProfile?.profile?.updateIntakeCommand === 'string'
+        ? firstInvalidReadyIntakeProfile.profile.updateIntakeCommand
+        : null;
       paths = Array.from(new Set(invalidReadyIntakeProfiles.map((entry: any) => entry.starterManifestPath)));
     } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
