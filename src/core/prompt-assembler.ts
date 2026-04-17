@@ -795,6 +795,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     return null;
   }
 
+  const visibleProfileCommands = (ingestion.profileCommands ?? []).slice(0, 2);
+  const remainingProfileCommands = (ingestion.profileCommands ?? []).slice(2);
+  const remainingProfileSummary = remainingProfileCommands.length > 0
+    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => profile?.label ?? profile?.personId ?? 'unknown-profile').join(', ')}`
+    : null;
+
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
@@ -876,7 +882,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
-    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) => {
+    ...visibleProfileCommands.map((profile) => {
       const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
@@ -897,6 +903,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
       return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
+    remainingProfileSummary,
   ].filter(Boolean).join('\n');
 }
 

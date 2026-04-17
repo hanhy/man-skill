@@ -526,6 +526,30 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           },
           importMaterialCommand: 'node src/index.js import message --person metadata-only --text <message> --refresh-foundation',
         },
+        {
+          personId: 'harry-han',
+          label: 'Harry Han (harry-han)',
+          materialCount: 0,
+          materialTypes: {},
+          latestMaterialAt: null,
+          refreshFoundationCommand: null,
+          updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Ready intake bundle for screenshots and notes.'",
+          updateIntakeCommand: null,
+          intakeReady: true,
+          importIntakeCommand: "node src/index.js import intake --person 'harry-han'",
+          intakePaths: [
+            'profiles/harry-han/imports/README.md',
+            'profiles/harry-han/imports/materials.template.json',
+            'profiles/harry-han/imports/sample.txt',
+          ],
+          importCommands: {
+            text: 'node src/index.js import text --person harry-han --file <sample.txt> --refresh-foundation',
+            message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
+            talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
+            screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+          },
+          importMaterialCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+        },
       ],
     },
     channels: {
@@ -580,6 +604,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file samples\/harry-chat\.png --refresh-foundation/);
   assert.match(prompt, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest 2026-04-16T16:00:00\.000Z \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(prompt, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(prompt, /\+1 more profile: Harry Han \(harry-han\)/);
   assert.match(prompt, /Delivery foundation:/);
   assert.match(prompt, /channels: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Slack via events-api\/web-api \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
