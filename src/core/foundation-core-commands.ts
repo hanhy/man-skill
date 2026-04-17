@@ -144,7 +144,7 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   }
 
   if (area === 'memory' && paths.length === 1 && paths[0] === 'memory/README.md') {
-    return `mkdir -p memory && printf %s ${shellSingleQuote(MEMORY_README_TEMPLATE)} > ${shellSingleQuote('memory/README.md')}`;
+    return `mkdir -p ${shellSingleQuote('memory')} && printf %s ${shellSingleQuote(MEMORY_README_TEMPLATE)} > ${shellSingleQuote('memory/README.md')}`;
   }
 
   return null;
