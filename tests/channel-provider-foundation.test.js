@@ -546,8 +546,10 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned\], Feishu \[planned\], Discord \[candidate\]/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
+  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned\], Minimax \[planned\], GLM \[planned\], Qwen \[planned\], DeepSeek \[candidate\]/);
 });
 
 test('buildSummary falls back to default delivery metadata when manifests are malformed', () => {

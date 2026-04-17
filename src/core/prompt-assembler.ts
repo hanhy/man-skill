@@ -781,6 +781,16 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
+  const visibleChannelRecords = channelRecords.slice(0, 2);
+  const remainingChannelRecords = channelRecords.slice(2);
+  const remainingChannelRecordsSummary = remainingChannelRecords.length > 0
+    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => `${channel.name ?? channel.id ?? 'unknown-channel'} [${channel.status ?? 'unknown'}]`).join(', ')}`
+    : null;
+  const visibleProviderRecords = providerRecords.slice(0, 2);
+  const remainingProviderRecords = providerRecords.slice(2);
+  const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
+    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
+    : null;
   const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
   const remainingChannelQueue = enrichedChannelQueue.slice(1);
   const remainingChannelQueueSummary = remainingChannelQueue.length > 0
@@ -852,9 +862,10 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
-    ...channelRecords.slice(0, 2).map((channel) =>
+    ...visibleChannelRecords.map((channel) =>
       `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
+    remainingChannelRecordsSummary,
     channelQueueSummary
       ? `- channel queue: ${channelQueueSummary}`
       : null,
@@ -873,10 +884,11 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     providerRecords.length > 0
       ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
       : null,
-    ...providerRecords.slice(0, 2).map((provider) => {
+    ...visibleProviderRecords.map((provider) => {
       const modalities = (provider.modalities ?? []).join(', ');
       return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
+    remainingProviderRecordsSummary,
     providerQueueSummary
       ? `- provider queue: ${providerQueueSummary}`
       : null,
