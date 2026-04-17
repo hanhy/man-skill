@@ -793,6 +793,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   const summary = buildSummary(rootDir);
   const janeCommand = summary.ingestion.profileCommands[0];
   const metadataOnlyCommand = summary.ingestion.profileCommands[1];
+  const allProfileCommandLabels = summary.ingestion.allProfileCommands.map((profile: { label: string }) => profile.label);
+  const readyProfileCommand = summary.ingestion.allProfileCommands.find((profile: { personId: string }) => profile.personId === 'harry-han');
   const metadataOnlyProfileCommand = summary.ingestion.metadataProfileCommands[0];
 
   assert.equal(summary.ingestion.profileCount, 3);
@@ -822,6 +824,14 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleTextPersonId, 'harry-han');
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
+  assert.deepEqual(allProfileCommandLabels, [
+    'Jane Doe (jane-doe)',
+    'Metadata Only (metadata-only)',
+    'Harry Han (harry-han)',
+  ]);
+  assert.equal(readyProfileCommand?.materialCount, 1);
+  assert.equal(readyProfileCommand?.needsRefresh, false);
+  assert.equal(readyProfileCommand?.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
 
   assert.deepEqual(janeCommand.materialTypes, { talk: 1 });
   assert.equal(janeCommand.personId, 'jane-doe');
@@ -911,6 +921,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleTextCommand: null,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: [],
+    allProfileCommands: [],
     metadataProfileCommands: [],
   });
 

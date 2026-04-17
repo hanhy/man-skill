@@ -143,7 +143,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       sampleTextPersonId: sampleText.personId,
     }))
     .filter(Boolean);
-  const orderedProfileCommands = safeProfiles
+  const sortedProfiles = safeProfiles
     .slice()
     .sort((left, right) => {
       const leftImported = Number((left?.materialCount ?? 0) > 0);
@@ -165,16 +165,18 @@ export function buildIngestionSummary(profiles = [], options = {}) {
       }
 
       return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
-    })
-    .filter((profile) => {
-      const imported = (profile?.materialCount ?? 0) > 0;
-      return !imported || Boolean(profile?.foundationDraftStatus?.needsRefresh) || !profile?.foundationDraftStatus?.complete;
-    })
+    });
+  const allProfileCommands = sortedProfiles
     .map((profile) => buildProfileCommands(profile, {
       sampleTextPath: sampleText.path,
       sampleTextPersonId: sampleText.personId,
     }))
-    .filter(Boolean)
+    .filter(Boolean);
+  const orderedProfileCommands = allProfileCommands
+    .filter((profile) => {
+      const imported = (profile?.materialCount ?? 0) > 0;
+      return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0;
+    })
     .slice(0, 2);
 
   return {
@@ -214,6 +216,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     sampleTextCommand: sampleText.command,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     profileCommands: orderedProfileCommands,
+    allProfileCommands,
     metadataProfileCommands,
   };
 }

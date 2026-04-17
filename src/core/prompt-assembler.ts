@@ -326,6 +326,7 @@ type IngestionSummary = {
   sampleTextCommand?: string | null;
   staleRefreshCommand?: string | null;
   profileCommands?: IngestionProfileCommand[];
+  allProfileCommands?: IngestionProfileCommand[];
   metadataProfileCommands?: IngestionProfileCommand[];
 } | null;
 
