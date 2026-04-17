@@ -21,6 +21,7 @@ function seedMinimalRepo(rootDir: string) {
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable memory organized by horizon.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Close with a concrete next step.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n');
@@ -155,6 +156,21 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     longTermPresent: true,
   });
 
+  assert.deepEqual(summary.foundation.core.memory, {
+    hasRootDocument: true,
+    rootPath: 'memory/README.md',
+    rootExcerpt: 'Keep durable memory organized by horizon.',
+    dailyCount: 1,
+    longTermCount: 1,
+    scratchCount: 0,
+    totalEntries: 2,
+    readyBucketCount: 2,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily', 'long-term'],
+    emptyBuckets: ['scratch'],
+    sampleEntries: ['daily/today.md', 'long-term/stable.md'],
+  });
+
   assert.deepEqual(summary.soul, {
     excerpt: 'Serve faithfully.',
     coreTruths: [],
@@ -191,4 +207,5 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.skills.discoveredCount, 1);
   assert.equal(summary.skills.customCount, 0);
   assert.deepEqual(summary.skills.statusCounts, { discovered: 1 });
+  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; empty buckets: scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Keep durable memory organized by horizon\./);
 });

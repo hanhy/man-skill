@@ -283,6 +283,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.deepEqual(summary.foundation.core.memory, {
     hasRootDocument: true,
     rootPath: 'memory/README.md',
+    rootExcerpt: 'Keep durable notes here.',
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 1,
@@ -344,7 +345,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /Core foundation:/);
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\./);
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
@@ -582,6 +583,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   assert.deepEqual(summary.foundation.core.memory, {
     hasRootDocument: true,
     rootPath: 'memory/README.md',
+    rootExcerpt: 'Keep durable notes here.',
     dailyCount: 1,
     longTermCount: 0,
     scratchCount: 0,
@@ -601,7 +603,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md; root: Keep durable notes here\./);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
 

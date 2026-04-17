@@ -347,6 +347,7 @@ function buildCoreFoundationMaintenance({
 export interface CoreMemoryFoundationSummary {
   hasRootDocument: boolean;
   rootPath: string;
+  rootExcerpt: string | null;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -479,6 +480,7 @@ export function buildCoreFoundationSummary({
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
     rootPath: 'memory/README.md',
+    rootExcerpt: extractExcerpt(memoryIndex?.root),
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,
