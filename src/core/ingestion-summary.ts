@@ -509,6 +509,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .filter((profile) => profile?.intakeReady === true)
         .map((profile) => profile?.importIntakeCommand),
     ),
+    updateProfileBundle: buildCommandBundle(
+      orderedProfileCommands
+        .map((profile) => profile?.updateProfileCommand),
+    ),
+    updateProfileAndRefreshBundle: buildCommandBundle(
+      orderedProfileCommands
+        .map((profile) => profile?.updateProfileAndRefreshCommand),
+    ),
     refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
     refreshFoundationBundle: buildCommandBundle(
