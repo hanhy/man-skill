@@ -157,7 +157,7 @@ function buildProfileDocument({ existingProfile = null, normalizedId, personId, 
 }
 
 function buildManifestImportCommand(manifestPath) {
-  return `node src/index.js import manifest --file ${manifestPath}`;
+  return `node src/index.js import manifest --file ${shellQuote(manifestPath)}`;
 }
 
 function shellQuote(value) {
