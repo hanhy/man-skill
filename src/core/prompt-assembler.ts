@@ -722,6 +722,16 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
+  const visibleChannelQueue = channelQueue.slice(0, 1);
+  const remainingChannelQueue = channelQueue.slice(1);
+  const remainingChannelQueueSummary = remainingChannelQueue.length > 0
+    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => channel.name ?? channel.id ?? 'unknown-channel').join(', ')}`
+    : null;
+  const visibleProviderQueue = providerQueue.slice(0, 1);
+  const remainingProviderQueue = providerQueue.slice(1);
+  const remainingProviderQueueSummary = remainingProviderQueue.length > 0
+    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
+    : null;
 
   return [
     channelManifestSummary,
@@ -747,9 +757,10 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     channelQueue.length > 0
       ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
       : null,
-    ...channelQueue.slice(0, 1).map((channel) =>
+    ...visibleChannelQueue.map((channel) =>
       `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`,
     ),
+    remainingChannelQueueSummary,
     providerManifestSummary,
     providerRecords.length > 0
       ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
@@ -761,9 +772,10 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     providerQueue.length > 0
       ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
       : null,
-    ...providerQueue.slice(0, 1).map((provider) =>
+    ...visibleProviderQueue.map((provider) =>
       `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`,
     ),
+    remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
 }
 
