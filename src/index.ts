@@ -485,6 +485,12 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       ? ingestionSummary.metadataProfileCommands
       : [];
     const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand);
+    const readyIntakeProfiles = metadataProfileCommands.filter((profile: any) =>
+      profile?.intakeReady === true
+      && profile?.importManifestCommand
+      && profile.importManifestCommand === profile.importMaterialCommand
+      && !profile.importManifestCommand.includes('<'),
+    );
     const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? null;
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
@@ -517,6 +523,14 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
           ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
           : []);
+    } else if (readyIntakeProfiles.length > 1 && typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0) {
+      nextAction = readyIntakeProfiles[0]?.label
+        ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
+        : 'import source materials for ready intake profiles';
+      command = ingestionSummary.intakeImportAllCommand;
+      paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
+        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+        : []);
     } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`
@@ -647,6 +661,11 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
     };
   };
 
+  const relativizeManifestImportBatchResult = (result: any) => ({
+    ...result,
+    results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
+  });
+
   if (subcommand === 'manifest') {
     const result = ingestion.importManifest({
       manifestFile: typeof options.file === 'string' ? options.file : undefined,
@@ -669,6 +688,19 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
     });
 
     return relativizeManifestImportResult(result);
+  }
+
+  if (subcommand === 'intake') {
+    if (options.all) {
+      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+    }
+
+    const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
+    if (!intakePersonId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
   }
 
   const personId = typeof options.person === 'string' ? options.person : undefined;
@@ -968,6 +1000,8 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js                                  Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
+    '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
@@ -994,6 +1028,10 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'import' && subcommand === 'sample') {
     return 'Usage: node src/index.js import sample';
+  }
+
+  if (command === 'import' && subcommand === 'intake') {
+    return 'Usage: node src/index.js import intake --person <person-id> | --all';
   }
 
   if (command === 'import' && subcommand === 'text') {

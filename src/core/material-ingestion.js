@@ -473,6 +473,41 @@ export class MaterialIngestion {
     };
   }
 
+  importProfileIntakeManifest({ personId }) {
+    const normalizedPersonId = slugifyPersonId(personId ?? '');
+    if (!normalizedPersonId) {
+      throw new Error('personId is required for intake import');
+    }
+
+    const profile = this.listMetadataOnlyProfiles()
+      .find((entry) => entry?.id === normalizedPersonId);
+    if (!profile) {
+      throw new Error(`No metadata-only profile found for intake import: ${personId}`);
+    }
+
+    if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
+      throw new Error(`Profile intake scaffold is not ready for import: ${normalizedPersonId}`);
+    }
+
+    return this.importManifest({
+      manifestFile: profile.intake.starterManifestPath,
+      refreshFoundation: true,
+    });
+  }
+
+  importAllProfileIntakeManifests() {
+    const profiles = this.listMetadataOnlyProfiles()
+      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+
+    return {
+      profileCount: profiles.length,
+      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
+      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
+      results,
+    };
+  }
+
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
     const { materialsDir } = this.ensureProfile(personId);
     const materialId = `${timestampId()}-${type}`;

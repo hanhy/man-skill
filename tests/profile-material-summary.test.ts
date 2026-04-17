@@ -836,6 +836,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.intakePartialProfileCount, 0);
   assert.equal(summary.ingestion.intakeMissingProfileCount, 1);
   assert.equal(summary.ingestion.intakeScaffoldProfileCount, 1);
+  assert.equal(summary.ingestion.intakeImportAllCommand, 'node src/index.js import intake --all');
   assert.deepEqual(summary.ingestion.supportedImportTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.ingestion.bootstrapProfileCommand, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"');
   assert.equal(summary.ingestion.sampleImportCommand, 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation');
@@ -957,6 +958,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
   const metadataOnlyCommand = summary.ingestion.metadataProfileCommands[0];
 
   assert.equal(summary.ingestion.intakeReadyProfileCount, 1);
+  assert.equal(summary.ingestion.intakeImportAllCommand, 'node src/index.js import intake --all');
   assert.equal(metadataOnlyCommand.personId, 'metadata-only');
   assert.equal(metadataOnlyCommand.intakeReady, true);
   assert.equal(metadataOnlyCommand.intakeCompletion, 'ready');
@@ -1017,6 +1019,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     intakeMissingProfileCount: 0,
     intakeScaffoldProfileCount: 0,
     intakeStaleProfileCount: 0,
+    intakeImportAllCommand: 'node src/index.js import intake --all',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     intakeAllCommand: 'node src/index.js update intake --all',

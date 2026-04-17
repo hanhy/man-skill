@@ -280,6 +280,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,
     intakeStaleProfileCount,
+    intakeImportAllCommand: 'node src/index.js import intake --all',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     intakeAllCommand: 'node src/index.js update intake --all',
