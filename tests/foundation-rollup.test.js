@@ -219,7 +219,7 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
   assert.doesNotMatch(summary.promptPreview, /Foundation rollup:/);
 });
 
-test('buildSummary exposes core foundation diagnostics for repo memory, skills, soul, and voice', () => {
+test('buildSummary keeps ready core foundation areas visible in the prompt preview', () => {
   const rootDir = makeTempRepo();
 
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -302,6 +302,118 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
+});
+
+test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in core foundation excerpts', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nKeep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 1,
+    documentedCount: 1,
+    undocumentedCount: 0,
+    sample: ['cron'],
+    samplePaths: ['skills/cron/SKILL.md'],
+    sampleExcerpts: ['cron: Keep scheduled follow-ups reliable.'],
+    undocumentedSample: [],
+    undocumentedPaths: [],
+  });
+  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
+  assert.doesNotMatch(summary.promptPreview, /cron: name: cron/);
+});
+
+test('buildSummary prefers multiline skill frontmatter descriptions over raw yaml markers in core foundation excerpts', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    [
+      '---',
+      'name: cron',
+      'description: >',
+      '  Keep scheduled follow-ups reliable',
+      '  across recurring operator loops.',
+      '---',
+      '',
+      '# Cron',
+      '',
+      'Use this skill when a schedule needs setup.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nKeep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, [
+    'cron: Keep scheduled follow-ups reliable across recurring operator loops.',
+  ]);
+  assert.match(summary.promptPreview, /cron: Keep scheduled follow-ups reliable across recurring operator loops\./);
+  assert.doesNotMatch(summary.promptPreview, /cron: >/);
+});
+
+test('buildSummary handles multiline skill frontmatter descriptions with indentation indicators', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    [
+      '---',
+      'name: cron',
+      'description: >2',
+      '    Keep scheduled follow-ups reliable',
+      '    across recurring operator loops.',
+      '---',
+      '',
+      '# Cron',
+      '',
+      'Use this skill when a schedule needs setup.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nKeep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, [
+    'cron: Keep scheduled follow-ups reliable across recurring operator loops.',
+  ]);
+  assert.doesNotMatch(summary.promptPreview, /cron: >2/);
 });
 
 test('buildSummary flags missing and thin core foundation areas in the prompt preview', () => {

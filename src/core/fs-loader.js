@@ -37,13 +37,85 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function stripWrappingQuotes(value) {
+  if (!isNonEmptyString(value)) {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function extractFrontmatterDescription(document) {
+  if (!isNonEmptyString(document) || !document.startsWith('---')) {
+    return null;
+  }
+
+  const lines = document.split(/\r?\n/);
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  if (closingIndex < 0) {
+    return null;
+  }
+
+  const frontmatterLines = lines.slice(1, closingIndex + 1);
+  for (let index = 0; index < frontmatterLines.length; index += 1) {
+    const line = frontmatterLines[index];
+    const match = line.match(/^description\s*:\s*(.*)$/i);
+    if (!match) {
+      continue;
+    }
+
+    const rawValue = match[1].trim();
+    if (/^[>|][0-9+-]*$/.test(rawValue)) {
+      const blockLines = [];
+      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
+        const nestedLine = frontmatterLines[nestedIndex];
+        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
+          break;
+        }
+
+        blockLines.push(nestedLine.trim());
+      }
+
+      const description = blockLines.join('\n').trim();
+      if (isNonEmptyString(description)) {
+        return description;
+      }
+
+      continue;
+    }
+
+    const description = stripWrappingQuotes(rawValue);
+    if (isNonEmptyString(description)) {
+      return description;
+    }
+  }
+
+  return null;
+}
+
 function extractDocumentExcerpt(document, maxLength = 160) {
   if (!isNonEmptyString(document)) {
     return null;
   }
 
-  const candidate = document
-    .split(/\r?\n/)
+  const frontmatterDescription = extractFrontmatterDescription(document);
+  if (isNonEmptyString(frontmatterDescription)) {
+    return buildExcerpt(frontmatterDescription, maxLength);
+  }
+
+  const lines = document.split(/\r?\n/);
+  const bodyLines = document.startsWith('---')
+    ? (() => {
+        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+      })()
+    : lines;
+  const candidate = bodyLines
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
