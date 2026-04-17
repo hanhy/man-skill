@@ -231,6 +231,121 @@ test('importManifest supports a single-target shorthand profile and inherits per
   assert.equal(materials.length, 2);
 });
 
+test('importManifest rejects manifest entries that reference files outside the repo root', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        entries: [
+          {
+            type: 'text',
+            file: outsideFilePath,
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /outside the repo root/,
+  );
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('importManifest rejects manifest entries whose symlink targets escape the repo root', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-symlink-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Symlink escape content should not be importable.');
+
+  const samplesDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(samplesDir, { recursive: true });
+  const symlinkPath = path.join(samplesDir, 'outside-link.txt');
+  fs.symlinkSync(outsideFilePath, symlinkPath);
+
+  const manifestPath = path.join(samplesDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        entries: [
+          {
+            type: 'text',
+            file: './outside-link.txt',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /outside the repo root/,
+  );
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('importManifest resolves relative entry files from the real manifest location when invoked through a symlink', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const samplesDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(samplesDir, { recursive: true });
+  fs.writeFileSync(path.join(samplesDir, 'post.txt'), 'Ship the thin slice first.');
+  fs.writeFileSync(
+    path.join(samplesDir, 'materials.json'),
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        entries: [
+          {
+            type: 'text',
+            file: './post.txt',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  const symlinkManifestPath = path.join(rootDir, 'linked-materials.json');
+  fs.symlinkSync(path.join(samplesDir, 'materials.json'), symlinkManifestPath);
+
+  const result = ingestion.importManifest({ manifestFile: symlinkManifestPath });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  const materialFiles = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialFiles.length, 1);
+});
+
 test('importManifest profile summaries keep current manifest counts while surfacing cumulative refresh state', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

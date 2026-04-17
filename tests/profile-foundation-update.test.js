@@ -183,6 +183,40 @@ test('CLI import sample command falls back to another valid sample manifest when
   assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
 });
 
+test('CLI import manifest rejects manifest entries that point outside the repo root', () => {
+  const rootDir = makeTempRepo();
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-cli-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: outsideFilePath,
+        },
+      ],
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', 'materials.json'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+    }),
+    /outside the repo root/,
+  );
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

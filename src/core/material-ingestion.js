@@ -122,6 +122,26 @@ function resolveImportFile(baseDir, filePath) {
   return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
 }
 
+function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = filePath }) {
+  if (!isNonEmptyString(filePath) || !fs.existsSync(filePath)) {
+    throw new Error(`${errorLabel} references a missing file: ${originalPath}`);
+  }
+
+  const realRootDir = fs.realpathSync(rootDir);
+  const realFilePath = fs.realpathSync(filePath);
+  const fileStats = fs.statSync(realFilePath);
+  if (!fileStats.isFile()) {
+    throw new Error(`${errorLabel} references a non-file path: ${originalPath}`);
+  }
+
+  const relativeFilePath = path.relative(realRootDir, realFilePath);
+  if (path.isAbsolute(relativeFilePath) || relativeFilePath === '..' || relativeFilePath.startsWith(`..${path.sep}`)) {
+    throw new Error(`${errorLabel} references a file outside the repo root: ${originalPath}`);
+  }
+
+  return realFilePath;
+}
+
 function buildProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
   const now = new Date().toISOString();
   const normalizedDisplayName = normalizeText(displayName);
@@ -303,7 +323,13 @@ export class MaterialIngestion {
     }
 
     const resolvedManifestPath = resolveImportFile(this.rootDir, manifestFile);
-    const manifest = readJsonIfExists(resolvedManifestPath);
+    const validatedManifestPath = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolvedManifestPath,
+      errorLabel: 'Manifest file',
+      originalPath: manifestFile,
+    });
+    const manifest = readJsonIfExists(validatedManifestPath);
     if (!manifest) {
       throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
     }
@@ -319,7 +345,7 @@ export class MaterialIngestion {
       ...(shorthandProfile ? [shorthandProfile] : []),
       ...(Array.isArray(manifest?.profiles) ? manifest.profiles : []),
     ];
-    for (const [index, profile] of manifestProfiles.entries()) {
+    const validatedProfiles = manifestProfiles.map((profile, index) => {
       if (!profile || typeof profile !== 'object') {
         throw new Error(`Manifest profile ${index} must be an object`);
       }
@@ -328,12 +354,12 @@ export class MaterialIngestion {
         throw new Error(`Manifest profile ${index} is missing personId`);
       }
 
-      this.updateProfile({
+      return {
         personId: profile.personId,
         displayName: profile.displayName,
         summary: profile.summary,
-      });
-    }
+      };
+    });
 
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
@@ -341,8 +367,8 @@ export class MaterialIngestion {
     }
 
     const defaultPersonId = shorthandProfile?.personId ?? null;
-    const manifestDir = path.dirname(resolvedManifestPath);
-    const results = entries.map((entry, index) => {
+    const manifestDir = path.dirname(validatedManifestPath);
+    const validatedEntries = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
@@ -353,56 +379,121 @@ export class MaterialIngestion {
       }
 
       const normalizedPersonId = slugifyPersonId(resolvedPersonId);
+      if (!normalizedPersonId) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
 
       if (entry.type === 'text') {
         return {
-          personId: normalizedPersonId,
+          personId: resolvedPersonId,
+          normalizedPersonId,
+          type: 'text',
+          sourceFile: assertFileWithinRoot({
+            rootDir: this.rootDir,
+            filePath: resolveImportFile(manifestDir, entry.file),
+            errorLabel: `Manifest entry ${index}`,
+            originalPath: entry.file,
+          }),
+          notes: entry.notes ?? null,
+        };
+      }
+
+      if (entry.type === 'message') {
+        if (!isNonEmptyString(entry.text)) {
+          throw new Error(`Manifest entry ${index} is missing text for message import`);
+        }
+
+        return {
+          personId: resolvedPersonId,
+          normalizedPersonId,
+          type: 'message',
+          text: entry.text,
+          notes: entry.notes ?? null,
+        };
+      }
+
+      if (entry.type === 'talk') {
+        if (!isNonEmptyString(entry.text)) {
+          throw new Error(`Manifest entry ${index} is missing text for talk import`);
+        }
+
+        return {
+          personId: resolvedPersonId,
+          normalizedPersonId,
+          type: 'talk',
+          text: entry.text,
+          notes: entry.notes ?? null,
+        };
+      }
+
+      if (entry.type === 'screenshot') {
+        return {
+          personId: resolvedPersonId,
+          normalizedPersonId,
+          type: 'screenshot',
+          sourceFile: assertFileWithinRoot({
+            rootDir: this.rootDir,
+            filePath: resolveImportFile(manifestDir, entry.file),
+            errorLabel: `Manifest entry ${index}`,
+            originalPath: entry.file,
+          }),
+          notes: entry.notes ?? null,
+        };
+      }
+
+      throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
+    });
+
+    validatedProfiles.forEach((profile) => {
+      this.updateProfile(profile);
+    });
+
+    const results = validatedEntries.map((entry) => {
+      if (entry.type === 'text') {
+        return {
+          personId: entry.normalizedPersonId,
           type: 'text',
           ...this.importTextDocument({
-            personId: resolvedPersonId,
-            sourceFile: resolveImportFile(manifestDir, entry.file),
-            notes: entry.notes ?? null,
+            personId: entry.personId,
+            sourceFile: entry.sourceFile,
+            notes: entry.notes,
           }),
         };
       }
 
       if (entry.type === 'message') {
         return {
-          personId: normalizedPersonId,
+          personId: entry.normalizedPersonId,
           type: 'message',
           ...this.importMessage({
-            personId: resolvedPersonId,
+            personId: entry.personId,
             text: entry.text,
-            notes: entry.notes ?? null,
+            notes: entry.notes,
           }),
         };
       }
 
       if (entry.type === 'talk') {
         return {
-          personId: normalizedPersonId,
+          personId: entry.normalizedPersonId,
           type: 'talk',
           ...this.importTalkSnippet({
-            personId: resolvedPersonId,
+            personId: entry.personId,
             text: entry.text,
-            notes: entry.notes ?? null,
+            notes: entry.notes,
           }),
         };
       }
 
-      if (entry.type === 'screenshot') {
-        return {
-          personId: normalizedPersonId,
-          type: 'screenshot',
-          ...this.importScreenshotSource({
-            personId: resolvedPersonId,
-            sourceFile: resolveImportFile(manifestDir, entry.file),
-            notes: entry.notes ?? null,
-          }),
-        };
-      }
-
-      throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
+      return {
+        personId: entry.normalizedPersonId,
+        type: 'screenshot',
+        ...this.importScreenshotSource({
+          personId: entry.personId,
+          sourceFile: entry.sourceFile,
+          notes: entry.notes,
+        }),
+      };
     });
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
