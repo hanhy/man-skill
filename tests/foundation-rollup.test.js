@@ -287,6 +287,10 @@ test('buildSummary exposes core foundation diagnostics for repo memory, skills, 
     thinAreaCount: 0,
     helperCommands: {
       scaffoldAll: null,
+      memory: null,
+      skills: null,
+      soul: null,
+      voice: null,
     },
     queuedAreas: [],
   });
@@ -338,6 +342,10 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     thinAreaCount: 2,
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
+      memory: memoryCommand,
+      skills: skillsCommand,
+      soul: soulCommand,
+      voice: voiceCommand,
     },
     queuedAreas: [
       {
@@ -376,7 +384,10 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   });
 
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
-  assert.match(summary.promptPreview, /helpers: scaffold-all \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\)[\s\S]*voice\/README\.md\)/);
+  assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]* \| memory mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
+  assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
+  assert.match(summary.promptPreview, /\| soul grep -Fqx -- 'Add soul guidance here\.' SOUL\.md \|\| printf %s '/);
+  assert.match(summary.promptPreview, /\| voice mkdir -p voice && printf %s '# Voice/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
@@ -521,6 +532,10 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     thinAreaCount: 1,
     helperCommands: {
       scaffoldAll: "touch 'memory/README.md'",
+      memory: "touch 'memory/README.md'",
+      skills: null,
+      soul: null,
+      voice: null,
     },
     queuedAreas: [
       {
@@ -601,6 +616,10 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     thinAreaCount: 1,
     helperCommands: {
       scaffoldAll: "touch 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'",
+      memory: null,
+      skills: "touch 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'",
+      soul: null,
+      voice: null,
     },
     queuedAreas: [
       {
@@ -660,6 +679,10 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     thinAreaCount: 1,
     helperCommands: {
       scaffoldAll: "touch 'skills/slack/SKILL.md'",
+      memory: null,
+      skills: "touch 'skills/slack/SKILL.md'",
+      soul: null,
+      voice: null,
     },
     queuedAreas: [
       {

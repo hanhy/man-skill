@@ -149,6 +149,10 @@ type FoundationCoreMaintenance = {
   thinAreaCount?: number;
   helperCommands?: {
     scaffoldAll?: string | null;
+    memory?: string | null;
+    skills?: string | null;
+    soul?: string | null;
+    voice?: string | null;
   };
   queuedAreas?: FoundationCoreMaintenanceQueueItem[];
 };
@@ -894,9 +898,19 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
-    maintenance?.helperCommands?.scaffoldAll
-      ? `- helpers: scaffold-all ${maintenance.helperCommands.scaffoldAll}`
-      : null,
+    (() => {
+      const helperEntries = [
+        maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
+        maintenance?.helperCommands?.memory ? `memory ${maintenance.helperCommands.memory}` : null,
+        maintenance?.helperCommands?.skills ? `skills ${maintenance.helperCommands.skills}` : null,
+        maintenance?.helperCommands?.soul ? `soul ${maintenance.helperCommands.soul}` : null,
+        maintenance?.helperCommands?.voice ? `voice ${maintenance.helperCommands.voice}` : null,
+      ].filter(Boolean);
+
+      return helperEntries.length > 0
+        ? `- helpers: ${helperEntries.join(' | ')}`
+        : null;
+    })(),
     ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
       const command = area.command ?? buildCoreFoundationCommand(area);
       return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;

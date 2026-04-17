@@ -311,6 +311,10 @@ function buildCoreFoundationMaintenance({
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
     helperCommands: {
       scaffoldAll: buildFoundationScaffoldBundle(queue.map((area) => area.command)),
+      memory: queue.find((area) => area.area === 'memory')?.command ?? null,
+      skills: queue.find((area) => area.area === 'skills')?.command ?? null,
+      soul: queue.find((area) => area.area === 'soul')?.command ?? null,
+      voice: queue.find((area) => area.area === 'voice')?.command ?? null,
     },
     queuedAreas: queue,
   };
@@ -366,6 +370,10 @@ export interface CoreFoundationMaintenanceQueueItem {
 
 export interface CoreFoundationMaintenanceHelperCommands {
   scaffoldAll: string | null;
+  memory: string | null;
+  skills: string | null;
+  soul: string | null;
+  voice: string | null;
 }
 
 export interface CoreFoundationMaintenanceSummary {

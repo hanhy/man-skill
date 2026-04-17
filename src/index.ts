@@ -1193,7 +1193,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(6200),
+    promptPreview: prompt.buildPreview(8000),
   };
 }
 
