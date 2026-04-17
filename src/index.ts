@@ -540,14 +540,23 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
           : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
         : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
       command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
-      const missingIntakePaths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakeMissingPaths)
-        ? metadataOnlyProfileNeedingScaffold.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      paths = missingIntakePaths.length > 0
-        ? missingIntakePaths
-        : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
-          ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-          : []);
+      const collectIntakePaths = (profile: any) => {
+        const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
+          ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        if (missingIntakePaths.length > 0) {
+          return missingIntakePaths;
+        }
+
+        return Array.isArray(profile?.intakePaths)
+          ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+      };
+      paths = useBulkIntakeCommand
+        ? metadataProfileCommands
+          .filter((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand)
+          .flatMap((profile: any) => collectIntakePaths(profile))
+        : collectIntakePaths(metadataOnlyProfileNeedingScaffold);
     } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`

@@ -243,6 +243,10 @@ test('buildSummary work loop prioritizes partially scaffolded intake profiles ov
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/zeta-partial/imports/materials.template.json',
     'profiles/zeta-partial/imports/sample.txt',
+    'profiles/alpha-missing/imports',
+    'profiles/alpha-missing/imports/README.md',
+    'profiles/alpha-missing/imports/materials.template.json',
+    'profiles/alpha-missing/imports/sample.txt',
   ]);
 });
 
