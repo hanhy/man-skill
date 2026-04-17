@@ -215,7 +215,7 @@ test('importManifest uses the checked-in Harry starter manifest as a runnable mu
   const summary = buildSummary(rootDir);
   const harryProfile = summary.profiles.find((profile) => profile.id === 'harry-han');
   assert.equal(summary.ingestion.sampleManifestEntryCount, 4);
-  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-chat.png', 'samples/harry-post.txt']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt', 'samples/harry-chat.png']);
   assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, {
     message: 1,
     screenshot: 1,

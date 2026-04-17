@@ -76,7 +76,7 @@ node src/index.js import manifest --file ./samples/harry-materials.json
 node src/index.js import manifest --file ./samples/harry-materials.json --refresh-foundation
 ```
 
-A starter manifest now ships in-repo at `samples/harry-materials.json`, alongside `samples/harry-post.txt`, so there is always one copy-pasteable bootstrap path for the ingestion entrance on the main repo checkout. Use the `--refresh-foundation` variant when you want the imported materials to immediately regenerate the derived memory / voice / soul / skills drafts in the same pass.
+A starter manifest now ships in-repo at `samples/harry-materials.json`, alongside `samples/harry-post.txt` and `samples/harry-chat.png`, so there is always one copy-pasteable multimodal bootstrap path for the ingestion entrance on the main repo checkout. Use the `--refresh-foundation` variant when you want the imported materials to immediately regenerate the derived memory / voice / soul / skills drafts in the same pass.
 
 Manifest shape:
 

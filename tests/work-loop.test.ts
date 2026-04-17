@@ -78,6 +78,7 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-chat.png'), 'fake image bytes');
   fs.writeFileSync(
     path.join(rootDir, 'samples', 'harry-materials.json'),
     JSON.stringify({
@@ -86,6 +87,10 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
         {
           type: 'text',
           file: 'harry-post.txt',
+        },
+        {
+          type: 'screenshot',
+          file: 'harry-chat.png',
         },
       ],
     }, null, 2),
@@ -96,12 +101,13 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
   assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt', 'samples/harry-chat.png']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile for Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt', 'samples/harry-chat.png']);
   assert.match(summary.promptPreview, /next action: import the checked-in sample target profile for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt/);
+  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/harry-chat\.png/);
 });
 
 test('buildSummary work loop uses plural wording when the checked-in sample manifest spans multiple starter profiles', () => {

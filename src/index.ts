@@ -156,8 +156,13 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const textFilePersonIds: Record<string, string> = {};
     const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
     const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
-    const filePaths = new Set<string>();
+    const filePaths: string[] = [];
     const profileDisplayNames = new Map<string, string>();
+    const pushUniqueFilePath = (value: string) => {
+      if (!filePaths.includes(value)) {
+        filePaths.push(value);
+      }
+    };
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
 
@@ -269,7 +274,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         }
 
         const normalizedRelativeFilePath = relativeFilePath.split(path.sep).join('/');
-        filePaths.add(normalizedRelativeFilePath);
+        pushUniqueFilePath(normalizedRelativeFilePath);
 
         if (entryRecord.type === 'text') {
           textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
@@ -322,7 +327,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
         return left.personId.localeCompare(right.personId);
       }),
-      filePaths: [...filePaths].sort(),
+      filePaths: filePaths.slice(),
       error: null,
     };
   } catch (error) {
