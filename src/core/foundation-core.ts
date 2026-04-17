@@ -457,7 +457,7 @@ export function buildCoreFoundationSummary({
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     undocumentedSample: undocumentedSkillNames.slice(0, 5),
-    undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}`),
+    undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
   };
   const soul = {
     present: isNonEmptyString(soulDocument),

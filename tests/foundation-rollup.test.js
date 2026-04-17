@@ -600,7 +600,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     sample: ['slack', 'telegram'],
     samplePaths: [],
     undocumentedSample: ['slack', 'telegram'],
-    undocumentedPaths: ['skills/slack', 'skills/telegram'],
+    undocumentedPaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -634,7 +634,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md; command touch 'skills\/slack\/SKILL\.md' 'skills\/telegram\/SKILL\.md'/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); missing docs: slack, telegram @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
 });
 
 test('buildSummary keeps mixed documented and placeholder skills thin until all skill folders carry SKILL docs', () => {
@@ -663,7 +663,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     sample: ['slack', 'telegram'],
     samplePaths: ['skills/telegram/SKILL.md'],
     undocumentedSample: ['slack'],
-    undocumentedPaths: ['skills/slack'],
+    undocumentedPaths: ['skills/slack/SKILL.md'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -697,7 +697,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; placeholders: slack @ skills\/slack/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; missing docs: slack @ skills\/slack\/SKILL\.md/);
 });
 
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
@@ -726,7 +726,7 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     sample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
     samplePaths: [],
     undocumentedSample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
-    undocumentedPaths: ['skills/alpha', 'skills/beta', 'skills/delta', 'skills/epsilon', 'skills/gamma'],
+    undocumentedPaths: ['skills/alpha/SKILL.md', 'skills/beta/SKILL.md', 'skills/delta/SKILL.md', 'skills/epsilon/SKILL.md', 'skills/gamma/SKILL.md'],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
