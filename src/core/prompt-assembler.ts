@@ -301,6 +301,7 @@ type IngestionProfileCommand = {
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  importIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -779,12 +780,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
+      const intakeShortcutSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === true && profile.importIntakeCommand
+        ? ` | shortcut ${profile.importIntakeCommand}`
+        : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
   ].filter(Boolean).join('\n');
 }

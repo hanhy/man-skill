@@ -902,7 +902,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   });
   assert.deepEqual(janeCommand.helperCommands, {
     scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
-    importIntake: 'node src/index.js import intake --person jane-doe',
+    importIntake: "node src/index.js import intake --person 'jane-doe'",
     importManifest: null,
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -927,6 +927,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateProfileCommand: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     updateProfileAndRefreshCommand: null,
     updateIntakeCommand: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
+    importIntakeCommand: "node src/index.js import intake --person 'metadata-only'",
     intakeReady: false,
     intakeCompletion: 'missing',
     intakeStatusSummary: 'missing — create imports, README.md, materials.template.json, sample.txt',
@@ -952,7 +953,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     },
     helperCommands: {
       scaffold: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
-      importIntake: 'node src/index.js import intake --person metadata-only',
+      importIntake: "node src/index.js import intake --person 'metadata-only'",
       importManifest: null,
       updateProfile: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
       updateProfileAndRefresh: null,
@@ -1008,6 +1009,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
   assert.equal(metadataOnlyCommand.intakeReady, true);
   assert.equal(metadataOnlyCommand.intakeCompletion, 'ready');
   assert.equal(metadataOnlyCommand.intakeStatusSummary, 'ready');
+  assert.equal(metadataOnlyCommand.importIntakeCommand, "node src/index.js import intake --person 'metadata-only'");
   assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importMaterialCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(metadataOnlyCommand.intakePaths, [
@@ -1016,7 +1018,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\) \| import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'metadata-only' \| import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
 });
 
 test('buildSummary summarizes partially scaffolded intake status for metadata-only profiles', () => {

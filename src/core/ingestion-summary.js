@@ -199,7 +199,7 @@ function buildProfileCommands(profile, options = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
-  const importIntakeCommand = `node src/index.js import intake --person ${profile.id}`;
+  const importIntakeCommand = `node src/index.js import intake --person ${shellQuote(profile.id)}`;
 
   return {
     personId: profile.id,
@@ -213,6 +213,7 @@ function buildProfileCommands(profile, options = {}) {
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     updateIntakeCommand,
+    importIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
     intakeStatusSummary: summarizeIntakeStatus(intake),

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { buildSummary } from '../src/index.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 
 function makeTempRepo() {
@@ -720,4 +721,20 @@ test('scaffoldAllProfileIntakes reruns intake scaffolding for every metadata-onl
   assert.deepEqual(result.results.map((entry) => entry.personId), ['alpha-missing', 'beta-ready']);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-missing', 'imports', 'materials.template.json')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
+});
+
+test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'harry-han' \| import node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });
