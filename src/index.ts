@@ -486,7 +486,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? 'queued'
     : 'ready';
 
-  const useBulkRefreshCommand = refreshProfileCount > 1 && typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0;
+  const useBulkRefreshCommand = refreshProfileCount > 1
+    && (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
+      || typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0);
   const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
     ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -530,7 +532,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
       : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null)),
     command: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
+      ? (useBulkRefreshCommand
+        ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
+          ? maintenance.refreshBundleCommand
+          : maintenance.staleRefreshCommand)
+        : queuedProfile.refreshCommand)
       : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand),
     paths: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand

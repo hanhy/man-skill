@@ -1216,7 +1216,14 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --stale');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    summary.foundation.maintenance.refreshBundleCommand,
+  );
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
+  );
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with jane-doe (missing drafts + new materials)');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
