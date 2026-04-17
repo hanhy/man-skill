@@ -940,6 +940,12 @@ function buildDeliveryPriority({
   const bundledImplementationCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
     : 0;
+  const implementationPresentCount = Array.isArray(queue)
+    ? queue.filter((item) => item?.implementationPresent === true).length
+    : 0;
+  const manifestReady = Array.isArray(queue) && queue.length > 0
+    ? queue.every((item) => item?.manifestPresent === true)
+    : false;
   const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
   const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
   const paths = [
@@ -977,7 +983,9 @@ function buildDeliveryPriority({
     id,
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
-    summary: `${pendingCount} pending, ${configuredCount} configured`,
+    summary: pendingCount > 0
+      ? `${pendingCount} pending, ${configuredCount} configured, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
+      : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
     paths,
