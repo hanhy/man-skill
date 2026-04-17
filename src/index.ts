@@ -1105,7 +1105,7 @@ function formatCliUsage(): string {
 
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
   if (command === 'import' && subcommand === 'manifest') {
-    return 'Usage: node src/index.js import manifest --file <manifest.json>';
+    return 'Usage: node src/index.js import manifest --file <manifest.json> [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'sample') {
@@ -1117,19 +1117,19 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'text') {
-    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--refresh-foundation]';
+    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'message') {
-    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--refresh-foundation]';
+    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'talk') {
-    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--refresh-foundation]';
+    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'import' && subcommand === 'screenshot') {
-    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--refresh-foundation]';
+    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]';
   }
 
   if (command === 'update' && subcommand === 'profile') {

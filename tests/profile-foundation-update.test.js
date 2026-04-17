@@ -522,6 +522,55 @@ test('CLI update intake errors advertise the full usage surface for person, stal
   );
 });
 
+test('CLI import command errors keep usage hints aligned with optional refresh and notes flags', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'manifest'],
+      expectedError: /Error: manifestFile is required for manifest import/,
+      expectedUsage: /Usage: node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'text'],
+      expectedError: /Error: Missing required --person argument/,
+      expectedUsage: /Usage: node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'message'],
+      expectedError: /Error: Missing required --person argument/,
+      expectedUsage: /Usage: node src\/index\.js import message --person <person-id> --text <message> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'talk'],
+      expectedError: /Error: Missing required --person argument/,
+      expectedUsage: /Usage: node src\/index\.js import talk --person <person-id> --text <snippet> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'screenshot'],
+      expectedError: /Error: Missing required --person argument/,
+      expectedUsage: /Usage: node src\/index\.js import screenshot --person <person-id> --file <image\.png> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
+        assert.doesNotMatch(error.stderr, /at runImportCommand/);
+        return true;
+      },
+    );
+  });
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
