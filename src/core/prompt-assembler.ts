@@ -151,6 +151,8 @@ type FoundationCoreMaintenance = {
   thinAreaCount?: number;
   helperCommands?: {
     scaffoldAll?: string | null;
+    scaffoldMissing?: string | null;
+    scaffoldThin?: string | null;
     memory?: string | null;
     skills?: string | null;
     soul?: string | null;
@@ -1046,6 +1048,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     (() => {
       const helperEntries = [
         maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
+        maintenance?.helperCommands?.scaffoldMissing ? `scaffold-missing ${maintenance.helperCommands.scaffoldMissing}` : null,
+        maintenance?.helperCommands?.scaffoldThin ? `scaffold-thin ${maintenance.helperCommands.scaffoldThin}` : null,
         maintenance?.helperCommands?.memory ? `memory ${maintenance.helperCommands.memory}` : null,
         maintenance?.helperCommands?.skills ? `skills ${maintenance.helperCommands.skills}` : null,
         maintenance?.helperCommands?.soul ? `soul ${maintenance.helperCommands.soul}` : null,
