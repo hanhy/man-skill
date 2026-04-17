@@ -206,7 +206,7 @@ function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoun
 }
 
 function buildImportIntakeCommand(personId) {
-  return `node src/index.js import intake --person ${shellQuote(personId)}`;
+  return `node src/index.js import intake --person ${shellQuote(personId)} --refresh-foundation`;
 }
 
 function buildIntakePaths(personId) {

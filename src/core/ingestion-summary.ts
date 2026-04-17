@@ -362,7 +362,7 @@ function buildProfileCommands(profile, options = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
-  const importIntakeCommand = `node src/index.js import intake --person ${shellQuote(profile.id)}`;
+  const importIntakeCommand = `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`;
 
   return {
     personId: profile.id,
@@ -501,8 +501,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .map((profile) => profile?.updateIntakeCommand),
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
-    importIntakeAll: 'node src/index.js import intake --all',
-    importIntakeStale: 'node src/index.js import intake --stale',
+    importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
+    importIntakeStale: 'node src/index.js import intake --stale --refresh-foundation',
     importIntakeBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === true)
@@ -539,8 +539,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,
     intakeStaleProfileCount,
-    intakeImportAllCommand: 'node src/index.js import intake --all',
-    intakeImportStaleCommand: 'node src/index.js import intake --stale',
+    intakeImportAllCommand: 'node src/index.js import intake --all --refresh-foundation',
+    intakeImportStaleCommand: 'node src/index.js import intake --stale --refresh-foundation',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     intakeAllCommand: 'node src/index.js update intake --all',

@@ -679,7 +679,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "(node src/index.js import intake --person 'alpha-ready') && (node src/index.js import intake --person 'beta-ready')",
+    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/alpha-ready/imports/materials.template.json',
@@ -689,7 +689,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
     'profiles/beta-ready/imports/beta-shot.png',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
-  assert.match(summary.promptPreview, /command: \(node src\/index\.js import intake --person 'alpha-ready'\) && \(node src\/index\.js import intake --person 'beta-ready'\)/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/);
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
