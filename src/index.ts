@@ -1035,7 +1035,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
     if (!intakePersonId) {
-      throw new Error('Missing required --person argument');
+      throw new Error('import intake requires --person, --stale, or --all');
     }
 
     return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
@@ -1157,7 +1157,9 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (!personId) {
-    throw new Error('Missing required --person argument');
+    throw new Error(subcommand === 'foundation'
+      ? 'update foundation requires --person, --stale, or --all'
+      : 'Missing required --person argument');
   }
 
   if (subcommand === 'foundation') {

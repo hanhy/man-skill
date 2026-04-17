@@ -576,6 +576,40 @@ test('CLI update intake errors advertise the full usage surface for person, stal
   );
 });
 
+test('CLI import intake and update foundation errors advertise the full batch-capable usage surface', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'intake'],
+      expectedError: /Error: import intake requires --person, --stale, or --all/,
+      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \| --stale \| --all/,
+    },
+    {
+      args: ['update', 'foundation'],
+      expectedError: /Error: update foundation requires --person, --stale, or --all/,
+      expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
+        assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
+        return true;
+      },
+    );
+  });
+});
+
 test('CLI import command errors keep usage hints aligned with optional refresh and notes flags', () => {
   const rootDir = makeTempRepo();
 
