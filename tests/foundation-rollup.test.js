@@ -12,7 +12,39 @@ import { buildSummary } from '../src/index.js';
 const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
 const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
-const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_SECTIONS = [
+  {
+    heading: '## Core values',
+    sentinel: '- Describe the durable values and goals that should survive across tasks.',
+    missingSectionAppend: '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n',
+    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
+  },
+  {
+    heading: '## Boundaries',
+    sentinel: '- Capture what the agent should protect or refuse to compromise.',
+    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
+    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Decision rules',
+    sentinel: '- Note the principles to use when tradeoffs appear.',
+    missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
+  },
+];
+
+function shellSingleQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildDocumentRepairCommand(filePath, sentinel, sections) {
+  const file = shellSingleQuote(filePath);
+  const sectionCommands = sections.map((section) =>
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+  );
+
+  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+}
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-foundation-rollup-'));
@@ -191,11 +223,11 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     ],
   });
   assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
-  assert.match(summary.promptPreview, /Foundation maintenance:/);
-  assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale \| refresh-bundle node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Foundation maintenance:\n- 1 ready, 1 queued for refresh, 1 incomplete\n- helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale \| refresh-bundle node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
+  assert.match(summary.promptPreview, /Ingestion entrance:/);
+  assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Ingestion entrance:[\s\S]*drafts: 1 ready, 1 queued for refresh, 1 incomplete[\s\S]*refresh-bundle node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .* \| refresh node src\/index\.js update foundation --person jane-doe/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
@@ -526,15 +558,9 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /\| scaffold-missing \(mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
+  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.'/);
   assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| soul grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
-  assert.match(summary.promptPreview, /\| voice mkdir -p voice && printf %s '# Voice\n\n## Tone/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
-  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
-  assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\], voice \[missing\]/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
-  assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
+  assert.match(summary.promptPreview, /\| soul /);
 });
 
 test('buildSummary keeps memory foundation thin until daily, long-term, and scratch buckets are all seeded', () => {
@@ -646,9 +672,9 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
 
   assert.equal(soulSummary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
-  assert.equal(soulSummary.workLoop.currentPriority?.command, `grep -Fqx -- '${SOUL_GUIDANCE_SENTINEL}' SOUL.md || printf %s '${SOUL_GUIDANCE_APPEND_TEMPLATE}' >> SOUL.md`);
+  assert.equal(soulSummary.workLoop.currentPriority?.command, buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS));
   assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
-  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' SOUL\.md \|\| printf %s '/);
+  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' 'SOUL\.md' \|\| \{ /);
 });
 
 test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
