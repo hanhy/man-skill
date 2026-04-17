@@ -11,6 +11,7 @@ import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
+import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
@@ -394,40 +395,6 @@ function buildFoundationRefreshLabel(
   return reasons.length > 0
     ? `${refreshLabel} — reasons ${reasons.join(' + ')}`
     : refreshLabel;
-}
-
-function buildCoreFoundationCommand(queuedArea: any): string | null {
-  if (!queuedArea || typeof queuedArea !== 'object') {
-    return null;
-  }
-
-  const area = typeof queuedArea.area === 'string' ? queuedArea.area : null;
-  const status = typeof queuedArea.status === 'string' ? queuedArea.status : null;
-  const paths = Array.isArray(queuedArea.paths)
-    ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
-    : [];
-
-  if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
-    return `touch ${paths.join(' ')}`;
-  }
-
-  if (area === 'voice' && status === 'missing') {
-    return 'mkdir -p voice && touch voice/README.md';
-  }
-
-  if (area === 'soul' && status === 'missing') {
-    return 'touch SOUL.md';
-  }
-
-  if (area === 'memory' && status === 'missing') {
-    return 'mkdir -p memory/daily memory/long-term memory/scratch && touch memory/README.md';
-  }
-
-  if (area === 'memory' && paths.length === 1 && paths[0] === 'memory/README.md') {
-    return 'touch memory/README.md';
-  }
-
-  return null;
 }
 
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {

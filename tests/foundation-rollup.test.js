@@ -424,7 +424,7 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     ],
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch memory\/README\.md/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
@@ -477,7 +477,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     ],
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md; command touch 'skills\/slack\/SKILL\.md' 'skills\/telegram\/SKILL\.md'/);
   assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
 });
 
@@ -611,8 +611,8 @@ test('buildSummary work loop surfaces a runnable command for thin core skills co
 
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority?.nextAction, 'create skills/slack/SKILL.md');
-  assert.equal(summary.workLoop.currentPriority?.command, 'touch skills/slack/SKILL.md');
+  assert.equal(summary.workLoop.currentPriority?.command, "touch 'skills/slack/SKILL.md'");
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/slack/SKILL.md']);
   assert.match(summary.promptPreview, /Work loop:/);
-  assert.match(summary.promptPreview, /command: touch skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /command: touch 'skills\/slack\/SKILL\.md'/);
 });
