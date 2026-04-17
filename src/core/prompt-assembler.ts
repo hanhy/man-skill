@@ -746,10 +746,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
-    (helperCommands.scaffoldStale || helperCommands.importIntakeStale || helperCommands.refreshStaleFoundation)
+    (helperCommands.scaffoldAll || helperCommands.scaffoldStale || helperCommands.importIntakeAll || helperCommands.importIntakeStale || helperCommands.refreshStaleFoundation)
       ? `- helpers: ${[
-        helperCommands.scaffoldStale ? `scaffold ${helperCommands.scaffoldStale}` : null,
-        helperCommands.importIntakeStale ? `import ${helperCommands.importIntakeStale}` : null,
+        helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
+        helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
+        helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
+        helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
       ].filter(Boolean).join(' | ')}`
       : null,
