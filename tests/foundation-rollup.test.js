@@ -83,9 +83,11 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     incompleteProfileCount: 1,
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
+      refreshBundle: 'node src/index.js update foundation --person jane-doe',
     },
     queuedProfiles: [
       {
@@ -160,9 +162,11 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     incompleteProfileCount: 1,
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
+      refreshBundle: 'node src/index.js update foundation --person jane-doe',
     },
     queuedProfiles: [
       {
@@ -184,8 +188,8 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(summary.promptPreview, /Foundation maintenance:/);
   assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale/);
-  assert.match(summary.promptPreview, /Foundation maintenance:\n- 1 ready, 1 queued for refresh, 1 incomplete\n- helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale \| refresh-bundle node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Foundation maintenance:\n- 1 ready, 1 queued for refresh, 1 incomplete\n- helpers: refresh-all node src\/index\.js update foundation --all \| refresh-stale node src\/index\.js update foundation --stale \| refresh-bundle node src\/index\.js update foundation --person jane-doe/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
 });
 

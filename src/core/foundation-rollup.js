@@ -51,6 +51,19 @@ function countCandidateDrafts(profile) {
   return FOUNDATION_DRAFT_KEYS.filter((key) => (profile?.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
 }
 
+function buildCommandBundle(commands = []) {
+  const normalizedCommands = commands.filter((command) => typeof command === 'string' && command.length > 0);
+  if (normalizedCommands.length === 0) {
+    return null;
+  }
+
+  if (normalizedCommands.length === 1) {
+    return normalizedCommands[0];
+  }
+
+  return normalizedCommands.map((command) => `(${command})`).join(' && ');
+}
+
 function summarizeMaintenanceQueue(profiles) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
@@ -90,9 +103,11 @@ function summarizeMaintenanceQueue(profiles) {
     incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
     refreshAllCommand: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
     staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
+    refreshBundleCommand: buildCommandBundle(queuedProfiles.map((profile) => profile.refreshCommand)),
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
       refreshStale: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
+      refreshBundle: buildCommandBundle(queuedProfiles.map((profile) => profile.refreshCommand)),
     },
     queuedProfiles,
   };

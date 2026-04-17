@@ -103,9 +103,11 @@ type FoundationMaintenance = {
   incompleteProfileCount?: number;
   refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
+  refreshBundleCommand?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
     refreshStale?: string | null;
+    refreshBundle?: string | null;
   };
   queuedProfiles?: MaintenanceQueueItem[];
 };
@@ -576,6 +578,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const helperLine = [
     maintenance.helperCommands?.refreshAll ? `refresh-all ${maintenance.helperCommands.refreshAll}` : null,
     maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
+    maintenance.helperCommands?.refreshBundle ? `refresh-bundle ${maintenance.helperCommands.refreshBundle}` : null,
   ].filter(Boolean).join(' | ');
 
   return [
