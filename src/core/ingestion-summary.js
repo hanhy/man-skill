@@ -123,6 +123,30 @@ function buildUpdateIntakeCommand(profile) {
   return commandParts.join(' ');
 }
 
+function buildUpdateProfileCommand(profile) {
+  if (!profile?.id) {
+    return null;
+  }
+
+  const commandParts = ['node src/index.js update profile', '--person', shellQuote(profile.id)];
+  const displayName = typeof profile?.profile?.displayName === 'string' && profile.profile.displayName.trim().length > 0
+    ? profile.profile.displayName
+    : null;
+  const summary = typeof profile?.profile?.summary === 'string' && profile.profile.summary.trim().length > 0
+    ? profile.profile.summary
+    : null;
+
+  if (displayName) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (summary) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
 function summarizeIntakeStatus(intake) {
   if (!intake || typeof intake !== 'object') {
     return 'missing — create imports, README.md, materials.template.json, sample.txt';
@@ -167,7 +191,7 @@ function buildProfileCommands(profile, options = {}) {
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
   const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
-  const updateProfileCommand = `node src/index.js update profile --person ${profile.id}`;
+  const updateProfileCommand = buildUpdateProfileCommand(profile);
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
   const importIntakeCommand = `node src/index.js import intake --person ${profile.id}`;

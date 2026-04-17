@@ -187,6 +187,20 @@ function buildUpdateIntakeCommand({ personId, displayName, summary }) {
   return commandParts.join(' ');
 }
 
+function buildUpdateProfileCommand({ personId, displayName, summary }) {
+  const commandParts = ['node src/index.js update profile', '--person', shellQuote(personId)];
+
+  if (isNonEmptyString(displayName)) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (isNonEmptyString(summary)) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
 function buildImportIntakeCommand(personId) {
   return `node src/index.js import intake --person ${personId}`;
 }
@@ -337,7 +351,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
   const summary = profileSummary?.profile?.summary ?? null;
   const importCommand = buildManifestImportCommand(manifestPath);
-  const updateProfileCommand = `node src/index.js update profile --person ${personId}`;
+  const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
   const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
   const importIntakeCommand = buildImportIntakeCommand(personId);
@@ -437,6 +451,11 @@ export class MaterialIngestion {
     }
 
     const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const updateProfileCommand = buildUpdateProfileCommand({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+    });
     const updateIntakeCommand = buildUpdateIntakeCommand({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -471,11 +490,12 @@ export class MaterialIngestion {
       updateIntakeCommand,
       importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+      updateProfileCommand,
       helperCommands: {
         scaffold: updateIntakeCommand,
         importIntake: importIntakeCommand,
         importManifest: importManifestCommand,
-        updateProfile: `node src/index.js update profile --person ${profileUpdate.personId}`,
+        updateProfile: updateProfileCommand,
         refreshFoundation: `node src/index.js update foundation --person ${profileUpdate.personId}`,
         directImports: importCommands,
       },
@@ -1034,7 +1054,11 @@ export class MaterialIngestion {
       ].join('\n'),
     );
 
-    const updateProfileCommand = `node src/index.js update profile --person ${normalized.personId}`;
+    const updateProfileCommand = buildUpdateProfileCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+    });
     const refreshFoundationCommand = `node src/index.js update foundation --person ${normalized.personId}`;
     const updateIntakeCommand = buildUpdateIntakeCommand({
       personId: normalized.personId,
