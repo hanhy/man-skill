@@ -173,6 +173,24 @@ function buildDirectImportCommands({ personId, sampleTextPath }) {
   };
 }
 
+function buildUpdateIntakeCommand({ personId, displayName, summary }) {
+  const commandParts = ['node src/index.js update intake', '--person', shellQuote(personId)];
+
+  if (isNonEmptyString(displayName)) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (isNonEmptyString(summary)) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
+function buildImportIntakeCommand(personId) {
+  return `node src/index.js import intake --person ${personId}`;
+}
+
 function buildIntakePaths(personId) {
   const basePath = path.join('profiles', personId, 'imports');
   return {
@@ -265,7 +283,17 @@ function normalizeBlockText(value) {
   return normalized.length > 0 ? normalized : null;
 }
 
-function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands, customNotes }) {
+function buildIntakeReadme({
+  displayName,
+  personId,
+  starterManifestPath,
+  sampleTextPath,
+  importManifestCommand,
+  importCommands,
+  updateIntakeCommand,
+  importIntakeCommand,
+  customNotes,
+}) {
   const label = normalizeText(displayName) ?? personId;
   const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
   return [
@@ -281,6 +309,10 @@ function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleT
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
     '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Recommended helper commands:',
+    `- refresh this intake scaffold: ${updateIntakeCommand}`,
+    `- import via the profile-local intake shortcut: ${importIntakeCommand}`,
     '',
     'Direct import commands:',
     `- text: ${importCommands?.text}`,
@@ -392,6 +424,12 @@ export class MaterialIngestion {
     }
 
     const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const updateIntakeCommand = buildUpdateIntakeCommand({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+    });
+    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId);
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
@@ -404,6 +442,8 @@ export class MaterialIngestion {
         sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
         importCommands,
+        updateIntakeCommand,
+        importIntakeCommand,
         customNotes: extractIntakeCustomNotes(existingReadme),
       }),
     );
@@ -414,6 +454,8 @@ export class MaterialIngestion {
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
       importManifestCommand,
+      importIntakeCommand,
+      updateIntakeCommand,
       importCommands,
       refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
     };

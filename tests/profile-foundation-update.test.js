@@ -858,6 +858,8 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
 
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
+  assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
   assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
   assert.deepEqual(result.importCommands, {
     text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
@@ -898,6 +900,9 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   });
 
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Recommended helper commands:/);
+  assert.match(intakeReadme, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /node src\/index\.js import intake --person harry-han/);
   assert.match(intakeReadme, /Direct import commands:/);
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
