@@ -183,34 +183,54 @@ function buildIntakePaths(personId) {
   };
 }
 
-function buildStarterManifestDocument({ personId, displayName, summary, existingEntries = [], sampleTextPath = 'sample.txt' }) {
+function buildStarterManifestDocument({
+  personId,
+  displayName,
+  summary,
+  existingEntries = [],
+  existingEntryTemplates = null,
+  sampleTextPath = 'sample.txt',
+}) {
+  const defaultEntryTemplates = {
+    text: {
+      type: 'text',
+      file: sampleTextPath,
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  };
+  const mergedEntryTemplates = Object.fromEntries(
+    Object.entries(defaultEntryTemplates).map(([templateKey, templateValue]) => {
+      const existingTemplate = existingEntryTemplates?.[templateKey];
+      return [
+        templateKey,
+        existingTemplate && typeof existingTemplate === 'object'
+          ? { ...templateValue, ...existingTemplate, type: templateValue.type }
+          : templateValue,
+      ];
+    }),
+  );
+
   return {
     personId,
     displayName: normalizeText(displayName) ?? personId,
     summary: summary === undefined ? null : (normalizeText(summary) ?? null),
     entries: Array.isArray(existingEntries) ? existingEntries : [],
-    entryTemplates: {
-      text: {
-        type: 'text',
-        file: sampleTextPath,
-        notes: 'long-form writing sample',
-      },
-      message: {
-        type: 'message',
-        text: '<paste a representative short message>',
-        notes: 'chat sample',
-      },
-      talk: {
-        type: 'talk',
-        text: '<paste a transcript snippet>',
-        notes: 'voice memo transcript',
-      },
-      screenshot: {
-        type: 'screenshot',
-        file: '<relative-path-to-image.png>',
-        notes: 'chat screenshot',
-      },
-    },
+    entryTemplates: mergedEntryTemplates,
   };
 }
 
@@ -322,6 +342,7 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
       existingEntries: existingTemplate?.entries,
+      existingEntryTemplates: existingTemplate?.entryTemplates,
       sampleTextPath: path.basename(relativeSampleTextPath),
     });
     fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));

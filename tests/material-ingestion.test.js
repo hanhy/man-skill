@@ -529,3 +529,82 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     : [];
   assert.deepEqual(materialFiles, []);
 });
+
+test('scaffoldProfileIntake preserves existing starter entries and customized entry templates on rerun', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const initial = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const templatePath = path.join(rootDir, initial.starterManifestPath);
+  fs.writeFileSync(
+    templatePath,
+    JSON.stringify({
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      entries: [
+        {
+          type: 'message',
+          text: 'Ship the thin slice first.',
+          notes: 'favorite chat sample',
+        },
+      ],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'writing-sample.md',
+          notes: 'custom long-form sample',
+        },
+        talk: {
+          type: 'talk',
+          text: '<paste a transcript with pauses>',
+          notes: 'custom transcript note',
+        },
+      },
+    }, null, 2),
+  );
+
+  const rerun = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Forward',
+    summary: 'Direct operator with faster loops.',
+  });
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, rerun.starterManifestPath), 'utf8'));
+
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Forward');
+  assert.equal(template.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(template.entries, [
+    {
+      type: 'message',
+      text: 'Ship the thin slice first.',
+      notes: 'favorite chat sample',
+    },
+  ]);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'writing-sample.md',
+      notes: 'custom long-form sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript with pauses>',
+      notes: 'custom transcript note',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+});
