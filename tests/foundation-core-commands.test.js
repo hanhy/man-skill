@@ -116,6 +116,31 @@ test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', ()
   );
 });
 
+test('buildCoreFoundationCommand appends starter guidance to heading-only skill docs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  assert.equal(
+    command,
+    "grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md'",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
 test('buildCoreFoundationCommand seeds missing skill docs without clobbering existing content', () => {
   const command = buildCoreFoundationCommand({
     area: 'skills',

@@ -18,6 +18,9 @@ function quotePaths(paths: string[]): string {
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
+const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
+const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
+const SKILL_GUIDANCE_APPEND_TEMPLATE = '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -32,7 +35,7 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
     return null;
   }
 
-  return `mkdir -p skills/starter && printf %s ${shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n')} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
+  return `mkdir -p skills/starter && printf %s ${shellSingleQuote(SKILL_STARTER_TEMPLATE)} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
 }
 
 function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
@@ -42,10 +45,25 @@ function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
   }
 
   const mkdirPaths = Array.from(new Set(normalizedPaths.map((value) => path.posix.dirname(value))));
-  const starterTemplate = shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n');
+  const starterTemplate = shellSingleQuote(SKILL_STARTER_TEMPLATE);
   const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
 
   return `mkdir -p ${quotePaths(mkdirPaths)} && for file in ${fileList}; do [ -f "$file" ] || printf %s ${starterTemplate} > "$file"; done`;
+}
+
+function buildSkillGuidanceAppendCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length === 0 || !normalizedPaths.every((value) => value.endsWith('/SKILL.md'))) {
+    return null;
+  }
+
+  if (normalizedPaths.length === 1) {
+    const filePath = shellSingleQuote(normalizedPaths[0]);
+    return `grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} ${filePath} || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> ${filePath}`;
+  }
+
+  const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
+  return `for file in ${fileList}; do grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} "$file" || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> "$file"; done`;
 }
 
 function buildMemorySeedCommand(paths: string[]): string | null {
@@ -112,10 +130,22 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
     return null;
   }
 
-  const record = queuedArea as { area?: unknown; status?: unknown; paths?: unknown };
+  const record = queuedArea as { area?: unknown; status?: unknown; paths?: unknown; missingPaths?: unknown; thinPaths?: unknown };
   const area = typeof record.area === 'string' ? record.area : null;
   const status = typeof record.status === 'string' ? record.status : null;
   const paths = normalizeRelativePaths(record.paths).map((value) => value.split(path.sep).join('/'));
+  const missingPaths = normalizeRelativePaths(record.missingPaths).map((value) => value.split(path.sep).join('/'));
+  const thinPaths = normalizeRelativePaths(record.thinPaths).map((value) => value.split(path.sep).join('/'));
+
+  if (area === 'skills' && (missingPaths.length > 0 || thinPaths.length > 0)) {
+    const createCommand = buildSkillDocumentationSeedCommand(missingPaths);
+    const appendCommand = buildSkillGuidanceAppendCommand(thinPaths);
+    if (createCommand && appendCommand) {
+      return `(${createCommand}) && (${appendCommand})`;
+    }
+
+    return createCommand ?? appendCommand;
+  }
 
   if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
     return buildSkillDocumentationSeedCommand(paths);

@@ -52,19 +52,35 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
-  const documented = skillNames.filter((skillName) => fs.existsSync(path.join(rootDir, 'skills', skillName, 'SKILL.md')));
-  const undocumented = skillNames.filter((skillName) => !documented.includes(skillName));
-  const documentedExcerpts = Object.fromEntries(
-    documented.map((skillName) => {
-      const document = readTextIfExists(path.join(rootDir, 'skills', skillName, 'SKILL.md'));
-      return [skillName, extractDocumentExcerpt(document)];
-    }),
-  );
+  const documented = [];
+  const undocumented = [];
+  const thin = [];
+  /** @type {Record<string, string>} */
+  const documentedExcerpts = {};
+
+  for (const skillName of skillNames) {
+    const skillPath = path.join(rootDir, 'skills', skillName, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) {
+      undocumented.push(skillName);
+      continue;
+    }
+
+    const document = readTextIfExists(skillPath);
+    const excerpt = extractDocumentExcerpt(document);
+    if (isNonEmptyString(excerpt)) {
+      documented.push(skillName);
+      documentedExcerpts[skillName] = excerpt;
+      continue;
+    }
+
+    thin.push(skillName);
+  }
 
   return {
     names: skillNames,
     documented,
     undocumented,
+    thin,
     documentedExcerpts,
   };
 }
