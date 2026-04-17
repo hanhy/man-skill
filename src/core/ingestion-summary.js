@@ -130,8 +130,14 @@ function buildProfileCommands(profile, options = {}) {
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
-  const defaultImportCommand = runnableTextImportCommand ?? importCommands.message ?? importCommands.text;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
+  const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
+    ? intake.starterManifestPath
+    : null;
+  const intakeImportManifestCommand = intakeManifestPath
+    ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
+    : null;
+  const defaultImportCommand = runnableTextImportCommand ?? intakeImportManifestCommand ?? importCommands.message ?? importCommands.text;
 
   return {
     personId: profile.id,
@@ -148,6 +154,7 @@ function buildProfileCommands(profile, options = {}) {
     intakeCompletion: intake?.completion ?? 'missing',
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
+    importManifestCommand: imported ? null : intakeImportManifestCommand,
     refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
     importCommands,
     importMaterialCommand: imported

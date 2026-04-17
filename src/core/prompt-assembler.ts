@@ -295,6 +295,7 @@ type IngestionProfileCommand = {
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   refreshFoundationCommand?: string | null;
+  importManifestCommand?: string | null;
   importCommands?: {
     text?: string | null;
     message?: string | null;

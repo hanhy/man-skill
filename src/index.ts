@@ -507,9 +507,13 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
         ? `import source materials for ${metadataOnlyProfile.label}`
         : 'import source materials for metadata-only profiles';
       command = runnableImportCommand;
-      paths = sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
-        ? [sampleTextPath]
-        : [];
+      paths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
+        ? (Array.isArray(metadataOnlyProfile?.intakePaths)
+          ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+          : [])
+        : (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
+          ? [sampleTextPath]
+          : []);
     } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
       nextAction = 'import source materials for metadata-only profiles';
       command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
