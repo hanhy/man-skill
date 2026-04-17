@@ -1021,6 +1021,21 @@ export class MaterialIngestion {
       ].join('\n'),
     );
 
+    const updateProfileCommand = `node src/index.js update profile --person ${normalized.personId}`;
+    const refreshFoundationCommand = `node src/index.js update foundation --person ${normalized.personId}`;
+    const updateIntakeCommand = buildUpdateIntakeCommand({
+      personId: normalized.personId,
+      displayName: profileDocument?.displayName,
+      summary: profileDocument?.summary,
+    });
+    const importIntakeCommand = buildImportIntakeCommand(normalized.personId);
+    const helperCommands = {
+      refreshFoundation: refreshFoundationCommand,
+      updateProfile: updateProfileCommand,
+      updateIntake: updateIntakeCommand,
+      importIntake: importIntakeCommand,
+    };
+
     return {
       personId: normalized.personId,
       memoryDraftPath,
@@ -1028,6 +1043,11 @@ export class MaterialIngestion {
       soulDraftPath,
       skillsDraftPath,
       generatedAt,
+      refreshFoundationCommand,
+      updateProfileCommand,
+      updateIntakeCommand,
+      importIntakeCommand,
+      helperCommands,
     };
   }
 

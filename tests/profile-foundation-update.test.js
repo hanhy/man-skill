@@ -45,6 +45,16 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   const result = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   assert.equal(result.personId, 'harry-han');
+  assert.equal(result.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
+  assert.equal(result.updateProfileCommand, 'node src/index.js update profile --person harry-han');
+  assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
+  assert.deepEqual(result.helperCommands, {
+    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    updateProfile: 'node src/index.js update profile --person harry-han',
+    updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    importIntake: 'node src/index.js import intake --person harry-han',
+  });
 
   const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
   const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
@@ -106,6 +116,16 @@ test('CLI update foundation command writes derived profile drafts', () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
+  assert.equal(result.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
+  assert.equal(result.updateProfileCommand, 'node src/index.js update profile --person harry-han');
+  assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
+  assert.equal(result.importIntakeCommand, 'node src/index.js import intake --person harry-han');
+  assert.deepEqual(result.helperCommands, {
+    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    updateProfile: 'node src/index.js update profile --person harry-han',
+    updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+    importIntake: 'node src/index.js import intake --person harry-han',
+  });
   assert.match(result.voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
 });
