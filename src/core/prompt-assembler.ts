@@ -917,6 +917,16 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     ? `- coverage: ${overview.readyAreaCount ?? 0}/${overview.totalAreaCount ?? 4} ready${missingAreas.length > 0 ? `; missing ${missingAreas.join(', ')}` : ''}${thinAreas.length > 0 ? `; thin ${thinAreas.join(', ')}` : ''}`
     : null;
 
+  const queuedAreas = maintenance?.queuedAreas ?? [];
+  const queuedAreaLines = queuedAreas.slice(0, 2).map((area) => {
+    const command = area.command ?? buildCoreFoundationCommand(area);
+    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
+  });
+  const remainingQueuedAreas = queuedAreas.slice(2);
+  const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
+    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]`).join(', ')}`
+    : null;
+
   return [
     coverageLine,
     maintenance
@@ -935,10 +945,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
-      const command = area.command ?? buildCoreFoundationCommand(area);
-      return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
-    }),
+    ...queuedAreaLines,
+    remainingQueuedAreaSummary,
     memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
       : null,
