@@ -531,8 +531,8 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     missingAreaCount: 0,
     thinAreaCount: 1,
     helperCommands: {
-      scaffoldAll: "touch 'memory/README.md'",
-      memory: "touch 'memory/README.md'",
+      scaffoldAll: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
+      memory: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
       skills: null,
       soul: null,
       voice: null,
@@ -544,12 +544,12 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
         summary: 'README no, daily 1, long-term 1, scratch 1',
         action: 'create memory/README.md',
         paths: ['memory/README.md'],
-        command: "touch 'memory/README.md'",
+        command: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
       },
     ],
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command touch 'memory\/README\.md'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context\.\n\n## Buckets\n- daily\/: short-lived run notes\n- long-term\/: durable facts and conventions\n- scratch\/: in-flight ideas to refine or promote\n' > 'memory\/README\.md'/);
 });
 
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {

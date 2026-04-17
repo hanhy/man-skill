@@ -14,7 +14,7 @@ test('buildCoreFoundationCommand scaffolds missing memory buckets with seed file
       status: 'missing',
       paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
     }),
-    "mkdir -p 'memory/daily' 'memory/long-term' 'memory/scratch' && touch 'memory/README.md' \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+    "mkdir -p 'memory' 'memory/daily' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
 });
 
@@ -25,7 +25,7 @@ test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () 
       status: 'thin',
       paths: ['memory/scratch', 'memory/README.md', 'memory/long-term', 'memory/scratch'],
     }),
-    "mkdir -p 'memory/long-term' 'memory/scratch' && touch 'memory/README.md' 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+    "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
 });
 
@@ -38,7 +38,7 @@ test('buildCoreFoundationCommand daily memory scaffold expands the date at execu
 
   assert.equal(
     command,
-    "mkdir -p 'memory/daily' && touch 'memory/README.md' \"memory/daily/$(date +%F).md\"",
+    "mkdir -p 'memory' 'memory/daily' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\"",
   );
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-command-'));
@@ -48,6 +48,28 @@ test('buildCoreFoundationCommand daily memory scaffold expands the date at execu
   assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'README.md')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'daily', `${today}.md`)), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'daily', '$(date +%F).md')), false);
+});
+
+test('buildCoreFoundationCommand seeds a starter memory README when repo memory entries exist but guidance is missing', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+  });
+
+  assert.equal(
+    command,
+    "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
 });
 
 test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {

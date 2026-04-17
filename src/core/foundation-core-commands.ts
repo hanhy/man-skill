@@ -17,6 +17,7 @@ function quotePaths(paths: string[]): string {
 }
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
+const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -60,15 +61,19 @@ function buildMemorySeedCommand(paths: string[]): string | null {
     return null;
   }
 
-  const mkdirPaths = Array.from(new Set(bucketSeedFiles.map((value) => path.posix.dirname(value))));
-  const touchPaths = [
-    ...(needsRootDocument ? ['memory/README.md'] : []),
-    ...bucketSeedFiles,
-  ];
+  const mkdirPaths = Array.from(new Set([
+    ...(needsRootDocument ? ['memory'] : []),
+    ...bucketSeedFiles.map((value) => path.posix.dirname(value)),
+  ]));
+  const touchPaths = bucketSeedFiles;
   const commandSegments: string[] = [];
 
   if (mkdirPaths.length > 0) {
     commandSegments.push(`mkdir -p ${quotePaths(mkdirPaths)}`);
+  }
+
+  if (needsRootDocument) {
+    commandSegments.push(`printf %s ${shellSingleQuote(MEMORY_README_TEMPLATE)} > ${shellSingleQuote('memory/README.md')}`);
   }
 
   if (touchPaths.length > 0) {
@@ -139,7 +144,7 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   }
 
   if (area === 'memory' && paths.length === 1 && paths[0] === 'memory/README.md') {
-    return `touch ${shellSingleQuote('memory/README.md')}`;
+    return `mkdir -p memory && printf %s ${shellSingleQuote(MEMORY_README_TEMPLATE)} > ${shellSingleQuote('memory/README.md')}`;
   }
 
   return null;
