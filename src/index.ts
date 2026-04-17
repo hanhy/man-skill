@@ -661,13 +661,21 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
     if (metadataOnlyProfileNeedingScaffold) {
       const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
       const isPartialIntake = intakeCompletion === 'partial';
-      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0;
+      const bundledIntakeCommand = typeof ingestionSummary?.helperCommands?.scaffoldBundle === 'string' && ingestionSummary.helperCommands.scaffoldBundle.length > 0
+        ? ingestionSummary.helperCommands.scaffoldBundle
+        : null;
+      const fallbackBulkIntakeCommand = typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0
+        ? ingestionSummary.intakeStaleCommand
+        : null;
+      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && Boolean(bundledIntakeCommand ?? fallbackBulkIntakeCommand);
       nextAction = metadataOnlyProfileNeedingScaffold?.label
         ? (useBulkIntakeCommand
           ? `${isPartialIntake ? 'complete' : 'scaffold'} incomplete intake landing zones — starting with ${metadataOnlyProfileNeedingScaffold.label}`
           : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
         : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
-      command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
+      command = useBulkIntakeCommand
+        ? (bundledIntakeCommand ?? fallbackBulkIntakeCommand)
+        : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
       const collectIntakePaths = (profile: any) => {
         const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
           ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
@@ -689,11 +697,13 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
         : 'import source materials for ready intake profiles';
-      command = typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
-        ? ingestionSummary.intakeImportStaleCommand
-        : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
-            ? ingestionSummary.intakeImportAllCommand
-            : null);
+      command = typeof ingestionSummary?.helperCommands?.importIntakeBundle === 'string' && ingestionSummary.helperCommands.importIntakeBundle.length > 0
+        ? ingestionSummary.helperCommands.importIntakeBundle
+        : (typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
+            ? ingestionSummary.intakeImportStaleCommand
+            : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
+                ? ingestionSummary.intakeImportAllCommand
+                : null));
       paths = readyIntakeProfiles.flatMap((profile: any) => collectReadyIntakeImportPaths(profile));
     } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label

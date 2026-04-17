@@ -12,6 +12,19 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
+function buildCommandBundle(commands: Array<string | null | undefined>): string | null {
+  const normalizedCommands = commands.filter((command): command is string => typeof command === 'string' && command.length > 0);
+  if (normalizedCommands.length === 0) {
+    return null;
+  }
+
+  if (normalizedCommands.length === 1) {
+    return normalizedCommands[0];
+  }
+
+  return normalizedCommands.map((command) => `(${command})`).join(' && ');
+}
+
 function buildProfileImportCommands(profileId: string, options: any = {}) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return {
@@ -482,9 +495,19 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
+    scaffoldBundle: buildCommandBundle(
+      metadataProfileCommands
+        .filter((profile) => profile?.intakeReady === false)
+        .map((profile) => profile?.updateIntakeCommand),
+    ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importIntakeAll: 'node src/index.js import intake --all',
     importIntakeStale: 'node src/index.js import intake --stale',
+    importIntakeBundle: buildCommandBundle(
+      metadataProfileCommands
+        .filter((profile) => profile?.intakeReady === true)
+        .map((profile) => profile?.importIntakeCommand),
+    ),
     refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
     sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'

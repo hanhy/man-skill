@@ -820,3 +820,44 @@ test('buildSummary prompt preview surfaces the profile-local intake shortcut for
   assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, "node src/index.js import intake --person 'harry-han'");
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'harry-han' \| import node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });
+
+test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'Needs a fresh intake scaffold.',
+  });
+  ingestion.updateProfile({
+    personId: 'Beta Partial',
+    displayName: 'Beta Partial',
+    summary: 'Needs the intake scaffold completed.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'beta-partial', 'imports'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'beta-partial', 'imports', 'README.md'), '# Partial intake scaffold\n');
+  ingestion.scaffoldProfileIntake({
+    personId: 'Gamma Ready',
+    displayName: 'Gamma Ready',
+    summary: 'Ready to import the first batch.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Delta Ready',
+    displayName: 'Delta Ready',
+    summary: 'Also ready to import the first batch.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(
+    summary.ingestion.helperCommands.scaffoldBundle,
+    "(node src/index.js update intake --person 'beta-partial' --display-name 'Beta Partial' --summary 'Needs the intake scaffold completed.') && (node src/index.js update intake --person 'alpha-missing' --display-name 'Alpha Missing' --summary 'Needs a fresh intake scaffold.')",
+  );
+  assert.equal(
+    summary.ingestion.helperCommands.importIntakeBundle,
+    "(node src/index.js import intake --person 'delta-ready') && (node src/index.js import intake --person 'gamma-ready')",
+  );
+  assert.match(summary.promptPreview, /helpers: .*scaffold-bundle \(node src\/index\.js update intake --person 'beta-partial'/);
+  assert.match(summary.promptPreview, /helpers: .*import-bundle \(node src\/index\.js import intake --person 'delta-ready'\) && \(node src\/index\.js import intake --person 'gamma-ready'\)/);
+});

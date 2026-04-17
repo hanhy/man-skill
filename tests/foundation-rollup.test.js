@@ -830,7 +830,10 @@ test('buildSummary work loop includes all stale intake paths when bulk intake sc
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority?.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority?.command, 'node src/index.js update intake --stale');
+  assert.equal(
+    summary.workLoop.currentPriority?.command,
+    "(node src/index.js update intake --person 'beta-partial' --display-name 'Beta Partial' --summary 'Needs the intake scaffold completed.') && (node src/index.js update intake --person 'alpha-missing' --display-name 'Alpha Missing' --summary 'Needs a fresh intake scaffold.')",
+  );
   assert.deepEqual(summary.workLoop.currentPriority?.paths, [
     'profiles/beta-partial/imports/materials.template.json',
     'profiles/beta-partial/imports/sample.txt',
@@ -839,6 +842,6 @@ test('buildSummary work loop includes all stale intake paths when bulk intake sc
     'profiles/alpha-missing/imports/materials.template.json',
     'profiles/alpha-missing/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --stale/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js update intake --person 'beta-partial' --display-name 'Beta Partial' --summary 'Needs the intake scaffold completed\.'\) && \(node src\/index\.js update intake --person 'alpha-missing' --display-name 'Alpha Missing' --summary 'Needs a fresh intake scaffold\.'\)/);
   assert.match(summary.promptPreview, /paths: profiles\/beta-partial\/imports\/materials\.template\.json, profiles\/beta-partial\/imports\/sample\.txt, profiles\/alpha-missing\/imports, profiles\/alpha-missing\/imports\/README\.md, profiles\/alpha-missing\/imports\/materials\.template\.json, profiles\/alpha-missing\/imports\/sample\.txt/);
 });

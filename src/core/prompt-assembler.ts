@@ -339,9 +339,11 @@ type IngestionHelperCommands = {
   bootstrap?: string | null;
   scaffoldAll?: string | null;
   scaffoldStale?: string | null;
+  scaffoldBundle?: string | null;
   importManifest?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  importIntakeBundle?: string | null;
   refreshAllFoundation?: string | null;
   refreshStaleFoundation?: string | null;
   sampleStarter?: string | null;
@@ -803,9 +805,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const helperEntries = [
         helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
         helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
+        helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null,
         helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
         helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
         helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
+        helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null,
         helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
         helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
