@@ -100,6 +100,44 @@ test('JS ingestion summary shim stays aligned with the TypeScript implementation
   assert.deepEqual(buildJsIngestionSummary(profiles, options), buildTsIngestionSummary(profiles, options));
 });
 
+test('buildIngestionSummary exposes a per-profile foundation refresh bundle for imported stale profiles', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { talk: 1 },
+      latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      profile: {
+        displayName: 'Jane Doe',
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      },
+    },
+    {
+      id: 'harry-han',
+      materialCount: 2,
+      materialTypes: { message: 1, text: 1 },
+      latestMaterialAt: '2026-04-16T15:00:00.000Z',
+      profile: {
+        displayName: 'Harry Han',
+      },
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+      },
+    },
+  ]);
+
+  assert.equal(
+    summary.helperCommands.refreshFoundationBundle,
+    "(node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person jane-doe)",
+  );
+});
+
 test('loadProfilesIndex summarizes material types and latest material timestamp per profile', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -964,6 +1002,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.equal(summary.ingestion.refreshAllFoundationCommand, 'node src/index.js update foundation --all');
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
+  assert.equal(summary.ingestion.refreshFoundationBundleCommand, 'node src/index.js update foundation --person jane-doe');
   assert.deepEqual(summary.ingestion.helperCommands, {
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
     scaffoldAll: 'node src/index.js update intake --all',
@@ -975,6 +1014,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importIntakeBundle: null,
     refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
+    refreshFoundationBundle: 'node src/index.js update foundation --person jane-doe',
     sampleStarter: 'node src/index.js import sample',
     sampleManifest: "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation",
     sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
@@ -1085,7 +1125,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>"/);
-  assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'.*sample-message node src\/index\.js import message --person harry-han --text 'Ship the thin slice first\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'.*refresh-bundle node src\/index\.js update foundation --person jane-doe.*sample-message node src\/index\.js import message --person harry-han --text 'Ship the thin slice first\.' --refresh-foundation/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js update foundation --all \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\] for Harry Han \(harry-han\)/);
@@ -1299,6 +1339,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleFileCommands: [],
     sampleInlineCommands: [],
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    refreshFoundationBundleCommand: null,
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
       scaffoldAll: 'node src/index.js update intake --all',
@@ -1310,6 +1351,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       importIntakeBundle: null,
       refreshAllFoundation: 'node src/index.js update foundation --all',
       refreshStaleFoundation: 'node src/index.js update foundation --stale',
+      refreshFoundationBundle: null,
       sampleStarter: null,
       sampleManifest: null,
       sampleText: null,

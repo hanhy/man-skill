@@ -346,6 +346,7 @@ type IngestionHelperCommands = {
   importIntakeBundle?: string | null;
   refreshAllFoundation?: string | null;
   refreshStaleFoundation?: string | null;
+  refreshFoundationBundle?: string | null;
   sampleStarter?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
@@ -403,6 +404,7 @@ type IngestionSummary = {
     command?: string | null;
   }>;
   staleRefreshCommand?: string | null;
+  refreshFoundationBundleCommand?: string | null;
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -784,6 +786,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.importIntakeStale
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
+      || helperCommands.refreshFoundationBundle
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
@@ -812,6 +815,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null,
         helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
+        helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null,
         helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
         helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
         helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,

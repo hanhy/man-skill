@@ -510,6 +510,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     ),
     refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
+    refreshFoundationBundle: buildCommandBundle(
+      allProfileCommands
+        .filter((profile) => (profile?.materialCount ?? 0) > 0 && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0))
+        .map((profile) => profile?.refreshFoundationCommand),
+    ),
     sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
       : null,
@@ -571,6 +576,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleFileCommands,
     sampleInlineCommands,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
+    refreshFoundationBundleCommand: helperCommands.refreshFoundationBundle,
     helperCommands,
     profileCommands: orderedProfileCommands,
     allProfileCommands,
