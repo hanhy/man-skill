@@ -151,6 +151,36 @@ function loadProfileDocument(rootDir, profileId) {
   return readJsonIfExists(path.join(rootDir, 'profiles', profileId, 'profile.json'));
 }
 
+function buildIntakePaths(rootDir, profileId) {
+  const importsDir = path.join(rootDir, 'profiles', profileId, 'imports');
+  return {
+    importsDir,
+    intakeReadmePath: path.join(importsDir, 'README.md'),
+    starterManifestPath: path.join(importsDir, 'materials.template.json'),
+    sampleTextPath: path.join(importsDir, 'sample.txt'),
+  };
+}
+
+function loadProfileIntake(rootDir, profileId) {
+  const paths = buildIntakePaths(rootDir, profileId);
+  const importsDirPresent = fs.existsSync(paths.importsDir);
+  const intakeReadmePresent = fs.existsSync(paths.intakeReadmePath);
+  const starterManifestPresent = fs.existsSync(paths.starterManifestPath);
+  const sampleTextPresent = fs.existsSync(paths.sampleTextPath);
+
+  return {
+    ready: importsDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent,
+    importsDirPresent,
+    intakeReadmePresent,
+    starterManifestPresent,
+    sampleTextPresent,
+    importsDir: path.relative(rootDir, paths.importsDir),
+    intakeReadmePath: intakeReadmePresent ? path.relative(rootDir, paths.intakeReadmePath) : path.relative(rootDir, paths.intakeReadmePath),
+    starterManifestPath: starterManifestPresent ? path.relative(rootDir, paths.starterManifestPath) : path.relative(rootDir, paths.starterManifestPath),
+    sampleTextPath: sampleTextPresent ? path.relative(rootDir, paths.sampleTextPath) : path.relative(rootDir, paths.sampleTextPath),
+  };
+}
+
 function loadFoundationDrafts(rootDir, profileId) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
@@ -481,6 +511,7 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         latestMaterialId: profileSummary.latestMaterialId,
+        intake: loadProfileIntake(this.rootDir, profileId),
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
         foundationDraftStatus: loadFoundationDraftStatus(
           this.rootDir,

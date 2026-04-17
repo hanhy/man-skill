@@ -95,6 +95,30 @@ function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
   };
 }
 
+function buildUpdateIntakeCommand(profile) {
+  if (!profile?.id) {
+    return null;
+  }
+
+  const commandParts = ['node src/index.js update intake', '--person', shellQuote(profile.id)];
+  const displayName = typeof profile?.profile?.displayName === 'string' && profile.profile.displayName.trim().length > 0
+    ? profile.profile.displayName
+    : null;
+  const summary = typeof profile?.profile?.summary === 'string' && profile.profile.summary.trim().length > 0
+    ? profile.profile.summary
+    : null;
+
+  if (displayName) {
+    commandParts.push('--display-name', shellQuote(displayName));
+  }
+
+  if (summary) {
+    commandParts.push('--summary', shellQuote(summary));
+  }
+
+  return commandParts.join(' ');
+}
+
 function buildProfileCommands(profile, options = {}) {
   if (!profile?.id) {
     return null;
@@ -107,6 +131,7 @@ function buildProfileCommands(profile, options = {}) {
     ? importCommands.text
     : null;
   const defaultImportCommand = runnableTextImportCommand ?? importCommands.message ?? importCommands.text;
+  const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
 
   return {
     personId: profile.id,
@@ -118,6 +143,9 @@ function buildProfileCommands(profile, options = {}) {
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     updateProfileCommand: `node src/index.js update profile --person ${profile.id}`,
+    updateIntakeCommand: buildUpdateIntakeCommand(profile),
+    intakeReady: intake?.ready ?? false,
+    intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     refreshFoundationCommand: imported ? `node src/index.js update foundation --person ${profile.id}` : null,
     importCommands,
     importMaterialCommand: imported

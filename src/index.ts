@@ -469,9 +469,11 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     nextAction = 'refresh stale or incomplete target profiles';
     command = ingestionSummary?.staleRefreshCommand ?? null;
   } else if (metadataOnlyProfileCount > 0) {
-    const metadataOnlyProfile = Array.isArray(ingestionSummary?.metadataProfileCommands)
-      ? ingestionSummary.metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand)
-      : null;
+    const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
+      ? ingestionSummary.metadataProfileCommands
+      : [];
+    const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand);
+    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? null;
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
@@ -485,7 +487,15 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
       ? ingestionSummary.sampleTextPersonId
       : null;
 
-    if (runnableImportCommand) {
+    if (metadataOnlyProfileNeedingScaffold) {
+      nextAction = metadataOnlyProfileNeedingScaffold?.label
+        ? `scaffold the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`
+        : 'scaffold intake landing zones for metadata-only profiles';
+      command = metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
+      paths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
+        ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+    } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`
         : 'import source materials for metadata-only profiles';

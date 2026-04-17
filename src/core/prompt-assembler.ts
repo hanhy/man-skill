@@ -289,6 +289,9 @@ type IngestionProfileCommand = {
   needsRefresh?: boolean;
   missingDrafts?: string[];
   updateProfileCommand?: string | null;
+  updateIntakeCommand?: string | null;
+  intakeReady?: boolean;
+  intakePaths?: string[];
   refreshFoundationCommand?: string | null;
   importCommands?: {
     text?: string | null;
@@ -708,7 +711,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}; ${actionLabel} ${actionCommand}${profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : ''}`;
+      const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
+        ? `; scaffold ${profile.updateIntakeCommand}`
+        : '';
+      const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
+      const updateSegment = profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '';
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${scaffoldSegment}${actionSegment}${updateSegment}`;
     }),
   ].filter(Boolean).join('\n');
 }

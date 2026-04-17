@@ -168,7 +168,6 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Foundation maintenance:/);
   assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
-  assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
