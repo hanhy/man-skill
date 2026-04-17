@@ -392,12 +392,47 @@ function buildFoundationRefreshLabel(
     : refreshLabel;
 }
 
+function buildCoreFoundationCommand(queuedArea: any): string | null {
+  if (!queuedArea || typeof queuedArea !== 'object') {
+    return null;
+  }
+
+  const area = typeof queuedArea.area === 'string' ? queuedArea.area : null;
+  const status = typeof queuedArea.status === 'string' ? queuedArea.status : null;
+  const paths = Array.isArray(queuedArea.paths)
+    ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
+    return `touch ${paths.join(' ')}`;
+  }
+
+  if (area === 'voice' && status === 'missing') {
+    return 'mkdir -p voice && touch voice/README.md';
+  }
+
+  if (area === 'soul' && status === 'missing') {
+    return 'touch SOUL.md';
+  }
+
+  if (area === 'memory' && status === 'missing') {
+    return 'mkdir -p memory/daily memory/long-term memory/scratch && touch memory/README.md';
+  }
+
+  if (area === 'memory' && paths.length === 1 && paths[0] === 'memory/README.md') {
+    return 'touch memory/README.md';
+  }
+
+  return null;
+}
+
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
   const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const queuedAreaCommand = buildCoreFoundationCommand(queuedArea);
   const queuedProfileSummary = queuedProfile?.id
     ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
     : null;
@@ -428,7 +463,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       : queuedArea?.action ?? null,
     command: queuedProfile?.refreshCommand
       ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
-      : null,
+      : queuedAreaCommand,
     paths: queuedProfile?.refreshCommand
       ? buildFoundationDraftPaths(queuedProfileSummary)
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),
