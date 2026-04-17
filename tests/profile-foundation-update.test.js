@@ -110,6 +110,68 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
 });
 
+test('CLI update intake --stale scaffolds only metadata-only profiles with incomplete intake landing zones', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'No intake scaffold yet.',
+  });
+  ingestion.updateProfile({
+    personId: 'Zeta Partial',
+    displayName: 'Zeta Partial',
+    summary: 'Needs the intake scaffold completed.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'README.md'), '# Partial intake scaffold\n');
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Already has a complete intake scaffold.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--stale'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['zeta-partial', 'alpha-missing']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-missing', 'imports', 'materials.template.json')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'sample.txt')), true);
+});
+
+test('CLI update intake --all reruns intake scaffolding for every metadata-only profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'No intake scaffold yet.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Already has a complete intake scaffold.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--all'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['alpha-missing', 'beta-ready']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
+});
+
 test('CLI import sample command loads the checked-in sample manifest and refreshes foundation drafts', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });

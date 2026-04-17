@@ -201,6 +201,7 @@ export function buildIngestionSummary(profiles = [], options = {}) {
   const intakePartialProfileCount = metadataOnlyProfilesWithPartialIntake.length;
   const intakeMissingProfileCount = metadataOnlyProfilesWithMissingIntake.length;
   const intakeScaffoldProfileCount = metadataOnlyProfileCount - intakeReadyProfileCount;
+  const intakeStaleProfileCount = metadataOnlyProfilesWithPartialIntake.length + metadataOnlyProfilesWithMissingIntake.length;
   const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
@@ -278,8 +279,11 @@ export function buildIngestionSummary(profiles = [], options = {}) {
     intakePartialProfileCount,
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,
+    intakeStaleProfileCount,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>"',
+    intakeAllCommand: 'node src/index.js update intake --all',
+    intakeStaleCommand: 'node src/index.js update intake --stale',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     sampleManifestPath,

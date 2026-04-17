@@ -419,6 +419,60 @@ export class MaterialIngestion {
     };
   }
 
+  listMetadataOnlyProfiles() {
+    return new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => (profile?.materialCount ?? 0) <= 0)
+      .sort((left, right) => {
+        const completionRank = (profile) => {
+          const completion = profile?.intake?.completion;
+          if (completion === 'partial') {
+            return 0;
+          }
+
+          if ((completion ?? 'missing') === 'missing') {
+            return 1;
+          }
+
+          return 2;
+        };
+
+        const rankDelta = completionRank(left) - completionRank(right);
+        if (rankDelta !== 0) {
+          return rankDelta;
+        }
+
+        return (left?.id ?? '').localeCompare(right?.id ?? '');
+      });
+  }
+
+  scaffoldAllProfileIntakes() {
+    const profiles = this.listMetadataOnlyProfiles();
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
+  scaffoldStaleProfileIntakes() {
+    const profiles = this.listMetadataOnlyProfiles()
+      .filter((profile) => !profile?.intake?.ready);
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
     const { materialsDir } = this.ensureProfile(personId);
     const materialId = `${timestampId()}-${type}`;

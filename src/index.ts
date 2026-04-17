@@ -446,6 +446,7 @@ function buildSampleImportNextAction(ingestionSummary: any) {
 function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
+  const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
   const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
@@ -501,10 +502,13 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     if (metadataOnlyProfileNeedingScaffold) {
       const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
       const isPartialIntake = intakeCompletion === 'partial';
+      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0;
       nextAction = metadataOnlyProfileNeedingScaffold?.label
-        ? `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`
+        ? (useBulkIntakeCommand
+          ? `${isPartialIntake ? 'complete' : 'scaffold'} incomplete intake landing zones — starting with ${metadataOnlyProfileNeedingScaffold.label}`
+          : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
         : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
-      command = metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
+      command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
       const missingIntakePaths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakeMissingPaths)
         ? metadataOnlyProfileNeedingScaffold.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
         : [];
@@ -747,6 +751,14 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'intake') {
+    if (options.all) {
+      return ingestion.scaffoldAllProfileIntakes();
+    }
+
+    if (options.stale) {
+      return ingestion.scaffoldStaleProfileIntakes();
+    }
+
     if (!personId) {
       throw new Error('Missing required --person argument');
     }
@@ -963,6 +975,8 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
     '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
+    '  node src/index.js update intake --stale',
+    '  node src/index.js update intake --all',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
     '  node src/index.js update foundation --all',

@@ -237,8 +237,8 @@ test('buildSummary work loop prioritizes partially scaffolded intake profiles ov
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'complete the intake landing zone for Zeta Partial (zeta-partial)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'zeta-partial' --display-name 'Zeta Partial' --summary 'Needs the intake scaffold completed.'");
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'complete incomplete intake landing zones — starting with Zeta Partial (zeta-partial)');
+  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update intake --stale');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/zeta-partial/imports/materials.template.json',
     'profiles/zeta-partial/imports/sample.txt',
