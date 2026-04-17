@@ -140,6 +140,40 @@ test('default channel and provider scaffold modules stay aligned with registry m
   });
 });
 
+test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
+  const channelScaffolds = [
+    slackChannelScaffold,
+    telegramChannelScaffold,
+    whatsappChannelScaffold,
+    feishuChannelScaffold,
+  ];
+  const providerScaffolds = [
+    openaiProviderScaffold,
+    anthropicProviderScaffold,
+    kimiProviderScaffold,
+    minimaxProviderScaffold,
+    glmProviderScaffold,
+    qwenProviderScaffold,
+  ];
+  const channelManifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), 'utf8'));
+  const providerManifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), 'utf8'));
+
+  assert.equal(channelManifest.length, channelScaffolds.length);
+  assert.equal(providerManifest.length, providerScaffolds.length);
+
+  channelScaffolds.forEach((scaffold) => {
+    const manifestRecord = channelManifest.find((channel) => channel.id === scaffold.id);
+    assert.ok(manifestRecord, `missing checked-in channel manifest record for ${scaffold.id}`);
+    assert.deepEqual(manifestRecord, scaffold);
+  });
+
+  providerScaffolds.forEach((scaffold) => {
+    const manifestRecord = providerManifest.find((provider) => provider.id === scaffold.id);
+    assert.ok(manifestRecord, `missing checked-in provider manifest record for ${scaffold.id}`);
+    assert.deepEqual(manifestRecord, scaffold);
+  });
+});
+
 test('buildSummary exposes delivery metadata for default chat channels', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
