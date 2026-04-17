@@ -746,13 +746,25 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
-    (helperCommands.scaffoldAll || helperCommands.scaffoldStale || helperCommands.importIntakeAll || helperCommands.importIntakeStale || helperCommands.refreshStaleFoundation)
+    (helperCommands.scaffoldAll
+      || helperCommands.scaffoldStale
+      || helperCommands.importManifest
+      || helperCommands.importIntakeAll
+      || helperCommands.importIntakeStale
+      || helperCommands.refreshStaleFoundation
+      || helperCommands.sampleStarter
+      || helperCommands.sampleManifest
+      || helperCommands.sampleText)
       ? `- helpers: ${[
         helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
         helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
+        helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
         helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
         helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
+        helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
+        helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
+        helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,
       ].filter(Boolean).join(' | ')}`
       : null,
     (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
