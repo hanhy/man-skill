@@ -32,9 +32,10 @@ node src/index.js import screenshot --person harry-han --file ./screenshots/chat
 
 ```bash
 node src/index.js import sample
+node src/index.js import sample --file samples/starter-materials.json
 ```
 
-This shortcut auto-loads `samples/harry-materials.json`, runs the manifest import, and refreshes the derived foundation drafts in one step. Use it when you want the fastest end-to-end sanity check of the ingestion entrance on a fresh checkout.
+This shortcut auto-loads `samples/harry-materials.json`, runs the manifest import, and refreshes the derived foundation drafts in one step. Use it when you want the fastest end-to-end sanity check of the ingestion entrance on a fresh checkout. If you keep multiple starter manifests under `samples/`, pass `--file <manifest.json>` to target a specific checked-in sample without renaming the canonical one first.
 
 ### Import every ready profile-local intake scaffold that still has no imported materials
 
@@ -110,7 +111,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - top-level `personId` / `displayName` / `summary` act as a single-target shorthand and let `entries[]` omit `personId`
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
-- `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts
+- `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts; add `--file <manifest.json>` when you want to pick a different checked-in sample explicitly
 - `import intake --stale` bulk-imports only ready metadata-only intake scaffolds, so the profile-local entrance can be processed without re-importing profiles that already have stored materials
 - manifest imports can span multiple target profiles in one pass
 - manifest import results now also include per-profile summaries with imported material counts/types, the stored display label/summary, `needsRefresh`, sorted `missingDrafts`, and direct follow-up commands for `update profile` and `update foundation`

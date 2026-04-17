@@ -829,10 +829,15 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'sample') {
-    const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
+    const requestedSampleManifestPath = typeof options.file === 'string' && options.file.trim().length > 0
+      ? options.file.trim()
+      : null;
+    const sampleManifestRelativePath = requestedSampleManifestPath ?? detectSampleManifestRelativePath(rootDir);
     const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
     if (sampleManifest.status !== 'loaded' || !sampleManifestRelativePath) {
-      throw new Error('No valid sample manifest found under samples/');
+      throw new Error(requestedSampleManifestPath
+        ? `No valid sample manifest found at ${requestedSampleManifestPath}`
+        : 'No valid sample manifest found under samples/');
     }
 
     const result = ingestion.importManifest({
@@ -1161,7 +1166,7 @@ function buildCliUsageLines(): string[] {
     'Commands:',
     '  node src/index.js                                  Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
-    '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
+    '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
     '  node src/index.js import intake --stale             Import every ready metadata-only intake manifest and refresh drafts',
     '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
@@ -1190,7 +1195,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'sample') {
-    return 'Usage: node src/index.js import sample';
+    return 'Usage: node src/index.js import sample [--file <manifest.json>]';
   }
 
   if (command === 'import' && subcommand === 'intake') {

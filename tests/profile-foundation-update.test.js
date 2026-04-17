@@ -435,6 +435,56 @@ test('CLI import sample command falls back to another valid sample manifest when
   assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
 });
 
+test('CLI import sample command accepts an explicit sample manifest path override', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.writeFileSync(path.join(rootDir, 'samples', 'starter-post.txt'), 'Keep the feedback loop short.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample', '--file', 'samples/starter-materials.json'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/starter-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['starter-person']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/starter-person\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han')), false);
+});
+
 test('CLI import manifest rejects manifest entries that point outside the repo root', () => {
   const rootDir = makeTempRepo();
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-cli-outside-${Date.now()}.txt`);
@@ -530,6 +580,11 @@ test('CLI import command errors keep usage hints aligned with optional refresh a
       args: ['import', 'manifest'],
       expectedError: /Error: manifestFile is required for manifest import/,
       expectedUsage: /Usage: node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'sample', '--file'],
+      expectedError: /Error: No valid sample manifest found under samples\//,
+      expectedUsage: /Usage: node src\/index\.js import sample \[--file <manifest\.json>\]/,
     },
     {
       args: ['import', 'text'],
