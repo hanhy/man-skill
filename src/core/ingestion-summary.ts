@@ -477,6 +477,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importIntakeAll: 'node src/index.js import intake --all',
     importIntakeStale: 'node src/index.js import intake --stale',
+    refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
     sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
@@ -507,6 +508,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeStaleCommand: 'node src/index.js update intake --stale',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    refreshAllFoundationCommand: 'node src/index.js update foundation --all',
     sampleManifestPath,
     sampleManifestPresent,
     sampleManifestStatus: sampleManifest.status,

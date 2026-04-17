@@ -332,6 +332,7 @@ type IngestionHelperCommands = {
   importManifest?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  refreshAllFoundation?: string | null;
   refreshStaleFoundation?: string | null;
   sampleStarter?: string | null;
   sampleManifest?: string | null;
@@ -354,6 +355,7 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
   sampleManifestPresent?: boolean;
   sampleManifestStatus?: 'loaded' | 'missing' | 'invalid' | string;
@@ -748,9 +750,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.importManifest
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
+      || ingestion?.refreshAllFoundationCommand
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
       || helperCommands.importIntakeStale
+      || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
@@ -776,6 +780,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
         helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
         helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
+        helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
         helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
         helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
         helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
@@ -802,8 +807,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+    (ingestion.importManifestCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[ingestion.importManifestCommand, ingestion.refreshAllFoundationCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
