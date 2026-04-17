@@ -11,12 +11,14 @@ import { slackChannelScaffold } from '../src/channels/slack.js';
 import { telegramChannelScaffold } from '../src/channels/telegram.js';
 import { whatsappChannelScaffold } from '../src/channels/whatsapp.js';
 import { feishuChannelScaffold } from '../src/channels/feishu.js';
+import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { openaiProviderScaffold } from '../src/models/openai.js';
 import { anthropicProviderScaffold } from '../src/models/anthropic.js';
 import { kimiProviderScaffold } from '../src/models/kimi.js';
 import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
 import { qwenProviderScaffold } from '../src/models/qwen.js';
+import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 import { ManifestLoader as JsManifestLoader } from '../src/core/manifest-loader.js';
 import { ManifestLoader as TsManifestLoader } from '../src/core/manifest-loader.ts';
 
@@ -82,7 +84,7 @@ test('JS manifest loader shim stays aligned with the TypeScript implementation',
   assert.deepEqual(jsLoader.loadProviderManifest(), tsLoader.loadProviderManifest());
 });
 
-test('default channel and provider scaffold modules stay aligned with registry metadata', () => {
+test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
     slackChannelScaffold,
     telegramChannelScaffold,
@@ -99,6 +101,9 @@ test('default channel and provider scaffold modules stay aligned with registry m
   ];
   const channels = new JsChannelRegistry().summary().channels;
   const providers = new JsModelRegistry().summary().providers;
+
+  assert.deepEqual(DEFAULT_CHANNEL_SCAFFOLDS, channelScaffolds);
+  assert.deepEqual(DEFAULT_PROVIDER_SCAFFOLDS, providerScaffolds);
 
   assert.equal(channelScaffolds.length, channels.length);
   assert.equal(providerScaffolds.length, providers.length);

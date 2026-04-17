@@ -1198,7 +1198,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   throw new Error(`Unsupported import type: ${subcommand}`);
 }
 
-export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
+export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions): any {
   const ingestion = new MaterialIngestion(rootDir);
   const personId = typeof options.person === 'string' ? options.person : undefined;
 

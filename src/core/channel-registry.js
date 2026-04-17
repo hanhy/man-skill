@@ -1,4 +1,5 @@
 import { BaseRegistry } from './base-registry.js';
+import { DEFAULT_CHANNEL_SCAFFOLDS, DEFAULT_CHANNEL_SCAFFOLDS_BY_ID } from '../channels/scaffolds.js';
 
 function mergeStringLists(...lists) {
   return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
@@ -23,78 +24,8 @@ function mergeChannelAuth(defaultAuth, overrideAuth) {
   };
 }
 
-const DEFAULT_CHANNELS = [
-  {
-    id: 'slack',
-    name: 'Slack',
-    transport: 'chat',
-    direction: ['inbound', 'outbound'],
-    status: 'planned',
-    capabilities: ['threads', 'mentions', 'bot-token'],
-    auth: {
-      type: 'bot-token',
-      envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
-    },
-    deliveryModes: ['events-api', 'web-api'],
-    inboundPath: '/hooks/slack/events',
-    outboundMode: 'thread-reply',
-    implementationPath: 'src/channels/slack.js',
-    nextStep: 'implement inbound event handling and outbound thread replies',
-  },
-  {
-    id: 'telegram',
-    name: 'Telegram',
-    transport: 'chat',
-    direction: ['inbound', 'outbound'],
-    status: 'planned',
-    capabilities: ['bot-token', 'webhook', 'polling'],
-    auth: {
-      type: 'bot-token',
-      envVars: ['TELEGRAM_BOT_TOKEN'],
-    },
-    deliveryModes: ['polling', 'webhook'],
-    inboundPath: '/hooks/telegram',
-    outboundMode: 'chat-send',
-    implementationPath: 'src/channels/telegram.js',
-    nextStep: 'wire bot webhook intake and outbound chat sends',
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp',
-    transport: 'chat',
-    direction: ['inbound', 'outbound'],
-    status: 'planned',
-    capabilities: ['session', 'group-chat', 'business-api'],
-    auth: {
-      type: 'access-token',
-      envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
-    },
-    deliveryModes: ['cloud-api', 'session-bridge'],
-    inboundPath: '/hooks/whatsapp',
-    outboundMode: 'session-send',
-    implementationPath: 'src/channels/whatsapp.js',
-    nextStep: 'map business-api webhooks and outbound message delivery',
-  },
-  {
-    id: 'feishu',
-    name: 'Feishu',
-    transport: 'chat',
-    direction: ['inbound', 'outbound'],
-    status: 'planned',
-    capabilities: ['tenant-app', 'docs', 'bot'],
-    auth: {
-      type: 'tenant-app',
-      envVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
-    },
-    deliveryModes: ['event-subscription', 'webhook'],
-    inboundPath: '/hooks/feishu/events',
-    outboundMode: 'bot-message',
-    implementationPath: 'src/channels/feishu.js',
-    nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
-  },
-];
-
-const DEFAULT_CHANNELS_BY_ID = new Map(DEFAULT_CHANNELS.map((channel) => [channel.id, channel]));
+const DEFAULT_CHANNELS = DEFAULT_CHANNEL_SCAFFOLDS;
+const DEFAULT_CHANNELS_BY_ID = DEFAULT_CHANNEL_SCAFFOLDS_BY_ID;
 
 export class ChannelRegistry extends BaseRegistry {
   constructor(channels = DEFAULT_CHANNELS) {

@@ -1,4 +1,5 @@
 import { BaseRegistry } from './base-registry.js';
+import { DEFAULT_PROVIDER_SCAFFOLDS, DEFAULT_PROVIDER_SCAFFOLDS_BY_ID } from '../models/scaffolds.js';
 
 function mergeStringLists(...lists) {
   return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
@@ -9,82 +10,8 @@ function collectProviderAuthEnvVars(providers) {
     .sort((left, right) => left.localeCompare(right));
 }
 
-const DEFAULT_PROVIDERS = [
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    models: ['gpt-4.1', 'gpt-4o', 'gpt-5'],
-    status: 'planned',
-    features: ['chat', 'tools', 'reasoning'],
-    defaultModel: 'gpt-5',
-    authEnvVar: 'OPENAI_API_KEY',
-    modalities: ['chat', 'reasoning', 'vision'],
-    implementationPath: 'src/models/openai.js',
-    nextStep: 'implement chat/tool request translation and response normalization',
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    models: ['claude-3.7-sonnet', 'claude-3.5-sonnet'],
-    status: 'planned',
-    features: ['chat', 'tools', 'long-context'],
-    defaultModel: 'claude-3.7-sonnet',
-    authEnvVar: 'ANTHROPIC_API_KEY',
-    modalities: ['chat', 'long-context', 'vision'],
-    implementationPath: 'src/models/anthropic.js',
-    nextStep: 'implement messages api wrapper with long-context defaults',
-  },
-  {
-    id: 'kimi',
-    name: 'Kimi',
-    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-    status: 'planned',
-    features: ['chat', 'long-context'],
-    defaultModel: 'moonshot-v1-32k',
-    authEnvVar: 'KIMI_API_KEY',
-    modalities: ['chat', 'long-context'],
-    implementationPath: 'src/models/kimi.js',
-    nextStep: 'implement moonshot-compatible client setup and model selection',
-  },
-  {
-    id: 'minimax',
-    name: 'Minimax',
-    models: ['abab6.5s-chat', 'minimax-text-01'],
-    status: 'planned',
-    features: ['chat'],
-    defaultModel: 'minimax-text-01',
-    authEnvVar: 'MINIMAX_API_KEY',
-    modalities: ['chat'],
-    implementationPath: 'src/models/minimax.js',
-    nextStep: 'implement minimax request signing and chat completion mapping',
-  },
-  {
-    id: 'glm',
-    name: 'GLM',
-    models: ['glm-4-plus', 'glm-4-air'],
-    status: 'planned',
-    features: ['chat', 'tools'],
-    defaultModel: 'glm-4-plus',
-    authEnvVar: 'GLM_API_KEY',
-    modalities: ['chat', 'tools', 'vision'],
-    implementationPath: 'src/models/glm.js',
-    nextStep: 'implement glm request payload translation with tool support',
-  },
-  {
-    id: 'qwen',
-    name: 'Qwen',
-    models: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
-    status: 'planned',
-    features: ['chat', 'tools'],
-    defaultModel: 'qwen-max',
-    authEnvVar: 'QWEN_API_KEY',
-    modalities: ['chat', 'tools', 'vision'],
-    implementationPath: 'src/models/qwen.js',
-    nextStep: 'implement qwen chat wrapper and multimodal request mapping',
-  },
-];
-
-const DEFAULT_PROVIDERS_BY_ID = new Map(DEFAULT_PROVIDERS.map((provider) => [provider.id, provider]));
+const DEFAULT_PROVIDERS = DEFAULT_PROVIDER_SCAFFOLDS;
+const DEFAULT_PROVIDERS_BY_ID = DEFAULT_PROVIDER_SCAFFOLDS_BY_ID;
 
 export class ModelRegistry extends BaseRegistry {
   constructor(providers = DEFAULT_PROVIDERS) {
