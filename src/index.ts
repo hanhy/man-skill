@@ -810,7 +810,12 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string): WorkPri
           );
 
           if (matchingSampleFile) {
-            return [matchingSampleFile.path];
+            return Array.from(new Set([
+              typeof matchingSampleFile.sourcePath === 'string' && matchingSampleFile.sourcePath.length > 0
+                ? matchingSampleFile.sourcePath
+                : null,
+              matchingSampleFile.path,
+            ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
           }
 
           const sampleInlineCommands = Array.isArray(ingestionSummary?.sampleInlineCommands)

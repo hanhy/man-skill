@@ -331,11 +331,14 @@ test('buildSummary work loop targets metadata-only profiles with their direct im
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'samples/metadata-only.txt' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only.txt']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'samples/metadata-only-materials.json',
+    'samples/metadata-only.txt',
+  ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/metadata-only\.txt/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only\.txt/);
 });
 
 test('buildSummary work loop prefers a matching sample screenshot import when no direct sample text is available', () => {
@@ -377,10 +380,13 @@ test('buildSummary work loop prefers a matching sample screenshot import when no
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only-chat.png']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'samples/metadata-only-materials.json',
+    'samples/metadata-only-chat.png',
+  ]);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import screenshot --person metadata-only --file 'samples\/metadata-only-chat\.png' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/metadata-only-chat\.png/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only-chat\.png/);
 });
 
 test('buildSummary work loop keeps the sample manifest path visible for matching inline message imports', () => {
