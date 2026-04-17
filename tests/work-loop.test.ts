@@ -796,11 +796,52 @@ test('buildSummary work loop falls back to channel scaffolding when the env temp
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
 });
 
+test('buildSummary work loop narrows paths to the env template during credential bootstrap', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
+  assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
+});
+
 test('buildSummary work loop reports required env coverage from matching vars only when the template includes extras', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
-    'SLACK_BOT_TOKEN=',
+    'SLACK_BOT_TOKEN=***',
     'EXTRA_ALPHA=',
     'EXTRA_BETA=',
     'EXTRA_GAMMA=',

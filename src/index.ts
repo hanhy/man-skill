@@ -948,14 +948,15 @@ function buildDeliveryPriority({
     : false;
   const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
   const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
-  const paths = [
-    includeEnvTemplatePath ? envTemplatePath : null,
-    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
-    ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
-    ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
-      ? [firstQueued.implementationPath]
-      : []),
-  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const paths = includeEnvTemplatePath
+    ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
+    : [
+      typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
+      ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
+      ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
+        ? [firstQueued.implementationPath]
+        : []),
+    ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 
   const followUpParts = [
     firstQueued?.setupHint,
