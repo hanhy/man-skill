@@ -680,7 +680,10 @@ function buildDeliveryPriority({
 
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
   const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
-  const needsCredentialBootstrap = pendingCount > configuredCount;
+  const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
+    ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const needsCredentialBootstrap = firstQueuedMissingEnvVars.length > 0 && pendingCount > configuredCount;
   const followUpParts = [
     firstQueued?.setupHint,
     firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
