@@ -269,9 +269,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       deliveryModes: ['events-api', 'web-api'],
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
+      implementationScaffoldPath: 'src/channels/slack.js',
       configured: true,
       missingEnvVars: [],
       manifestPath: 'manifests/channels.json',
+      manifestPresent: false,
+      manifestScaffoldPath: 'manifests/channels.json',
       setupHint: 'credentials present',
       nextStep: 'implement inbound event handling and outbound thread replies',
     });
@@ -284,9 +287,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       modalities: ['chat', 'reasoning', 'vision'],
       implementationPath: 'src/models/openai.js',
       implementationPresent: true,
+      implementationScaffoldPath: 'src/models/openai.js',
       configured: true,
       missingEnvVars: [],
       manifestPath: 'manifests/providers.json',
+      manifestPresent: false,
+      manifestScaffoldPath: 'manifests/providers.json',
       setupHint: 'auth configured for gpt-5',
       nextStep: 'implement chat/tool request translation and response normalization',
     });
@@ -551,7 +557,9 @@ test('buildSummary keeps scaffold coverage global and ignores manifest implement
   assert.equal(summary.delivery.missingChannelScaffoldCount, 1);
   assert.equal(summary.delivery.missingProviderScaffoldCount, 1);
   assert.equal(discordQueueItem.implementationPresent, false);
+  assert.equal(discordQueueItem.implementationScaffoldPath, null);
   assert.equal(deepseekQueueItem.implementationPresent, false);
+  assert.equal(deepseekQueueItem.implementationScaffoldPath, null);
   assert.match(summary.promptPreview, /code scaffolds: 4\/5 channels, 6\/7 providers present/);
 });
 

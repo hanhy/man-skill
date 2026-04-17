@@ -489,6 +489,110 @@ test('buildSummary work loop points delivery setup at the env template once foun
   assert.match(summary.promptPreview, /paths: \.env\.example, manifests\/channels\.json, src\/channels\/slack\.js/);
 });
 
+test('buildSummary work loop scaffolds the channel manifest when delivery setup lacks an env template', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+});
+
+test('buildSummary work loop scaffolds the first provider implementation once the provider manifest exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'active' },
+    { id: 'telegram', status: 'active' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([{ id: 'openai', status: 'planned' }], null, 2));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'providers');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
+  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js']);
+  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured/);
+  assert.match(summary.promptPreview, /next action: create src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /command: mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+});
+
+test('buildSummary work loop refuses to scaffold outside-repo provider implementation paths', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'active' },
+    { id: 'telegram', status: 'active' },
+    { id: 'whatsapp', status: 'active' },
+    { id: 'feishu', status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'active' },
+    { id: 'anthropic', status: 'active' },
+    { id: 'kimi', status: 'active' },
+    { id: 'minimax', status: 'active' },
+    { id: 'glm', status: 'active' },
+    { id: 'qwen', status: 'active' },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      status: 'candidate',
+      models: ['deepseek-chat'],
+      features: ['chat'],
+      defaultModel: 'deepseek-chat',
+      authEnvVar: 'DEEPSEEK_API_KEY',
+      modalities: ['chat'],
+      implementationPath: '../outside-provider.js',
+      nextStep: 'implement deepseek transport adapter',
+    },
+  ], null, 2));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'providers');
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set DEEPSEEK_API_KEY for deepseek-chat; next: implement deepseek transport adapter');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', '../outside-provider.js']);
+  assert.doesNotMatch(summary.promptPreview, /outside-provider\.js'.*touch/);
+});
+
 test('buildSummary work loop points foundation refreshes at the stale profile draft paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

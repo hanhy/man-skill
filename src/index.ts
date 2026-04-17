@@ -56,7 +56,11 @@ type QueueLike = {
   setupHint?: string | null;
   nextStep?: string | null;
   implementationPath?: string | null;
+  implementationPresent?: boolean;
+  implementationScaffoldPath?: string | null;
   manifestPath?: string | null;
+  manifestPresent?: boolean;
+  manifestScaffoldPath?: string | null;
 };
 
 type ProfileSummaryLike = {
@@ -626,6 +630,24 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
   };
 }
 
+function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildRelativeFileTouchCommand(relativePath: string | null | undefined): string | null {
+  if (typeof relativePath !== 'string' || relativePath.length === 0) {
+    return null;
+  }
+
+  const normalizedPath = relativePath.split(path.sep).join('/');
+  const directory = path.posix.dirname(normalizedPath);
+  if (!directory || directory === '.') {
+    return `touch ${shellSingleQuote(normalizedPath)}`;
+  }
+
+  return `mkdir -p ${shellSingleQuote(directory)} && touch ${shellSingleQuote(normalizedPath)}`;
+}
+
 function buildDeliveryPriority({
   id,
   label,
@@ -650,17 +672,34 @@ function buildDeliveryPriority({
     typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
+  const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
+  const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
   const needsCredentialBootstrap = pendingCount > configuredCount;
+  const followUpParts = [
+    firstQueued?.setupHint,
+    firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  let nextAction = firstQueued ? followUpParts.join('; ') : null;
+  let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
+
+  if (!command && manifestMissing) {
+    const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
+    nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
+    command = buildRelativeFileTouchCommand(manifestPath);
+  } else if (!command && implementationMissing) {
+    const implementationPath = typeof firstQueued?.implementationScaffoldPath === 'string' ? firstQueued.implementationScaffoldPath : null;
+    nextAction = [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
+    command = buildRelativeFileTouchCommand(implementationPath);
+  }
 
   return {
     id,
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
     summary: `${pendingCount} pending, ${configuredCount} configured`,
-    nextAction: firstQueued
-      ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
-      : null,
-    command: needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null,
+    nextAction,
+    command,
     paths,
   };
 }
