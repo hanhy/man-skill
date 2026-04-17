@@ -1,0 +1,15 @@
+export const telegramChannelScaffold = {
+  id: 'telegram',
+  name: 'Telegram',
+  transport: 'chat',
+  direction: ['inbound', 'outbound'],
+  status: 'planned',
+  capabilities: ['bot-token', 'webhook', 'polling'],
+  auth: {
+    type: 'bot-token',
+    envVars: ['TELEGRAM_BOT_TOKEN'],
+  },
+  deliveryModes: ['polling', 'webhook'],
+  implementationPath: 'src/channels/telegram.js',
+  nextStep: 'wire bot webhook intake and outbound chat sends',
+};

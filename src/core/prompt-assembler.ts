@@ -9,6 +9,7 @@ type FoundationDraftStatus = {
   needsRefresh?: boolean;
   complete?: boolean;
   missingDrafts?: string[];
+  refreshReasons?: string[];
   generatedAt?: string | null;
 };
 
@@ -78,11 +79,96 @@ type RollupSection = {
   highlights?: string[];
 };
 
+type MaintenanceQueueItem = {
+  id?: string | null;
+  displayName?: string | null;
+  summary?: string | null;
+  label?: string | null;
+  status?: string;
+  generatedDraftCount?: number;
+  expectedDraftCount?: number;
+  candidateDraftCount?: number;
+  missingDrafts?: string[];
+  refreshReasons?: string[];
+  latestMaterialAt?: string | null;
+  refreshCommand?: string | null;
+};
+
+type FoundationMaintenance = {
+  profileCount?: number;
+  readyProfileCount?: number;
+  refreshProfileCount?: number;
+  incompleteProfileCount?: number;
+  staleRefreshCommand?: string | null;
+  queuedProfiles?: MaintenanceQueueItem[];
+};
+
 type FoundationRollup = {
+  maintenance?: FoundationMaintenance;
   memory?: RollupSection;
   voice?: RollupSection;
   soul?: RollupSection;
   skills?: RollupSection;
+} | null;
+
+type CoreDocumentFoundationSummary = {
+  present?: boolean;
+  path?: string;
+  lineCount?: number;
+  excerpt?: string | null;
+};
+
+type FoundationCoreOverview = {
+  readyAreaCount?: number;
+  totalAreaCount?: number;
+  missingAreas?: string[];
+  thinAreas?: string[];
+  recommendedActions?: string[];
+};
+
+type FoundationCoreMaintenanceQueueItem = {
+  area?: string;
+  status?: 'ready' | 'thin' | 'missing' | string;
+  summary?: string;
+  action?: string | null;
+  paths?: string[];
+};
+
+type FoundationCoreMaintenance = {
+  areaCount?: number;
+  readyAreaCount?: number;
+  missingAreaCount?: number;
+  thinAreaCount?: number;
+  queuedAreas?: FoundationCoreMaintenanceQueueItem[];
+};
+
+type FoundationCore = {
+  memory?: {
+    hasRootDocument?: boolean;
+    rootPath?: string;
+    dailyCount?: number;
+    longTermCount?: number;
+    scratchCount?: number;
+    totalEntries?: number;
+    readyBucketCount?: number;
+    totalBucketCount?: number;
+    populatedBuckets?: string[];
+    emptyBuckets?: string[];
+    sampleEntries?: string[];
+  };
+  skills?: {
+    count?: number;
+    documentedCount?: number;
+    undocumentedCount?: number;
+    sample?: string[];
+    samplePaths?: string[];
+    undocumentedSample?: string[];
+    undocumentedPaths?: string[];
+  };
+  soul?: CoreDocumentFoundationSummary;
+  voice?: CoreDocumentFoundationSummary;
+  overview?: FoundationCoreOverview;
+  maintenance?: FoundationCoreMaintenance;
 } | null;
 
 type AgentSummary = {
@@ -96,16 +182,206 @@ type VoiceSummary = {
   [key: string]: unknown;
 } | null;
 
+type ChannelAuth = {
+  type?: string | null;
+  envVars?: string[];
+};
+
+type ChannelSummaryRecord = {
+  id?: string;
+  name?: string;
+  status?: string;
+  deliveryModes?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
+  auth?: ChannelAuth | null;
+};
+
+type ChannelManifestSummary = {
+  path?: string;
+  status?: string;
+  entryCount?: number;
+  error?: string | null;
+};
+
+type ChannelsSummary = {
+  channelCount?: number;
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  authEnvVars?: string[];
+  manifest?: ChannelManifestSummary;
+  channels?: ChannelSummaryRecord[];
+} | null;
+
+type ModelSummaryRecord = {
+  id?: string;
+  name?: string;
+  status?: string;
+  defaultModel?: string | null;
+  authEnvVar?: string | null;
+  modalities?: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
+};
+
+type ProviderManifestSummary = {
+  path?: string;
+  status?: string;
+  entryCount?: number;
+  error?: string | null;
+};
+
+type ModelsSummary = {
+  providerCount?: number;
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  multimodalProviderCount?: number;
+  authEnvVars?: string[];
+  manifest?: ProviderManifestSummary;
+  providers?: ModelSummaryRecord[];
+} | null;
+
+type DeliveryQueueItem = {
+  id?: string | null;
+  name?: string | null;
+  status?: string;
+  authEnvVars?: string[];
+  deliveryModes?: string[];
+  defaultModel?: string | null;
+  authEnvVar?: string | null;
+  modalities?: string[];
+  implementationPath?: string | null;
+  implementationPresent?: boolean;
+  configured?: boolean;
+  missingEnvVars?: string[];
+  manifestPath?: string;
+  setupHint?: string;
+  nextStep?: string | null;
+};
+
+type DeliverySummary = {
+  pendingChannelCount?: number;
+  pendingProviderCount?: number;
+  configuredChannelCount?: number;
+  configuredProviderCount?: number;
+  readyChannelScaffoldCount?: number;
+  readyProviderScaffoldCount?: number;
+  missingChannelScaffoldCount?: number;
+  missingProviderScaffoldCount?: number;
+  missingChannelEnvVars?: string[];
+  missingProviderEnvVars?: string[];
+  requiredEnvVars?: string[];
+  channelManifestPath?: string;
+  providerManifestPath?: string;
+  envTemplatePath?: string | null;
+  envTemplatePresent?: boolean;
+  envTemplateCommand?: string | null;
+  channelQueue?: DeliveryQueueItem[];
+  providerQueue?: DeliveryQueueItem[];
+} | null;
+
+type IngestionProfileCommand = {
+  personId?: string | null;
+  displayName?: string | null;
+  label?: string | null;
+  materialCount?: number;
+  materialTypes?: MaterialTypes;
+  latestMaterialAt?: string | null;
+  needsRefresh?: boolean;
+  missingDrafts?: string[];
+  updateProfileCommand?: string | null;
+  updateIntakeCommand?: string | null;
+  intakeReady?: boolean;
+  intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
+  intakeStatusSummary?: string | null;
+  intakePaths?: string[];
+  intakeMissingPaths?: string[];
+  refreshFoundationCommand?: string | null;
+  importManifestCommand?: string | null;
+  importCommands?: {
+    text?: string | null;
+    message?: string | null;
+    talk?: string | null;
+    screenshot?: string | null;
+  };
+  importMaterialCommand?: string | null;
+};
+
+type IngestionSummary = {
+  profileCount?: number;
+  importedProfileCount?: number;
+  metadataOnlyProfileCount?: number;
+  readyProfileCount?: number;
+  refreshProfileCount?: number;
+  incompleteProfileCount?: number;
+  intakeReadyProfileCount?: number;
+  intakePartialProfileCount?: number;
+  intakeMissingProfileCount?: number;
+  intakeScaffoldProfileCount?: number;
+  supportedImportTypes?: string[];
+  bootstrapProfileCommand?: string | null;
+  sampleImportCommand?: string | null;
+  importManifestCommand?: string | null;
+  sampleManifestPath?: string | null;
+  sampleManifestPresent?: boolean;
+  sampleManifestStatus?: 'loaded' | 'missing' | 'invalid' | string;
+  sampleManifestEntryCount?: number;
+  sampleManifestProfileIds?: string[];
+  sampleManifestProfileLabels?: string[];
+  sampleManifestFilePaths?: string[];
+  sampleManifestMaterialTypes?: MaterialTypes;
+  sampleManifestError?: string | null;
+  sampleStarterCommand?: string | null;
+  sampleStarterSource?: string | null;
+  sampleStarterLabel?: string | null;
+  sampleManifestCommand?: string | null;
+  sampleTextPath?: string | null;
+  sampleTextPresent?: boolean;
+  sampleTextPersonId?: string | null;
+  sampleTextCommand?: string | null;
+  staleRefreshCommand?: string | null;
+  profileCommands?: IngestionProfileCommand[];
+  allProfileCommands?: IngestionProfileCommand[];
+  metadataProfileCommands?: IngestionProfileCommand[];
+} | null;
+
+type WorkLoopPriority = {
+  id?: string;
+  label?: string;
+  status?: 'ready' | 'queued' | string;
+  summary?: string;
+  nextAction?: string | null;
+  command?: string | null;
+  paths?: string[];
+};
+
+type WorkLoopSummary = {
+  intervalMinutes?: number;
+  objectiveCount?: number;
+  objectives?: string[];
+  priorityCount?: number;
+  readyPriorityCount?: number;
+  queuedPriorityCount?: number;
+  currentPriority?: WorkLoopPriority | null;
+  priorities?: WorkLoopPriority[];
+} | null;
+
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
   voice: VoiceSummary;
   memory: unknown;
   skills: unknown;
-  channels: unknown;
-  models: unknown;
+  channels: ChannelsSummary;
+  models: ModelsSummary;
+  delivery?: DeliverySummary;
   profiles?: ProfileSnapshot[];
   foundationRollup?: FoundationRollup;
+  foundationCore?: FoundationCore;
+  ingestion?: IngestionSummary;
+  workLoop?: WorkLoopSummary;
 }
 
 function formatMaterialCount(count: number) {
@@ -225,6 +501,28 @@ function formatFoundationHighlights(highlights: string[] = []) {
   return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
 }
 
+function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = null) {
+  const maintenance = foundationRollup?.maintenance;
+  if (!maintenance || (maintenance.profileCount ?? 0) === 0) {
+    return null;
+  }
+
+  const queuedProfiles = maintenance.queuedProfiles ?? [];
+  return [
+    `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    ...queuedProfiles.map((profile) => {
+      const reasonSuffix = (profile.refreshReasons ?? []).length > 0
+        ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
+        : '';
+      const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
+        ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
+        : '';
+      return `- ${profile.label ?? profile.id}: ${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
+    }),
+    maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
+  ].filter(Boolean).join('\n');
+}
+
 function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   const memory = foundationRollup?.memory;
   const voice = foundationRollup?.voice;
@@ -235,7 +533,12 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
-  const totalProfiles = [memory?.profileCount, voice?.profileCount, soul?.profileCount, skills?.profileCount]
+  const totalProfiles = [
+    memory?.profileCount,
+    voice?.profileCount,
+    soul?.profileCount,
+    skills?.profileCount,
+  ]
     .filter((value): value is number => Number.isFinite(value))
     .reduce((maxValue, value) => Math.max(maxValue, value), 0);
 
@@ -259,18 +562,295 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   ].filter(Boolean).join('\n');
 }
 
+function formatChannelAuth(auth: ChannelAuth | null | undefined) {
+  if (!auth?.type) {
+    return 'no auth';
+  }
+
+  const envVars = (auth.envVars ?? []).filter(Boolean);
+  return envVars.length > 0 ? `${auth.type}: ${envVars.join(', ')}` : auth.type;
+}
+
+function formatManifestSummary(label: string, manifest: ChannelManifestSummary | ProviderManifestSummary | undefined) {
+  if (!manifest?.path) {
+    return null;
+  }
+
+  if (manifest.status === 'loaded') {
+    return `- ${label}: loaded ${manifest.entryCount ?? 0} entr${manifest.entryCount === 1 ? 'y' : 'ies'} from ${manifest.path}`;
+  }
+
+  if (manifest.status === 'invalid') {
+    return `- ${label}: invalid (${manifest.error ?? 'parse failed'}) at ${manifest.path}`;
+  }
+
+  return `- ${label}: missing (${manifest.path})`;
+}
+
+function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
+  const channelRecords = channels?.channels ?? [];
+  const providerRecords = models?.providers ?? [];
+  const channelManifestSummary = formatManifestSummary('channel manifest', channels?.manifest);
+  const providerManifestSummary = formatManifestSummary('provider manifest', models?.manifest);
+  const channelQueue = delivery?.channelQueue ?? channelRecords
+    .filter((channel) => channel?.status !== 'active')
+    .map((channel) => ({
+      name: channel.name ?? channel.id,
+      id: channel.id,
+      status: channel.status ?? 'unknown',
+      deliveryModes: channel.deliveryModes ?? [],
+      implementationPath: channel.implementationPath ?? null,
+      implementationPresent: false,
+      setupHint: (channel.auth?.envVars ?? []).length > 0
+        ? `set ${(channel.auth?.envVars ?? []).join(', ')}`
+        : 'define channel credentials',
+      nextStep: channel.nextStep ?? null,
+    }));
+  const providerQueue = delivery?.providerQueue ?? providerRecords
+    .filter((provider) => provider?.status !== 'active')
+    .map((provider) => ({
+      name: provider.name ?? provider.id,
+      id: provider.id,
+      status: provider.status ?? 'unknown',
+      modalities: provider.modalities ?? [],
+      implementationPath: provider.implementationPath ?? null,
+      implementationPresent: false,
+      setupHint: provider.authEnvVar && provider.defaultModel
+        ? `set ${provider.authEnvVar} for ${provider.defaultModel}`
+        : provider.authEnvVar
+          ? `set ${provider.authEnvVar}`
+          : provider.defaultModel
+            ? `choose auth for ${provider.defaultModel}`
+            : 'choose auth and default model',
+      nextStep: provider.nextStep ?? null,
+    }));
+  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && channelQueue.length === 0 && providerQueue.length === 0) {
+    return null;
+  }
+
+  const activeChannelCount = channels?.activeCount ?? channelRecords.filter((channel) => channel.status === 'active').length;
+  const plannedChannelCount = channels?.plannedCount ?? channelRecords.filter((channel) => channel.status === 'planned').length;
+  const candidateChannelCount = channels?.candidateCount ?? channelRecords.filter((channel) => channel.status === 'candidate').length;
+  const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
+  const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
+  const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
+
+  return [
+    channelManifestSummary,
+    channelRecords.length > 0
+      ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
+      : null,
+    (delivery?.envTemplatePresent && delivery.envTemplatePath)
+      ? `- env template: ${delivery.envTemplatePath}${(delivery.requiredEnvVars ?? []).length > 0 ? ` (${delivery.requiredEnvVars.length} vars)` : ''}`
+      : null,
+    delivery?.envTemplatePresent && delivery.envTemplateCommand
+      ? `- env bootstrap: ${delivery.envTemplateCommand}`
+      : null,
+    (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
+      ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
+      : null,
+    (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
+      ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
+      : null,
+    ...channelRecords.slice(0, 2).map((channel) =>
+      `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
+    ),
+    channelQueue.length > 0
+      ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+      : null,
+    ...channelQueue.slice(0, 1).map((channel) =>
+      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`,
+    ),
+    providerManifestSummary,
+    providerRecords.length > 0
+      ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
+      : null,
+    ...providerRecords.slice(0, 2).map((provider) => {
+      const modalities = (provider.modalities ?? []).join(', ');
+      return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
+    }),
+    providerQueue.length > 0
+      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
+      : null,
+    ...providerQueue.slice(0, 1).map((provider) =>
+      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`,
+    ),
+  ].filter(Boolean).join('\n');
+}
+
+function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
+  const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
+  const hasBootstrapData = Boolean(
+    ingestion?.bootstrapProfileCommand
+      || ingestion?.sampleImportCommand
+      || ingestion?.importManifestCommand
+      || ingestion?.sampleManifestCommand
+      || ingestion?.sampleTextCommand
+      || ingestion?.staleRefreshCommand
+      || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
+  );
+
+  if (!ingestion || (!hasProfileData && !hasBootstrapData)) {
+    return null;
+  }
+
+  return [
+    `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
+    `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
+    `- intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    (ingestion.supportedImportTypes ?? []).length > 0
+      ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
+      : null,
+    ingestion.bootstrapProfileCommand
+      ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
+      : null,
+    (ingestion.importManifestCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[ingestion.importManifestCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+      : null,
+    ingestion.sampleImportCommand
+      ? `- sample import: ${ingestion.sampleImportCommand}`
+      : null,
+    ingestion.sampleStarterCommand
+      ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}${ingestion.sampleStarterLabel ? ` for ${ingestion.sampleStarterLabel}` : ''}`
+      : null,
+    ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
+      ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`
+      : null,
+    ingestion.sampleTextPresent && ingestion.sampleTextCommand
+      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
+      : null,
+    ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
+      ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
+      : null,
+    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) => {
+      const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
+      const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
+      const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
+      const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
+      const intakeStatusSegment = (profile.materialCount ?? 0) <= 0 && typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
+        ? `, intake ${profile.intakeStatusSummary}`
+        : '';
+      const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
+        ? `; scaffold ${profile.updateIntakeCommand}`
+        : '';
+      const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
+      const updateSegment = profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '';
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${actionSegment}${updateSegment}`;
+    }),
+  ].filter(Boolean).join('\n');
+}
+
+function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
+  if (!foundationCore) {
+    return null;
+  }
+
+  const memory = foundationCore.memory;
+  const skills = foundationCore.skills;
+  const soul = foundationCore.soul;
+  const voice = foundationCore.voice;
+  const overview = foundationCore.overview;
+  const maintenance = foundationCore.maintenance;
+  const missingAreas = (overview?.missingAreas ?? []).filter(Boolean);
+  const thinAreas = (overview?.thinAreas ?? []).filter(Boolean);
+  const recommendedActions = (overview?.recommendedActions ?? []).filter(Boolean);
+  const coverageLine = overview
+    ? `- coverage: ${overview.readyAreaCount ?? 0}/${overview.totalAreaCount ?? 4} ready${missingAreas.length > 0 ? `; missing ${missingAreas.join(', ')}` : ''}${thinAreas.length > 0 ? `; thin ${thinAreas.join(', ')}` : ''}`
+    : null;
+
+  return [
+    coverageLine,
+    maintenance
+      ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
+      : null,
+    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) =>
+      `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}`,
+    ),
+    memory
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
+      : null,
+    skills
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; placeholders: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}`
+      : null,
+    soul
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`
+      : null,
+    voice
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}`
+      : null,
+    recommendedActions.length > 0
+      ? `- next actions: ${recommendedActions.join(' | ')}`
+      : null,
+  ].filter(Boolean).join('\n');
+}
+
+function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
+  if (!workLoop || (workLoop.priorityCount ?? workLoop.priorities?.length ?? 0) === 0) {
+    return null;
+  }
+
+  const currentPriority = workLoop.currentPriority;
+  const priorities = workLoop.priorities ?? [];
+  const cadenceLine = workLoop.intervalMinutes
+    ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
+    : null;
+  const objectiveLine = (workLoop.objectives ?? []).length > 0
+    ? `- objectives: ${(workLoop.objectives ?? []).join(' | ')}`
+    : null;
+  const orderLine = priorities.length > 0
+    ? `- order: ${priorities.map((priority) => `${priority.id ?? priority.label ?? 'priority'}:${priority.status ?? 'unknown'}`).join(' | ')}`
+    : null;
+
+  return [
+    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${workLoop.readyPriorityCount ?? 0} ready, ${workLoop.queuedPriorityCount ?? 0} queued)`,
+    cadenceLine,
+    currentPriority
+      ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
+      : null,
+    currentPriority?.nextAction
+      ? `- next action: ${currentPriority.nextAction}`
+      : null,
+    currentPriority?.command
+      ? `- command: ${currentPriority.command}`
+      : null,
+    (currentPriority?.paths ?? []).length > 0
+      ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
+      : null,
+    orderLine,
+    objectiveLine,
+  ].filter(Boolean).join('\n');
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
   voice: VoiceSummary;
   memory: unknown;
   skills: unknown;
-  channels: unknown;
-  models: unknown;
+  channels: ChannelsSummary;
+  models: ModelsSummary;
+  delivery: DeliverySummary;
   profiles: ProfileSnapshot[];
   foundationRollup: FoundationRollup;
+  foundationCore: FoundationCore;
+  ingestion: IngestionSummary;
+  workLoop: WorkLoopSummary;
 
-  constructor({ profile, soul = '', voice, memory, skills, channels, models, profiles = [], foundationRollup = null }: PromptAssemblerOptions) {
+  constructor({
+    profile,
+    soul = '',
+    voice,
+    memory,
+    skills,
+    channels,
+    models,
+    delivery = null,
+    profiles = [],
+    foundationRollup = null,
+    foundationCore = null,
+    ingestion = null,
+    workLoop = null,
+  }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
     this.voice = voice;
@@ -278,13 +858,22 @@ export class PromptAssembler {
     this.skills = skills;
     this.channels = channels;
     this.models = models;
+    this.delivery = delivery;
     this.profiles = profiles;
     this.foundationRollup = foundationRollup;
+    this.foundationCore = foundationCore;
+    this.ingestion = ingestion;
+    this.workLoop = workLoop;
   }
 
   buildPreview(maxLength = 1200) {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
+    const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
+    const workLoopBlock = buildWorkLoopBlock(this.workLoop);
     const voicePreview = this.voice
       ? {
           tone: this.voice.tone,
@@ -301,6 +890,21 @@ export class PromptAssembler {
       '',
       'Voice profile:',
       JSON.stringify(voicePreview, null, 2),
+      ingestionEntranceBlock ? '' : null,
+      ingestionEntranceBlock ? 'Ingestion entrance:' : null,
+      ingestionEntranceBlock,
+      workLoopBlock ? '' : null,
+      workLoopBlock ? 'Work loop:' : null,
+      workLoopBlock,
+      deliveryFoundationBlock ? '' : null,
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
+      coreFoundationBlock ? '' : null,
+      coreFoundationBlock ? 'Core foundation:' : null,
+      coreFoundationBlock,
+      foundationMaintenanceBlock ? '' : null,
+      foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
+      foundationMaintenanceBlock,
       foundationRollupBlock ? '' : null,
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,
@@ -315,7 +919,12 @@ export class PromptAssembler {
 
   buildSystemPrompt() {
     const profileSnapshots = buildProfileSnapshots(this.profiles);
+    const foundationMaintenanceBlock = buildFoundationMaintenanceBlock(this.foundationRollup);
     const foundationRollupBlock = buildFoundationRollupBlock(this.foundationRollup);
+    const ingestionEntranceBlock = buildIngestionEntranceBlock(this.ingestion);
+    const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
+    const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
+    const workLoopBlock = buildWorkLoopBlock(this.workLoop);
     const sanitizedProfiles = sanitizeProfilesForPrompt(this.profiles);
 
     return [
@@ -336,6 +945,21 @@ export class PromptAssembler {
       '',
       'Skills:',
       JSON.stringify(this.skills, null, 2),
+      '',
+      ingestionEntranceBlock ? 'Ingestion entrance:' : null,
+      ingestionEntranceBlock,
+      '',
+      workLoopBlock ? 'Work loop:' : null,
+      workLoopBlock,
+      '',
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
+      '',
+      coreFoundationBlock ? 'Core foundation:' : null,
+      coreFoundationBlock,
+      '',
+      foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
+      foundationMaintenanceBlock,
       '',
       foundationRollupBlock ? 'Foundation rollup:' : null,
       foundationRollupBlock,

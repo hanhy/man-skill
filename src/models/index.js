@@ -10,6 +10,8 @@ export function createDefaultProviders() {
       defaultModel: 'gpt-5',
       authEnvVar: 'OPENAI_API_KEY',
       modalities: ['chat', 'reasoning', 'vision'],
+      implementationPath: 'src/models/openai.js',
+      nextStep: 'implement chat/tool request translation and response normalization',
     }),
     new BaseProvider({
       id: 'anthropic',
@@ -19,6 +21,8 @@ export function createDefaultProviders() {
       defaultModel: 'claude-3.7-sonnet',
       authEnvVar: 'ANTHROPIC_API_KEY',
       modalities: ['chat', 'long-context', 'vision'],
+      implementationPath: 'src/models/anthropic.js',
+      nextStep: 'implement messages api wrapper with long-context defaults',
     }),
     new BaseProvider({
       id: 'kimi',
@@ -28,6 +32,8 @@ export function createDefaultProviders() {
       defaultModel: 'moonshot-v1-32k',
       authEnvVar: 'KIMI_API_KEY',
       modalities: ['chat', 'long-context'],
+      implementationPath: 'src/models/kimi.js',
+      nextStep: 'implement moonshot-compatible client setup and model selection',
     }),
     new BaseProvider({
       id: 'minimax',
@@ -37,6 +43,8 @@ export function createDefaultProviders() {
       defaultModel: 'minimax-text-01',
       authEnvVar: 'MINIMAX_API_KEY',
       modalities: ['chat'],
+      implementationPath: 'src/models/minimax.js',
+      nextStep: 'implement minimax request signing and chat completion mapping',
     }),
     new BaseProvider({
       id: 'glm',
@@ -46,6 +54,8 @@ export function createDefaultProviders() {
       defaultModel: 'glm-4-plus',
       authEnvVar: 'GLM_API_KEY',
       modalities: ['chat', 'tools', 'vision'],
+      implementationPath: 'src/models/glm.js',
+      nextStep: 'implement glm request payload translation with tool support',
     }),
     new BaseProvider({
       id: 'qwen',
@@ -55,6 +65,8 @@ export function createDefaultProviders() {
       defaultModel: 'qwen-max',
       authEnvVar: 'QWEN_API_KEY',
       modalities: ['chat', 'tools', 'vision'],
+      implementationPath: 'src/models/qwen.js',
+      nextStep: 'implement qwen chat wrapper and multimodal request mapping',
     }),
   ];
 }

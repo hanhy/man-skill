@@ -110,6 +110,312 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
 });
 
+test('CLI update intake --stale scaffolds only metadata-only profiles with incomplete intake landing zones', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'No intake scaffold yet.',
+  });
+  ingestion.updateProfile({
+    personId: 'Zeta Partial',
+    displayName: 'Zeta Partial',
+    summary: 'Needs the intake scaffold completed.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'README.md'), '# Partial intake scaffold\n');
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Already has a complete intake scaffold.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--stale'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['zeta-partial', 'alpha-missing']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-missing', 'imports', 'materials.template.json')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'sample.txt')), true);
+});
+
+test('CLI update intake --all reruns intake scaffolding for every metadata-only profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'No intake scaffold yet.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Already has a complete intake scaffold.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--all'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['alpha-missing', 'beta-ready']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
+});
+
+test('CLI import intake --person loads a profile-local starter manifest and refreshes foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'),
+    'Metadata Only prefers tight feedback loops.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+        {
+          type: 'message',
+          text: 'Ship the narrow slice first.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Metadata Only'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['metadata-only']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/metadata-only\/memory\/long-term\/foundation\.json$/);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
+});
+
+test('CLI import intake --all loads every ready profile-local starter manifest and skips incomplete intake scaffolds', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Alpha Ready',
+    displayName: 'Alpha Ready',
+    summary: 'Ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Beta Ready',
+    displayName: 'Beta Ready',
+    summary: 'Another ready intake manifest.',
+  });
+  ingestion.updateProfile({
+    personId: 'Gamma Missing',
+    displayName: 'Gamma Missing',
+    summary: 'Needs intake scaffolding first.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'sample.txt'), 'Alpha sample.\n');
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'sample.txt'), 'Beta sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Alpha Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Beta Ready',
+      entries: [{ type: 'message', text: 'Beta keeps it terse.' }],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready']);
+  assert.deepEqual(result.results.map((entry) => entry.manifestFile), [
+    'profiles/alpha-ready/imports/materials.template.json',
+    'profiles/beta-ready/imports/materials.template.json',
+  ]);
+  assert.deepEqual(result.results.map((entry) => entry.profileIds), [['alpha-ready'], ['beta-ready']]);
+  assert.deepEqual(result.results.flatMap((entry) => entry.profileIds), ['alpha-ready', 'beta-ready']);
+});
+
+test('CLI import sample command loads the checked-in sample manifest and refreshes foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/harry-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+});
+
+test('CLI import sample command falls back to another valid sample manifest when the canonical one is invalid', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-materials.json'), '{not valid json');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'starter-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'starter-materials.json'),
+    JSON.stringify({
+      personId: 'Starter Person',
+      entries: [
+        {
+          type: 'text',
+          file: 'starter-post.txt',
+        },
+        {
+          type: 'message',
+          text: 'Keep the feedback loop short.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'sample'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'samples/starter-materials.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['starter-person']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/starter-person\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, result.foundationRefresh.results[0].voiceDraftPath)), true);
+});
+
+test('CLI import manifest rejects manifest entries that point outside the repo root', () => {
+  const rootDir = makeTempRepo();
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-cli-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: outsideFilePath,
+        },
+      ],
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'manifest', '--file', 'materials.json'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    /outside the repo root/,
+  );
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('CLI --help prints a concise usage guide instead of the repo summary JSON', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync('node', [cliEntrypoint, '--help'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+
+  assert.match(output, /^Usage: node src\/index\.js /);
+  assert.match(output, /Commands:/);
+  assert.match(output, /node src\/index\.js import sample/);
+  assert.doesNotMatch(output, /"profile": \{/);
+});
+
+test('CLI command errors print a concise usage hint without a stack trace', () => {
+  const rootDir = makeTempRepo();
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'manifest'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Error: manifestFile is required for manifest import/);
+      assert.match(error.stderr, /Usage: node src\/index\.js import manifest --file <manifest\.json>/);
+      assert.doesNotMatch(error.stderr, /at MaterialIngestion\.importManifest/);
+      return true;
+    },
+  );
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -213,6 +519,32 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
     fs.readFileSync(path.join(rootDir, 'profiles', 'fresh-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
   );
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
+});
+
+test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Repair Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Repair Person' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'voice', 'README.md');
+  const malformedVoiceDraft = '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
+  fs.writeFileSync(voiceDraftPath, malformedVoiceDraft);
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['repair-person']);
+
+  const repairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.notEqual(repairedVoiceDraft, malformedVoiceDraft);
+  assert.match(repairedVoiceDraft, /Generated at: /);
+  assert.match(repairedVoiceDraft, /Latest material: .*\(.+\)/);
+  assert.match(repairedVoiceDraft, /Source materials: 1 \(message:1\)/);
 });
 
 test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {
@@ -337,6 +669,42 @@ test('refreshStaleFoundationDrafts refreshes profiles when target metadata chang
     fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'), 'utf8'),
   );
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for fast feedback loops.');
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft metadata drifts from the target profile', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace('Display name: Harry Han', 'Display name: Old Harry')
+    .replace('Summary: Direct operator with a bias for momentum.', 'Summary: Outdated summary.');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(refreshedVoiceDraft, /Display name: Harry Han/);
+  assert.match(refreshedVoiceDraft, /Summary: Direct operator with a bias for momentum\./);
+  assert.doesNotMatch(refreshedVoiceDraft, /Display name: Old Harry/);
+  assert.doesNotMatch(refreshedVoiceDraft, /Summary: Outdated summary\./);
 });
 
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
@@ -465,6 +833,234 @@ test('CLI update profile can refresh foundation drafts after metadata changes', 
   assert.equal(memoryDraft.generatedAt >= result.profile.updatedAt, true);
 });
 
+test('CLI update intake scaffolds starter manifest files for a target person', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for momentum.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.importManifestCommand, 'node src/index.js import manifest --file profiles/harry-han/imports/materials.template.json --refresh-foundation');
+  assert.deepEqual(result.importCommands, {
+    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
+    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
+    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+  });
+  assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
+  assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);
+  assert.match(result.sampleTextPath, /profiles\/harry-han\/imports\/sample\.txt$/);
+
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, result.starterManifestPath), 'utf8'));
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Han');
+  assert.equal(template.summary, 'Direct operator with a bias for momentum.');
+  assert.deepEqual(template.entries, []);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+
+  const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Direct import commands:/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+});
+
+test('CLI update intake preserves existing starter entries and customized entry templates on rerun', () => {
+  const rootDir = makeTempRepo();
+
+  const initialOutput = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for momentum.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const initial = JSON.parse(initialOutput);
+  fs.writeFileSync(
+    path.join(rootDir, initial.starterManifestPath),
+    JSON.stringify({
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      entries: [
+        {
+          type: 'message',
+          text: 'Ship the thin slice first.',
+          notes: 'favorite chat sample',
+        },
+      ],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'writing-sample.md',
+          notes: 'custom long-form sample',
+        },
+        talk: {
+          type: 'talk',
+          text: '<paste a transcript with pauses>',
+          notes: 'custom transcript note',
+        },
+      },
+    }, null, 2),
+  );
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Forward',
+      '--summary',
+      'Direct operator with faster loops.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, result.starterManifestPath), 'utf8'));
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Forward');
+  assert.equal(template.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(template.entries, [
+    {
+      type: 'message',
+      text: 'Ship the thin slice first.',
+      notes: 'favorite chat sample',
+    },
+  ]);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'writing-sample.md',
+      notes: 'custom long-form sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript with pauses>',
+      notes: 'custom transcript note',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+});
+
+test('CLI update intake preserves custom README notes on rerun while refreshing generated commands', () => {
+  const rootDir = makeTempRepo();
+
+  const initialOutput = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const initial = JSON.parse(initialOutput);
+  const readmePath = path.join(rootDir, initial.intakeReadmePath);
+  const originalReadme = fs.readFileSync(readmePath, 'utf8');
+  const customizedReadme = originalReadme.replace(
+    'Add notes about where future materials should come from.',
+    '- Keep pulling from the founder memo folder.\n- Weekly voice notes live in iCloud Drive.',
+  );
+  fs.writeFileSync(readmePath, customizedReadme);
+
+  execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Forward',
+      '--summary',
+      'Direct operator with faster loops.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+
+  const rerunReadme = fs.readFileSync(readmePath, 'utf8');
+  assert.match(rerunReadme, /# Intake scaffold for Harry Forward/);
+  assert.match(rerunReadme, /node src\/index\.js import manifest --file profiles\/harry-han\/imports\/materials\.template\.json --refresh-foundation/);
+  assert.match(rerunReadme, /- Keep pulling from the founder memo folder\./);
+  assert.match(rerunReadme, /- Weekly voice notes live in iCloud Drive\./);
+});
+
 test('CLI import manifest can seed profile metadata before importing materials', () => {
   const rootDir = makeTempRepo();
 
@@ -552,6 +1148,24 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
   assert.equal(result.entryCount, 2);
   assert.deepEqual(result.profileIds, ['harry-han']);
   assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.profileSummaries, [
+    {
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      label: 'Harry Han (harry-han)',
+      summary: 'Direct operator with a bias for momentum.',
+      materialCount: 2,
+      materialTypes: {
+        message: 1,
+        text: 1,
+      },
+      needsRefresh: false,
+      missingDrafts: [],
+      importCommand: 'node src/index.js import manifest --file materials.json',
+      updateProfileCommand: 'node src/index.js update profile --person harry-han',
+      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+    },
+  ]);
 
   const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
   assert.equal(profile.displayName, 'Harry Han');

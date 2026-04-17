@@ -35,6 +35,64 @@ function countCandidateProfiles(profiles, key) {
   return profiles.filter((profile) => (profile.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
 }
 
+function buildProfileLabel(profile) {
+  const profileId = profile?.id ?? 'unknown-profile';
+  const displayName = profile?.profile?.displayName;
+  return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+}
+
+const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
+
+function countGeneratedDrafts(profile) {
+  return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
+}
+
+function countCandidateDrafts(profile) {
+  return FOUNDATION_DRAFT_KEYS.filter((key) => (profile?.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
+}
+
+function summarizeMaintenanceQueue(profiles) {
+  const queuedProfiles = profiles
+    .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
+    .map((profile) => ({
+      id: profile.id ?? null,
+      displayName: profile.profile?.displayName ?? null,
+      summary: profile.profile?.summary ?? null,
+      label: buildProfileLabel(profile),
+      status: 'stale',
+      generatedDraftCount: countGeneratedDrafts(profile),
+      expectedDraftCount: FOUNDATION_DRAFT_KEYS.length,
+      candidateDraftCount: countCandidateDrafts(profile),
+      missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+      refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
+      latestMaterialAt: profile.latestMaterialAt ?? null,
+      refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
+    }))
+    .sort((left, right) => {
+      const missingDraftDifference = (right.missingDrafts?.length ?? 0) - (left.missingDrafts?.length ?? 0);
+      if (missingDraftDifference !== 0) {
+        return missingDraftDifference;
+      }
+
+      const generatedDraftDifference = (left.generatedDraftCount ?? 0) - (right.generatedDraftCount ?? 0);
+      if (generatedDraftDifference !== 0) {
+        return generatedDraftDifference;
+      }
+
+      return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')
+        || (left.label ?? '').localeCompare(right.label ?? '');
+    });
+
+  return {
+    profileCount: profiles.length,
+    readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
+    refreshProfileCount: queuedProfiles.length,
+    incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
+    queuedProfiles,
+  };
+}
+
 export function buildFoundationRollup(profiles = []) {
   const safeProfiles = Array.isArray(profiles)
     ? profiles.filter((profile) => (profile?.materialCount ?? 0) > 0)
@@ -42,6 +100,7 @@ export function buildFoundationRollup(profiles = []) {
   const staleProfileCount = safeProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length;
 
   return {
+    maintenance: summarizeMaintenanceQueue(safeProfiles),
     memory: {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'memory'),

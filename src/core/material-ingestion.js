@@ -1,5 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  FileSystemLoader,
+  hasFoundationDraftProfileMetadataMismatch,
+  hasValidFoundationMarkdownDraft,
+  parseDraftMetadata,
+} from './fs-loader.js';
 
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -116,6 +122,26 @@ function resolveImportFile(baseDir, filePath) {
   return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
 }
 
+function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = filePath }) {
+  if (!isNonEmptyString(filePath) || !fs.existsSync(filePath)) {
+    throw new Error(`${errorLabel} references a missing file: ${originalPath}`);
+  }
+
+  const realRootDir = fs.realpathSync(rootDir);
+  const realFilePath = fs.realpathSync(filePath);
+  const fileStats = fs.statSync(realFilePath);
+  if (!fileStats.isFile()) {
+    throw new Error(`${errorLabel} references a non-file path: ${originalPath}`);
+  }
+
+  const relativeFilePath = path.relative(realRootDir, realFilePath);
+  if (path.isAbsolute(relativeFilePath) || relativeFilePath === '..' || relativeFilePath.startsWith(`..${path.sep}`)) {
+    throw new Error(`${errorLabel} references a file outside the repo root: ${originalPath}`);
+  }
+
+  return realFilePath;
+}
+
 function buildProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
   const now = new Date().toISOString();
   const normalizedDisplayName = normalizeText(displayName);
@@ -127,6 +153,169 @@ function buildProfileDocument({ existingProfile = null, normalizedId, personId, 
     updatedAt: now,
     displayName: normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId,
     summary: normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary,
+  };
+}
+
+function buildManifestImportCommand(manifestPath) {
+  return `node src/index.js import manifest --file ${manifestPath}`;
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildDirectImportCommands({ personId, sampleTextPath }) {
+  return {
+    text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
+    message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
+    talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${personId} --file <image.png> --refresh-foundation`,
+  };
+}
+
+function buildIntakePaths(personId) {
+  const basePath = path.join('profiles', personId, 'imports');
+  return {
+    importsDir: basePath,
+    intakeReadmePath: path.join(basePath, 'README.md'),
+    starterManifestPath: path.join(basePath, 'materials.template.json'),
+    sampleTextPath: path.join(basePath, 'sample.txt'),
+  };
+}
+
+function buildStarterManifestDocument({
+  personId,
+  displayName,
+  summary,
+  existingEntries = [],
+  existingEntryTemplates = null,
+  sampleTextPath = 'sample.txt',
+}) {
+  const defaultEntryTemplates = {
+    text: {
+      type: 'text',
+      file: sampleTextPath,
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  };
+  const mergedEntryTemplates = Object.fromEntries(
+    Object.entries(defaultEntryTemplates).map(([templateKey, templateValue]) => {
+      const existingTemplate = existingEntryTemplates?.[templateKey];
+      return [
+        templateKey,
+        existingTemplate && typeof existingTemplate === 'object'
+          ? { ...templateValue, ...existingTemplate, type: templateValue.type }
+          : templateValue,
+      ];
+    }),
+  );
+
+  return {
+    personId,
+    displayName: normalizeText(displayName) ?? personId,
+    summary: summary === undefined ? null : (normalizeText(summary) ?? null),
+    entries: Array.isArray(existingEntries) ? existingEntries : [],
+    entryTemplates: mergedEntryTemplates,
+  };
+}
+
+const INTAKE_CUSTOM_NOTES_START = '<!-- man-skill:intake-custom-notes:start -->';
+const INTAKE_CUSTOM_NOTES_END = '<!-- man-skill:intake-custom-notes:end -->';
+const DEFAULT_INTAKE_CUSTOM_NOTES = 'Add notes about where future materials should come from.';
+
+function extractIntakeCustomNotes(existingReadme) {
+  if (typeof existingReadme !== 'string' || existingReadme.length === 0) {
+    return DEFAULT_INTAKE_CUSTOM_NOTES;
+  }
+
+  const startIndex = existingReadme.indexOf(INTAKE_CUSTOM_NOTES_START);
+  const endIndex = existingReadme.indexOf(INTAKE_CUSTOM_NOTES_END);
+  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+    return DEFAULT_INTAKE_CUSTOM_NOTES;
+  }
+
+  const extracted = existingReadme
+    .slice(startIndex + INTAKE_CUSTOM_NOTES_START.length, endIndex)
+    .replace(/^\s+|\s+$/g, '');
+
+  return extracted.length > 0 ? extracted : DEFAULT_INTAKE_CUSTOM_NOTES;
+}
+
+function normalizeBlockText(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.replace(/^\s+|\s+$/g, '');
+  return normalized.length > 0 ? normalized : null;
+}
+
+function buildIntakeReadme({ displayName, personId, starterManifestPath, sampleTextPath, importManifestCommand, importCommands, customNotes }) {
+  const label = normalizeText(displayName) ?? personId;
+  const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
+  return [
+    `# Intake scaffold for ${label}`,
+    '',
+    'Use this folder as the user-facing entrance for collecting target-person materials before import.',
+    '',
+    `- Starter manifest: ${starterManifestPath}`,
+    `- Sample text placeholder: ${sampleTextPath}`,
+    `- Import after editing: ${importManifestCommand}`,
+    '',
+    'Suggested flow:',
+    '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
+    '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
+    '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Direct import commands:',
+    `- text: ${importCommands?.text}`,
+    `- message: ${importCommands?.message}`,
+    `- talk: ${importCommands?.talk}`,
+    `- screenshot: ${importCommands?.screenshot}`,
+    '',
+    'Custom notes:',
+    INTAKE_CUSTOM_NOTES_START,
+    managedCustomNotes,
+    INTAKE_CUSTOM_NOTES_END,
+    '',
+  ].join('\n');
+}
+
+function buildProfileLabel({ personId, displayName }) {
+  return displayName && displayName !== personId ? `${displayName} (${personId})` : (displayName ?? personId);
+}
+
+function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCount, materialTypes }) {
+  const personId = profileSummary?.id;
+  const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
+
+  return {
+    personId,
+    displayName,
+    label: buildProfileLabel({ personId, displayName }),
+    summary: profileSummary?.profile?.summary ?? null,
+    materialCount,
+    materialTypes,
+    needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
+    missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+    importCommand: buildManifestImportCommand(manifestPath),
+    updateProfileCommand: `node src/index.js update profile --person ${personId}`,
+    refreshFoundationCommand: `node src/index.js update foundation --person ${personId}`,
   };
 }
 
@@ -171,6 +360,151 @@ export class MaterialIngestion {
       personId: normalized.personId,
       profilePath: normalized.profilePath,
       profile: readJsonIfExists(normalized.profilePath),
+    };
+  }
+
+  scaffoldProfileIntake({ personId, displayName, summary }) {
+    const profileUpdate = this.updateProfile({ personId, displayName, summary });
+    const intakePaths = buildIntakePaths(profileUpdate.personId);
+    ensureDir(this.resolve(intakePaths.importsDir));
+    const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
+    const importCommands = buildDirectImportCommands({
+      personId: profileUpdate.personId,
+      sampleTextPath: relativeSampleTextPath,
+    });
+
+    const existingTemplate = readJsonIfExists(this.resolve(intakePaths.starterManifestPath));
+    const starterManifest = buildStarterManifestDocument({
+      personId: profileUpdate.personId,
+      displayName: profileUpdate.profile?.displayName,
+      summary: profileUpdate.profile?.summary,
+      existingEntries: existingTemplate?.entries,
+      existingEntryTemplates: existingTemplate?.entryTemplates,
+      sampleTextPath: path.basename(relativeSampleTextPath),
+    });
+    fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));
+
+    if (!fs.existsSync(this.resolve(intakePaths.sampleTextPath))) {
+      fs.writeFileSync(
+        this.resolve(intakePaths.sampleTextPath),
+        `Replace this file with a real writing sample for ${profileUpdate.profile?.displayName ?? profileUpdate.personId}.\n`,
+      );
+    }
+
+    const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
+      ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
+      : null;
+    fs.writeFileSync(
+      this.resolve(intakePaths.intakeReadmePath),
+      buildIntakeReadme({
+        displayName: profileUpdate.profile?.displayName,
+        personId: profileUpdate.personId,
+        starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
+        sampleTextPath: relativeSampleTextPath,
+        importManifestCommand,
+        importCommands,
+        customNotes: extractIntakeCustomNotes(existingReadme),
+      }),
+    );
+
+    return {
+      ...profileUpdate,
+      intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
+      starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
+      sampleTextPath: relativeSampleTextPath,
+      importManifestCommand,
+      importCommands,
+      refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+    };
+  }
+
+  listMetadataOnlyProfiles() {
+    return new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => (profile?.materialCount ?? 0) <= 0)
+      .sort((left, right) => {
+        const completionRank = (profile) => {
+          const completion = profile?.intake?.completion;
+          if (completion === 'partial') {
+            return 0;
+          }
+
+          if ((completion ?? 'missing') === 'missing') {
+            return 1;
+          }
+
+          return 2;
+        };
+
+        const rankDelta = completionRank(left) - completionRank(right);
+        if (rankDelta !== 0) {
+          return rankDelta;
+        }
+
+        return (left?.id ?? '').localeCompare(right?.id ?? '');
+      });
+  }
+
+  scaffoldAllProfileIntakes() {
+    const profiles = this.listMetadataOnlyProfiles();
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
+  scaffoldStaleProfileIntakes() {
+    const profiles = this.listMetadataOnlyProfiles()
+      .filter((profile) => !profile?.intake?.ready);
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
+  importProfileIntakeManifest({ personId }) {
+    const normalizedPersonId = slugifyPersonId(personId ?? '');
+    if (!normalizedPersonId) {
+      throw new Error('personId is required for intake import');
+    }
+
+    const profile = this.listMetadataOnlyProfiles()
+      .find((entry) => entry?.id === normalizedPersonId);
+    if (!profile) {
+      throw new Error(`No metadata-only profile found for intake import: ${personId}`);
+    }
+
+    if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
+      throw new Error(`Profile intake scaffold is not ready for import: ${normalizedPersonId}`);
+    }
+
+    return this.importManifest({
+      manifestFile: profile.intake.starterManifestPath,
+      refreshFoundation: true,
+    });
+  }
+
+  importAllProfileIntakeManifests() {
+    const profiles = this.listMetadataOnlyProfiles()
+      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+
+    return {
+      profileCount: profiles.length,
+      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
+      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
+      results,
     };
   }
 
@@ -264,13 +598,19 @@ export class MaterialIngestion {
     });
   }
 
-  importManifest({ manifestFile }) {
+  importManifest({ manifestFile, refreshFoundation = false }) {
     if (!manifestFile) {
       throw new Error('manifestFile is required for manifest import');
     }
 
     const resolvedManifestPath = resolveImportFile(this.rootDir, manifestFile);
-    const manifest = readJsonIfExists(resolvedManifestPath);
+    const validatedManifestPath = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolvedManifestPath,
+      errorLabel: 'Manifest file',
+      originalPath: manifestFile,
+    });
+    const manifest = readJsonIfExists(validatedManifestPath);
     if (!manifest) {
       throw new Error(`Unable to read manifest JSON: ${manifestFile}`);
     }
@@ -286,7 +626,7 @@ export class MaterialIngestion {
       ...(shorthandProfile ? [shorthandProfile] : []),
       ...(Array.isArray(manifest?.profiles) ? manifest.profiles : []),
     ];
-    for (const [index, profile] of manifestProfiles.entries()) {
+    const validatedProfiles = manifestProfiles.map((profile, index) => {
       if (!profile || typeof profile !== 'object') {
         throw new Error(`Manifest profile ${index} must be an object`);
       }
@@ -295,12 +635,12 @@ export class MaterialIngestion {
         throw new Error(`Manifest profile ${index} is missing personId`);
       }
 
-      this.updateProfile({
+      return {
         personId: profile.personId,
         displayName: profile.displayName,
         summary: profile.summary,
-      });
-    }
+      };
+    });
 
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
@@ -308,8 +648,8 @@ export class MaterialIngestion {
     }
 
     const defaultPersonId = shorthandProfile?.personId ?? null;
-    const manifestDir = path.dirname(resolvedManifestPath);
-    const results = entries.map((entry, index) => {
+    const manifestDir = path.dirname(validatedManifestPath);
+    const validatedEntries = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
@@ -320,62 +660,157 @@ export class MaterialIngestion {
       }
 
       const normalizedPersonId = slugifyPersonId(resolvedPersonId);
+      if (!normalizedPersonId) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
 
       if (entry.type === 'text') {
         return {
-          personId: normalizedPersonId,
+          personId: resolvedPersonId,
+          normalizedPersonId,
           type: 'text',
-          ...this.importTextDocument({
-            personId: resolvedPersonId,
-            sourceFile: resolveImportFile(manifestDir, entry.file),
-            notes: entry.notes ?? null,
+          sourceFile: assertFileWithinRoot({
+            rootDir: this.rootDir,
+            filePath: resolveImportFile(manifestDir, entry.file),
+            errorLabel: `Manifest entry ${index}`,
+            originalPath: entry.file,
           }),
+          notes: entry.notes ?? null,
         };
       }
 
       if (entry.type === 'message') {
+        if (!isNonEmptyString(entry.text)) {
+          throw new Error(`Manifest entry ${index} is missing text for message import`);
+        }
+
         return {
-          personId: normalizedPersonId,
+          personId: resolvedPersonId,
+          normalizedPersonId,
           type: 'message',
-          ...this.importMessage({
-            personId: resolvedPersonId,
-            text: entry.text,
-            notes: entry.notes ?? null,
-          }),
+          text: entry.text,
+          notes: entry.notes ?? null,
         };
       }
 
       if (entry.type === 'talk') {
+        if (!isNonEmptyString(entry.text)) {
+          throw new Error(`Manifest entry ${index} is missing text for talk import`);
+        }
+
         return {
-          personId: normalizedPersonId,
+          personId: resolvedPersonId,
+          normalizedPersonId,
           type: 'talk',
-          ...this.importTalkSnippet({
-            personId: resolvedPersonId,
-            text: entry.text,
-            notes: entry.notes ?? null,
-          }),
+          text: entry.text,
+          notes: entry.notes ?? null,
         };
       }
 
       if (entry.type === 'screenshot') {
         return {
-          personId: normalizedPersonId,
+          personId: resolvedPersonId,
+          normalizedPersonId,
           type: 'screenshot',
-          ...this.importScreenshotSource({
-            personId: resolvedPersonId,
-            sourceFile: resolveImportFile(manifestDir, entry.file),
-            notes: entry.notes ?? null,
+          sourceFile: assertFileWithinRoot({
+            rootDir: this.rootDir,
+            filePath: resolveImportFile(manifestDir, entry.file),
+            errorLabel: `Manifest entry ${index}`,
+            originalPath: entry.file,
           }),
+          notes: entry.notes ?? null,
         };
       }
 
       throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
     });
 
+    validatedProfiles.forEach((profile) => {
+      this.updateProfile(profile);
+    });
+
+    const results = validatedEntries.map((entry) => {
+      if (entry.type === 'text') {
+        return {
+          personId: entry.normalizedPersonId,
+          type: 'text',
+          ...this.importTextDocument({
+            personId: entry.personId,
+            sourceFile: entry.sourceFile,
+            notes: entry.notes,
+          }),
+        };
+      }
+
+      if (entry.type === 'message') {
+        return {
+          personId: entry.normalizedPersonId,
+          type: 'message',
+          ...this.importMessage({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes,
+          }),
+        };
+      }
+
+      if (entry.type === 'talk') {
+        return {
+          personId: entry.normalizedPersonId,
+          type: 'talk',
+          ...this.importTalkSnippet({
+            personId: entry.personId,
+            text: entry.text,
+            notes: entry.notes,
+          }),
+        };
+      }
+
+      return {
+        personId: entry.normalizedPersonId,
+        type: 'screenshot',
+        ...this.importScreenshotSource({
+          personId: entry.personId,
+          sourceFile: entry.sourceFile,
+          notes: entry.notes,
+        }),
+      };
+    });
+
+    const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
+    const profileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const foundationRefresh = refreshFoundation
+      ? {
+          profileCount: profileIds.length,
+          results: profileIds.map((personId) => this.refreshFoundationDrafts({ personId })),
+        }
+      : null;
+    const profileIndex = new FileSystemLoader(this.rootDir).loadProfilesIndex();
+    const profileSummaries = profileIds.map((personId) => {
+      const profileResults = results.filter((entry) => entry.personId === personId);
+      const profileSummary = profileIndex.find((profile) => profile.id === personId) ?? {
+        id: personId,
+        profile: readJsonIfExists(this.resolve('profiles', personId, 'profile.json')),
+        foundationDraftStatus: {
+          needsRefresh: true,
+          missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        },
+      };
+
+      return buildProfileCommandSummaries({
+        manifestPath: relativeManifestPath,
+        profileSummary,
+        materialCount: profileResults.length,
+        materialTypes: summarizeMaterialTypes(profileResults),
+      });
+    });
+
     return {
-      manifestFile: path.relative(this.rootDir, resolvedManifestPath),
+      manifestFile: relativeManifestPath,
       entryCount: results.length,
-      profileIds: [...new Set(results.map((entry) => entry.personId))].sort(),
+      profileIds,
+      profileSummaries,
+      ...(foundationRefresh ? { foundationRefresh } : {}),
       results,
     };
   }
@@ -563,6 +998,17 @@ export class MaterialIngestion {
         const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
 
         if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
+          return true;
+        }
+
+        if (!hasValidFoundationMarkdownDraft(voiceDraftPath) || !hasValidFoundationMarkdownDraft(soulDraftPath) || !hasValidFoundationMarkdownDraft(skillsDraftPath)) {
+          return true;
+        }
+
+        const voiceMetadata = parseDraftMetadata(voiceDraftPath);
+        const soulMetadata = parseDraftMetadata(soulDraftPath);
+        const skillsMetadata = parseDraftMetadata(skillsDraftPath);
+        if ([voiceMetadata, soulMetadata, skillsMetadata].some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument))) {
           return true;
         }
 

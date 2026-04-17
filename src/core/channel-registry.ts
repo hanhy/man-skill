@@ -14,11 +14,17 @@ export interface ChannelRecord {
   capabilities: string[];
   auth: ChannelAuthRecord | null;
   deliveryModes: string[];
+  implementationPath?: string | null;
+  nextStep?: string | null;
   [key: string]: unknown;
 }
 
 function mergeStringLists(...lists: Array<string[] | undefined>): string[] {
   return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
+}
+
+function collectAuthEnvVars(channels: ChannelRecord[]): string[] {
+  return [...new Set(channels.flatMap((channel) => channel.auth?.envVars ?? []))].sort((left, right) => left.localeCompare(right));
 }
 
 function mergeChannelAuth(
@@ -52,6 +58,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
     },
     deliveryModes: ['events-api', 'web-api'],
+    implementationPath: 'src/channels/slack.js',
+    nextStep: 'implement inbound event handling and outbound thread replies',
   },
   {
     id: 'telegram',
@@ -65,6 +73,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['TELEGRAM_BOT_TOKEN'],
     },
     deliveryModes: ['polling', 'webhook'],
+    implementationPath: 'src/channels/telegram.js',
+    nextStep: 'wire bot webhook intake and outbound chat sends',
   },
   {
     id: 'whatsapp',
@@ -78,6 +88,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
     },
     deliveryModes: ['cloud-api', 'session-bridge'],
+    implementationPath: 'src/channels/whatsapp.js',
+    nextStep: 'map business-api webhooks and outbound message delivery',
   },
   {
     id: 'feishu',
@@ -91,6 +103,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
     },
     deliveryModes: ['event-subscription', 'webhook'],
+    implementationPath: 'src/channels/feishu.js',
+    nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
   },
 ];
 
@@ -112,6 +126,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
         capabilities: [],
         auth: null,
         deliveryModes: [],
+        implementationPath: null,
+        nextStep: null,
       };
     }
 
@@ -123,6 +139,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
       capabilities: [],
       auth: null,
       deliveryModes: [],
+      implementationPath: null,
+      nextStep: null,
       ...defaultChannel,
       ...channel,
     };
@@ -136,10 +154,15 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
     };
   }
 
-  summary(): { channelCount: number; channels: ChannelRecord[] } {
+  summary(): { channelCount: number; activeCount: number; plannedCount: number; candidateCount: number; authEnvVars: string[]; channels: ChannelRecord[] } {
+    const channels = this.list() as ChannelRecord[];
     return {
       channelCount: this.count(),
-      channels: this.list() as ChannelRecord[],
+      activeCount: channels.filter((channel) => channel.status === 'active').length,
+      plannedCount: channels.filter((channel) => channel.status === 'planned').length,
+      candidateCount: channels.filter((channel) => channel.status === 'candidate').length,
+      authEnvVars: collectAuthEnvVars(channels),
+      channels,
     };
   }
 }

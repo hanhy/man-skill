@@ -33,6 +33,18 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function loadSkillInventory(rootDir) {
+  const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const documented = skillNames.filter((skillName) => fs.existsSync(path.join(rootDir, 'skills', skillName, 'SKILL.md')));
+  const undocumented = skillNames.filter((skillName) => !documented.includes(skillName));
+
+  return {
+    names: skillNames,
+    documented,
+    undocumented,
+  };
+}
+
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
@@ -139,6 +151,51 @@ function loadProfileDocument(rootDir, profileId) {
   return readJsonIfExists(path.join(rootDir, 'profiles', profileId, 'profile.json'));
 }
 
+function buildIntakePaths(rootDir, profileId) {
+  const importsDir = path.join(rootDir, 'profiles', profileId, 'imports');
+  return {
+    importsDir,
+    intakeReadmePath: path.join(importsDir, 'README.md'),
+    starterManifestPath: path.join(importsDir, 'materials.template.json'),
+    sampleTextPath: path.join(importsDir, 'sample.txt'),
+  };
+}
+
+function loadProfileIntake(rootDir, profileId) {
+  const paths = buildIntakePaths(rootDir, profileId);
+  const importsDirPresent = fs.existsSync(paths.importsDir);
+  const intakeReadmePresent = fs.existsSync(paths.intakeReadmePath);
+  const starterManifestPresent = fs.existsSync(paths.starterManifestPath);
+  const sampleTextPresent = fs.existsSync(paths.sampleTextPath);
+  const relativePaths = {
+    importsDir: path.relative(rootDir, paths.importsDir),
+    intakeReadmePath: path.relative(rootDir, paths.intakeReadmePath),
+    starterManifestPath: path.relative(rootDir, paths.starterManifestPath),
+    sampleTextPath: path.relative(rootDir, paths.sampleTextPath),
+  };
+  const ready = importsDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent;
+  const completion = ready
+    ? 'ready'
+    : (importsDirPresent || intakeReadmePresent || starterManifestPresent || sampleTextPresent ? 'partial' : 'missing');
+  const missingPaths = [
+    importsDirPresent ? null : relativePaths.importsDir,
+    intakeReadmePresent ? null : relativePaths.intakeReadmePath,
+    starterManifestPresent ? null : relativePaths.starterManifestPath,
+    sampleTextPresent ? null : relativePaths.sampleTextPath,
+  ].filter(Boolean);
+
+  return {
+    ready,
+    completion,
+    importsDirPresent,
+    intakeReadmePresent,
+    starterManifestPresent,
+    sampleTextPresent,
+    missingPaths,
+    ...relativePaths,
+  };
+}
+
 function loadFoundationDrafts(rootDir, profileId) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
@@ -192,23 +249,69 @@ function parseMaterialTypes(value) {
     }, {});
 }
 
-function parseDraftMetadata(filePath) {
+export function parseDraftMetadata(filePath) {
   const content = readTextIfExists(filePath);
   if (!content) {
     return null;
   }
 
+  const profileMatch = content.match(/^Profile:\s+(.+)$/m);
+  const displayNameMatch = content.match(/^Display name:\s+(.+)$/m);
+  const summaryMatch = content.match(/^Summary:\s+(.+)$/m);
   const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
   const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
+  const profileId = profileMatch?.[1] ?? null;
+  const displayName = displayNameMatch?.[1] ?? null;
+  const summary = summaryMatch?.[1] ?? null;
+  const generatedAt = generatedAtMatch?.[1] ?? null;
+  const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
+  const latestMaterialId = latestMaterialMatch?.[2] ?? null;
+  const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
+  const materialTypes = parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null);
 
   return {
-    generatedAt: generatedAtMatch?.[1] ?? null,
-    latestMaterialAt: latestMaterialMatch?.[1] ?? null,
-    latestMaterialId: latestMaterialMatch?.[2] ?? null,
-    sourceCount: sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0,
-    materialTypes: parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null),
+    profileId,
+    displayName,
+    summary,
+    generatedAt,
+    latestMaterialAt,
+    latestMaterialId,
+    sourceCount,
+    materialTypes,
+    valid: Boolean(
+      profileMatch
+      && displayNameMatch
+      && summaryMatch
+      && generatedAtMatch
+      && latestMaterialMatch
+      && sourceMaterialsMatch
+      && isNonEmptyString(profileId)
+      && isNonEmptyString(displayName)
+      && isNonEmptyString(summary)
+      && isNonEmptyString(generatedAt)
+      && isNonEmptyString(latestMaterialAt)
+      && isNonEmptyString(latestMaterialId)
+    ),
   };
+}
+
+export function hasValidFoundationMarkdownDraft(filePath) {
+  return Boolean(parseDraftMetadata(filePath)?.valid);
+}
+
+export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, profileId, profileDocument = null) {
+  if (!draftMetadata?.valid) {
+    return false;
+  }
+
+  const expectedProfileId = profileId;
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+
+  return (draftMetadata.profileId ?? profileId) !== expectedProfileId
+    || (draftMetadata.displayName ?? profileId) !== expectedDisplayName
+    || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
 }
 
 function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
@@ -227,6 +330,21 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
   if (fs.existsSync(candidates.memory) && !memoryDraft) {
     missingDrafts.add('memory');
   }
+
+  const voiceMetadata = parseDraftMetadata(candidates.voice);
+  const soulMetadata = parseDraftMetadata(candidates.soul);
+  const skillsMetadata = parseDraftMetadata(candidates.skills);
+
+  for (const [draftName, draftMetadata] of [
+    ['voice', voiceMetadata],
+    ['soul', soulMetadata],
+    ['skills', skillsMetadata],
+  ]) {
+    if (fs.existsSync(candidates[draftName]) && !draftMetadata?.valid) {
+      missingDrafts.add(draftName);
+    }
+  }
+
   const generatedAt = memoryDraft?.generatedAt ?? null;
   const expectedDisplayName = profileDocument?.displayName ?? profileId;
   const expectedSummary = profileDocument?.summary ?? null;
@@ -235,15 +353,24 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
       (memoryDraft.displayName ?? profileId) !== expectedDisplayName
       || (memoryDraft.summary ?? null) !== expectedSummary
     );
+  const hasMarkdownMetadataMismatch = [voiceMetadata, soulMetadata, skillsMetadata]
+    .some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
-  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch;
+  const refreshReasons = [
+    missingDrafts.size > 0 ? 'missing drafts' : null,
+    hasNewerMaterial ? 'new materials' : null,
+    hasProfileMetadataMismatch ? 'profile metadata drift' : null,
+    hasMarkdownMetadataMismatch ? 'draft metadata drift' : null,
+  ].filter(Boolean);
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch || hasMarkdownMetadataMismatch;
 
   return {
     generatedAt,
     complete: missingDrafts.size === 0,
     missingDrafts: [...missingDrafts].sort(),
+    refreshReasons,
     needsRefresh,
   };
 }
@@ -311,36 +438,36 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           entryCount: 0,
           latestSummaries: [],
         },
-    voice: fs.existsSync(voiceDraftPath)
+    voice: voiceMetadata?.valid
       ? {
           generated: true,
-          generatedAt: voiceMetadata?.generatedAt ?? null,
-          latestMaterialAt: voiceMetadata?.latestMaterialAt ?? null,
-          latestMaterialId: voiceMetadata?.latestMaterialId ?? null,
-          sourceCount: voiceMetadata?.sourceCount ?? 0,
-          materialTypes: voiceMetadata?.materialTypes ?? {},
+          generatedAt: voiceMetadata.generatedAt,
+          latestMaterialAt: voiceMetadata.latestMaterialAt,
+          latestMaterialId: voiceMetadata.latestMaterialId,
+          sourceCount: voiceMetadata.sourceCount,
+          materialTypes: voiceMetadata.materialTypes,
           highlights: readMarkdownHighlights(voiceDraftPath),
         }
       : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
-    soul: fs.existsSync(soulDraftPath)
+    soul: soulMetadata?.valid
       ? {
           generated: true,
-          generatedAt: soulMetadata?.generatedAt ?? null,
-          latestMaterialAt: soulMetadata?.latestMaterialAt ?? null,
-          latestMaterialId: soulMetadata?.latestMaterialId ?? null,
-          sourceCount: soulMetadata?.sourceCount ?? 0,
-          materialTypes: soulMetadata?.materialTypes ?? {},
+          generatedAt: soulMetadata.generatedAt,
+          latestMaterialAt: soulMetadata.latestMaterialAt,
+          latestMaterialId: soulMetadata.latestMaterialId,
+          sourceCount: soulMetadata.sourceCount,
+          materialTypes: soulMetadata.materialTypes,
           highlights: readMarkdownHighlights(soulDraftPath),
         }
       : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
-    skills: fs.existsSync(skillsDraftPath)
+    skills: skillsMetadata?.valid
       ? {
           generated: true,
-          generatedAt: skillsMetadata?.generatedAt ?? null,
-          latestMaterialAt: skillsMetadata?.latestMaterialAt ?? null,
-          latestMaterialId: skillsMetadata?.latestMaterialId ?? null,
-          sourceCount: skillsMetadata?.sourceCount ?? 0,
-          materialTypes: skillsMetadata?.materialTypes ?? {},
+          generatedAt: skillsMetadata.generatedAt,
+          latestMaterialAt: skillsMetadata.latestMaterialAt,
+          latestMaterialId: skillsMetadata.latestMaterialId,
+          sourceCount: skillsMetadata.sourceCount,
+          materialTypes: skillsMetadata.materialTypes,
           highlights: readMarkdownHighlights(skillsDraftPath),
         }
       : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
@@ -365,7 +492,11 @@ export class FileSystemLoader {
   }
 
   loadSkills() {
-    return listDirectoriesIfExists(this.resolve('skills'));
+    return loadSkillInventory(this.rootDir).names;
+  }
+
+  loadSkillInventory() {
+    return loadSkillInventory(this.rootDir);
   }
 
   loadMemoryIndex() {
@@ -395,6 +526,7 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         latestMaterialId: profileSummary.latestMaterialId,
+        intake: loadProfileIntake(this.rootDir, profileId),
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
         foundationDraftStatus: loadFoundationDraftStatus(
           this.rootDir,

@@ -17,7 +17,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'harry-han',
       materialCount: 2,
-      foundationDraftStatus: { needsRefresh: false },
+      foundationDraftStatus: { needsRefresh: false, complete: true, missingDrafts: [], refreshReasons: [] },
       foundationDraftSummaries: {
         memory: { generated: true, entryCount: 2, latestSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
         voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
@@ -34,7 +34,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     {
       id: 'jane-doe',
       materialCount: 1,
-      foundationDraftStatus: { needsRefresh: true },
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory', 'skills', 'soul', 'voice'], refreshReasons: ['missing drafts'] },
       foundationDraftSummaries: {
         memory: { generated: false, entryCount: 0, latestSummaries: [] },
         voice: { generated: false, highlights: [] },
@@ -74,6 +74,29 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     generatedProfileCount: 1,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
+  });
+  assert.deepEqual(rollup.maintenance, {
+    profileCount: 2,
+    readyProfileCount: 1,
+    refreshProfileCount: 1,
+    incompleteProfileCount: 1,
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
+    queuedProfiles: [
+      {
+        id: 'jane-doe',
+        displayName: null,
+        summary: null,
+        label: 'jane-doe',
+        status: 'stale',
+        generatedDraftCount: 0,
+        expectedDraftCount: 4,
+        candidateDraftCount: 4,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts'],
+        latestMaterialAt: null,
+        refreshCommand: 'node src/index.js update foundation --person jane-doe',
+      },
+    ],
   });
 });
 
@@ -124,7 +147,33 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });
-  assert.match(summary.promptPreview, /Foundation rollup:/);
+  assert.deepEqual(summary.foundation.maintenance, {
+    profileCount: 2,
+    readyProfileCount: 1,
+    refreshProfileCount: 1,
+    incompleteProfileCount: 1,
+    staleRefreshCommand: 'node src/index.js update foundation --stale',
+    queuedProfiles: [
+      {
+        id: 'jane-doe',
+        displayName: 'Jane Doe',
+        summary: null,
+        label: 'Jane Doe (jane-doe)',
+        status: 'stale',
+        generatedDraftCount: 0,
+        expectedDraftCount: 4,
+        candidateDraftCount: 4,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+        latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+        refreshCommand: 'node src/index.js update foundation --person jane-doe',
+      },
+    ],
+  });
+  assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.match(summary.promptPreview, /Foundation maintenance:/);
+  assert.match(summary.promptPreview, /1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ new materials/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
@@ -155,4 +204,390 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
     highlights: [],
   });
   assert.doesNotMatch(summary.promptPreview, /Foundation rollup:/);
+});
+
+test('buildSummary exposes core foundation diagnostics for repo memory, skills, soul, and voice', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'obsidian'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.\n- Prefer momentum over hedging.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.\nPreserve clear priorities.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.memory, {
+    hasRootDocument: true,
+    rootPath: 'memory/README.md',
+    dailyCount: 1,
+    longTermCount: 1,
+    scratchCount: 1,
+    totalEntries: 3,
+    readyBucketCount: 3,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily', 'long-term', 'scratch'],
+    emptyBuckets: [],
+    sampleEntries: ['daily/2026-04-16.md', 'long-term/operator.json', 'scratch/draft.txt'],
+  });
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 2,
+    documentedCount: 2,
+    undocumentedCount: 0,
+    sample: ['obsidian', 'telegram'],
+    samplePaths: ['skills/obsidian/SKILL.md', 'skills/telegram/SKILL.md'],
+    undocumentedSample: [],
+    undocumentedPaths: [],
+  });
+  assert.deepEqual(summary.foundation.core.soul, {
+    present: true,
+    path: 'SOUL.md',
+    lineCount: 2,
+    excerpt: 'Build a faithful operator core.',
+  });
+  assert.deepEqual(summary.foundation.core.voice, {
+    present: true,
+    path: 'voice/README.md',
+    lineCount: 2,
+    excerpt: 'Keep replies direct.',
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 4,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: [],
+    recommendedActions: [],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 4,
+    missingAreaCount: 0,
+    thinAreaCount: 0,
+    queuedAreas: [],
+  });
+  assert.match(summary.promptPreview, /Core foundation:/);
+  assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
+  assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
+  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
+});
+
+test('buildSummary flags missing and thin core foundation areas in the prompt preview', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 0,
+    totalAreaCount: 4,
+    missingAreas: ['skills', 'voice'],
+    thinAreas: ['memory', 'soul'],
+    recommendedActions: [
+      'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+      'create skills/<name>/SKILL.md for at least one repo skill',
+      'add non-heading guidance to SOUL.md',
+      'create voice/README.md',
+    ],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 0,
+    missingAreaCount: 2,
+    thinAreaCount: 2,
+    queuedAreas: [
+      {
+        area: 'memory',
+        status: 'thin',
+        summary: 'README yes, daily 0, long-term 0, scratch 0',
+        action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+        paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+      },
+      {
+        area: 'skills',
+        status: 'missing',
+        summary: '0 registered, 0 documented',
+        action: 'create skills/<name>/SKILL.md for at least one repo skill',
+        paths: ['skills/'],
+      },
+      {
+        area: 'soul',
+        status: 'thin',
+        summary: 'present, 0 lines',
+        action: 'add non-heading guidance to SOUL.md',
+        paths: ['SOUL.md'],
+      },
+      {
+        area: 'voice',
+        status: 'missing',
+        summary: 'missing, 0 lines',
+        action: 'create voice/README.md',
+        paths: ['voice/README.md'],
+      },
+    ],
+  });
+  assert.match(summary.promptPreview, /coverage: 0\/4 ready; missing skills, voice; thin memory, soul/);
+  assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch/);
+  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\//);
+  assert.match(summary.promptPreview, /memory: README yes, daily 0, long-term 0, scratch 0; empty buckets: daily, long-term, scratch/);
+  assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch \| create skills\/\<name\>\/SKILL\.md for at least one repo skill \| add non-heading guidance to SOUL\.md \| create voice\/README\.md/);
+});
+
+test('buildSummary keeps memory foundation thin until daily, long-term, and scratch buckets are all seeded', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.memory, {
+    hasRootDocument: true,
+    rootPath: 'memory/README.md',
+    dailyCount: 1,
+    longTermCount: 0,
+    scratchCount: 0,
+    totalEntries: 1,
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
+    sampleEntries: ['daily/2026-04-16.md'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['memory'],
+    recommendedActions: ['add at least one entry under memory/long-term and memory/scratch'],
+  });
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; empty buckets: long-term, scratch; samples: daily\/2026-04-16\.md/);
+  assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
+});
+
+test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'memory',
+        status: 'thin',
+        summary: 'README no, daily 1, long-term 1, scratch 1',
+        action: 'create memory/README.md',
+        paths: ['memory/README.md'],
+      },
+    ],
+  });
+  assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
+  assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md/);
+});
+
+test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 2,
+    documentedCount: 0,
+    undocumentedCount: 2,
+    sample: ['slack', 'telegram'],
+    samplePaths: [],
+    undocumentedSample: ['slack', 'telegram'],
+    undocumentedPaths: ['skills/slack', 'skills/telegram'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: ['create skills/slack/SKILL.md and skills/telegram/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '2 registered, 0 documented',
+        action: 'create skills/slack/SKILL.md and skills/telegram/SKILL.md',
+        paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+      },
+    ],
+  });
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); placeholders: slack, telegram @ skills\/slack, skills\/telegram/);
+});
+
+test('buildSummary keeps mixed documented and placeholder skills thin until all skill folders carry SKILL docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 2,
+    documentedCount: 1,
+    undocumentedCount: 1,
+    sample: ['slack', 'telegram'],
+    samplePaths: ['skills/telegram/SKILL.md'],
+    undocumentedSample: ['slack'],
+    undocumentedPaths: ['skills/slack'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: ['create skills/slack/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '2 registered, 1 documented',
+        action: 'create skills/slack/SKILL.md',
+        paths: ['skills/slack/SKILL.md'],
+      },
+    ],
+  });
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; placeholders: slack @ skills\/slack/);
+});
+
+test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  for (const skillName of ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta']) {
+    fs.mkdirSync(path.join(rootDir, 'skills', skillName), { recursive: true });
+  }
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 6,
+    documentedCount: 0,
+    undocumentedCount: 6,
+    sample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
+    samplePaths: [],
+    undocumentedSample: ['alpha', 'beta', 'delta', 'epsilon', 'gamma'],
+    undocumentedPaths: ['skills/alpha', 'skills/beta', 'skills/delta', 'skills/epsilon', 'skills/gamma'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: [
+      'create skills/alpha/SKILL.md, skills/beta/SKILL.md, skills/delta/SKILL.md, skills/epsilon/SKILL.md, skills/gamma/SKILL.md, and skills/zeta/SKILL.md',
+    ],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'skills',
+      status: 'thin',
+      summary: '6 registered, 0 documented',
+      action: 'create skills/alpha/SKILL.md, skills/beta/SKILL.md, skills/delta/SKILL.md, skills/epsilon/SKILL.md, skills/gamma/SKILL.md, and skills/zeta/SKILL.md',
+      paths: [
+        'skills/alpha/SKILL.md',
+        'skills/beta/SKILL.md',
+        'skills/delta/SKILL.md',
+        'skills/epsilon/SKILL.md',
+        'skills/gamma/SKILL.md',
+        'skills/zeta/SKILL.md',
+      ],
+    },
+  ]);
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/alpha\/SKILL\.md, skills\/beta\/SKILL\.md, skills\/delta\/SKILL\.md, skills\/epsilon\/SKILL\.md, skills\/gamma\/SKILL\.md, and skills\/zeta\/SKILL\.md/);
 });

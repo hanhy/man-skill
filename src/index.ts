@@ -1,17 +1,22 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgentProfile } from './core/agent-profile.ts';
 import { MemoryStore } from './core/memory-store.ts';
 import { SkillRegistry } from './core/skill-registry.ts';
+import { SoulProfile } from './core/soul-profile.ts';
 import { VoiceProfile } from './core/voice-profile.ts';
 import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
+import { buildCoreFoundationSummary } from './core/foundation-core.ts';
+import { buildIngestionSummary } from './core/ingestion-summary.js';
+import { buildDeliverySummary } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
-import { ManifestLoader } from './core/manifest-loader.js';
-import { WorkLoop } from './runtime/work-loop.js';
+import { ManifestLoader } from './core/manifest-loader.ts';
+import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
 type OptionValue = string | boolean | undefined;
 type ParsedOptions = Record<string, OptionValue>;
@@ -28,6 +33,597 @@ interface DraftRefreshResult {
   soulDraftPath?: string | null;
   skillsDraftPath?: string | null;
   [key: string]: unknown;
+}
+
+interface SampleManifestSummary {
+  status: 'loaded' | 'missing' | 'invalid';
+  entryCount: number;
+  profileIds: string[];
+  profileLabels: string[];
+  materialTypes: Record<string, number>;
+  textFilePersonIds: Record<string, string>;
+  filePaths: string[];
+  error: string | null;
+}
+
+interface SampleTextSummary {
+  path: string | null;
+  present: boolean;
+}
+
+type QueueLike = {
+  status?: string;
+  setupHint?: string | null;
+  nextStep?: string | null;
+  implementationPath?: string | null;
+  manifestPath?: string | null;
+};
+
+type ProfileSummaryLike = {
+  id?: string;
+  foundationDrafts?: Record<string, string> | null;
+  foundationDraftStatus?: {
+    missingDrafts?: string[];
+    refreshReasons?: string[];
+  } | null;
+};
+
+function slugifyPersonId(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function buildSampleProfileLabel(personId: string, displayName?: string | null) {
+  const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
+  if (!normalizedDisplayName || normalizedDisplayName === personId) {
+    return personId;
+  }
+
+  return `${normalizedDisplayName} (${personId})`;
+}
+
+function readSampleManifestSummary(rootDir: string, relativePath: string | null): SampleManifestSummary {
+  if (!relativePath) {
+    return {
+      status: 'missing',
+      entryCount: 0,
+      profileIds: [],
+      profileLabels: [],
+      materialTypes: {},
+      textFilePersonIds: {},
+      filePaths: [],
+      error: null,
+    };
+  }
+
+  const absolutePath = path.join(rootDir, relativePath);
+  if (!fs.existsSync(absolutePath)) {
+    return {
+      status: 'missing',
+      entryCount: 0,
+      profileIds: [],
+      profileLabels: [],
+      materialTypes: {},
+      textFilePersonIds: {},
+      filePaths: [],
+      error: null,
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+  } catch (error) {
+    return {
+      status: 'invalid',
+      entryCount: 0,
+      profileIds: [],
+      profileLabels: [],
+      materialTypes: {},
+      textFilePersonIds: {},
+      filePaths: [],
+      error: error instanceof Error ? error.message : 'Unable to parse sample manifest',
+    };
+  }
+
+  try {
+    const profileIds = new Set<string>();
+    const materialTypes: Record<string, number> = {};
+    const textFilePersonIds: Record<string, string> = {};
+    const filePaths = new Set<string>();
+    const profileDisplayNames = new Map<string, string>();
+    const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
+    const realRootDir = fs.realpathSync(rootDir);
+
+    const registerPersonId = (value: unknown, displayName?: unknown) => {
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        return null;
+      }
+
+      const normalized = slugifyPersonId(value);
+      if (!normalized) {
+        return null;
+      }
+
+      profileIds.add(normalized);
+      if (typeof displayName === 'string' && displayName.trim().length > 0) {
+        profileDisplayNames.set(normalized, displayName.trim());
+      }
+      return normalized;
+    };
+
+    const manifest = Array.isArray(parsed)
+      ? { entries: parsed }
+      : (parsed && typeof parsed === 'object' ? parsed as { entries?: unknown; profiles?: unknown; personId?: unknown } : null);
+
+    if (!manifest) {
+      throw new Error('Sample manifest must be an array or object');
+    }
+
+    const fallbackPersonId = registerPersonId(
+      manifest.personId,
+      typeof (manifest as { displayName?: unknown }).displayName === 'string'
+        ? (manifest as { displayName?: string }).displayName
+        : undefined,
+    );
+    const manifestDir = path.dirname(absolutePath);
+
+    if (Array.isArray(manifest.profiles)) {
+      manifest.profiles.forEach((profileEntry, index) => {
+        if (!profileEntry || typeof profileEntry !== 'object') {
+          throw new Error(`Manifest profile ${index} must be an object`);
+        }
+
+        const profilePersonId = registerPersonId(
+          (profileEntry as { personId?: unknown }).personId,
+          (profileEntry as { displayName?: unknown }).displayName,
+        );
+        if (!profilePersonId) {
+          throw new Error(`Manifest profile ${index} is missing personId`);
+        }
+      });
+    }
+
+    const entries = manifest.entries;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error('Manifest must contain a non-empty entries array');
+    }
+
+    entries.forEach((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(`Manifest entry ${index} must be an object`);
+      }
+
+      const entryRecord = entry as { personId?: unknown; type?: unknown; file?: unknown; text?: unknown };
+      const resolvedPersonId = entryRecord.personId ?? fallbackPersonId;
+      const normalizedPersonId = registerPersonId(resolvedPersonId);
+      if (!normalizedPersonId) {
+        throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      if (typeof entryRecord.type !== 'string' || !supportedEntryTypes.has(entryRecord.type)) {
+        throw new Error(`Unsupported manifest entry type at index ${index}: ${entryRecord.type}`);
+      }
+
+      if (entryRecord.type === 'message' || entryRecord.type === 'talk') {
+        if (typeof entryRecord.text !== 'string' || entryRecord.text.trim().length === 0) {
+          throw new Error(`Manifest entry ${index} is missing text for ${entryRecord.type} import`);
+        }
+      }
+
+      if (entryRecord.type === 'text' || entryRecord.type === 'screenshot') {
+        if (typeof entryRecord.file !== 'string' || entryRecord.file.trim().length === 0) {
+          throw new Error(`Manifest entry ${index} is missing file for ${entryRecord.type} import`);
+        }
+
+        const resolvedFilePath = path.resolve(manifestDir, entryRecord.file);
+        if (!fs.existsSync(resolvedFilePath)) {
+          throw new Error(`Manifest entry ${index} references a missing file: ${entryRecord.file}`);
+        }
+
+        const realFilePath = fs.realpathSync(resolvedFilePath);
+        const fileStats = fs.statSync(realFilePath);
+        if (!fileStats.isFile()) {
+          throw new Error(`Manifest entry ${index} references a non-file path: ${entryRecord.file}`);
+        }
+
+        const relativeFilePath = path.relative(realRootDir, realFilePath);
+        if (path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')) {
+          throw new Error(`Manifest entry ${index} references a file outside the repo: ${entryRecord.file}`);
+        }
+
+        const normalizedRelativeFilePath = relativeFilePath.split(path.sep).join('/');
+        filePaths.add(normalizedRelativeFilePath);
+
+        if (entryRecord.type === 'text') {
+          textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
+        }
+      }
+
+      materialTypes[entryRecord.type] = (materialTypes[entryRecord.type] ?? 0) + 1;
+    });
+
+    const sortedProfileIds = [...profileIds].sort();
+
+    return {
+      status: 'loaded',
+      entryCount: entries.length,
+      profileIds: sortedProfileIds,
+      profileLabels: sortedProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId))),
+      materialTypes: Object.fromEntries(Object.entries(materialTypes).sort(([left], [right]) => left.localeCompare(right))),
+      textFilePersonIds,
+      filePaths: [...filePaths].sort(),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      status: 'invalid',
+      entryCount: 0,
+      profileIds: [],
+      profileLabels: [],
+      materialTypes: {},
+      textFilePersonIds: {},
+      filePaths: [],
+      error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
+    };
+  }
+}
+
+function readSampleTextSummary(rootDir: string, relativePath: string | null): SampleTextSummary {
+  if (!relativePath) {
+    return {
+      path: null,
+      present: false,
+    };
+  }
+
+  return {
+    path: relativePath,
+    present: fs.existsSync(path.join(rootDir, relativePath)),
+  };
+}
+
+function listRelativeFiles(dirPath: string, extension: string): string[] {
+  if (!fs.existsSync(dirPath)) {
+    return [];
+  }
+
+  return fs.readdirSync(dirPath)
+    .filter((entry) => entry.endsWith(extension))
+    .sort();
+}
+
+function detectSampleManifestRelativePath(rootDir: string): string | null {
+  const sampleDir = path.join(rootDir, 'samples');
+  const canonicalRelativePath = 'samples/harry-materials.json';
+  const canonicalPath = path.join(rootDir, canonicalRelativePath);
+  if (fs.existsSync(canonicalPath)) {
+    const canonicalSummary = readSampleManifestSummary(rootDir, canonicalRelativePath);
+    if (canonicalSummary.status === 'loaded') {
+      return canonicalRelativePath;
+    }
+  }
+
+  const candidates = listRelativeFiles(sampleDir, '.json');
+  for (const fileName of candidates) {
+    const relativePath = ['samples', fileName].join('/');
+    if (relativePath === canonicalRelativePath) {
+      continue;
+    }
+
+    const summary = readSampleManifestSummary(rootDir, relativePath);
+    if (summary.status === 'loaded') {
+      return relativePath;
+    }
+  }
+
+  return fs.existsSync(canonicalPath) ? canonicalRelativePath : null;
+}
+
+function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleManifestSummary): string | null {
+  const canonicalRelativePath = 'samples/harry-post.txt';
+  const canonicalPath = path.join(rootDir, canonicalRelativePath);
+  if (fs.existsSync(canonicalPath) && sampleManifest?.textFilePersonIds?.[canonicalRelativePath]) {
+    return canonicalRelativePath;
+  }
+
+  const candidatePaths = Object.keys(sampleManifest?.textFilePersonIds ?? {}).sort();
+  for (const relativePath of candidatePaths) {
+    if (fs.existsSync(path.join(rootDir, relativePath))) {
+      return relativePath;
+    }
+  }
+
+  return fs.existsSync(canonicalPath) ? canonicalRelativePath : null;
+}
+
+function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[] {
+  if (!profile?.id) {
+    return [];
+  }
+
+  const draftPathByKey: Record<string, string> = {
+    memory: `profiles/${profile.id}/memory/long-term/foundation.json`,
+    skills: `profiles/${profile.id}/skills/README.md`,
+    soul: `profiles/${profile.id}/soul/README.md`,
+    voice: `profiles/${profile.id}/voice/README.md`,
+  };
+  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
+    ? [...profile.foundationDraftStatus.missingDrafts]
+      .filter((value): value is string => typeof value === 'string' && value in draftPathByKey)
+      .sort()
+    : [];
+
+  if (missingDrafts.length > 0) {
+    return missingDrafts.map((draftKey) => draftPathByKey[draftKey]);
+  }
+
+  const draftPaths = profile.foundationDrafts && typeof profile.foundationDrafts === 'object'
+    ? Object.entries(profile.foundationDrafts)
+      .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].length > 0)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([, value]) => value)
+    : [];
+
+  return draftPaths.length > 0
+    ? draftPaths
+    : Object.keys(draftPathByKey).sort().map((draftKey) => draftPathByKey[draftKey]);
+}
+
+function buildFoundationRefreshLabel(
+  reasonsSource: { refreshReasons?: string[] } | null,
+  label: string | null = null,
+): string | null {
+  const normalizedLabel = typeof label === 'string' && label.length > 0 ? label : null;
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  const reasons = Array.isArray(reasonsSource?.refreshReasons)
+    ? reasonsSource.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const refreshLabel = `refresh ${normalizedLabel}`;
+
+  return reasons.length > 0
+    ? `${refreshLabel} — reasons ${reasons.join(' + ')}`
+    : refreshLabel;
+}
+
+function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
+  const maintenance = foundation?.maintenance ?? {};
+  const coreMaintenance = coreFoundation?.maintenance ?? {};
+  const coreOverview = coreFoundation?.overview ?? {};
+  const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
+  const queuedArea = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas[0] : null;
+  const queuedProfileSummary = queuedProfile?.id
+    ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
+    : null;
+  const refreshProfileCount = maintenance.refreshProfileCount ?? 0;
+  const incompleteProfileCount = maintenance.incompleteProfileCount ?? 0;
+  const thinAreaCount = coreMaintenance.thinAreaCount ?? 0;
+  const missingAreaCount = coreMaintenance.missingAreaCount ?? 0;
+  const status: WorkPriority['status'] = refreshProfileCount > 0 || incompleteProfileCount > 0 || thinAreaCount > 0 || missingAreaCount > 0
+    ? 'queued'
+    : 'ready';
+
+  const useBulkRefreshCommand = refreshProfileCount > 1 && typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0;
+  const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
+    ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const queuedProfileLabel = queuedProfile?.label ?? queuedProfile?.id ?? null;
+  const bulkRefreshLabel = queuedProfileLabel
+    ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
+    : 'refresh stale or incomplete target profiles';
+
+  return {
+    id: 'foundation',
+    label: 'Foundation',
+    status,
+    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
+    nextAction: queuedProfile?.refreshCommand
+      ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
+      : queuedArea?.action ?? null,
+    command: queuedProfile?.refreshCommand
+      ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
+      : null,
+    paths: queuedProfile?.refreshCommand
+      ? buildFoundationDraftPaths(queuedProfileSummary)
+      : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []),
+  };
+}
+
+function buildSampleImportNextAction(ingestionSummary: any) {
+  const sampleStarterLabel = typeof ingestionSummary?.sampleStarterLabel === 'string' && ingestionSummary.sampleStarterLabel.length > 0
+    ? ingestionSummary.sampleStarterLabel
+    : null;
+
+  if (!sampleStarterLabel) {
+    return 'import the checked-in sample target profile';
+  }
+
+  const sampleProfileCount = Array.isArray(ingestionSummary?.sampleManifestProfileIds)
+    ? ingestionSummary.sampleManifestProfileIds.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0).length
+    : 0;
+
+  return sampleProfileCount > 1
+    ? `import the checked-in sample target profiles for ${sampleStarterLabel}`
+    : `import the checked-in sample target profile for ${sampleStarterLabel}`;
+}
+
+function collectSampleManifestPaths(ingestionSummary: any) {
+  const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
+    ? ingestionSummary.sampleManifestPath
+    : null;
+  const sampleManifestFilePaths = Array.isArray(ingestionSummary?.sampleManifestFilePaths)
+    ? ingestionSummary.sampleManifestFilePaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
+    ? ingestionSummary.sampleTextPath
+    : null;
+
+  return Array.from(new Set([
+    sampleManifestPath,
+    ...sampleManifestFilePaths,
+    sampleTextPath,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
+}
+
+function buildIngestionPriority(ingestionSummary: any): WorkPriority {
+  const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
+  const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
+  const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
+  const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
+  const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
+  const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
+    ? 'ready'
+    : 'queued';
+
+  let nextAction: string | null = null;
+  let command: string | null = null;
+  let paths: string[] = [];
+
+  if ((ingestionSummary?.profileCount ?? 0) === 0) {
+    const sampleStarterCommand = ingestionSummary?.sampleStarterCommand ?? null;
+    const samplePaths = collectSampleManifestPaths(ingestionSummary);
+
+    if (sampleStarterCommand) {
+      nextAction = buildSampleImportNextAction(ingestionSummary);
+      command = sampleStarterCommand;
+      paths = samplePaths;
+    } else {
+      nextAction = 'bootstrap a target profile';
+      command = ingestionSummary?.bootstrapProfileCommand ?? null;
+      paths = samplePaths;
+    }
+  } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
+    nextAction = 'refresh stale or incomplete target profiles';
+    command = ingestionSummary?.staleRefreshCommand ?? null;
+  } else if (metadataOnlyProfileCount > 0) {
+    const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
+      ? ingestionSummary.metadataProfileCommands
+      : [];
+    const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand);
+    const readyIntakeProfiles = metadataProfileCommands.filter((profile: any) =>
+      profile?.intakeReady === true
+      && profile?.importManifestCommand
+      && profile.importManifestCommand === profile.importMaterialCommand
+      && !profile.importManifestCommand.includes('<'),
+    );
+    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? null;
+    const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
+      ? metadataOnlyProfile.importMaterialCommand
+      : null;
+    const sampleManifestPaths = collectSampleManifestPaths(ingestionSummary);
+    const sampleTextPath = typeof ingestionSummary?.sampleTextPath === 'string' && ingestionSummary.sampleTextPath.length > 0
+      ? ingestionSummary.sampleTextPath
+      : null;
+    const sampleTextPersonId = typeof ingestionSummary?.sampleTextPersonId === 'string' && ingestionSummary.sampleTextPersonId.length > 0
+      ? ingestionSummary.sampleTextPersonId
+      : null;
+
+    if (metadataOnlyProfileNeedingScaffold) {
+      const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
+      const isPartialIntake = intakeCompletion === 'partial';
+      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0;
+      nextAction = metadataOnlyProfileNeedingScaffold?.label
+        ? (useBulkIntakeCommand
+          ? `${isPartialIntake ? 'complete' : 'scaffold'} incomplete intake landing zones — starting with ${metadataOnlyProfileNeedingScaffold.label}`
+          : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
+        : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
+      command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
+      const missingIntakePaths = Array.isArray(metadataOnlyProfileNeedingScaffold.intakeMissingPaths)
+        ? metadataOnlyProfileNeedingScaffold.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      paths = missingIntakePaths.length > 0
+        ? missingIntakePaths
+        : (Array.isArray(metadataOnlyProfileNeedingScaffold.intakePaths)
+          ? metadataOnlyProfileNeedingScaffold.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+          : []);
+    } else if (readyIntakeProfiles.length > 1 && typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0) {
+      nextAction = readyIntakeProfiles[0]?.label
+        ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
+        : 'import source materials for ready intake profiles';
+      command = ingestionSummary.intakeImportAllCommand;
+      paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
+        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+        : []);
+    } else if (runnableImportCommand) {
+      nextAction = metadataOnlyProfile?.label
+        ? `import source materials for ${metadataOnlyProfile.label}`
+        : 'import source materials for metadata-only profiles';
+      command = runnableImportCommand;
+      paths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
+        ? (Array.isArray(metadataOnlyProfile?.intakePaths)
+          ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+          : [])
+        : (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId
+          ? [sampleTextPath]
+          : []);
+    } else if (ingestionSummary?.sampleManifestCommand || ingestionSummary?.importManifestCommand) {
+      nextAction = 'import source materials for metadata-only profiles';
+      command = ingestionSummary?.sampleManifestCommand ?? ingestionSummary?.importManifestCommand ?? null;
+      paths = ingestionSummary?.sampleManifestCommand
+        ? sampleManifestPaths
+        : [];
+    } else {
+      nextAction = metadataOnlyProfile?.label
+        ? `import source materials for ${metadataOnlyProfile.label}`
+        : 'import source materials for metadata-only profiles';
+      command = runnableImportCommand;
+    }
+  }
+
+  return {
+    id: 'ingestion',
+    label: 'Ingestion',
+    status,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh`,
+    nextAction,
+    command,
+    paths,
+  };
+}
+
+function buildDeliveryPriority({
+  id,
+  label,
+  pendingCount,
+  configuredCount,
+  queue,
+  envTemplatePath = null,
+  envTemplateCommand = null,
+}: {
+  id: 'channels' | 'providers';
+  label: 'Channels' | 'Providers';
+  pendingCount: number;
+  configuredCount: number;
+  queue: QueueLike[];
+  envTemplatePath?: string | null;
+  envTemplateCommand?: string | null;
+}): WorkPriority {
+  const firstQueued = Array.isArray(queue) ? queue[0] : null;
+  const paths = [
+    envTemplatePath,
+    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
+    typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0 ? firstQueued.implementationPath : null,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  const needsCredentialBootstrap = pendingCount > configuredCount;
+
+  return {
+    id,
+    label,
+    status: pendingCount > 0 ? 'queued' : 'ready',
+    summary: `${pendingCount} pending, ${configuredCount} configured`,
+    nextAction: firstQueued
+      ? [firstQueued.setupHint, firstQueued.nextStep ? `next: ${firstQueued.nextStep}` : null].filter(Boolean).join('; ')
+      : null,
+    command: needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null,
+    paths,
+  };
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -67,21 +663,62 @@ export function relativizeDraftPaths(rootDir: string, result: DraftRefreshResult
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
-  if (subcommand === 'manifest') {
-    const result = ingestion.importManifest({ manifestFile: typeof options.file === 'string' ? options.file : undefined });
-    if (!options['refresh-foundation']) {
+  const relativizeManifestImportResult = (result: any) => {
+    if (!result.foundationRefresh || typeof result.foundationRefresh !== 'object') {
       return result;
     }
 
     return {
       ...result,
       foundationRefresh: {
-        profileCount: result.profileIds.length,
-        results: result.profileIds.map((personId: string) =>
-          relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId })),
-        ),
+        ...result.foundationRefresh,
+        results: Array.isArray((result.foundationRefresh as { results?: DraftRefreshResult[] }).results)
+          ? (result.foundationRefresh as { results: DraftRefreshResult[] }).results.map((entry) => relativizeDraftPaths(rootDir, entry))
+          : [],
       },
     };
+  };
+
+  const relativizeManifestImportBatchResult = (result: any) => ({
+    ...result,
+    results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
+  });
+
+  if (subcommand === 'manifest') {
+    const result = ingestion.importManifest({
+      manifestFile: typeof options.file === 'string' ? options.file : undefined,
+      refreshFoundation: Boolean(options['refresh-foundation']),
+    });
+
+    return relativizeManifestImportResult(result);
+  }
+
+  if (subcommand === 'sample') {
+    const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
+    const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
+    if (sampleManifest.status !== 'loaded' || !sampleManifestRelativePath) {
+      throw new Error('No valid sample manifest found under samples/');
+    }
+
+    const result = ingestion.importManifest({
+      manifestFile: sampleManifestRelativePath,
+      refreshFoundation: true,
+    });
+
+    return relativizeManifestImportResult(result);
+  }
+
+  if (subcommand === 'intake') {
+    if (options.all) {
+      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+    }
+
+    const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
+    if (!intakePersonId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
   }
 
   const personId = typeof options.person === 'string' ? options.person : undefined;
@@ -163,6 +800,26 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
       : result;
   }
 
+  if (subcommand === 'intake') {
+    if (options.all) {
+      return ingestion.scaffoldAllProfileIntakes();
+    }
+
+    if (options.stale) {
+      return ingestion.scaffoldStaleProfileIntakes();
+    }
+
+    if (!personId) {
+      throw new Error('Missing required --person argument');
+    }
+
+    return ingestion.scaffoldProfileIntake({
+      personId,
+      displayName: typeof options['display-name'] === 'string' ? options['display-name'] : undefined,
+      summary: typeof options.summary === 'string' ? options.summary : undefined,
+    });
+  }
+
   if (subcommand === 'foundation' && options.all) {
     const result = ingestion.refreshAllFoundationDrafts();
     return {
@@ -196,9 +853,10 @@ export function buildSummary(rootDir: string) {
   const soulDocument = loader.loadSoul();
   const voiceDocument = loader.loadVoice();
   const memoryIndex = loader.loadMemoryIndex();
-  const skillNames = loader.loadSkills();
-  const channelManifest = manifestLoader.loadChannelManifest();
-  const providerManifest = manifestLoader.loadProviderManifest();
+  const skillInventory = loader.loadSkillInventory();
+  const skillNames = skillInventory.names;
+  const channelManifest = manifestLoader.loadChannelManifestSummary();
+  const providerManifest = manifestLoader.loadProviderManifestSummary();
 
   const voice = new VoiceProfile({
     tone: 'human',
@@ -207,6 +865,7 @@ export function buildSummary(rootDir: string) {
     signatures: ['consistent persona', 'compact but vivid phrasing'],
     languageHints: ['preserve bilingual or multilingual behavior when present'],
   });
+  const soul = SoulProfile.fromDocument(soulDocument);
 
   const profile = new AgentProfile({
     name: 'ManSkill',
@@ -225,25 +884,93 @@ export function buildSummary(rootDir: string) {
   });
   const skills = new SkillRegistry(skillNames);
   const channels = new ChannelRegistry();
-  if (Array.isArray(channelManifest)) {
-    channelManifest.forEach((channel: unknown) => channels.register(channel as any));
+  if (Array.isArray(channelManifest.records)) {
+    channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
   }
 
   const models = new ModelRegistry();
-  if (Array.isArray(providerManifest)) {
-    providerManifest.forEach((provider: unknown) => models.register(provider as any));
+  if (Array.isArray(providerManifest.records)) {
+    providerManifest.records.forEach((provider: unknown) => models.register(provider as any));
   }
+  const workLoopObjectives = [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ];
+  const profiles = loader.loadProfilesIndex() as any;
+  const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
+  const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
+  const sampleTextRelativePath = detectSampleTextRelativePath(rootDir, sampleManifest);
+  const sampleText = readSampleTextSummary(rootDir, sampleTextRelativePath);
+  const foundation = buildFoundationRollup(profiles) as any;
+  const ingestionSummary = buildIngestionSummary(profiles, {
+    sampleManifestPath: sampleManifestRelativePath,
+    sampleManifest,
+    sampleTextPath: sampleText.present ? sampleText.path : null,
+  }) as any;
+  const coreFoundation = buildCoreFoundationSummary({
+    soulDocument,
+    voiceDocument,
+    memoryIndex,
+    skillNames,
+    skillInventory,
+  });
+  const channelsSummary = {
+    ...channels.summary(),
+    manifest: {
+      path: channelManifest.path,
+      status: channelManifest.status,
+      entryCount: channelManifest.entryCount,
+      error: channelManifest.error,
+    },
+  };
+  const modelsSummary = {
+    ...models.summary(),
+    manifest: {
+      path: providerManifest.path,
+      status: providerManifest.status,
+      entryCount: providerManifest.entryCount,
+      error: providerManifest.error,
+    },
+  };
+  const envTemplateRelativePath = '.env.example';
+  const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
+  const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const deliverySummary = {
+    ...buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir }),
+    envTemplatePath: envTemplateRelativePath,
+    envTemplatePresent,
+    envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+  };
   const workLoop = new WorkLoop({
     intervalMinutes: 10,
-    objectives: [
-      'strengthen the core structure',
-      'add channel adapters',
-      'add model providers',
-      'report progress in small increments',
+    objectives: workLoopObjectives,
+    priorities: [
+      buildFoundationPriority(foundation, coreFoundation, profiles),
+      buildIngestionPriority(ingestionSummary),
+      buildDeliveryPriority({
+        id: 'channels',
+        label: 'Channels',
+        pendingCount: deliverySummary.pendingChannelCount,
+        configuredCount: deliverySummary.configuredChannelCount,
+        queue: deliverySummary.channelQueue,
+        envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+      }),
+      buildDeliveryPriority({
+        id: 'providers',
+        label: 'Providers',
+        pendingCount: deliverySummary.pendingProviderCount,
+        configuredCount: deliverySummary.configuredProviderCount,
+        queue: deliverySummary.providerQueue,
+        envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+      }),
     ],
-  } as any);
-  const profiles = loader.loadProfilesIndex() as any;
-  const foundation = buildFoundationRollup(profiles) as any;
+  });
+  const workLoopSummary = workLoop.summary();
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -255,40 +982,146 @@ export function buildSummary(rootDir: string) {
     skills: skills.summary(),
     profiles,
     foundationRollup: foundation,
-    channels: channels.summary(),
-    models: models.summary(),
+    foundationCore: coreFoundation,
+    ingestion: ingestionSummary,
+    channels: channelsSummary,
+    models: modelsSummary,
+    delivery: deliverySummary,
+    workLoop: workLoopSummary,
   } as any);
 
   return {
     profile: profile.summary(),
+    soul: soul.summary(),
     memory: memory.summary(),
     skills: skills.summary(),
     voice: voice.summary(),
-    foundation,
-    channels: channels.summary(),
-    models: models.summary(),
+    foundation: {
+      ...foundation,
+      core: coreFoundation,
+    },
+    ingestion: ingestionSummary,
+    channels: channelsSummary,
+    models: modelsSummary,
+    delivery: deliverySummary,
     profiles,
-    workLoop: workLoop.summary(),
-    promptPreview: prompt.buildPreview(1200),
+    workLoop: workLoopSummary,
+    promptPreview: prompt.buildPreview(4200),
   };
+}
+
+function buildCliUsageLines(): string[] {
+  return [
+    'Usage: node src/index.js [command] [subcommand] [options]',
+    '',
+    'Commands:',
+    '  node src/index.js                                  Show the repo summary JSON',
+    '  node src/index.js --help                           Show this usage guide',
+    '  node src/index.js import sample                    Import the checked-in sample manifest and refresh drafts',
+    '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
+    '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
+    '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
+    '  node src/index.js update intake --stale',
+    '  node src/index.js update intake --all',
+    '  node src/index.js update foundation --person <person-id>',
+    '  node src/index.js update foundation --stale',
+    '  node src/index.js update foundation --all',
+  ];
+}
+
+function formatCliUsage(): string {
+  return `${buildCliUsageLines().join('\n')}\n`;
+}
+
+function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
+  if (command === 'import' && subcommand === 'manifest') {
+    return 'Usage: node src/index.js import manifest --file <manifest.json>';
+  }
+
+  if (command === 'import' && subcommand === 'sample') {
+    return 'Usage: node src/index.js import sample';
+  }
+
+  if (command === 'import' && subcommand === 'intake') {
+    return 'Usage: node src/index.js import intake --person <person-id> | --all';
+  }
+
+  if (command === 'import' && subcommand === 'text') {
+    return 'Usage: node src/index.js import text --person <person-id> --file <sample.txt> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'message') {
+    return 'Usage: node src/index.js import message --person <person-id> --text <message> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'talk') {
+    return 'Usage: node src/index.js import talk --person <person-id> --text <snippet> [--refresh-foundation]';
+  }
+
+  if (command === 'import' && subcommand === 'screenshot') {
+    return 'Usage: node src/index.js import screenshot --person <person-id> --file <image.png> [--refresh-foundation]';
+  }
+
+  if (command === 'update' && subcommand === 'profile') {
+    return 'Usage: node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]';
+  }
+
+  if (command === 'update' && subcommand === 'intake') {
+    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]';
+  }
+
+  if (command === 'update' && subcommand === 'foundation') {
+    return 'Usage: node src/index.js update foundation --person <person-id> | --stale | --all';
+  }
+
+  if (command === 'import' || command === 'update') {
+    return buildCliUsageLines().find((line) => line.startsWith(`  node src/index.js ${command} `))?.trim() ?? null;
+  }
+
+  return null;
 }
 
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
   const { command, subcommand, options } = parseArgs(argv);
 
-  if (command === 'import') {
-    const result = runImportCommand(rootDir, subcommand, options);
-    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+  if (command === '--help' || command === 'help' || options.help) {
+    console.log(formatCliUsage());
     return;
   }
 
-  if (command === 'update') {
-    const result = runUpdateCommand(rootDir, subcommand, options);
-    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
-    return;
-  }
+  try {
+    if (command === 'import') {
+      const result = runImportCommand(rootDir, subcommand, options);
+      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      return;
+    }
 
-  console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+    if (command === 'update') {
+      const result = runUpdateCommand(rootDir, subcommand, options);
+      console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+      return;
+    }
+
+    console.log(JSON.stringify(buildSummary(rootDir), null, 2));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const usageHint = buildCommandUsageHint(command, subcommand);
+    const lines = [`Error: ${message}`];
+
+    if (usageHint) {
+      lines.push(usageHint);
+    }
+
+    lines.push('Run `node src/index.js --help` for more commands.');
+    console.error(lines.join('\n'));
+    process.exitCode = 1;
+  }
 }
 
 const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);

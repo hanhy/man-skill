@@ -19,9 +19,19 @@ export class SkillRegistry extends BaseRegistry {
   }
 
   summary() {
+    const skills = this.list();
+    const statusCounts = skills.reduce((counts, skill) => {
+      const status = skill.status ?? 'unknown';
+      counts[status] = (counts[status] ?? 0) + 1;
+      return counts;
+    }, {});
+
     return {
       skillCount: this.count(),
-      skills: this.list(),
+      discoveredCount: statusCounts.discovered ?? 0,
+      customCount: statusCounts.custom ?? 0,
+      statusCounts,
+      skills,
     };
   }
 }

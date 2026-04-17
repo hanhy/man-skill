@@ -1,5 +1,28 @@
 import { BaseRegistry } from './base-registry.js';
 
+function mergeStringLists(...lists) {
+  return [...new Set(lists.flatMap((list) => (Array.isArray(list) ? list : [])))];
+}
+
+function collectAuthEnvVars(channels) {
+  return [...new Set(channels.flatMap((channel) => channel.auth?.envVars ?? []))].sort((left, right) => left.localeCompare(right));
+}
+
+function mergeChannelAuth(defaultAuth, overrideAuth) {
+  if (overrideAuth === null) {
+    return null;
+  }
+
+  if (!defaultAuth && !overrideAuth) {
+    return null;
+  }
+
+  return {
+    type: overrideAuth?.type ?? defaultAuth?.type ?? 'unknown',
+    envVars: mergeStringLists(defaultAuth?.envVars, overrideAuth?.envVars),
+  };
+}
+
 const DEFAULT_CHANNELS = [
   {
     id: 'slack',
@@ -13,6 +36,8 @@ const DEFAULT_CHANNELS = [
       envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
     },
     deliveryModes: ['events-api', 'web-api'],
+    implementationPath: 'src/channels/slack.js',
+    nextStep: 'implement inbound event handling and outbound thread replies',
   },
   {
     id: 'telegram',
@@ -26,6 +51,8 @@ const DEFAULT_CHANNELS = [
       envVars: ['TELEGRAM_BOT_TOKEN'],
     },
     deliveryModes: ['polling', 'webhook'],
+    implementationPath: 'src/channels/telegram.js',
+    nextStep: 'wire bot webhook intake and outbound chat sends',
   },
   {
     id: 'whatsapp',
@@ -39,6 +66,8 @@ const DEFAULT_CHANNELS = [
       envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
     },
     deliveryModes: ['cloud-api', 'session-bridge'],
+    implementationPath: 'src/channels/whatsapp.js',
+    nextStep: 'map business-api webhooks and outbound message delivery',
   },
   {
     id: 'feishu',
@@ -52,8 +81,12 @@ const DEFAULT_CHANNELS = [
       envVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
     },
     deliveryModes: ['event-subscription', 'webhook'],
+    implementationPath: 'src/channels/feishu.js',
+    nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
   },
 ];
+
+const DEFAULT_CHANNELS_BY_ID = new Map(DEFAULT_CHANNELS.map((channel) => [channel.id, channel]));
 
 export class ChannelRegistry extends BaseRegistry {
   constructor(channels = DEFAULT_CHANNELS) {
@@ -71,24 +104,43 @@ export class ChannelRegistry extends BaseRegistry {
         capabilities: [],
         auth: null,
         deliveryModes: [],
+        implementationPath: null,
+        nextStep: null,
       };
     }
 
-    return {
+    const defaultChannel = typeof channel.id === 'string' ? DEFAULT_CHANNELS_BY_ID.get(channel.id) : undefined;
+    const normalizedChannel = {
       transport: 'chat',
       direction: ['inbound'],
       status: 'unknown',
       capabilities: [],
       auth: null,
       deliveryModes: [],
+      implementationPath: null,
+      nextStep: null,
+      ...defaultChannel,
       ...channel,
+    };
+
+    return {
+      ...normalizedChannel,
+      direction: mergeStringLists(defaultChannel?.direction, channel.direction),
+      capabilities: mergeStringLists(defaultChannel?.capabilities, channel.capabilities),
+      deliveryModes: mergeStringLists(defaultChannel?.deliveryModes, channel.deliveryModes),
+      auth: mergeChannelAuth(defaultChannel?.auth, channel.auth),
     };
   }
 
   summary() {
+    const channels = this.list();
     return {
       channelCount: this.count(),
-      channels: this.list(),
+      activeCount: channels.filter((channel) => channel.status === 'active').length,
+      plannedCount: channels.filter((channel) => channel.status === 'planned').length,
+      candidateCount: channels.filter((channel) => channel.status === 'candidate').length,
+      authEnvVars: collectAuthEnvVars(channels),
+      channels,
     };
   }
 }

@@ -13,9 +13,15 @@ export class MemoryStore {
   }
 
   summary() {
+    const shortTermEntries = this.shortTerm.length;
+    const longTermEntries = this.longTerm.length;
+
     return {
-      shortTermEntries: this.shortTerm.length,
-      longTermEntries: this.longTerm.length,
+      shortTermEntries,
+      longTermEntries,
+      totalEntries: shortTermEntries + longTermEntries,
+      shortTermPresent: shortTermEntries > 0,
+      longTermPresent: longTermEntries > 0,
     };
   }
 }
