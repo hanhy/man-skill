@@ -1089,7 +1089,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
-      const intakeShortcutSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === true && profile.importIntakeCommand
+      const intakeShortcutSegment = profile.intakeReady === true && profile.importIntakeCommand
         ? ` | shortcut ${profile.importIntakeCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';

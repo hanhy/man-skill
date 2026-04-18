@@ -488,6 +488,7 @@ function buildProfileCommands(profile, options: any = {}) {
     ? intake.starterManifestPath
     : null;
   const intakeManifestRunnable = intakeManifest.status !== 'invalid';
+  const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
   const intakeImportManifestCommand = intakeManifestPath && intakeManifestRunnable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
@@ -507,7 +508,7 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
-  const importIntakeCommand = intakeManifestRunnable
+  const importIntakeCommand = (imported ? importedIntakeCommandsAvailable : intakeManifestRunnable)
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
 
@@ -532,13 +533,13 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestError: intakeManifest.error,
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
-    importManifestCommand: imported ? null : intakeImportManifestCommand,
+    importManifestCommand: imported && !importedIntakeCommandsAvailable ? null : intakeImportManifestCommand,
     refreshFoundationCommand,
     importCommands,
     helperCommands: {
       scaffold: updateIntakeCommand,
       importIntake: importIntakeCommand,
-      importManifest: imported ? null : intakeImportManifestCommand,
+      importManifest: imported && !importedIntakeCommandsAvailable ? null : intakeImportManifestCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,

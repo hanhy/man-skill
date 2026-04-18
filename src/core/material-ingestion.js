@@ -714,13 +714,15 @@ export class MaterialIngestion {
 
     const normalized = this.ensureProfile(personId);
     const content = fs.readFileSync(sourceFile, 'utf8');
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'text',
       content,
       notes,
       sourceFile: path.relative(this.rootDir, sourceFile),
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importMessage({ personId, text, notes = null }) {
@@ -729,12 +731,14 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'message',
       content: text,
       notes,
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importTalkSnippet({ personId, text, notes = null }) {
@@ -743,12 +747,14 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'talk',
       content: text,
       notes,
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importScreenshotSource({ personId, sourceFile, notes = null }) {
@@ -761,7 +767,7 @@ export class MaterialIngestion {
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
     fs.copyFileSync(sourceFile, targetPath);
 
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'screenshot',
       notes,
@@ -769,6 +775,8 @@ export class MaterialIngestion {
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importManifest({ manifestFile, refreshFoundation = false }) {

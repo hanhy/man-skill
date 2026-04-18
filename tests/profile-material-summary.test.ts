@@ -168,23 +168,21 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.match(profile.latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(profile.latestMaterialId, /^\d{4}-\d{2}-\d{2}T.+-(message|screenshot|text)$/);
   assert.deepEqual(profile.intake, {
-    ready: false,
-    completion: 'missing',
-    importsDirPresent: false,
-    intakeReadmePresent: false,
-    starterManifestPresent: false,
-    sampleTextPresent: false,
-    missingPaths: [
-      'profiles/harry-han/imports',
-      'profiles/harry-han/imports/README.md',
-      'profiles/harry-han/imports/materials.template.json',
-      'profiles/harry-han/imports/sample.txt',
-    ],
+    ready: true,
+    completion: 'ready',
+    importsDirPresent: true,
+    intakeReadmePresent: true,
+    starterManifestPresent: true,
+    sampleTextPresent: true,
+    missingPaths: [],
     importsDir: 'profiles/harry-han/imports',
     intakeReadmePath: 'profiles/harry-han/imports/README.md',
     starterManifestPath: 'profiles/harry-han/imports/materials.template.json',
     sampleTextPath: 'profiles/harry-han/imports/sample.txt',
   });
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'sample.txt')), true);
   assert.deepEqual(profile.foundationDrafts, {
     memory: 'profiles/harry-han/memory/long-term/foundation.json',
     voice: 'profiles/harry-han/voice/README.md',
@@ -1163,7 +1161,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   });
   assert.deepEqual(janeCommand.helperCommands, {
     scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
-    importIntake: "node src/index.js import intake --person 'jane-doe' --refresh-foundation",
+    importIntake: null,
     importManifest: null,
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -1249,10 +1247,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
-  assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\) \[intake missing\]/);
+  assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\)/);
 });
 
-test('buildSummary surfaces intake scaffolding guidance for imported profiles that still lack profile-local intake assets', () => {
+test('buildSummary keeps imported profiles free of missing-intake warnings after first material import', () => {
   const rootDir = makeTempRepo();
 
   runUpdateCommand(rootDir, 'profile', {
@@ -1268,7 +1266,8 @@ test('buildSummary surfaces intake scaffolding guidance for imported profiles th
 
   const summary = buildSummary(rootDir);
 
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
