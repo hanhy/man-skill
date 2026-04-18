@@ -379,6 +379,7 @@ type IngestionHelperCommands = {
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  importIntakeImported?: string | null;
   importIntakeBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
@@ -410,6 +411,7 @@ type IngestionSummary = {
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
   intakeImportedCommand?: string | null;
+  intakeImportImportedCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
@@ -990,6 +992,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
       || helperCommands.importIntakeStale
+      || helperCommands.importIntakeImported
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || helperCommands.refreshFoundationBundle
@@ -1044,6 +1047,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);

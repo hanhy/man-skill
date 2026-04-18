@@ -972,6 +972,87 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.match(summary.promptPreview, /next action: add non-heading guidance to skills\/delivery\/SKILL\.md/);
 });
 
+test('buildSummary keeps mixed documented and heading-only SKILL docs queued as thin core foundation coverage', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), '# Slack\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+  const skillsCommand = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/slack/SKILL.md'],
+    thinPaths: ['skills/slack/SKILL.md'],
+  });
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    count: 2,
+    documentedCount: 1,
+    undocumentedCount: 0,
+    thinCount: 1,
+    sample: ['delivery', 'slack'],
+    samplePaths: ['skills/delivery/SKILL.md'],
+    sampleExcerpts: ['delivery: Deliver concise handoffs.'],
+    undocumentedSample: [],
+    undocumentedPaths: [],
+    thinSample: ['slack'],
+    thinPaths: ['skills/slack/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: ['add non-heading guidance to skills/slack/SKILL.md'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    helperCommands: {
+      scaffoldAll: skillsCommand,
+      scaffoldMissing: null,
+      scaffoldThin: skillsCommand,
+      memory: null,
+      skills: skillsCommand,
+      soul: null,
+      voice: null,
+    },
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '2 registered, 1 documented',
+        action: 'add non-heading guidance to skills/slack/SKILL.md',
+        paths: ['skills/slack/SKILL.md'],
+        thinPaths: ['skills/slack/SKILL.md'],
+        command: skillsCommand,
+      },
+    ],
+  });
+  assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to skills/slack/SKILL.md');
+  assert.equal(summary.workLoop.currentPriority?.command, skillsCommand);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/slack/SKILL.md']);
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/slack\/SKILL\.md @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack @ skills\/slack\/SKILL\.md/);
+});
+
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
   const rootDir = makeTempRepo();
 
