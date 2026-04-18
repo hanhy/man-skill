@@ -1137,6 +1137,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
+      populateChannelEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
       scaffoldProviderManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
       scaffoldChannelImplementation: null,
@@ -1168,6 +1170,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       nextStep: 'implement inbound event handling and outbound thread replies',
       helperCommands: {
         bootstrapEnv: null,
+        populateEnv: null,
         scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
         scaffoldImplementation: null,
       },
@@ -1195,6 +1198,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       nextStep: 'implement chat/tool request translation and response normalization',
       helperCommands: {
         bootstrapEnv: null,
+        populateEnv: null,
         scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
         scaffoldImplementation: null,
       },
@@ -1203,7 +1207,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
-    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channel env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
     assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY/);
@@ -1309,6 +1313,8 @@ test('buildSummary exposes delivery helper commands for first missing implementa
 
   assert.deepEqual(summary.delivery.helperCommands, {
     bootstrapEnv: 'cp .env.example .env',
+    populateChannelEnv: null,
+    populateProviderEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     scaffoldChannelManifest: null,
     scaffoldProviderManifest: null,
     scaffoldChannelImplementation: null,
@@ -1317,7 +1323,7 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
   assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
-  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
 
 
@@ -1344,7 +1350,7 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
   assert.equal(summary.delivery.providerQueue[1].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
-  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
+  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
 });
 
 test('buildSummary prompt preview surfaces delivery implementation bundles when multiple scaffolds are missing', () => {

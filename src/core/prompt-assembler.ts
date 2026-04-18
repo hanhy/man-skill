@@ -302,6 +302,7 @@ type DeliveryQueueItem = {
   nextStep?: string | null;
   helperCommands?: {
     bootstrapEnv?: string | null;
+    populateEnv?: string | null;
     scaffoldManifest?: string | null;
     scaffoldImplementation?: string | null;
   };
@@ -334,6 +335,8 @@ type DeliverySummary = {
   envTemplateMissingRequiredVars?: string[];
   helperCommands?: {
     bootstrapEnv?: string | null;
+    populateChannelEnv?: string | null;
+    populateProviderEnv?: string | null;
     scaffoldChannelManifest?: string | null;
     scaffoldProviderManifest?: string | null;
     scaffoldChannelImplementation?: string | null;
@@ -754,6 +757,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const helperCommands = delivery?.helperCommands ?? {};
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
+    helperCommands.populateChannelEnv ? `channel env ${helperCommands.populateChannelEnv}` : null,
+    helperCommands.populateProviderEnv ? `provider env ${helperCommands.populateProviderEnv}` : null,
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
     helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
     helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
@@ -958,6 +963,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         : '';
       const helperLine = [
         channel.helperCommands?.bootstrapEnv ? `env ${channel.helperCommands.bootstrapEnv}` : null,
+        channel.helperCommands?.populateEnv ? `populate ${channel.helperCommands.populateEnv}` : null,
         channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
         channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
@@ -987,6 +993,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ].filter(Boolean).join('; ');
       const helperLine = [
         provider.helperCommands?.bootstrapEnv ? `env ${provider.helperCommands.bootstrapEnv}` : null,
+        provider.helperCommands?.populateEnv ? `populate ${provider.helperCommands.populateEnv}` : null,
         provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
         provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');

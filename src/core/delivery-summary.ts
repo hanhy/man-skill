@@ -47,6 +47,7 @@ type ModelsSummary = {
 
 type DeliveryQueueHelperCommands = {
   bootstrapEnv: string | null;
+  populateEnv: string | null;
   scaffoldManifest: string | null;
   scaffoldImplementation: string | null;
 };
@@ -127,6 +128,8 @@ export type DeliverySummary = {
   envTemplateMissingRequiredVars: string[];
   helperCommands: {
     bootstrapEnv: string | null;
+    populateChannelEnv: string | null;
+    populateProviderEnv: string | null;
     scaffoldChannelManifest: string | null;
     scaffoldProviderManifest: string | null;
     scaffoldChannelImplementation: string | null;
@@ -245,6 +248,19 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function buildPopulateEnvCommand(envVars: string[], envFilePath = '.env'): string | null {
+  const normalizedEnvVars = Array.from(new Set(
+    envVars.filter((envVar): envVar is string => typeof envVar === 'string' && envVar.length > 0),
+  ));
+  if (normalizedEnvVars.length === 0) {
+    return null;
+  }
+
+  const quotedEnvVars = normalizedEnvVars.map((envVar) => shellSingleQuote(envVar)).join(' ');
+  const quotedEnvFilePath = shellSingleQuote(envFilePath);
+  return `touch ${quotedEnvFilePath} && for key in ${quotedEnvVars}; do grep -q "^\${key}=" ${quotedEnvFilePath} || printf '%s=\\n' "$key" >> ${quotedEnvFilePath}; done`;
+}
+
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
   const envVars = (record.auth?.envVars ?? []).filter(Boolean);
   const missingEnvVars = collectMissingEnvVars(envVars, environment);
@@ -330,6 +346,7 @@ export function buildDeliverySummary(
         nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          populateEnv: buildPopulateEnvCommand(missingEnvVars),
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
           scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
@@ -367,6 +384,7 @@ export function buildDeliverySummary(
         nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          populateEnv: buildPopulateEnvCommand(missingEnvVars),
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
           scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
@@ -421,6 +439,8 @@ export function buildDeliverySummary(
     envTemplateMissingRequiredVars: [],
     helperCommands: {
       bootstrapEnv: null,
+      populateChannelEnv: buildPopulateEnvCommand(channelQueue.flatMap((channel) => channel.missingEnvVars)),
+      populateProviderEnv: buildPopulateEnvCommand(providerQueue.flatMap((provider) => provider.missingEnvVars)),
       scaffoldChannelManifest: firstChannelMissingManifest
         ? buildRelativeFileTouchCommand(firstChannelMissingManifest.manifestScaffoldPath)
         : null,
