@@ -668,11 +668,13 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
   const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
+  const importedInvalidIntakeManifestProfileCount = ingestionSummary?.importedInvalidIntakeManifestProfileCount ?? 0;
   const status: WorkPriority['status'] = importedProfileCount > 0
     && metadataOnlyProfileCount === 0
     && refreshProfileCount === 0
     && incompleteProfileCount === 0
     && importedIntakeBackfillProfileCount === 0
+    && importedInvalidIntakeManifestProfileCount === 0
     ? 'ready'
     : 'queued';
 
@@ -813,6 +815,30 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     paths = importedIntakeBackfillProfileCount > 1
       ? importedProfileCommands.flatMap((profile: any) => collectIntakePaths(profile))
       : collectIntakePaths(firstImportedBackfillProfile);
+  } else if (importedInvalidIntakeManifestProfileCount > 0) {
+    const invalidImportedIntakeProfiles = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands.filter((profile: any) =>
+          (profile?.materialCount ?? 0) > 0
+          && profile?.intakeReady === true
+          && profile?.intakeManifestStatus === 'invalid'
+          && typeof profile?.intakeManifestPath === 'string'
+          && profile.intakeManifestPath.length > 0,
+        )
+      : [];
+    const [firstInvalidImportedIntakeProfile] = invalidImportedIntakeProfiles;
+    nextAction = invalidImportedIntakeProfiles.length > 1
+      ? (firstInvalidImportedIntakeProfile?.label
+        ? `repair invalid intake manifests for imported profiles — starting with ${firstInvalidImportedIntakeProfile.label}`
+        : 'repair invalid intake manifests for imported profiles')
+      : (firstInvalidImportedIntakeProfile?.label
+        ? `repair the invalid intake manifest for imported profile ${firstInvalidImportedIntakeProfile.label}`
+        : 'repair the invalid intake manifest for an imported profile');
+    command = null;
+    paths = Array.from(new Set(
+      invalidImportedIntakeProfiles
+        .map((profile: any) => profile.intakeManifestPath)
+        .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0),
+    ));
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
@@ -974,12 +1000,15 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
   const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
     ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
     : '';
+  const invalidImportedIntakeSummary = importedInvalidIntakeManifestProfileCount > 0
+    ? `, ${importedInvalidIntakeManifestProfileCount} invalid imported intake manifest${importedInvalidIntakeManifestProfileCount === 1 ? '' : 's'}`
+    : '';
 
   return {
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidImportedIntakeSummary}`,
     nextAction,
     command,
     paths,

@@ -691,6 +691,42 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
 
+test('buildSummary work loop repairs invalid intake manifests for imported profiles before moving on to delivery work', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the first slice before polishing the plan.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+  });
+  runUpdateCommand(rootDir, 'foundation', { person: 'harry-han' });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/harry-han/imports/materials.template.json',
+  ]);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\]/);
+  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports\/materials\.template\.json/);
+});
+
 test('update intake backs up invalid starter manifests before rebuilding the scaffold', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

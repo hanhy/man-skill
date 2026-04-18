@@ -642,10 +642,16 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter(Boolean);
   const importedIntakeBackfillProfiles = allProfileCommands
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
+  const importedInvalidIntakeManifestProfiles = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
   const orderedProfileCommands = allProfileCommands
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;
-      return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0 || profile?.intakeReady === false;
+      return !imported
+        || profile?.needsRefresh
+        || profile?.missingDrafts?.length > 0
+        || profile?.intakeReady === false
+        || profile?.intakeManifestStatus === 'invalid';
     });
 
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
@@ -710,6 +716,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
     importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
+    importedInvalidIntakeManifestProfileCount: importedInvalidIntakeManifestProfiles.length,
     intakeReadyProfileCount,
     intakePartialProfileCount,
     intakeMissingProfileCount,

@@ -402,6 +402,7 @@ type IngestionSummary = {
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
   importedIntakeBackfillProfileCount?: number;
+  importedInvalidIntakeManifestProfileCount?: number;
   intakeReadyProfileCount?: number;
   intakePartialProfileCount?: number;
   intakeMissingProfileCount?: number;
@@ -1016,6 +1017,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     `- intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
     (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0
       ? `- intake backfill: ${ingestion.importedIntakeBackfillProfileCount} imported profile${ingestion.importedIntakeBackfillProfileCount === 1 ? '' : 's'} queued`
+      : null,
+    (ingestion.importedInvalidIntakeManifestProfileCount ?? 0) > 0
+      ? `- invalid intake manifests: ${ingestion.importedInvalidIntakeManifestProfileCount} imported profile${ingestion.importedInvalidIntakeManifestProfileCount === 1 ? '' : 's'} queued`
       : null,
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`

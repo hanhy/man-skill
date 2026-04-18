@@ -1343,6 +1343,39 @@ test('buildSummary labels imported intake backfill bundles separately from the g
   assert.match(summary.promptPreview, /helpers: .*node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
 });
 
+test('buildSummary keeps imported profiles with invalid intake manifests in the actionable ingestion queue', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'Ship the first slice before polishing the plan.',
+  });
+  runUpdateCommand(rootDir, 'foundation', { person: 'harry-han' });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
+  assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
+  assert.equal(harry?.intakeReady, true);
+  assert.equal(harry?.intakeManifestStatus, 'invalid');
+  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
+});
+
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1562,6 +1595,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     refreshProfileCount: 0,
     incompleteProfileCount: 0,
     importedIntakeBackfillProfileCount: 0,
+    importedInvalidIntakeManifestProfileCount: 0,
     intakeReadyProfileCount: 0,
     intakePartialProfileCount: 0,
     intakeMissingProfileCount: 0,
