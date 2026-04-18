@@ -142,6 +142,22 @@ test('voice profile parses tone, signature moves, avoid, and language hints from
   });
 });
 
+test('voice profile falls back to voice capture/default sections when explicit signature and avoid headings are missing', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for ManSkill\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n\nAs the project matures, this directory can hold:\n- a main voice profile\n- example writing samples\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Voice files define how the agent sounds once the deeper identity is already set.',
+    style: 'documented',
+    constraints: ['temporary tasks', 'private user facts that belong in memory'],
+    signatures: ['sentence length preferences', 'directness vs softness', 'concise by default'],
+    languageHints: ['willing to preserve bilingual or mixed-language habits'],
+    constraintCount: 2,
+    signatureCount: 3,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('buildSummary carries the richer foundation layer summaries at top level', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
