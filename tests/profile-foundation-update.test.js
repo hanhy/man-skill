@@ -100,12 +100,20 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
-  assert.match(soulDraft, /Candidate soul signals/);
-  assert.match(soulDraft, /Harry prefers blunt execution over long debate\./);
+  assert.match(soulDraft, /## Core values/);
+  assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
+  assert.match(soulDraft, /## Boundaries/);
+  assert.match(soulDraft, /Stay within the evidence from imported materials/i);
+  assert.match(soulDraft, /## Decision rules/);
+  assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
-  assert.match(skillsDraft, /Candidate procedural skills/);
-  assert.match(skillsDraft, /product execution heuristic/);
+  assert.match(skillsDraft, /## Candidate skills/);
+  assert.match(skillsDraft, /- product execution heuristic/);
+  assert.match(skillsDraft, /## Evidence/);
+  assert.match(skillsDraft, /- sample: Cut the scope, keep the momentum, and fix the rough edges tomorrow\./);
+  assert.match(skillsDraft, /## Gaps to validate/);
+  assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
 });
 
 test('CLI update foundation command writes derived profile drafts', () => {
@@ -1012,7 +1020,7 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
 });
 
-test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts', () => {
+test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts that miss structured sections', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1020,11 +1028,22 @@ test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts'
     personId: 'Repair Person',
     text: 'Ship the first slice.',
   });
+  ingestion.importTalkSnippet({
+    personId: 'Repair Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
   ingestion.refreshFoundationDrafts({ personId: 'Repair Person' });
 
   const voiceDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'voice', 'README.md');
-  const malformedVoiceDraft = '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
-  fs.writeFileSync(voiceDraftPath, malformedVoiceDraft);
+  const soulDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'skills', 'README.md');
+  const legacyVoiceDraft = '# Voice draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 1 (message:1)\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
+  const legacySoulDraft = '# Soul draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 2 (message:1, talk:1)\n\nCandidate soul signals:\n- [talk] Keep the feedback loop short.\n';
+  const legacySkillsDraft = '# Skills draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 2 (message:1, talk:1)\n\nCandidate procedural skills:\n- execution heuristic\n  - sample: Keep the feedback loop short.\n';
+  fs.writeFileSync(voiceDraftPath, legacyVoiceDraft);
+  fs.writeFileSync(soulDraftPath, legacySoulDraft);
+  fs.writeFileSync(skillsDraftPath, legacySkillsDraft);
 
   const result = ingestion.refreshStaleFoundationDrafts();
 
@@ -1032,10 +1051,21 @@ test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts'
   assert.deepEqual(result.results.map((entry) => entry.personId), ['repair-person']);
 
   const repairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
-  assert.notEqual(repairedVoiceDraft, malformedVoiceDraft);
-  assert.match(repairedVoiceDraft, /Generated at: /);
-  assert.match(repairedVoiceDraft, /Latest material: .*\(.+\)/);
-  assert.match(repairedVoiceDraft, /Source materials: 1 \(message:1\)/);
+  assert.notEqual(repairedVoiceDraft, legacyVoiceDraft);
+  assert.match(repairedVoiceDraft, /## Tone/);
+  assert.match(repairedVoiceDraft, /## Signature moves/);
+
+  const repairedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.notEqual(repairedSoulDraft, legacySoulDraft);
+  assert.match(repairedSoulDraft, /## Core values/);
+  assert.match(repairedSoulDraft, /## Boundaries/);
+  assert.match(repairedSoulDraft, /## Decision rules/);
+
+  const repairedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.notEqual(repairedSkillsDraft, legacySkillsDraft);
+  assert.match(repairedSkillsDraft, /## Candidate skills/);
+  assert.match(repairedSkillsDraft, /## Evidence/);
+  assert.match(repairedSkillsDraft, /## Gaps to validate/);
 });
 
 test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {

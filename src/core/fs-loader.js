@@ -127,6 +127,12 @@ const SKILL_SECTION_DEFINITIONS = [
   { key: 'suggested-workflow', headings: ['suggested workflow'] },
 ];
 
+const FOUNDATION_DRAFT_SECTION_REQUIREMENTS = {
+  voice: ['## Tone', '## Signature moves', '## Avoid', '## Language hints'],
+  soul: ['## Core values', '## Boundaries', '## Decision rules'],
+  skills: ['## Candidate skills', '## Evidence', '## Gaps to validate'],
+};
+
 function collectMissingSkillSections(document) {
   if (!isNonEmptyString(document)) {
     return SKILL_SECTION_DEFINITIONS.map((section) => section.key);
@@ -454,8 +460,43 @@ export function parseDraftMetadata(filePath) {
   };
 }
 
+function detectFoundationDraftKind(filePath) {
+  const normalizedPath = filePath.split(path.sep).join('/');
+  if (normalizedPath.endsWith('/voice/README.md')) {
+    return 'voice';
+  }
+  if (normalizedPath.endsWith('/soul/README.md')) {
+    return 'soul';
+  }
+  if (normalizedPath.endsWith('/skills/README.md')) {
+    return 'skills';
+  }
+
+  return null;
+}
+
+function hasRequiredFoundationDraftSections(filePath, content) {
+  const draftKind = detectFoundationDraftKind(filePath);
+  if (!draftKind) {
+    return true;
+  }
+
+  const requiredHeadings = FOUNDATION_DRAFT_SECTION_REQUIREMENTS[draftKind] ?? [];
+  return requiredHeadings.every((heading) => content.includes(heading));
+}
+
 export function hasValidFoundationMarkdownDraft(filePath) {
-  return Boolean(parseDraftMetadata(filePath)?.valid);
+  const content = readTextIfExists(filePath);
+  if (!content) {
+    return false;
+  }
+
+  const metadata = parseDraftMetadata(filePath);
+  if (!metadata?.valid) {
+    return false;
+  }
+
+  return hasRequiredFoundationDraftSections(filePath, content);
 }
 
 export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, profileId, profileDocument = null) {
@@ -498,7 +539,7 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
     ['soul', soulMetadata],
     ['skills', skillsMetadata],
   ]) {
-    if (fs.existsSync(candidates[draftName]) && !draftMetadata?.valid) {
+    if (fs.existsSync(candidates[draftName]) && (!draftMetadata?.valid || !hasValidFoundationMarkdownDraft(candidates[draftName]))) {
       missingDrafts.add(draftName);
     }
   }
@@ -596,7 +637,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           entryCount: 0,
           latestSummaries: [],
         },
-    voice: voiceMetadata?.valid
+    voice: voiceMetadata?.valid && hasValidFoundationMarkdownDraft(voiceDraftPath)
       ? {
           generated: true,
           generatedAt: voiceMetadata.generatedAt,
@@ -607,7 +648,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           highlights: readMarkdownHighlights(voiceDraftPath),
         }
       : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
-    soul: soulMetadata?.valid
+    soul: soulMetadata?.valid && hasValidFoundationMarkdownDraft(soulDraftPath)
       ? {
           generated: true,
           generatedAt: soulMetadata.generatedAt,
@@ -618,7 +659,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           highlights: readMarkdownHighlights(soulDraftPath),
         }
       : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
-    skills: skillsMetadata?.valid
+    skills: skillsMetadata?.valid && hasValidFoundationMarkdownDraft(skillsDraftPath)
       ? {
           generated: true,
           generatedAt: skillsMetadata.generatedAt,

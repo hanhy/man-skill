@@ -178,6 +178,75 @@ function buildVoiceDraftLines({
   ];
 }
 
+function buildSoulDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  soulSignals,
+}) {
+  const coreValueLines = soulSignals.length > 0
+    ? soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`)
+    : ['No durable value signals have been extracted yet.'];
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Soul draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Core values',
+    ...coreValueLines,
+    '',
+    '## Boundaries',
+    'Stay within the evidence from imported materials before promoting a behavior into a durable identity rule.',
+    '',
+    '## Decision rules',
+    'Prefer the strongest repeated values and tradeoff language from imported materials when evolving this profile.',
+  ];
+}
+
+function buildSkillsDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  skillSignals,
+}) {
+  const candidateSkillLines = skillSignals.length > 0
+    ? skillSignals.map((signal) => `- ${signal.note}`)
+    : ['No explicit procedural skill notes have been captured yet.'];
+  const evidenceLines = skillSignals.flatMap((signal) => (signal.excerpt ? [`- sample: ${signal.excerpt}`] : []));
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Skills draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Candidate skills',
+    ...candidateSkillLines,
+    '',
+    '## Evidence',
+    ...(evidenceLines.length > 0 ? evidenceLines : ['No concrete material excerpts are attached to the current procedural notes yet.']),
+    '',
+    '## Gaps to validate',
+    'Promote repeated procedures into reusable skills only after they appear consistently across imported materials.',
+  ];
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
@@ -1198,47 +1267,29 @@ export class MaterialIngestion {
 
     fs.writeFileSync(
       soulDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Soul draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Candidate soul signals:',
-        ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
-      ].join('\n'),
+      buildSoulDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        soulSignals,
+      }).join('\n'),
     );
 
     fs.writeFileSync(
       skillsDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Skills draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Candidate procedural skills:',
-        ...skillSignals.flatMap((signal) => {
-          const lines = [];
-          if (signal.note) {
-            lines.push(`- ${signal.note}`);
-          }
-          if (signal.excerpt) {
-            lines.push(`  - sample: ${signal.excerpt}`);
-          }
-          return lines;
-        }),
-      ].join('\n'),
+      buildSkillsDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        skillSignals,
+      }).join('\n'),
     );
-
     const updateProfileCommand = buildUpdateProfileCommand({
       personId: normalized.personId,
       displayName: profileDocument?.displayName,

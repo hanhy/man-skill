@@ -262,24 +262,33 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
-test('loadProfilesIndex marks malformed markdown foundation drafts as stale and ungenerated', () => {
+test('loadProfilesIndex marks legacy markdown foundation drafts without structured sections as stale and ungenerated', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
   const loader = new FileSystemLoader(rootDir);
 
   ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.importTalkSnippet({ personId: 'Harry Han', text: 'Keep the loop tight.', notes: 'execution heuristic' });
   ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   fs.writeFileSync(
     path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md'),
-    '# Voice draft\n\n## Tone\nStay direct.\n\n## Signature moves\n- [message] Ship the first slice.\n\n## Avoid\nSkip padding.\n\n## Language hints\nPreserve bilingual phrasing when the source material switches languages.\n',
+    '# Voice draft\n\nProfile: harry-han\nDisplay name: Harry Han\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 1 (message:1)\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md'),
+    '# Soul draft\n\nProfile: harry-han\nDisplay name: Harry Han\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-talk)\nSource materials: 2 (message:1, talk:1)\n\nCandidate soul signals:\n- [talk] Keep the loop tight.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'skills', 'README.md'),
+    '# Skills draft\n\nProfile: harry-han\nDisplay name: Harry Han\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-talk)\nSource materials: 2 (message:1, talk:1)\n\nCandidate procedural skills:\n- execution heuristic\n  - sample: Keep the loop tight.\n',
   );
 
   const [profile] = loader.loadProfilesIndex();
 
   assert.equal(profile.foundationDraftStatus.complete, false);
   assert.equal(profile.foundationDraftStatus.needsRefresh, true);
-  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['voice']);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['skills', 'soul', 'voice']);
   assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['missing drafts']);
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
@@ -290,7 +299,24 @@ test('loadProfilesIndex marks malformed markdown foundation drafts as stale and 
     materialTypes: {},
     highlights: [],
   });
-  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+  assert.deepEqual(profile.foundationDraftSummaries.soul, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+  });
+  assert.deepEqual(profile.foundationDraftSummaries.skills, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+  });
 });
 
 test('loadProfilesIndex marks valid markdown drafts as stale when their target-person metadata drifts', () => {
