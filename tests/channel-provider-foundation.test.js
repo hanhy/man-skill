@@ -1137,6 +1137,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
+      populateEnvTemplate: null,
       populateChannelEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
@@ -1313,6 +1314,7 @@ test('buildSummary exposes delivery helper commands for first missing implementa
 
   assert.deepEqual(summary.delivery.helperCommands, {
     bootstrapEnv: 'cp .env.example .env',
+    populateEnvTemplate: null,
     populateChannelEnv: null,
     populateProviderEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     scaffoldChannelManifest: null,
@@ -1443,6 +1445,37 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
   assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\], DeepSeek \[candidate\]/);
+});
+
+test('buildSummary exposes env template population helpers when .env.example is missing required delivery vars', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.envTemplateVarNames, ['OPENAI_API_KEY', 'SLACK_BOT_TOKEN']);
+  assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, [
+    'ANTHROPIC_API_KEY',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'GLM_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'QWEN_API_KEY',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+  ]);
+  assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+  assert.equal(
+    summary.delivery.helperCommands.populateEnvTemplate,
+    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+  );
+  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
+  assert.match(summary.promptPreview, /helpers: template env touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
 });
 
 test('buildSummary falls back to default delivery metadata when manifests are malformed', () => {

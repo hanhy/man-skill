@@ -335,6 +335,7 @@ type DeliverySummary = {
   envTemplateMissingRequiredVars?: string[];
   helperCommands?: {
     bootstrapEnv?: string | null;
+    populateEnvTemplate?: string | null;
     populateChannelEnv?: string | null;
     populateProviderEnv?: string | null;
     scaffoldChannelManifest?: string | null;
@@ -757,6 +758,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const helperCommands = delivery?.helperCommands ?? {};
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
+    helperCommands.populateEnvTemplate ? `template env ${helperCommands.populateEnvTemplate}` : null,
     helperCommands.populateChannelEnv ? `channel env ${helperCommands.populateChannelEnv}` : null,
     helperCommands.populateProviderEnv ? `provider env ${helperCommands.populateProviderEnv}` : null,
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,

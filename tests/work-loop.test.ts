@@ -937,7 +937,7 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
-test('buildSummary work loop falls back to channel scaffolding when the env template misses the leader credentials', () => {
+test('buildSummary work loop repairs the env template before channel scaffolding when leader credentials are missing', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
@@ -970,15 +970,23 @@ test('buildSummary work loop falls back to channel scaffolding when the env temp
     'WHATSAPP_PHONE_NUMBER_ID',
   ]);
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
-  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
+  assert.equal(
+    summary.delivery.helperCommands.populateEnvTemplate,
+    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+  );
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest missing, scaffolds 0\/4 present/);
   assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
-  assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
-  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
 });
 
 test('buildSummary work loop backfills missing intake landing zones for imported profiles before delivery rollout', () => {

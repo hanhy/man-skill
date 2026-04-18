@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary } from './core/delivery-summary.ts';
+import { buildDeliverySummary, buildPopulateEnvCommand } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
@@ -1056,7 +1056,9 @@ function buildDeliveryPriority({
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
+  envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
+  envConfigPresent = false,
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
@@ -1067,7 +1069,9 @@ function buildDeliveryPriority({
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
+  envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
+  envConfigPresent?: boolean;
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
@@ -1110,7 +1114,13 @@ function buildDeliveryPriority({
     : [];
   const templateCoversLeaderCredentials = firstQueuedMissingEnvVars.length > 0
     && firstQueuedMissingEnvVars.every((envVar) => normalizedEnvTemplateVarNames.includes(envVar));
-  const needsCredentialBootstrap = templateCoversLeaderCredentials && pendingCount > configuredCount;
+  const needsCredentialBootstrap = !envConfigPresent && templateCoversLeaderCredentials && pendingCount > configuredCount;
+  const needsEnvTemplateRepair = !envConfigPresent
+    && !needsCredentialBootstrap
+    && manifestMissing
+    && firstQueuedMissingEnvVars.length > 0
+    && typeof envTemplatePopulateCommand === 'string'
+    && envTemplatePopulateCommand.length > 0;
   const bundledImplementationCount = bundledImplementationPaths.length;
   const normalizedAuthBlockedCount = typeof authBlockedCount === 'number'
     ? authBlockedCount
@@ -1127,13 +1137,15 @@ function buildDeliveryPriority({
     ? queue.every((item) => item?.manifestPresent === true)
     : false;
   const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand)
+    && !needsEnvTemplateRepair
     && !manifestMissing
     && implementationMissing
     && bundledImplementationCount > 1
     && typeof implementationBundleCommand === 'string'
     && implementationBundleCommand.length > 0;
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
-  const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
+  const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
+    || needsEnvTemplateRepair;
   const paths = includeEnvTemplatePath
     ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
     : [
@@ -1157,7 +1169,10 @@ function buildDeliveryPriority({
   let nextAction = firstQueued ? followUpParts.join('; ') : null;
   let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
 
-  if (!command && manifestMissing) {
+  if (!command && needsEnvTemplateRepair) {
+    nextAction = [`update .env.example with missing delivery credentials`, ...followUpParts].filter(Boolean).join('; ');
+    command = envTemplatePopulateCommand;
+  } else if (!command && manifestMissing) {
     const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
     nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
     command = buildRelativeFileTouchCommand(manifestPath);
@@ -1547,6 +1562,9 @@ export function buildSummary(rootDir: string) {
   const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
   const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
+  const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
+    ? buildPopulateEnvCommand(envTemplateMissingRequiredVars, '.env.example')
+    : null;
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
@@ -1557,6 +1575,7 @@ export function buildSummary(rootDir: string) {
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
       bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,
+      populateEnvTemplate: populateEnvTemplateCommand,
     },
   };
   const workLoop = new WorkLoop({
@@ -1574,7 +1593,9 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPresent,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1586,7 +1607,9 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPresent,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],

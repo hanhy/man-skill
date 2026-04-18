@@ -128,6 +128,7 @@ export type DeliverySummary = {
   envTemplateMissingRequiredVars: string[];
   helperCommands: {
     bootstrapEnv: string | null;
+    populateEnvTemplate: string | null;
     populateChannelEnv: string | null;
     populateProviderEnv: string | null;
     scaffoldChannelManifest: string | null;
@@ -248,7 +249,7 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
-function buildPopulateEnvCommand(envVars: string[], envFilePath = '.env'): string | null {
+export function buildPopulateEnvCommand(envVars: string[], envFilePath = '.env'): string | null {
   const normalizedEnvVars = Array.from(new Set(
     envVars.filter((envVar): envVar is string => typeof envVar === 'string' && envVar.length > 0),
   ));
@@ -439,6 +440,7 @@ export function buildDeliverySummary(
     envTemplateMissingRequiredVars: [],
     helperCommands: {
       bootstrapEnv: null,
+      populateEnvTemplate: null,
       populateChannelEnv: buildPopulateEnvCommand(channelQueue.flatMap((channel) => channel.missingEnvVars)),
       populateProviderEnv: buildPopulateEnvCommand(providerQueue.flatMap((provider) => provider.missingEnvVars)),
       scaffoldChannelManifest: firstChannelMissingManifest
