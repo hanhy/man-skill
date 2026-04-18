@@ -257,15 +257,18 @@ test('default channel and provider factories expose runtime helpers for delivery
   const originalEnv = {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   };
 
   process.env.SLACK_BOT_TOKEN='***';
   process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
   process.env.OPENAI_API_KEY='***';
 
   try {
     const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
+    const telegram = createDefaultChannels().find((channel) => channel.id === 'telegram');
     const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
 
     assert.ok(slack);
@@ -308,6 +311,49 @@ test('default channel and provider factories expose runtime helpers for delivery
       },
     );
 
+    assert.ok(telegram);
+    assert.equal(typeof telegram.isConfigured, 'function');
+    assert.equal(typeof telegram.summary, 'function');
+    assert.equal(typeof telegram.normalizeInboundEvent, 'function');
+    assert.equal(typeof telegram.buildChatSend, 'function');
+    assert.equal(telegram.isConfigured(), true);
+    assert.deepEqual(telegram.summary(), telegramChannelScaffold);
+    assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 77,
+        message: {
+          message_id: 18,
+          message_thread_id: 9,
+          date: 1710000100,
+          text: 'hello from telegram',
+          chat: { id: -100123, type: 'supergroup' },
+          from: { id: 42, username: 'harry' },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'message',
+        updateId: 77,
+        chatId: -100123,
+        senderId: 42,
+        text: 'hello from telegram',
+        messageId: 18,
+        threadId: 9,
+        chatType: 'supergroup',
+        timestamp: 1710000100,
+      },
+    );
+    assert.deepEqual(
+      telegram.buildChatSend({ chatId: -100123, text: 'roger that', threadId: 9, replyToMessageId: 18 }),
+      {
+        chat_id: -100123,
+        text: 'roger that',
+        message_thread_id: 9,
+        reply_to_message_id: 18,
+        disable_notification: false,
+      },
+    );
+
     assert.ok(openai);
     assert.equal(typeof openai.isConfigured, 'function');
     assert.equal(typeof openai.supportsFeature, 'function');
@@ -316,27 +362,33 @@ test('default channel and provider factories expose runtime helpers for delivery
     assert.equal(openai.supportsFeature('audio'), false);
     assert.deepEqual(openai.summary(), openaiProviderScaffold);
   } finally {
-    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+    if (originalEnv.SLACK_BOT_TOKEN=== undefined) {
       delete process.env.SLACK_BOT_TOKEN;
     } else {
-      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+      process.env.SLACK_BOT_TOKEN=originalEnv.SLACK_BOT_TOKEN;
     }
 
-    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+    if (originalEnv.SLACK_SIGNING_SECRET=== undefined) {
       delete process.env.SLACK_SIGNING_SECRET;
     } else {
-      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+      process.env.SLACK_SIGNING_SECRET=originalEnv.SLACK_SIGNING_SECRET;
     }
 
-    if (originalEnv.OPENAI_API_KEY === undefined) {
+    if (originalEnv.TELEGRAM_BOT_TOKEN=== undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN=originalEnv.TELEGRAM_BOT_TOKEN;
+    }
+
+    if (originalEnv.OPENAI_API_KEY=== undefined) {
       delete process.env.OPENAI_API_KEY;
     } else {
-      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY=originalEnv.OPENAI_API_KEY;
     }
   }
 });
 
-test('buildSummary counts the checked-in Slack delivery module as runtime-ready while the rest stay scaffold-only', () => {
+test('buildSummary counts the checked-in Slack and Telegram delivery modules as runtime-ready while the rest stay scaffold-only', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -358,17 +410,20 @@ test('buildSummary counts the checked-in Slack delivery module as runtime-ready 
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.delivery.readyChannelImplementationCount, 1);
+  assert.equal(summary.delivery.readyChannelImplementationCount, 2);
   assert.equal(summary.delivery.readyProviderImplementationCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 3);
+  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 2);
   assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
+  assert.equal(summary.delivery.channelQueue[1].implementationReady, true);
+  assert.equal(summary.delivery.channelQueue[1].implementationStatus, 'ready');
   assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 1\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /runtime implementations: 2\/4 channels, 0\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
-  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
+  assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
+  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
