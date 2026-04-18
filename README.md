@@ -68,6 +68,12 @@ Re-running `update intake` preserves starter `entries[]`, customized `entryTempl
 
 `node src/index.js --help` now prints a concise operator-facing usage guide instead of dumping the full summary JSON, and invalid CLI invocations fail with a short usage hint rather than a raw stack trace. The summary keeps advertising the richer ingestion helper bundles, the sample manifest's typed entry mix, and available display labels so operators can see which starter profiles and assets are covered before importing them.
 
+## Delivery foundation
+
+The repo now also carries a scaffold-first delivery layer for chat surfaces and model backends. The default channel catalog covers Slack, Telegram, WhatsApp, and Feishu, while the default provider catalog covers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen. These checked-in modules are intentionally marked scaffold-only until real runtime handlers land, so the summary can distinguish "present in the repo" from "ready to serve traffic."
+
+Per-repo rollout can override or extend those defaults through `manifests/channels.json` and `manifests/providers.json`. The summary/prompt preview keeps those manifest diagnostics, auth-readiness hints, and next scaffold commands visible so the delivery backlog stays operator-facing instead of hidden in raw files.
+
 ---
 
 ## English
