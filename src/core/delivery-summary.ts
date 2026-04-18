@@ -196,11 +196,13 @@ function detectImplementationStatus(implementationPath: string | null | undefine
     }
 
     const content = fs.readFileSync(resolvedPath, 'utf8');
+    const normalizedContent = content.replace(/\r\n/g, '\n').trim();
+    const isFactoryOnlyScaffold = /^import\s+\{\s*Base(?:Channel|Provider)\s*\}\s+from\s+['"][^'"]+['"];\s*export\s+const\s+\w+Scaffold\s*=\s*\{[\s\S]*?\};\s*export\s+function\s+create\w+\s*\(\s*overrides\s*=\s*\{\s*\}\s*\)\s*\{\s*return\s+new\s+Base(?:Channel|Provider)\s*\(\s*\{\s*\.\.\.\w+Scaffold\s*,\s*\.\.\.overrides\s*\}\s*\);\s*\}\s*$/u.test(normalizedContent);
     const hasRuntimeSurface = /\b(?:export\s+default\s+)?(?:async\s+)?function\b|\bclass\b|=>|module\.exports|exports\./u.test(content);
-    const isScaffoldOnly = !hasRuntimeSurface && (
+    const isScaffoldOnly = isFactoryOnlyScaffold || (!hasRuntimeSurface && (
       /Scaffold\s*=\s*\{/u.test(content)
       || /export\s+const\s+(?:channelId|providerId)\s*=\s*/u.test(content)
-    );
+    ));
 
     return {
       present: true,

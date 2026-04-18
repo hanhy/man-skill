@@ -302,6 +302,41 @@ test('default channel and provider factories expose runtime helpers for delivery
   }
 });
 
+test('buildSummary keeps the checked-in default delivery modules marked scaffold-only until real runtime handlers land', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'models', `${providerId}.js`),
+      path.join(rootDir, 'src', 'models', `${providerId}.js`),
+    );
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.readyChannelImplementationCount, 0);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 0);
+  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 4);
+  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
+  assert.equal(summary.delivery.channelQueue[0].implementationReady, false);
+  assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'scaffold');
+  assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
+  assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
+  assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /Slack \[planned, scaffold-only\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+});
+
 test('buildSummary exposes a delivery setup queue and prompt preview includes setup hints', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
