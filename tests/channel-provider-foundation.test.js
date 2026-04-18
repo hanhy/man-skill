@@ -992,8 +992,10 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
+  assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, runtime-ready\], WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned, runtime-ready\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /\+4 more providers: Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, runtime-ready\], Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
 });
 
@@ -1380,10 +1382,10 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned\], Feishu \[planned\], Discord \[candidate\]/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\], Discord \[candidate\]/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
-  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned\], Minimax \[planned\], GLM \[planned\], Qwen \[planned\], DeepSeek \[candidate\]/);
+  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\], DeepSeek \[candidate\]/);
 });
 
 test('buildSummary falls back to default delivery metadata when manifests are malformed', () => {

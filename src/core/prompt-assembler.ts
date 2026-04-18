@@ -805,16 +805,6 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
-  const visibleChannelRecords = channelRecords.slice(0, 2);
-  const remainingChannelRecords = channelRecords.slice(2);
-  const remainingChannelRecordsSummary = remainingChannelRecords.length > 0
-    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => `${channel.name ?? channel.id ?? 'unknown-channel'} [${channel.status ?? 'unknown'}]`).join(', ')}`
-    : null;
-  const visibleProviderRecords = providerRecords.slice(0, 2);
-  const remainingProviderRecords = providerRecords.slice(2);
-  const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
-    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
-    : null;
   const formatCompactDeliveryQueueLabel = (item: DeliveryQueueItem, fallbackLabel: string) => {
     const implementationTag = item?.implementationStatus === 'scaffold'
       ? 'scaffold-only'
@@ -826,6 +816,22 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     ].filter(Boolean);
     return `${item?.name ?? item?.id ?? fallbackLabel}${statusTags.length > 0 ? ` [${statusTags.join(', ')}]` : ''}`;
   };
+  const formatCompactDeliveryRecordLabel = (item: ChannelSummaryRecord | ModelSummaryRecord, queue: DeliveryQueueItem[], fallbackLabel: string) => {
+    const queueMatch = queue.find((queueItem) => queueItem?.id && item?.id && queueItem.id === item.id);
+    return queueMatch
+      ? formatCompactDeliveryQueueLabel(queueMatch, fallbackLabel)
+      : `${item?.name ?? item?.id ?? fallbackLabel} [${item?.status ?? 'unknown'}]`;
+  };
+  const visibleChannelRecords = channelRecords.slice(0, 2);
+  const remainingChannelRecords = channelRecords.slice(2);
+  const remainingChannelRecordsSummary = remainingChannelRecords.length > 0
+    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => formatCompactDeliveryRecordLabel(channel, enrichedChannelQueue, 'unknown-channel')).join(', ')}`
+    : null;
+  const visibleProviderRecords = providerRecords.slice(0, 2);
+  const remainingProviderRecords = providerRecords.slice(2);
+  const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
+    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => formatCompactDeliveryRecordLabel(provider, providerQueue, 'unknown-provider')).join(', ')}`
+    : null;
   const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
   const remainingChannelQueue = enrichedChannelQueue.slice(1);
   const remainingChannelQueueSummary = remainingChannelQueue.length > 0
