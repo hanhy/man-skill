@@ -13,8 +13,8 @@ import { whatsappChannelScaffold } from '../src/channels/whatsapp.js';
 import { feishuChannelScaffold } from '../src/channels/feishu.js';
 import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { createDefaultChannels } from '../src/channels/index.js';
-import { openaiProviderScaffold } from '../src/models/openai.js';
-import { anthropicProviderScaffold } from '../src/models/anthropic.js';
+import { buildOpenAIChatRequest, normalizeOpenAIChatResponse, openaiProviderScaffold } from '../src/models/openai.js';
+import { buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse, anthropicProviderScaffold } from '../src/models/anthropic.js';
 import { kimiProviderScaffold } from '../src/models/kimi.js';
 import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
@@ -263,6 +263,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     FEISHU_APP_ID: process.env.FEISHU_APP_ID,
     FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   };
 
   process.env.SLACK_BOT_TOKEN='***';
@@ -271,8 +272,9 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   process.env.WHATSAPP_ACCESS_TOKEN='***';
   process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
   process.env.FEISHU_APP_ID = 'cli_a1b2c3';
-  process.env.FEISHU_APP_SECRET = 'secret';
+  process.env.FEISHU_APP_SECRET='***';
   process.env.OPENAI_API_KEY='***';
+  process.env.ANTHROPIC_API_KEY='***';
 
   try {
     const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
@@ -280,6 +282,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     const whatsapp = createDefaultChannels().find((channel) => channel.id === 'whatsapp');
     const feishu = createDefaultChannels().find((channel) => channel.id === 'feishu');
     const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
+    const anthropic = createDefaultProviders().find((provider) => provider.id === 'anthropic');
 
     assert.ok(slack);
     assert.equal(typeof slack.isConfigured, 'function');
@@ -479,10 +482,135 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     assert.ok(openai);
     assert.equal(typeof openai.isConfigured, 'function');
     assert.equal(typeof openai.supportsFeature, 'function');
+    assert.equal(typeof openai.buildChatRequest, 'function');
+    assert.equal(typeof openai.normalizeChatResponse, 'function');
     assert.equal(openai.isConfigured(), true);
     assert.equal(openai.supportsFeature('tools'), true);
     assert.equal(openai.supportsFeature('audio'), false);
     assert.deepEqual(openai.summary(), openaiProviderScaffold);
+    assert.deepEqual(
+      openai.buildChatRequest({
+        messages: [{ role: 'user', content: 'hello from openai' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.2,
+        maxOutputTokens: 256,
+        metadata: { profile: 'harry-han' },
+      }),
+      buildOpenAIChatRequest({
+        messages: [{ role: 'user', content: 'hello from openai' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.2,
+        maxOutputTokens: 256,
+        metadata: { profile: 'harry-han' },
+      }),
+    );
+    assert.deepEqual(
+      openai.normalizeChatResponse({
+        id: 'chatcmpl-openai',
+        model: 'gpt-5',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: 'Need to fetch the profile first.',
+            tool_calls: [{
+              id: 'call_openai_1',
+              type: 'function',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
+          },
+        }],
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 22,
+          total_tokens: 122,
+        },
+      }),
+      normalizeOpenAIChatResponse({
+        id: 'chatcmpl-openai',
+        model: 'gpt-5',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: 'Need to fetch the profile first.',
+            tool_calls: [{
+              id: 'call_openai_1',
+              type: 'function',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
+          },
+        }],
+        usage: {
+          prompt_tokens: 100,
+          completion_tokens: 22,
+          total_tokens: 122,
+        },
+      }),
+    );
+
+    assert.ok(anthropic);
+    assert.equal(typeof anthropic.isConfigured, 'function');
+    assert.equal(typeof anthropic.buildMessagesRequest, 'function');
+    assert.equal(typeof anthropic.normalizeMessagesResponse, 'function');
+    assert.equal(anthropic.isConfigured(), true);
+    assert.deepEqual(anthropic.summary(), anthropicProviderScaffold);
+    assert.deepEqual(
+      anthropic.buildMessagesRequest({
+        system: 'Stay concise.',
+        messages: [{ role: 'user', content: 'hello from anthropic' }],
+        tools: [{ name: 'lookup_profile', input_schema: { type: 'object' } }],
+        toolChoice: { type: 'auto' },
+        maxTokens: 512,
+        temperature: 0.1,
+      }),
+      buildAnthropicMessagesRequest({
+        system: 'Stay concise.',
+        messages: [{ role: 'user', content: 'hello from anthropic' }],
+        tools: [{ name: 'lookup_profile', input_schema: { type: 'object' } }],
+        toolChoice: { type: 'auto' },
+        maxTokens: 512,
+        temperature: 0.1,
+      }),
+    );
+    assert.deepEqual(
+      anthropic.normalizeMessagesResponse({
+        id: 'msg_anthropic',
+        model: 'claude-3.7-sonnet',
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [
+          { type: 'text', text: 'Let me inspect the profile.' },
+          { type: 'tool_use', id: 'toolu_1', name: 'lookup_profile', input: { personId: 'harry-han' } },
+        ],
+        usage: {
+          input_tokens: 84,
+          output_tokens: 19,
+        },
+      }),
+      normalizeAnthropicMessagesResponse({
+        id: 'msg_anthropic',
+        model: 'claude-3.7-sonnet',
+        role: 'assistant',
+        stop_reason: 'tool_use',
+        content: [
+          { type: 'text', text: 'Let me inspect the profile.' },
+          { type: 'tool_use', id: 'toolu_1', name: 'lookup_profile', input: { personId: 'harry-han' } },
+        ],
+        usage: {
+          input_tokens: 84,
+          output_tokens: 19,
+        },
+      }),
+    );
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -519,10 +647,16 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     } else {
       process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
     }
+
+    if (originalEnv.ANTHROPIC_API_KEY === undefined) {
+      delete process.env.ANTHROPIC_API_KEY;
+    } else {
+      process.env.ANTHROPIC_API_KEY = originalEnv.ANTHROPIC_API_KEY;
+    }
   }
 });
 
-test('buildSummary counts the checked-in channel delivery modules as runtime-ready while providers stay scaffold-only', () => {
+test('buildSummary counts the checked-in channel delivery modules and the OpenAI/Anthropic provider helpers as runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -545,9 +679,9 @@ test('buildSummary counts the checked-in channel delivery modules as runtime-rea
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.delivery.readyChannelImplementationCount, 4);
-  assert.equal(summary.delivery.readyProviderImplementationCount, 0);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 2);
   assert.equal(summary.delivery.scaffoldOnlyChannelCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
+  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 4);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[1].implementationReady, true);
@@ -556,13 +690,17 @@ test('buildSummary counts the checked-in channel delivery modules as runtime-rea
   assert.equal(summary.delivery.channelQueue[2].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[3].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[3].implementationStatus, 'ready');
-  assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
-  assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 0\/6 providers ready/);
+  assert.equal(summary.delivery.providerQueue[0].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'ready');
+  assert.equal(summary.delivery.providerQueue[1].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[1].implementationStatus, 'ready');
+  assert.equal(summary.delivery.providerQueue[2].implementationReady, false);
+  assert.equal(summary.delivery.providerQueue[2].implementationStatus, 'scaffold');
+  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 2\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned, configured\]/);
-  assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
 test('buildSummary exposes a delivery setup queue and prompt preview includes setup hints', () => {
