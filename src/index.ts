@@ -1610,7 +1610,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(12500),
+    promptPreview: prompt.buildPreview(15000),
   };
 }
 

@@ -608,6 +608,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.'/);
   assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\| soul /);
+  assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\], voice \[missing\]/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
 });
 
 test('buildSummary keeps memory foundation thin until daily, long-term, and scratch buckets are all seeded', () => {
