@@ -816,10 +816,13 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
     : null;
   const formatCompactDeliveryQueueLabel = (item: DeliveryQueueItem, fallbackLabel: string) => {
+    const implementationTag = item?.implementationStatus === 'scaffold'
+      ? 'scaffold-only'
+      : (item?.implementationStatus === 'ready' ? 'runtime-ready' : null);
     const statusTags = [
       item?.status ?? null,
       item?.configured ? 'configured' : null,
-      item?.implementationStatus === 'scaffold' ? 'scaffold-only' : null,
+      implementationTag,
     ].filter(Boolean);
     return `${item?.name ?? item?.id ?? fallbackLabel}${statusTags.length > 0 ? ` [${statusTags.join(', ')}]` : ''}`;
   };
@@ -918,7 +921,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
         channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      const implementationTag = channel.implementationStatus === 'scaffold' ? ', scaffold-only' : '';
+      const implementationTag = channel.implementationStatus === 'scaffold'
+        ? ', scaffold-only'
+        : (channel.implementationStatus === 'ready' ? ', runtime-ready' : '');
       return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}${implementationTag}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingChannelQueueSummary,
@@ -944,7 +949,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
         provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      const implementationTag = provider.implementationStatus === 'scaffold' ? ', scaffold-only' : '';
+      const implementationTag = provider.implementationStatus === 'scaffold'
+        ? ', scaffold-only'
+        : (provider.implementationStatus === 'ready' ? ', runtime-ready' : '');
       return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}${implementationTag}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingProviderQueueSummary,
