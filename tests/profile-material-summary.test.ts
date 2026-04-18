@@ -1298,8 +1298,49 @@ test('buildSummary surfaces imported profiles that still need intake backfill af
   assert.equal(harry?.intakeStatusSummary, 'missing — create imports, README.md, materials.template.json, sample.txt');
   assert.equal(harry?.helperCommands?.scaffold, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.match(summary.promptPreview, /- intake backfill: 1 imported profile queued/);
-  assert.match(summary.promptPreview, /helpers: .*scaffold-imported node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /helpers: .*scaffold-imported-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+});
+
+
+test('buildSummary labels imported intake backfill bundles separately from the generic imported scaffold helper', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'jane-doe',
+    'display-name': 'Jane Doe',
+    summary: 'Fast feedback beats polished drift.',
+  });
+
+  ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'Ship the first slice before polishing the plan.',
+  });
+  ingestion.importMessage({
+    personId: 'jane-doe',
+    text: 'Prefer a working loop over a perfect spec.',
+  });
+
+  fs.rmSync(path.join(rootDir, 'profiles', 'harry-han', 'imports'), { recursive: true, force: true });
+  fs.rmSync(path.join(rootDir, 'profiles', 'jane-doe', 'imports'), { recursive: true, force: true });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 2);
+  assert.equal(summary.ingestion.helperCommands?.scaffoldImported, 'node src/index.js update intake --imported');
+  assert.match(summary.ingestion.helperCommands?.scaffoldImportedBundle ?? '', /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.ingestion.helperCommands?.scaffoldImportedBundle ?? '', /node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
+  assert.match(summary.promptPreview, /- intake backfill: 2 imported profiles queued/);
+  assert.match(summary.promptPreview, /helpers: .*scaffold-imported node src\/index\.js update intake --imported/);
+  assert.match(summary.promptPreview, /helpers: .*scaffold-imported-bundle /);
+  assert.match(summary.promptPreview, /helpers: .*node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /helpers: .*node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
