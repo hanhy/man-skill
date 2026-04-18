@@ -904,6 +904,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const envTemplateVarCount = (delivery?.envTemplateVarNames ?? []).length;
   const missingTemplateVars = (delivery?.envTemplateMissingRequiredVars ?? []).filter(Boolean);
   const requiredEnvVars = (delivery?.requiredEnvVars ?? []).filter(Boolean);
+  const missingChannelEnvVars = (delivery?.missingChannelEnvVars ?? []).filter(Boolean);
+  const missingProviderEnvVars = (delivery?.missingProviderEnvVars ?? []).filter(Boolean);
   const coveredRequiredEnvVarCount = requiredEnvVars.filter((envVar, index, values) => values.indexOf(envVar) === index && (delivery?.envTemplateVarNames ?? []).includes(envVar)).length;
   const requiredEnvVarCount = requiredEnvVars.length;
   const envTemplateCoverageSuffix = requiredEnvVarCount > 0
@@ -932,6 +934,12 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
+      : null,
+    missingChannelEnvVars.length > 0
+      ? `- channel env backlog: ${missingChannelEnvVars.join(', ')}`
+      : null,
+    missingProviderEnvVars.length > 0
+      ? `- provider env backlog: ${missingProviderEnvVars.join(', ')}`
       : null,
     ...visibleChannelRecords.map((channel) =>
       `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,

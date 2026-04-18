@@ -1035,6 +1035,8 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.equal(summary.delivery.providerQueue[5].implementationReady, true);
   assert.equal(summary.delivery.providerQueue[5].implementationStatus, 'ready');
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
+  assert.match(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET.*TELEGRAM_BOT_TOKEN.*WHATSAPP_ACCESS_TOKEN.*WHATSAPP_PHONE_NUMBER_ID/);
+  assert.match(summary.promptPreview, /provider env backlog: .*ANTHROPIC_API_KEY.*GLM_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*OPENAI_API_KEY.*QWEN_API_KEY/);
   assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
   assert.doesNotMatch(summary.promptPreview, /Slack \[planned, runtime-ready\]:[^\n]*; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
@@ -1203,6 +1205,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
+    assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
+    assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
     assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
