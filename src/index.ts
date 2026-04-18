@@ -1126,9 +1126,9 @@ function buildDeliveryPriority({
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
       ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
       ...(!(shouldUseImplementationBundle || bundledImplementationBacklog)
-        && typeof firstQueued?.implementationScaffoldPath === 'string'
-        && firstQueued.implementationScaffoldPath.length > 0
-        ? [firstQueued.implementationScaffoldPath]
+        && typeof implementationActionItem?.implementationScaffoldPath === 'string'
+        && implementationActionItem.implementationScaffoldPath.length > 0
+        ? [implementationActionItem.implementationScaffoldPath]
         : []),
     ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 

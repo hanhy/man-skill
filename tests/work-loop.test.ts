@@ -1505,6 +1505,41 @@ test('buildSummary work loop still scaffolds missing delivery files before scaff
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
 });
 
+test('buildSummary work loop paths follow the actual missing delivery file when a scaffold-only leader stays ahead of a single missing implementation', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'slack.js'), "export const slackChannelScaffold = { id: 'slack' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'telegram.js'), "export const telegramChannelScaffold = { id: 'telegram' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'whatsapp.js'), "export const whatsappChannelScaffold = { id: 'whatsapp' };\n");
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'planned' },
+    { id: 'telegram', status: 'planned' },
+    { id: 'whatsapp', status: 'planned' },
+    { id: 'feishu', status: 'planned' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned' },
+  ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'src/channels' && touch 'src/channels/feishu.js'");
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/channels/feishu.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
+  assert.match(summary.promptPreview, /command: mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'/);
+  assert.match(summary.promptPreview, /paths: manifests\/channels\.json, src\/channels\/feishu\.js/);
+});
+
 test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
