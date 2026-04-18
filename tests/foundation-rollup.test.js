@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildFoundationRollup } from '../src/core/foundation-rollup.js';
+import { buildFoundationRollup as buildFoundationRollupTs } from '../src/core/foundation-rollup.ts';
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { buildSummary } from '../src/index.js';
@@ -49,6 +50,51 @@ function buildDocumentRepairCommand(filePath, sentinel, sections) {
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-foundation-rollup-'));
 }
+
+test('JS foundation rollup shim stays aligned with the TypeScript implementation', () => {
+  const profiles = [
+    {
+      id: 'harry-han',
+      materialCount: 2,
+      profile: { displayName: 'Harry Han', summary: 'Keeps loops short.' },
+      latestMaterialAt: '2026-04-19T01:00:00.000Z',
+      foundationDraftStatus: { needsRefresh: false, complete: true, missingDrafts: [], refreshReasons: [] },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 2, latestSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
+        voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the scope tight.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 2, sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
+        voice: { candidateCount: 2, sampleExcerpts: ['Ship the first slice.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the scope tight.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      profile: { displayName: 'Jane Doe', summary: 'Tight loops beat big plans.' },
+      latestMaterialAt: '2026-04-19T01:05:00.000Z',
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory', 'skills', 'soul', 'voice'], refreshReasons: ['missing drafts', 'new materials'] },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        voice: { generated: false, highlights: [] },
+        soul: { generated: false, highlights: [] },
+        skills: { generated: false, highlights: [] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['feedback-loop heuristic'] },
+      },
+    },
+  ];
+
+  assert.deepEqual(buildFoundationRollup(profiles), buildFoundationRollupTs(profiles));
+});
 
 test('buildFoundationRollup aggregates generated, stale, and candidate foundation signals across profiles', () => {
   const rollup = buildFoundationRollup([
