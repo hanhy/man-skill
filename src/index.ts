@@ -1569,6 +1569,23 @@ export function buildSummary(rootDir: string) {
   const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
     ? buildPopulateEnvCommand(envTemplateMissingRequiredVars, '.env.example')
     : null;
+  const sanitizeDeliveryQueueBootstrap = <T extends { missingEnvVars?: string[]; helperCommands?: Record<string, unknown> }>(queue: T[] = []): T[] => {
+    const canBootstrapEnv = envTemplatePresent && !envConfigPresent && envTemplateMissingRequiredVars.length === 0 && Boolean(completeEnvBootstrapCommand);
+
+    return queue.map((item) => {
+      const missingEnvVars = Array.isArray(item?.missingEnvVars)
+        ? item.missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+
+      return {
+        ...item,
+        helperCommands: {
+          ...item.helperCommands,
+          bootstrapEnv: canBootstrapEnv && missingEnvVars.length > 0 ? completeEnvBootstrapCommand : null,
+        },
+      };
+    });
+  };
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
@@ -1576,6 +1593,8 @@ export function buildSummary(rootDir: string) {
     envTemplateCommand: completeEnvBootstrapCommand,
     envTemplateVarNames,
     envTemplateMissingRequiredVars,
+    channelQueue: sanitizeDeliveryQueueBootstrap(baseDeliverySummary.channelQueue),
+    providerQueue: sanitizeDeliveryQueueBootstrap(baseDeliverySummary.providerQueue),
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
       bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,

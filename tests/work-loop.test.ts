@@ -970,6 +970,8 @@ test('buildSummary work loop repairs the env template before channel scaffolding
     'WHATSAPP_PHONE_NUMBER_ID',
   ]);
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+  assert.equal(summary.delivery.channelQueue[0].helperCommands.bootstrapEnv, null);
+  assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(
     summary.delivery.helperCommands.populateEnvTemplate,
     "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
@@ -983,6 +985,7 @@ test('buildSummary work loop repairs the env template before channel scaffolding
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest missing, scaffolds 0\/4 present/);
   assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
+  assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
   assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
@@ -1221,10 +1224,13 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.delivery.envTemplateCommand, null);
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+  assert.equal(summary.delivery.channelQueue[0].helperCommands.bootstrapEnv, null);
+  assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
+  assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
   assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
