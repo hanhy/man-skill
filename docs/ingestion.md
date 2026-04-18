@@ -205,7 +205,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
 - `foundationDraftStatus` with `generatedAt`, `missingDrafts`, and `needsRefresh` so stale profiles are visible
   - freshness uses `latestMaterialId` as a tie-breaker, so same-timestamp imports still show up as stale when drafts lag behind
 - `foundationDraftSummaries.memory` generated entry counts, provenance metadata (`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`), plus latest textual summaries
-- `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts
+- `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts; when a markdown draft exists but is structurally thin, those summaries also surface `readySectionCount`, `totalSectionCount`, and `missingSections` so stale profile snapshots can call out exact section gaps
 - top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
 - top-level `foundation.maintenance` queue data (`readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `refreshAllCommand`, `staleRefreshCommand`, `helperCommands`, `queuedProfiles`) so stale or incomplete target profiles can be surfaced directly in the prompt preview before the detailed rollup
   - each queued profile now includes its own `refreshCommand`, which keeps the user-facing ingestion/update entrance operational instead of requiring operators to reconstruct the right CLI call by hand

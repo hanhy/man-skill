@@ -298,6 +298,9 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
+    readySectionCount: 0,
+    totalSectionCount: 4,
+    missingSections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: false,
@@ -307,6 +310,9 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
+    readySectionCount: 0,
+    totalSectionCount: 3,
+    missingSections: ['core-values', 'boundaries', 'decision-rules'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -316,6 +322,9 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
+    readySectionCount: 0,
+    totalSectionCount: 3,
+    missingSections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
   });
 });
 
@@ -938,9 +947,27 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
         },
         foundationDraftSummaries: {
           memory: { generated: false, entryCount: 0, latestSummaries: [] },
-          voice: { generated: false, highlights: [] },
-          soul: { generated: false, highlights: [] },
-          skills: { generated: false, highlights: [] },
+          voice: {
+            generated: false,
+            highlights: [],
+            readySectionCount: 1,
+            totalSectionCount: 4,
+            missingSections: ['signature-moves', 'avoid', 'language-hints'],
+          },
+          soul: {
+            generated: false,
+            highlights: [],
+            readySectionCount: 1,
+            totalSectionCount: 3,
+            missingSections: ['boundaries', 'decision-rules'],
+          },
+          skills: {
+            generated: false,
+            highlights: [],
+            readySectionCount: 1,
+            totalSectionCount: 3,
+            missingSections: ['evidence', 'gaps-to-validate'],
+          },
         },
       },
     ],
@@ -949,6 +976,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
   assert.match(prompt, /voice highlights: Tight loops beat big plans\./);
   assert.match(prompt, /soul highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: feedback-loop heuristic/);
+  assert.match(prompt, /draft gaps: voice 1\/4 missing signature-moves\/avoid\/language-hints \| soul 1\/3 missing boundaries\/decision-rules \| skills 1\/3 missing evidence\/gaps-to-validate/);
 });
 
 test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
@@ -1094,6 +1122,9 @@ test('loadProfilesIndex marks draft status as missing before foundation generati
   assert.equal(profile.foundationDraftStatus.complete, false);
   assert.equal(profile.foundationDraftStatus.needsRefresh, true);
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
+  assert.deepEqual((profile.foundationDraftSummaries.voice as any).missingSections ?? [], []);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], []);
+  assert.deepEqual((profile.foundationDraftSummaries.skills as any).missingSections ?? [], []);
 });
 
 test('loadProfilesIndex marks foundation status stale when memory draft metadata is unreadable', () => {

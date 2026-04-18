@@ -127,11 +127,31 @@ const SKILL_SECTION_DEFINITIONS = [
   { key: 'suggested-workflow', headings: ['suggested workflow'] },
 ];
 
-const FOUNDATION_DRAFT_SECTION_REQUIREMENTS = {
-  voice: ['## Tone', '## Signature moves', '## Avoid', '## Language hints'],
-  soul: ['## Core values', '## Boundaries', '## Decision rules'],
-  skills: ['## Candidate skills', '## Evidence', '## Gaps to validate'],
+const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
+  voice: [
+    { key: 'tone', heading: '## Tone' },
+    { key: 'signature-moves', heading: '## Signature moves' },
+    { key: 'avoid', heading: '## Avoid' },
+    { key: 'language-hints', heading: '## Language hints' },
+  ],
+  soul: [
+    { key: 'core-values', heading: '## Core values' },
+    { key: 'boundaries', heading: '## Boundaries' },
+    { key: 'decision-rules', heading: '## Decision rules' },
+  ],
+  skills: [
+    { key: 'candidate-skills', heading: '## Candidate skills' },
+    { key: 'evidence', heading: '## Evidence' },
+    { key: 'gaps-to-validate', heading: '## Gaps to validate' },
+  ],
 };
+
+const FOUNDATION_DRAFT_SECTION_REQUIREMENTS = Object.fromEntries(
+  Object.entries(FOUNDATION_DRAFT_SECTION_DEFINITIONS).map(([draftKind, sections]) => [
+    draftKind,
+    sections.map((section) => section.heading),
+  ]),
+);
 
 function collectMissingSkillSections(document) {
   if (!isNonEmptyString(document)) {
@@ -475,14 +495,32 @@ function detectFoundationDraftKind(filePath) {
   return null;
 }
 
-function hasRequiredFoundationDraftSections(filePath, content) {
+function summarizeFoundationDraftSections(filePath, content = null) {
   const draftKind = detectFoundationDraftKind(filePath);
-  if (!draftKind) {
-    return true;
+  const sectionDefinitions = draftKind ? (FOUNDATION_DRAFT_SECTION_DEFINITIONS[draftKind] ?? []) : [];
+  if (sectionDefinitions.length === 0) {
+    return null;
   }
 
-  const requiredHeadings = FOUNDATION_DRAFT_SECTION_REQUIREMENTS[draftKind] ?? [];
-  return requiredHeadings.every((heading) => content.includes(heading));
+  const resolvedContent = typeof content === 'string' ? content : readTextIfExists(filePath);
+  if (!isNonEmptyString(resolvedContent)) {
+    return null;
+  }
+
+  const missingSections = sectionDefinitions
+    .filter((section) => !resolvedContent.includes(section.heading))
+    .map((section) => section.key);
+
+  return {
+    readySectionCount: sectionDefinitions.length - missingSections.length,
+    totalSectionCount: sectionDefinitions.length,
+    missingSections,
+  };
+}
+
+function hasRequiredFoundationDraftSections(filePath, content) {
+  const sectionSummary = summarizeFoundationDraftSections(filePath, content);
+  return (sectionSummary?.missingSections?.length ?? 0) === 0;
 }
 
 export function hasValidFoundationMarkdownDraft(filePath) {
@@ -610,6 +648,9 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
   const voiceMetadata = parseDraftMetadata(voiceDraftPath);
   const soulMetadata = parseDraftMetadata(soulDraftPath);
   const skillsMetadata = parseDraftMetadata(skillsDraftPath);
+  const voiceSectionSummary = summarizeFoundationDraftSections(voiceDraftPath);
+  const soulSectionSummary = summarizeFoundationDraftSections(soulDraftPath);
+  const skillsSectionSummary = summarizeFoundationDraftSections(skillsDraftPath);
 
   return {
     memory: memoryDraft
@@ -647,7 +688,16 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           materialTypes: voiceMetadata.materialTypes,
           highlights: readMarkdownHighlights(voiceDraftPath),
         }
-      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
+      : {
+          generated: false,
+          generatedAt: null,
+          latestMaterialAt: null,
+          latestMaterialId: null,
+          sourceCount: 0,
+          materialTypes: {},
+          highlights: [],
+          ...(voiceSectionSummary && voiceSectionSummary.missingSections.length > 0 ? voiceSectionSummary : {}),
+        },
     soul: soulMetadata?.valid && hasValidFoundationMarkdownDraft(soulDraftPath)
       ? {
           generated: true,
@@ -658,7 +708,16 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           materialTypes: soulMetadata.materialTypes,
           highlights: readMarkdownHighlights(soulDraftPath),
         }
-      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
+      : {
+          generated: false,
+          generatedAt: null,
+          latestMaterialAt: null,
+          latestMaterialId: null,
+          sourceCount: 0,
+          materialTypes: {},
+          highlights: [],
+          ...(soulSectionSummary && soulSectionSummary.missingSections.length > 0 ? soulSectionSummary : {}),
+        },
     skills: skillsMetadata?.valid && hasValidFoundationMarkdownDraft(skillsDraftPath)
       ? {
           generated: true,
@@ -669,7 +728,16 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           materialTypes: skillsMetadata.materialTypes,
           highlights: readMarkdownHighlights(skillsDraftPath),
         }
-      : { generated: false, generatedAt: null, latestMaterialAt: null, latestMaterialId: null, sourceCount: 0, materialTypes: {}, highlights: [] },
+      : {
+          generated: false,
+          generatedAt: null,
+          latestMaterialAt: null,
+          latestMaterialId: null,
+          sourceCount: 0,
+          materialTypes: {},
+          highlights: [],
+          ...(skillsSectionSummary && skillsSectionSummary.missingSections.length > 0 ? skillsSectionSummary : {}),
+        },
   };
 }
 

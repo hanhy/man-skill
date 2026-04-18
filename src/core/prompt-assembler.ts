@@ -43,6 +43,9 @@ type HighlightDraftSummary = {
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   highlights?: string[];
+  readySectionCount?: number;
+  totalSectionCount?: number;
+  missingSections?: string[];
   [key: string]: unknown;
 };
 
@@ -528,6 +531,29 @@ function cleanHighlight(value: string) {
   return value.replace(/^[-\s]*/, '').trim();
 }
 
+function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+  const draftKinds = [
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+  ];
+
+  const gapSummaries = draftKinds
+    .map(({ key, summary }) => {
+      const totalSectionCount = summary?.totalSectionCount ?? 0;
+      const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+      const missingSections = summary?.missingSections ?? [];
+      if (totalSectionCount <= 0 || missingSections.length === 0) {
+        return null;
+      }
+
+      return `${key} ${readySectionCount}/${totalSectionCount} missing ${missingSections.join('/')}`;
+    })
+    .filter(Boolean);
+
+  return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
+}
+
 function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
   const displayName = profile.profile?.displayName;
   const profileId = profile.id ?? 'unknown-profile';
@@ -585,6 +611,11 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
     : (profile.foundationReadiness?.skills?.sampleExcerpts ?? []);
   if (skillSignals.length > 0) {
     lines.push(`  skills signals: ${skillSignals.join(' | ')}`);
+  }
+
+  const draftGaps = summarizeDraftGaps(profile);
+  if (draftGaps) {
+    lines.push(`  draft gaps: ${draftGaps}`);
   }
 
   return lines.join('\n');
