@@ -244,8 +244,13 @@ function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoun
   return commandParts.join(' ');
 }
 
-function buildImportIntakeCommand(personId) {
-  return `node src/index.js import intake --person ${shellQuote(personId)} --refresh-foundation`;
+function buildImportIntakeCommand(personId, { refreshFoundation = false } = {}) {
+  const commandParts = ['node src/index.js import intake', '--person', shellQuote(personId)];
+  if (refreshFoundation) {
+    commandParts.push('--refresh-foundation');
+  }
+
+  return commandParts.join(' ');
 }
 
 function buildIntakePaths(personId) {
@@ -358,6 +363,7 @@ function buildIntakeReadme({
   importManifestCommand,
   importCommands,
   updateIntakeCommand,
+  importIntakeWithoutRefreshCommand,
   importIntakeCommand,
   updateProfileCommand,
   updateProfileAndRefreshCommand,
@@ -381,7 +387,8 @@ function buildIntakeReadme({
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
-    `- import via the profile-local intake shortcut: ${importIntakeCommand}`,
+    `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`,
+    `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
@@ -412,7 +419,8 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
   const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
-  const importIntakeCommand = buildImportIntakeCommand(personId);
+  const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(personId);
+  const importIntakeCommand = buildImportIntakeCommand(personId, { refreshFoundation: true });
 
   return {
     personId,
@@ -427,8 +435,10 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     refreshFoundationCommand,
+    importIntakeWithoutRefreshCommand,
     helperCommands: {
       scaffold: scaffoldCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: importCommand,
       updateProfile: updateProfileCommand,
@@ -540,7 +550,8 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
     });
-    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId);
+    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
+    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
@@ -554,6 +565,7 @@ export class MaterialIngestion {
         importManifestCommand,
         importCommands,
         updateIntakeCommand,
+        importIntakeWithoutRefreshCommand,
         importIntakeCommand,
         updateProfileCommand,
         updateProfileAndRefreshCommand,
@@ -570,6 +582,7 @@ export class MaterialIngestion {
         ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
         : null,
       importManifestCommand,
+      importIntakeWithoutRefreshCommand,
       importIntakeCommand,
       updateIntakeCommand,
       importCommands,
@@ -578,6 +591,7 @@ export class MaterialIngestion {
       updateProfileAndRefreshCommand,
       helperCommands: {
         scaffold: updateIntakeCommand,
+        importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
         importIntake: importIntakeCommand,
         importManifest: importManifestCommand,
         updateProfile: updateProfileCommand,
@@ -1206,12 +1220,14 @@ export class MaterialIngestion {
       displayName: profileDocument?.displayName,
       summary: profileDocument?.summary,
     });
-    const importIntakeCommand = buildImportIntakeCommand(normalized.personId);
+    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(normalized.personId);
+    const importIntakeCommand = buildImportIntakeCommand(normalized.personId, { refreshFoundation: true });
     const helperCommands = {
       refreshFoundation: refreshFoundationCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       updateIntake: updateIntakeCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
     };
 
@@ -1226,6 +1242,7 @@ export class MaterialIngestion {
       updateProfileCommand,
       updateProfileAndRefreshCommand,
       updateIntakeCommand,
+      importIntakeWithoutRefreshCommand,
       importIntakeCommand,
       helperCommands,
     };
