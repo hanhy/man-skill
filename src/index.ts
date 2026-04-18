@@ -68,6 +68,8 @@ type QueueLike = {
   nextStep?: string | null;
   implementationPath?: string | null;
   implementationPresent?: boolean;
+  implementationReady?: boolean;
+  implementationStatus?: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath?: string | null;
   manifestPath?: string | null;
   manifestPresent?: boolean;
@@ -1026,7 +1028,14 @@ function buildDeliveryPriority({
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
-  const bundledImplementationPaths = Array.isArray(queue)
+  const firstMissingImplementationItem = Array.isArray(queue)
+    ? queue.find((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0) ?? null
+    : null;
+  const firstScaffoldOnlyImplementationItem = Array.isArray(queue)
+    ? queue.find((item) => item?.implementationPresent === true && item?.implementationReady === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0) ?? null
+    : null;
+  const implementationActionItem = firstMissingImplementationItem ?? firstScaffoldOnlyImplementationItem ?? null;
+  const missingImplementationPaths = Array.isArray(queue)
     ? queue
       .filter((item) => item?.implementationPresent === false)
       .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
@@ -1034,8 +1043,22 @@ function buildDeliveryPriority({
         : null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const scaffoldOnlyImplementationPaths = Array.isArray(queue)
+    ? queue
+      .filter((item) => item?.implementationPresent === true && item?.implementationReady === false)
+      .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
+        ? item.implementationScaffoldPath
+        : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const bundledImplementationPaths = missingImplementationPaths.length > 0 ? missingImplementationPaths : scaffoldOnlyImplementationPaths;
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
-  const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
+  const implementationMissing = Boolean(implementationActionItem?.implementationScaffoldPath) && implementationActionItem?.implementationPresent === false;
+  const implementationNeedsWork = Boolean(implementationActionItem?.implementationScaffoldPath)
+    && (implementationActionItem?.implementationPresent === false || implementationActionItem?.implementationReady === false);
+  const implementationScaffoldOnly = Boolean(implementationActionItem?.implementationScaffoldPath)
+    && implementationActionItem?.implementationPresent === true
+    && implementationActionItem?.implementationReady === false;
   const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
     ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1045,9 +1068,7 @@ function buildDeliveryPriority({
   const templateCoversLeaderCredentials = firstQueuedMissingEnvVars.length > 0
     && firstQueuedMissingEnvVars.every((envVar) => normalizedEnvTemplateVarNames.includes(envVar));
   const needsCredentialBootstrap = templateCoversLeaderCredentials && pendingCount > configuredCount;
-  const bundledImplementationCount = Array.isArray(queue)
-    ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
-    : 0;
+  const bundledImplementationCount = bundledImplementationPaths.length;
   const normalizedAuthBlockedCount = typeof authBlockedCount === 'number'
     ? authBlockedCount
     : Array.isArray(queue)
@@ -1056,17 +1077,26 @@ function buildDeliveryPriority({
   const implementationPresentCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === true).length
     : 0;
+  const implementationReadyCount = Array.isArray(queue)
+    ? queue.filter((item) => item?.implementationReady === true).length
+    : 0;
   const manifestReady = Array.isArray(queue) && queue.length > 0
     ? queue.every((item) => item?.manifestPresent === true)
     : false;
-  const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
+  const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand)
+    && !manifestMissing
+    && implementationMissing
+    && bundledImplementationCount > 1
+    && typeof implementationBundleCommand === 'string'
+    && implementationBundleCommand.length > 0;
+  const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
   const paths = includeEnvTemplatePath
     ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
-      ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
-      ...(!shouldUseImplementationBundle
+      ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
+      ...(!(shouldUseImplementationBundle || bundledImplementationBacklog)
         && typeof firstQueued?.implementationScaffoldPath === 'string'
         && firstQueued.implementationScaffoldPath.length > 0
         ? [firstQueued.implementationScaffoldPath]
@@ -1085,14 +1115,20 @@ function buildDeliveryPriority({
     const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
     nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
     command = buildRelativeFileTouchCommand(manifestPath);
-  } else if (!command && implementationMissing) {
-    const implementationPath = typeof firstQueued?.implementationScaffoldPath === 'string' ? firstQueued.implementationScaffoldPath : null;
-    nextAction = shouldUseImplementationBundle
-      ? [`create pending ${id === 'channels' ? 'channel' : 'provider'} implementations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
-      : [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
-    command = shouldUseImplementationBundle
-      ? implementationBundleCommand
-      : buildRelativeFileTouchCommand(implementationPath);
+  } else if (!command && implementationNeedsWork) {
+    const implementationPath = typeof implementationActionItem?.implementationScaffoldPath === 'string' ? implementationActionItem.implementationScaffoldPath : null;
+    nextAction = implementationMissing
+      ? (shouldUseImplementationBundle
+        ? [`create pending ${id === 'channels' ? 'channel' : 'provider'} implementations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
+        : [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; '))
+      : (bundledImplementationBacklog
+        ? [`implement pending ${id === 'channels' ? 'channel' : 'provider'} integrations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
+        : [`implement ${implementationPath}`, ...followUpParts].filter(Boolean).join('; '));
+    command = implementationMissing
+      ? (shouldUseImplementationBundle
+        ? implementationBundleCommand
+        : buildRelativeFileTouchCommand(implementationPath))
+      : null;
   }
 
   return {
@@ -1100,7 +1136,7 @@ function buildDeliveryPriority({
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
     summary: pendingCount > 0
-      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${pendingCount} present`
+      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${pendingCount} present, implementations ${implementationReadyCount}/${pendingCount} ready`
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,

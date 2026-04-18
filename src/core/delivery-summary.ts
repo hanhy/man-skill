@@ -63,6 +63,8 @@ export type DeliveryChannelQueueItem = {
   outboundMode: string | null;
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationReady: boolean;
+  implementationStatus: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
@@ -85,6 +87,8 @@ export type DeliveryProviderQueueItem = {
   modalities: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationReady: boolean;
+  implementationStatus: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
@@ -105,6 +109,10 @@ export type DeliverySummary = {
   authBlockedProviderCount: number;
   readyChannelScaffoldCount: number;
   readyProviderScaffoldCount: number;
+  readyChannelImplementationCount: number;
+  readyProviderImplementationCount: number;
+  scaffoldOnlyChannelCount: number;
+  scaffoldOnlyProviderCount: number;
   missingChannelScaffoldCount: number;
   missingProviderScaffoldCount: number;
   missingChannelEnvVars: string[];
@@ -165,6 +173,43 @@ function isRepoRelativePathPresent(relativePath: string | null | undefined, root
 
 function isImplementationPresent(implementationPath: string | null | undefined, rootDir?: string | null): boolean {
   return isRepoRelativePathPresent(implementationPath, rootDir);
+}
+
+function detectImplementationStatus(implementationPath: string | null | undefined, rootDir?: string | null): {
+  present: boolean;
+  ready: boolean;
+  status: 'missing' | 'scaffold' | 'ready';
+} {
+  const normalizedPath = normalizeRepoRelativePath(implementationPath, rootDir);
+  if (!normalizedPath || !rootDir) {
+    return { present: false, ready: false, status: 'missing' };
+  }
+
+  const resolvedPath = path.resolve(rootDir, normalizedPath);
+  if (!fs.existsSync(resolvedPath)) {
+    return { present: false, ready: false, status: 'missing' };
+  }
+
+  try {
+    if (!fs.statSync(resolvedPath).isFile()) {
+      return { present: false, ready: false, status: 'missing' };
+    }
+
+    const content = fs.readFileSync(resolvedPath, 'utf8');
+    const hasRuntimeSurface = /\b(?:export\s+default\s+)?(?:async\s+)?function\b|\bclass\b|=>|module\.exports|exports\./u.test(content);
+    const isScaffoldOnly = !hasRuntimeSurface && (
+      /Scaffold\s*=\s*\{/u.test(content)
+      || /export\s+const\s+(?:channelId|providerId)\s*=\s*/u.test(content)
+    );
+
+    return {
+      present: true,
+      ready: !isScaffoldOnly,
+      status: isScaffoldOnly ? 'scaffold' : 'ready',
+    };
+  } catch {
+    return { present: false, ready: false, status: 'missing' };
+  }
 }
 
 function shellSingleQuote(value: string): string {
@@ -258,7 +303,7 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(channelManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(channelManifestPath, rootDir);
-      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
+      const implementationState = detectImplementationStatus(implementationPath, rootDir);
       return {
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
@@ -270,7 +315,9 @@ export function buildDeliverySummary(
         inboundPath: typeof channel.inboundPath === 'string' && channel.inboundPath.trim().length > 0 ? channel.inboundPath.trim() : null,
         outboundMode: typeof channel.outboundMode === 'string' && channel.outboundMode.trim().length > 0 ? channel.outboundMode.trim() : null,
         implementationPath,
-        implementationPresent,
+        implementationPresent: implementationState.present,
+        implementationReady: implementationState.ready,
+        implementationStatus: implementationState.status,
         implementationScaffoldPath,
         configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
         missingEnvVars,
@@ -282,7 +329,7 @@ export function buildDeliverySummary(
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
-          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+          scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
     });
@@ -294,7 +341,7 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(providerManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(providerManifestPath, rootDir);
-      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
+      const implementationState = detectImplementationStatus(implementationPath, rootDir);
       return {
         id: provider.id ?? null,
         name: provider.name ?? provider.id ?? null,
@@ -305,7 +352,9 @@ export function buildDeliverySummary(
         features: (provider.features ?? []).filter(Boolean),
         modalities: (provider.modalities ?? []).filter(Boolean),
         implementationPath,
-        implementationPresent,
+        implementationPresent: implementationState.present,
+        implementationReady: implementationState.ready,
+        implementationStatus: implementationState.status,
         implementationScaffoldPath,
         configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
         missingEnvVars,
@@ -317,7 +366,7 @@ export function buildDeliverySummary(
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
-          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+          scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
     });
@@ -352,6 +401,10 @@ export function buildDeliverySummary(
     authBlockedProviderCount: providerQueue.filter((provider) => provider.missingEnvVars.length > 0).length,
     readyChannelScaffoldCount: channelScaffoldCoverage.filter(Boolean).length,
     readyProviderScaffoldCount: providerScaffoldCoverage.filter(Boolean).length,
+    readyChannelImplementationCount: channelQueue.filter((channel) => channel.implementationReady).length,
+    readyProviderImplementationCount: providerQueue.filter((provider) => provider.implementationReady).length,
+    scaffoldOnlyChannelCount: channelQueue.filter((channel) => channel.implementationStatus === 'scaffold').length,
+    scaffoldOnlyProviderCount: providerQueue.filter((provider) => provider.implementationStatus === 'scaffold').length,
     missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,
     missingProviderScaffoldCount: providerScaffoldCoverage.filter((present) => !present).length,
     missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),

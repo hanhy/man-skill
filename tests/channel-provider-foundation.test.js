@@ -345,6 +345,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       outboundMode: 'thread-reply',
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
+      implementationReady: false,
+      implementationStatus: 'scaffold',
       implementationScaffoldPath: 'src/channels/slack.js',
       configured: true,
       missingEnvVars: [],
@@ -370,6 +372,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       modalities: ['chat', 'reasoning', 'vision'],
       implementationPath: 'src/models/openai.js',
       implementationPresent: true,
+      implementationReady: false,
+      implementationStatus: 'scaffold',
       implementationScaffoldPath: 'src/models/openai.js',
       configured: true,
       missingEnvVars: [],
@@ -390,12 +394,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
-    assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
-    assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present via manifests\/providers\.json/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic, Kimi, Minimax, GLM, Qwen/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
@@ -416,6 +420,32 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
     }
   }
+});
+
+test('buildSummary exposes delivery implementation readiness separately from scaffold coverage', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.readyChannelImplementationCount, 0);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 0);
+  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 4);
+  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
+  assert.equal(summary.delivery.channelQueue[0].implementationPresent, true);
+  assert.equal(summary.delivery.channelQueue[0].implementationReady, false);
+  assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'scaffold');
+  assert.equal(summary.delivery.providerQueue[0].implementationPresent, true);
+  assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
+  assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
+  assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /Slack \[planned, scaffold-only\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /provider queue: 6 pending \(6 auth-blocked\), manifest ready, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
+  assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
 test('buildSummary exposes delivery helper commands for first missing implementation scaffolds', () => {
@@ -444,8 +474,8 @@ test('buildSummary exposes delivery helper commands for first missing implementa
   });
   assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
-  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: env cp \.env\.example \.env \| impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
+
 
 test('buildSummary delivery helper commands skip scaffolded queue leaders and target the first missing provider implementation', () => {
   const rootDir = makeTempRepo();
@@ -743,6 +773,28 @@ test('buildSummary keeps scaffold coverage global and ignores manifest implement
   assert.equal(deepseekQueueItem.implementationPresent, false);
   assert.equal(deepseekQueueItem.implementationScaffoldPath, null);
   assert.match(summary.promptPreview, /code scaffolds: 4\/5 channels, 6\/7 providers present/);
+});
+
+test('buildSummary treats directory-backed implementation paths as missing instead of crashing', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'slack.js'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels', 'slack.js'), { recursive: true });
+  fs.rmSync(path.join(rootDir, 'src', 'models', 'openai.js'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'models', 'openai.js'), { recursive: true });
+
+  const summary = buildSummary(rootDir);
+  const slackQueueItem = summary.delivery.channelQueue.find((channel) => channel.id === 'slack');
+  const openaiQueueItem = summary.delivery.providerQueue.find((provider) => provider.id === 'openai');
+
+  assert.equal(slackQueueItem.implementationPresent, false);
+  assert.equal(slackQueueItem.implementationReady, false);
+  assert.equal(slackQueueItem.implementationStatus, 'missing');
+  assert.equal(slackQueueItem.helperCommands.scaffoldImplementation, "mkdir -p 'src/channels' && touch 'src/channels/slack.js'");
+  assert.equal(openaiQueueItem.implementationPresent, false);
+  assert.equal(openaiQueueItem.implementationReady, false);
+  assert.equal(openaiQueueItem.implementationStatus, 'missing');
+  assert.equal(openaiQueueItem.helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
 });
 
 test('JS registry shims preserve merged channel and provider defaults', () => {

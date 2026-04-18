@@ -1360,6 +1360,115 @@ test('buildSummary work loop omits env bootstrap paths when implementation scaff
   }
 });
 
+test('buildSummary work loop falls back to channel scaffolding when the env template misses the leader credentials', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'planned' },
+    { id: 'telegram', status: 'planned' },
+    { id: 'whatsapp', status: 'planned' },
+    { id: 'feishu', status: 'planned' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, '.env.example'), 'TELEGRAM_BOT_TOKEN=***\n');
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.command, "(mkdir -p 'src/channels' && touch 'src/channels/slack.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/feishu.js')");
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/slack.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
+});
+
+test('buildSummary work loop keeps scaffold-only delivery files visible as runtime backlog', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'slack.js'), "export const slackChannelScaffold = { id: 'slack' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'telegram.js'), "export const telegramChannelScaffold = { id: 'telegram' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'whatsapp.js'), "export const whatsappChannelScaffold = { id: 'whatsapp' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'feishu.js'), "export const feishuChannelScaffold = { id: 'feishu' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'openai.js'), "export const openaiProviderScaffold = { id: 'openai' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'anthropic.js'), "export const anthropicProviderScaffold = { id: 'anthropic' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'kimi.js'), "export const kimiProviderScaffold = { id: 'kimi' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'minimax.js'), "export const minimaxProviderScaffold = { id: 'minimax' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'glm.js'), "export const glmProviderScaffold = { id: 'glm' };\n");
+  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'qwen.js'), "export const qwenProviderScaffold = { id: 'qwen' };\n");
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'planned' },
+    { id: 'telegram', status: 'planned' },
+    { id: 'whatsapp', status: 'planned' },
+    { id: 'feishu', status: 'planned' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned' },
+    { id: 'anthropic', status: 'planned' },
+    { id: 'kimi', status: 'planned' },
+    { id: 'minimax', status: 'planned' },
+    { id: 'glm', status: 'planned' },
+    { id: 'qwen', status: 'planned' },
+  ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.match(summary.workLoop.currentPriority.summary, /4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'implement pending channel integrations — starting with src/channels/slack.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
+  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
+  assert.match(summary.promptPreview, /next action: implement pending channel integrations — starting with src\/channels\/slack\.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
+});
+
+test('buildSummary work loop still scaffolds missing delivery files before scaffold-only ones', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'src', 'channels', 'slack.js'), "export const slackChannelScaffold = { id: 'slack' };\n");
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { id: 'slack', status: 'planned' },
+    { id: 'telegram', status: 'planned' },
+    { id: 'whatsapp', status: 'planned' },
+    { id: 'feishu', status: 'planned' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { id: 'openai', status: 'planned' },
+  ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.command, "(mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/feishu.js')");
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/telegram.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
+});
+
 test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

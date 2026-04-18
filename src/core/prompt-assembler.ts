@@ -286,6 +286,8 @@ type DeliveryQueueItem = {
   modalities?: string[];
   implementationPath?: string | null;
   implementationPresent?: boolean;
+  implementationReady?: boolean;
+  implementationStatus?: 'missing' | 'scaffold' | 'ready';
   configured?: boolean;
   missingEnvVars?: string[];
   manifestPath?: string;
@@ -308,6 +310,10 @@ type DeliverySummary = {
   authBlockedProviderCount?: number;
   readyChannelScaffoldCount?: number;
   readyProviderScaffoldCount?: number;
+  readyChannelImplementationCount?: number;
+  readyProviderImplementationCount?: number;
+  scaffoldOnlyChannelCount?: number;
+  scaffoldOnlyProviderCount?: number;
   missingChannelScaffoldCount?: number;
   missingProviderScaffoldCount?: number;
   missingChannelEnvVars?: string[];
@@ -745,6 +751,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       outboundMode: channel.outboundMode ?? null,
       implementationPath: channel.implementationPath ?? null,
       implementationPresent: false,
+      implementationReady: false,
+      implementationStatus: 'missing',
       manifestPath: channels?.manifest?.path ?? 'manifests/channels.json',
       manifestPresent: channels?.manifest?.status === 'loaded',
       setupHint: (channel.auth?.envVars ?? []).length > 0
@@ -770,6 +778,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       modalities: provider.modalities ?? [],
       implementationPath: provider.implementationPath ?? null,
       implementationPresent: false,
+      implementationReady: false,
+      implementationStatus: 'missing',
       manifestPath: models?.manifest?.path ?? 'manifests/providers.json',
       manifestPresent: models?.manifest?.status === 'loaded',
       setupHint: provider.authEnvVar && provider.defaultModel
@@ -830,8 +840,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       : undefined;
     const manifestReady = queue.every((item) => item?.manifestPresent === true);
     const implementationPresentCount = queue.filter((item) => item?.implementationPresent === true).length;
+    const implementationReadyCount = queue.filter((item) => item?.implementationReady === true).length;
 
-    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
+    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${queuePendingCount} present, implementations ${implementationReadyCount}/${queuePendingCount} ready via ${manifestPath}`;
   };
   const channelQueueSummary = formatDeliveryQueueSummary(enrichedChannelQueue, {
     pendingCount: delivery?.pendingChannelCount,
@@ -869,6 +880,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
       ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
       : null,
+    (delivery?.readyChannelImplementationCount !== undefined || delivery?.readyProviderImplementationCount !== undefined)
+      ? `- runtime implementations: ${delivery?.readyChannelImplementationCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderImplementationCount ?? 0}/${providerRecords.length} providers ready`
+      : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
@@ -892,7 +906,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
         channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const implementationTag = channel.implementationStatus === 'scaffold' ? ', scaffold-only' : '';
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}${implementationTag}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingChannelQueueSummary,
     providerManifestSummary,
@@ -917,7 +932,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
         provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const implementationTag = provider.implementationStatus === 'scaffold' ? ', scaffold-only' : '';
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}${implementationTag}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
