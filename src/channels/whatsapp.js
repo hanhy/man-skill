@@ -33,6 +33,38 @@ function pickWhatsAppChange(payload = {}) {
   };
 }
 
+function extractWhatsAppMessageText(message = {}) {
+  if (typeof message?.text?.body === 'string' && message.text.body.length > 0) {
+    return message.text.body;
+  }
+
+  if (typeof message?.interactive?.button_reply?.title === 'string' && message.interactive.button_reply.title.length > 0) {
+    return message.interactive.button_reply.title;
+  }
+
+  if (typeof message?.interactive?.list_reply?.title === 'string' && message.interactive.list_reply.title.length > 0) {
+    return message.interactive.list_reply.title;
+  }
+
+  if (typeof message?.button?.text === 'string' && message.button.text.length > 0) {
+    return message.button.text;
+  }
+
+  if (typeof message?.image?.caption === 'string' && message.image.caption.length > 0) {
+    return message.image.caption;
+  }
+
+  if (typeof message?.video?.caption === 'string' && message.video.caption.length > 0) {
+    return message.video.caption;
+  }
+
+  if (typeof message?.document?.caption === 'string' && message.document.caption.length > 0) {
+    return message.document.caption;
+  }
+
+  return null;
+}
+
 export function normalizeWhatsAppInboundEvent(payload = {}) {
   const { field, value, message, contact } = pickWhatsAppChange(payload);
   const timestamp = typeof message?.timestamp === 'string' && /^\d+$/.test(message.timestamp)
@@ -49,7 +81,7 @@ export function normalizeWhatsAppInboundEvent(payload = {}) {
       ? message.from
       : (typeof contact?.wa_id === 'string' && contact.wa_id.length > 0 ? contact.wa_id : null),
     profileName: typeof contact?.profile?.name === 'string' && contact.profile.name.length > 0 ? contact.profile.name : null,
-    text: typeof message?.text?.body === 'string' && message.text.body.length > 0 ? message.text.body : null,
+    text: extractWhatsAppMessageText(message),
     messageId: typeof message?.id === 'string' && message.id.length > 0 ? message.id : null,
     contextMessageId: typeof message?.context?.id === 'string' && message.context.id.length > 0 ? message.context.id : null,
     timestamp,
