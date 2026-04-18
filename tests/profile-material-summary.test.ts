@@ -1110,6 +1110,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
     scaffoldBundle: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
+    scaffoldImportedBundle: null,
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
@@ -1268,6 +1269,34 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
 
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
+});
+
+test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
+  const rootDir = makeTempRepo();
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const ingestion = new MaterialIngestion(rootDir);
+  ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'Ship the first slice before polishing the plan.',
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'harry-han', 'imports'), { recursive: true, force: true });
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 1);
+  assert.equal(summary.ingestion.helperCommands?.scaffoldImportedBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(harry?.intakeReady, false);
+  assert.equal(harry?.intakeStatusSummary, 'missing — create imports, README.md, materials.template.json, sample.txt');
+  assert.equal(harry?.helperCommands?.scaffold, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.match(summary.promptPreview, /- intake backfill: 1 imported profile queued/);
+  assert.match(summary.promptPreview, /helpers: .*scaffold-imported node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
@@ -1488,6 +1517,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     readyProfileCount: 0,
     refreshProfileCount: 0,
     incompleteProfileCount: 0,
+    importedIntakeBackfillProfileCount: 0,
     intakeReadyProfileCount: 0,
     intakePartialProfileCount: 0,
     intakeMissingProfileCount: 0,
@@ -1529,6 +1559,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       scaffoldAll: 'node src/index.js update intake --all',
       scaffoldStale: 'node src/index.js update intake --stale',
       scaffoldBundle: null,
+      scaffoldImportedBundle: null,
       importManifest: 'node src/index.js import manifest --file <manifest.json>',
       importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
       importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',

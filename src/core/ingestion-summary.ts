@@ -640,10 +640,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       sampleTextPersonId: sampleText.personId,
     }))
     .filter(Boolean);
+  const importedIntakeBackfillProfiles = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
   const orderedProfileCommands = allProfileCommands
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;
-      return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0;
+      return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0 || profile?.intakeReady === false;
     });
 
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
@@ -656,6 +658,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     scaffoldBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === false)
+        .map((profile) => profile?.updateIntakeCommand),
+    ),
+    scaffoldImportedBundle: buildCommandBundle(
+      importedIntakeBackfillProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
@@ -701,6 +707,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     readyProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
     intakeReadyProfileCount,
     intakePartialProfileCount,
     intakeMissingProfileCount,

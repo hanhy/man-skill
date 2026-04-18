@@ -367,6 +367,7 @@ type IngestionHelperCommands = {
   scaffoldAll?: string | null;
   scaffoldStale?: string | null;
   scaffoldBundle?: string | null;
+  scaffoldImportedBundle?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
@@ -393,6 +394,7 @@ type IngestionSummary = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  importedIntakeBackfillProfileCount?: number;
   intakeReadyProfileCount?: number;
   intakePartialProfileCount?: number;
   intakeMissingProfileCount?: number;
@@ -971,9 +973,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     return null;
   }
 
-  const profileCommandRecords = (ingestion.allProfileCommands?.length ?? 0) > 0
-    ? (ingestion.allProfileCommands ?? [])
-    : (ingestion.profileCommands ?? []);
+  const profileCommandRecords = (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0 && (ingestion.profileCommands?.length ?? 0) > 0
+    ? (ingestion.profileCommands ?? [])
+    : ((ingestion.allProfileCommands?.length ?? 0) > 0
+      ? (ingestion.allProfileCommands ?? [])
+      : (ingestion.profileCommands ?? []));
   const visibleProfileCommands = profileCommandRecords.slice(0, 2);
   const remainingProfileCommands = profileCommandRecords.slice(2);
   const remainingProfileSummary = remainingProfileCommands.length > 0
@@ -984,6 +988,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
     `- intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0
+      ? `- intake backfill: ${ingestion.importedIntakeBackfillProfileCount} imported profile${ingestion.importedIntakeBackfillProfileCount === 1 ? '' : 's'} queued`
+      : null,
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
@@ -1001,6 +1008,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null);
       pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
+      pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);

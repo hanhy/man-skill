@@ -665,7 +665,12 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
-  const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
+  const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
+  const status: WorkPriority['status'] = importedProfileCount > 0
+    && metadataOnlyProfileCount === 0
+    && refreshProfileCount === 0
+    && incompleteProfileCount === 0
+    && importedIntakeBackfillProfileCount === 0
     ? 'ready'
     : 'queued';
 
@@ -774,6 +779,38 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
         .filter((profile): profile is ProfileSummaryLike => Boolean(profile?.id))
       : [];
     paths = collectFoundationDraftPaths(refreshProfiles);
+  } else if (importedIntakeBackfillProfileCount > 0) {
+    const importedProfileCommands = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands.filter((profile: any) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand)
+      : [];
+    const firstImportedBackfillProfile = importedProfileCommands[0] ?? null;
+    const bundledImportedScaffoldCommand = typeof ingestionSummary?.helperCommands?.scaffoldImportedBundle === 'string' && ingestionSummary.helperCommands.scaffoldImportedBundle.length > 0
+      ? ingestionSummary.helperCommands.scaffoldImportedBundle
+      : null;
+    const collectIntakePaths = (profile: any) => {
+      const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
+        ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      if (missingIntakePaths.length > 0) {
+        return missingIntakePaths;
+      }
+
+      return Array.isArray(profile?.intakePaths)
+        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+    };
+
+    nextAction = firstImportedBackfillProfile?.label
+      ? (importedIntakeBackfillProfileCount > 1
+        ? `backfill intake landing zones for imported profiles — starting with ${firstImportedBackfillProfile.label}`
+        : `backfill the intake landing zone for imported profiles — starting with ${firstImportedBackfillProfile.label}`)
+      : 'backfill intake landing zones for imported profiles';
+    command = importedIntakeBackfillProfileCount > 1
+      ? (bundledImportedScaffoldCommand ?? firstImportedBackfillProfile?.updateIntakeCommand ?? null)
+      : (firstImportedBackfillProfile?.updateIntakeCommand ?? bundledImportedScaffoldCommand);
+    paths = importedIntakeBackfillProfileCount > 1
+      ? importedProfileCommands.flatMap((profile: any) => collectIntakePaths(profile))
+      : collectIntakePaths(firstImportedBackfillProfile);
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
@@ -932,11 +969,15 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     }
   }
 
+  const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
+    ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
+    : '';
+
   return {
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}`,
     nextAction,
     command,
     paths,

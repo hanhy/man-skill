@@ -940,6 +940,61 @@ test('buildSummary work loop falls back to channel scaffolding when the env temp
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
 });
 
+test('buildSummary work loop backfills missing intake landing zones for imported profiles before delivery rollout', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+  });
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  fs.rmSync(path.join(rootDir, 'profiles', 'harry-han', 'imports'), { recursive: true, force: true });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 1);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.summary, '1 imported, 0 metadata-only, 1 ready, 0 queued for refresh, 1 intake backfill');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'backfill the intake landing zone for imported profiles — starting with Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/harry-han/imports',
+    'profiles/harry-han/imports/README.md',
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 0 metadata-only, 1 ready, 0 queued for refresh, 1 intake backfill/);
+  assert.match(summary.promptPreview, /next action: backfill the intake landing zone for imported profiles — starting with Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+});
+
 test('buildSummary work loop narrows paths to the env template during credential bootstrap', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
