@@ -344,7 +344,9 @@ export function buildDeliverySummary(
         manifestPresent,
         manifestScaffoldPath,
         setupHint: buildChannelSetupHint(channel, environment),
-        nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
+        nextStep: implementationState.ready
+          ? null
+          : (typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null),
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
           populateEnv: buildPopulateEnvCommand(missingEnvVars),
@@ -382,7 +384,9 @@ export function buildDeliverySummary(
         manifestPresent,
         manifestScaffoldPath,
         setupHint: buildProviderSetupHint(provider, environment),
-        nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
+        nextStep: implementationState.ready
+          ? null
+          : (typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null),
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
           populateEnv: buildPopulateEnvCommand(missingEnvVars),
