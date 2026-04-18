@@ -147,6 +147,51 @@ test('default channel and provider scaffold modules stay aligned with the canoni
   });
 });
 
+test('default registries merge delivery overrides without mutating canonical scaffold catalogs', () => {
+  const channelRegistry = new JsChannelRegistry([
+    {
+      id: 'slack',
+      capabilities: ['attachments'],
+      deliveryModes: ['socket-mode'],
+      auth: {
+        type: 'bot-token',
+        envVars: ['SLACK_APP_TOKEN'],
+      },
+    },
+  ]);
+  const providerRegistry = new JsModelRegistry([
+    {
+      id: 'openai',
+      features: ['structured-output'],
+      modalities: ['audio'],
+      models: ['gpt-4.1-mini'],
+    },
+  ]);
+
+  const slackRecord = channelRegistry.summary().channels.find((channel) => channel.id === 'slack');
+  const openaiRecord = providerRegistry.summary().providers.find((provider) => provider.id === 'openai');
+
+  assert.deepEqual(slackChannelScaffold.capabilities, ['threads', 'mentions', 'bot-token']);
+  assert.deepEqual(slackChannelScaffold.deliveryModes, ['events-api', 'web-api']);
+  assert.deepEqual(slackChannelScaffold.auth, {
+    type: 'bot-token',
+    envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+  });
+  assert.deepEqual(openaiProviderScaffold.features, ['chat', 'tools', 'reasoning']);
+  assert.deepEqual(openaiProviderScaffold.modalities, ['chat', 'reasoning', 'vision']);
+  assert.deepEqual(openaiProviderScaffold.models, ['gpt-4.1', 'gpt-4o', 'gpt-5']);
+
+  assert.deepEqual(slackRecord.capabilities, ['threads', 'mentions', 'bot-token', 'attachments']);
+  assert.deepEqual(slackRecord.deliveryModes, ['events-api', 'web-api', 'socket-mode']);
+  assert.deepEqual(slackRecord.auth, {
+    type: 'bot-token',
+    envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'SLACK_APP_TOKEN'],
+  });
+  assert.deepEqual(openaiRecord.features, ['chat', 'tools', 'reasoning', 'structured-output']);
+  assert.deepEqual(openaiRecord.modalities, ['chat', 'reasoning', 'vision', 'audio']);
+  assert.deepEqual(openaiRecord.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-4.1-mini']);
+});
+
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
   const channelScaffolds = [
     slackChannelScaffold,
