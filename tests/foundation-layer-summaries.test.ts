@@ -158,6 +158,24 @@ test('voice profile falls back to voice capture/default sections when explicit s
   });
 });
 
+test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Soul docs define the durable operating posture.',
+    coreTruths: ['Stay faithful to the source material.', 'Prefer verified slices over ambitious rewrites.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: ['Choose the smallest next step that preserves trust.', 'Keep durable lessons visible for later runs.'],
+    coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 2,
+    sectionCount: 3,
+    hasGuidance: true,
+  });
+});
+
 test('buildSummary carries the richer foundation layer summaries at top level', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
