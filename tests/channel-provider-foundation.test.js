@@ -260,20 +260,25 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
     WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
     WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   };
 
-  process.env.SLACK_BOT_TOKEN = '***';
-  process.env.SLACK_SIGNING_SECRET = '***';
-  process.env.TELEGRAM_BOT_TOKEN = '***';
-  process.env.WHATSAPP_ACCESS_TOKEN = '***';
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
+  process.env.WHATSAPP_ACCESS_TOKEN='***';
   process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
-  process.env.OPENAI_API_KEY = '***';
+  process.env.FEISHU_APP_ID = 'cli_a1b2c3';
+  process.env.FEISHU_APP_SECRET = 'secret';
+  process.env.OPENAI_API_KEY='***';
 
   try {
     const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
     const telegram = createDefaultChannels().find((channel) => channel.id === 'telegram');
     const whatsapp = createDefaultChannels().find((channel) => channel.id === 'whatsapp');
+    const feishu = createDefaultChannels().find((channel) => channel.id === 'feishu');
     const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
 
     assert.ok(slack);
@@ -420,6 +425,57 @@ test('default channel/provider factories expose scaffold metadata and runtime he
       },
     );
 
+    assert.ok(feishu);
+    assert.equal(typeof feishu.isConfigured, 'function');
+    assert.equal(typeof feishu.summary, 'function');
+    assert.equal(typeof feishu.normalizeInboundEvent, 'function');
+    assert.equal(typeof feishu.buildBotMessage, 'function');
+    assert.equal(feishu.isConfigured(), true);
+    assert.deepEqual(feishu.summary(), feishuChannelScaffold);
+    assert.deepEqual(
+      feishu.normalizeInboundEvent({
+        header: {
+          event_type: 'im.message.receive_v1',
+          tenant_key: 'tenant-key',
+        },
+        event: {
+          sender: {
+            sender_id: { open_id: 'ou_sender' },
+          },
+          message: {
+            chat_id: 'oc_chat',
+            message_id: 'om_message',
+            message_type: 'text',
+            content: JSON.stringify({ text: 'hello from feishu' }),
+            thread_id: 'omt_thread',
+            create_time: '1710000300000',
+          },
+        },
+      }),
+      {
+        platform: 'feishu',
+        eventType: 'im.message.receive_v1',
+        tenantKey: 'tenant-key',
+        chatId: 'oc_chat',
+        senderId: 'ou_sender',
+        messageId: 'om_message',
+        messageType: 'text',
+        text: 'hello from feishu',
+        threadId: 'omt_thread',
+        timestamp: 1710000300000,
+      },
+    );
+    assert.deepEqual(
+      feishu.buildBotMessage({ receiveId: 'oc_chat', text: 'roger that', replyInThread: true, threadId: 'omt_thread' }),
+      {
+        receive_id: 'oc_chat',
+        msg_type: 'text',
+        content: JSON.stringify({ text: 'roger that' }),
+        reply_in_thread: true,
+        thread_id: 'omt_thread',
+      },
+    );
+
     assert.ok(openai);
     assert.equal(typeof openai.isConfigured, 'function');
     assert.equal(typeof openai.supportsFeature, 'function');
@@ -466,7 +522,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   }
 });
 
-test('buildSummary counts the checked-in Slack, Telegram, and WhatsApp delivery modules as runtime-ready while Feishu stays scaffold-only', () => {
+test('buildSummary counts the checked-in channel delivery modules as runtime-ready while providers stay scaffold-only', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -488,9 +544,9 @@ test('buildSummary counts the checked-in Slack, Telegram, and WhatsApp delivery 
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.delivery.readyChannelImplementationCount, 3);
+  assert.equal(summary.delivery.readyChannelImplementationCount, 4);
   assert.equal(summary.delivery.readyProviderImplementationCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 1);
+  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 0);
   assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
@@ -498,14 +554,14 @@ test('buildSummary counts the checked-in Slack, Telegram, and WhatsApp delivery 
   assert.equal(summary.delivery.channelQueue[1].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[2].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[2].implementationStatus, 'ready');
-  assert.equal(summary.delivery.channelQueue[3].implementationReady, false);
-  assert.equal(summary.delivery.channelQueue[3].implementationStatus, 'scaffold');
+  assert.equal(summary.delivery.channelQueue[3].implementationReady, true);
+  assert.equal(summary.delivery.channelQueue[3].implementationStatus, 'ready');
   assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 3\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 0\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned, scaffold-only\]/);
+  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned, configured\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
@@ -513,15 +569,29 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
 
-  const originalEnv = {
-    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
-    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  };
+  const envVars = [
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ];
+  const originalEnv = Object.fromEntries(envVars.map((envVar) => [envVar, process.env[envVar]]));
 
-  process.env.SLACK_BOT_TOKEN = 'xoxb-test';
-  process.env.SLACK_SIGNING_SECRET = 'signing-secret';
-  process.env.OPENAI_API_KEY = 'sk-test';
+  envVars.forEach((envVar) => {
+    delete process.env[envVar];
+  });
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.OPENAI_API_KEY='***';
 
   try {
     const summary = buildSummary(rootDir);
@@ -687,9 +757,31 @@ test('buildSummary exposes delivery implementation readiness separately from sca
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
   fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
 
-  const summary = buildSummary(rootDir);
+  const envVars = [
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ];
+  const originalEnv = Object.fromEntries(envVars.map((envVar) => [envVar, process.env[envVar]]));
 
-  assert.equal(summary.delivery.readyChannelImplementationCount, 0);
+  envVars.forEach((envVar) => {
+    delete process.env[envVar];
+  });
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.readyChannelImplementationCount, 0);
   assert.equal(summary.delivery.readyProviderImplementationCount, 0);
   assert.equal(summary.delivery.scaffoldOnlyChannelCount, 4);
   assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
@@ -704,6 +796,15 @@ test('buildSummary exposes delivery implementation readiness separately from sca
   assert.match(summary.promptPreview, /Slack \[planned, scaffold-only\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /provider queue: 6 pending \(6 auth-blocked\), manifest ready, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
   assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  } finally {
+    envVars.forEach((envVar) => {
+      if (originalEnv[envVar] === undefined) {
+        delete process.env[envVar];
+      } else {
+        process.env[envVar] = originalEnv[envVar];
+      }
+    });
+  }
 });
 
 test('buildSummary exposes delivery helper commands for first missing implementation scaffolds', () => {
