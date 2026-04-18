@@ -671,7 +671,7 @@ export class MaterialIngestion {
     };
   }
 
-  importProfileIntakeManifest({ personId }) {
+  importProfileIntakeManifest({ personId, refreshFoundation = false }) {
     const normalizedPersonId = slugifyPersonId(personId ?? '');
     if (!normalizedPersonId) {
       throw new Error('personId is required for intake import');
@@ -690,13 +690,13 @@ export class MaterialIngestion {
 
     return this.importManifest({
       manifestFile: profile.intake.starterManifestPath,
-      refreshFoundation: true,
+      refreshFoundation,
     });
   }
 
-  importAllProfileIntakeManifests() {
+  importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake();
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return {
       profileCount: profiles.length,
@@ -706,9 +706,9 @@ export class MaterialIngestion {
     };
   }
 
-  importStaleProfileIntakeManifests() {
+  importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return {
       profileCount: profiles.length,
@@ -718,10 +718,10 @@ export class MaterialIngestion {
     };
   }
 
-  importImportedProfileIntakeManifests() {
+  importImportedProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake({ includeImported: true })
       .filter((profile) => (profile?.materialCount ?? 0) > 0);
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return {
       profileCount: profiles.length,

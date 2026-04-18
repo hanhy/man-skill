@@ -1304,16 +1304,18 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'intake') {
+    const refreshFoundation = Boolean(options['refresh-foundation']);
+
     if (options.all) {
-      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests({ refreshFoundation }));
     }
 
     if (options.stale) {
-      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests());
+      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests({ refreshFoundation }));
     }
 
     if (options.imported) {
-      return relativizeManifestImportBatchResult(ingestion.importImportedProfileIntakeManifests());
+      return relativizeManifestImportBatchResult(ingestion.importImportedProfileIntakeManifests({ refreshFoundation }));
     }
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
@@ -1321,7 +1323,10 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
       throw new Error('import intake requires --person, --stale, --imported, or --all');
     }
 
-    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
+    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({
+      personId: intakePersonId,
+      refreshFoundation,
+    }));
   }
 
   const personId = typeof options.person === 'string' ? options.person : undefined;
@@ -1661,10 +1666,10 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js                                  Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
-    '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
-    '  node src/index.js import intake --stale             Import ready intake manifests for metadata-only profiles that still need first imports',
-    '  node src/index.js import intake --imported          Import ready intake manifests only for already-imported profiles',
-    '  node src/index.js import intake --all               Import every ready profile-local intake manifest, including already-imported profiles',
+    '  node src/index.js import intake --person <person-id> [--refresh-foundation] Import a ready profile-local intake manifest',
+    '  node src/index.js import intake --stale [--refresh-foundation]             Import ready intake manifests for metadata-only profiles that still need first imports',
+    '  node src/index.js import intake --imported [--refresh-foundation]          Import ready intake manifests only for already-imported profiles',
+    '  node src/index.js import intake --all [--refresh-foundation]               Import every ready profile-local intake manifest, including already-imported profiles',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
@@ -1708,7 +1713,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'import' && subcommand === 'intake') {
     return formatUsageHint(
-      'Usage: node src/index.js import intake --person <person-id> | --stale | --imported | --all',
+      'Usage: node src/index.js import intake --person <person-id> [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         'node src/index.js import intake --stale --refresh-foundation',

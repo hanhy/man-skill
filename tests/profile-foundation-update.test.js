@@ -246,7 +246,7 @@ test('CLI update intake --imported backfills imported profiles with missing inta
   assert.equal(importedMissingProfileAfter.updatedAt, importedMissingProfileBefore.updatedAt);
 });
 
-test('CLI import intake --person loads a profile-local starter manifest and refreshes foundation drafts', () => {
+test('CLI import intake --person loads a profile-local starter manifest without refreshing foundation drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -289,6 +289,53 @@ test('CLI import intake --person loads a profile-local starter manifest and refr
   assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
   assert.equal(result.entryCount, 2);
   assert.deepEqual(result.profileIds, ['metadata-only']);
+  assert.equal(result.foundationRefresh ?? null, null);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), false);
+});
+
+test('CLI import intake --person refreshes foundation drafts when --refresh-foundation is passed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'),
+    'Metadata Only prefers tight feedback loops.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+        {
+          type: 'message',
+          text: 'Ship the narrow slice first.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Metadata Only', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['metadata-only']);
   assert.equal(result.foundationRefresh.profileCount, 1);
   assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/metadata-only\/memory\/long-term\/foundation\.json$/);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
@@ -317,7 +364,7 @@ test('CLI import intake --person reruns a ready profile-local starter manifest f
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -384,7 +431,7 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -437,7 +484,7 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -453,7 +500,7 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-ready', 'voice', 'README.md')), false);
 });
 
-test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests', () => {
+test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests without refreshing foundation drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -513,6 +560,9 @@ test('CLI import intake --stale loads only ready metadata-only profile-local sta
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/materials.template.json',
   ]);
+  assert.equal(result.foundationRefresh ?? null, null);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), false);
   assert.equal(result.results.some((entry) => entry.profileIds.includes('imported-already')), false);
 });
 
@@ -685,9 +735,9 @@ test('CLI --help prints a concise usage guide instead of the repo summary JSON',
   assert.match(output, /^Usage: node src\/index\.js /);
   assert.match(output, /Commands:/);
   assert.match(output, /node src\/index\.js import sample/);
-  assert.match(output, /import intake --stale\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
-  assert.match(output, /import intake --imported\s+Import ready intake manifests only for already-imported profiles/);
-  assert.match(output, /import intake --all\s+Import every ready profile-local intake manifest, including already-imported profiles/);
+  assert.match(output, /import intake --stale \[--refresh-foundation\]\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
+  assert.match(output, /import intake --imported \[--refresh-foundation\]\s+Import ready intake manifests only for already-imported profiles/);
+  assert.match(output, /import intake --all \[--refresh-foundation\]\s+Import every ready profile-local intake manifest, including already-imported profiles/);
   assert.match(output, /update intake --stale\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
   assert.match(output, /update intake --all\s+Rebuild intake scaffolds for every metadata-only profile/);
   assert.doesNotMatch(output, /"profile": \{/);
@@ -742,7 +792,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
     {
       args: ['import', 'intake'],
       expectedError: /Error: import intake requires --person, --stale, --imported, or --all/,
-      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \| --stale \| --imported \| --all/,
+      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
       expectedExamples: [
         /Examples:/,
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
