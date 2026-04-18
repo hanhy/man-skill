@@ -122,6 +122,48 @@ function extractDocumentExcerpt(document, maxLength = 160) {
   return buildExcerpt(candidate, maxLength);
 }
 
+const SKILL_SECTION_DEFINITIONS = [
+  { key: 'what-this-skill-is-for', headings: ['what this skill is for'] },
+  { key: 'suggested-workflow', headings: ['suggested workflow'] },
+];
+
+function collectMissingSkillSections(document) {
+  if (!isNonEmptyString(document)) {
+    return SKILL_SECTION_DEFINITIONS.map((section) => section.key);
+  }
+
+  const lines = document.split(/\r?\n/);
+  return SKILL_SECTION_DEFINITIONS
+    .filter(({ headings }) => {
+      let inSection = false;
+      let hasContent = false;
+      for (const rawLine of lines) {
+        const trimmed = rawLine.trim();
+        if (trimmed.startsWith('## ')) {
+          const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
+          if (headings.includes(normalizedHeading)) {
+            inSection = true;
+            hasContent = false;
+            continue;
+          }
+
+          if (inSection) {
+            break;
+          }
+        }
+
+        if (!inSection || trimmed.length === 0 || trimmed.startsWith('#')) {
+          continue;
+        }
+
+        hasContent = true;
+      }
+
+      return !hasContent;
+    })
+    .map((section) => section.key);
+}
+
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
   const documented = [];
@@ -129,6 +171,8 @@ function loadSkillInventory(rootDir) {
   const thin = [];
   /** @type {Record<string, string>} */
   const documentedExcerpts = {};
+  /** @type {Record<string, string[]>} */
+  const thinMissingSections = {};
 
   for (const skillName of skillNames) {
     const skillPath = path.join(rootDir, 'skills', skillName, 'SKILL.md');
@@ -146,6 +190,7 @@ function loadSkillInventory(rootDir) {
     }
 
     thin.push(skillName);
+    thinMissingSections[skillName] = collectMissingSkillSections(document);
   }
 
   return {
@@ -154,6 +199,7 @@ function loadSkillInventory(rootDir) {
     undocumented,
     thin,
     documentedExcerpts,
+    thinMissingSections,
   };
 }
 

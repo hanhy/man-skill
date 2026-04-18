@@ -20,7 +20,20 @@ const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
-const SKILL_GUIDANCE_APPEND_TEMPLATE = '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
+const SKILL_SECTIONS = [
+  {
+    heading: '## What this skill is for',
+    sentinel: '- Describe when to use this skill.',
+    missingSectionAppend: '\n## What this skill is for\n- Describe when to use this skill.\n',
+    existingBulletAppend: '- Describe when to use this skill.\n',
+  },
+  {
+    heading: '## Suggested workflow',
+    sentinel: '- Add the steps here.',
+    missingSectionAppend: '\n## Suggested workflow\n- Add the steps here.\n',
+    existingBulletAppend: '- Add the steps here.\n',
+  },
+] as const;
 const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n';
 const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
 const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n';
@@ -110,12 +123,11 @@ function buildSkillGuidanceAppendCommand(paths: string[]): string | null {
   }
 
   if (normalizedPaths.length === 1) {
-    const filePath = shellSingleQuote(normalizedPaths[0]);
-    return `grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} ${filePath} || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> ${filePath}`;
+    return buildDocumentRepairCommand(normalizedPaths[0], SKILL_GUIDANCE_SENTINEL, SKILL_SECTIONS);
   }
 
-  const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
-  return `for file in ${fileList}; do grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} "$file" || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> "$file"; done`;
+  const repairCommands = normalizedPaths.map((filePath) => `(${buildDocumentRepairCommand(filePath, SKILL_GUIDANCE_SENTINEL, SKILL_SECTIONS)})`);
+  return repairCommands.join(' && ');
 }
 
 function buildMemorySeedCommand(paths: string[]): string | null {
@@ -170,8 +182,17 @@ function buildDocumentRepairCommand(
     shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
     file,
   ].join(' ');
+  const buildInsertIntoExistingSectionCommand = (heading: string, bullet: string) => {
+    const normalizedBullet = bullet.replace(/\n+$/, '');
+    const escapePerlReplacement = (value: string) => value
+      .replace(/\\/g, '\\\\')
+      .replace(/\$/g, '\\$')
+      .replace(/~/g, '\\~');
+    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
+    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
+  };
   const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
   return `{ ${sectionCommands.join('; ')}; }`;

@@ -108,8 +108,8 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   assert.match(summary.foundation.core.maintenance.helperCommands.scaffoldThin ?? '', /voice\/README\.md/);
   assert.match(summary.foundation.core.maintenance.helperCommands.scaffoldThin ?? '', /SOUL\.md/);
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldThin);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair thin core foundation areas — starting with add non-heading guidance to skills/delivery/SKILL.md');
-  assert.match(summary.promptPreview, /next action: repair thin core foundation areas — starting with add non-heading guidance to skills\/delivery\/SKILL\.md/);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair thin core foundation areas — starting with add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow');
+  assert.match(summary.promptPreview, /next action: repair thin core foundation areas — starting with add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow/);
 });
 
 test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {

@@ -70,8 +70,17 @@ function buildDocumentRepairCommand(filePath, _sentinel, sections) {
     shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
     file,
   ].join(' ');
+  const buildInsertIntoExistingSectionCommand = (heading, bullet) => {
+    const normalizedBullet = bullet.replace(/\n+$/, '');
+    const escapePerlReplacement = (value) => value
+      .replace(/\\/g, '\\\\')
+      .replace(/\$/g, '\\$')
+      .replace(/~/g, '\\~');
+    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
+    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
+  };
   const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
   return `{ ${sectionCommands.join('; ')}; }`;
@@ -275,10 +284,8 @@ test('buildCoreFoundationCommand appends starter guidance to heading-only skill 
     thinPaths: ['skills/delivery/SKILL.md'],
   });
 
-  assert.equal(
-    command,
-    "grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md'",
-  );
+  assert.match(command ?? '', /if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'; then awk -v heading='## What this skill is for'/);
+  assert.match(command ?? '', /## Suggested workflow/);
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-command-'));
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
@@ -289,6 +296,52 @@ test('buildCoreFoundationCommand appends starter guidance to heading-only skill 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
     '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skill docs that are only missing suggested workflow', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-workflow-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n## What this skill is for\n- Explain when to use this skill.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Explain when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
+test('buildCoreFoundationCommand inserts missing skill guidance inside an empty section before the next heading', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-empty-section-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n## What this skill is for\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
   );
 });
 
@@ -324,10 +377,9 @@ test('buildCoreFoundationCommand combines missing and thin skill doc repairs wit
     thinPaths: ['skills/delivery/SKILL.md'],
   });
 
-  assert.equal(
-    command,
-    "(mkdir -p 'skills/slack' && for file in 'skills/slack/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done) && (grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md')",
-  );
+  assert.match(command ?? '', /^\(mkdir -p 'skills\/slack'/);
+  assert.match(command ?? '', /skills\/delivery\/SKILL\.md/);
+  assert.match(command ?? '', /perl -0pi -e/);
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skill-command-'));
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });

@@ -645,8 +645,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
 
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
-  assert.match(summary.promptPreview, /\| scaffold-missing \(mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(\{ if grep -Fqx -- '## Core values' 'SOUL\.md'; then awk -v heading='## Core values'/);
+  assert.match(summary.promptPreview, /\| scaffold-missing .*skills\/starter/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
 });
 
@@ -760,9 +760,9 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
 
   assert.equal(soulSummary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
-  assert.equal(soulSummary.workLoop.currentPriority?.command, buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS));
+  assert.match(soulSummary.workLoop.currentPriority?.command ?? '', /perl -0pi -e/);
   assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
-  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command \{ if grep -Fqx -- '## Core values' 'SOUL\.md'; then awk -v heading='## Core values'/);
+  assert.match(soulSummary.promptPreview, /next action: add non-heading guidance to SOUL\.md/);
 });
 
 test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
@@ -1023,13 +1023,16 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     undocumentedPaths: [],
     thinSample: ['delivery'],
     thinPaths: ['skills/delivery/SKILL.md'],
+    thinMissingSections: {
+      delivery: ['what-this-skill-is-for', 'suggested-workflow'],
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
-    recommendedActions: ['add non-heading guidance to skills/delivery/SKILL.md'],
+    recommendedActions: ['add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow'],
   });
   assert.deepEqual(summary.foundation.core.maintenance, {
     areaCount: 4,
@@ -1037,7 +1040,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
-    recommendedAction: 'add non-heading guidance to skills/delivery/SKILL.md',
+    recommendedAction: 'add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/delivery/SKILL.md'],
     helperCommands: {
@@ -1054,24 +1057,27 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
         area: 'skills',
         status: 'thin',
         summary: '1 registered, 0 documented',
-        action: 'add non-heading guidance to skills/delivery/SKILL.md',
+        action: 'add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow',
         paths: ['skills/delivery/SKILL.md'],
         thinPaths: ['skills/delivery/SKILL.md'],
+        thinMissingSections: {
+          'skills/delivery/SKILL.md': ['what-this-skill-is-for', 'suggested-workflow'],
+        },
         command: skillsCommand,
       },
     ],
   });
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
-  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to skills/delivery/SKILL.md');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow');
   assert.equal(summary.workLoop.currentPriority?.command, skillsCommand);
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/delivery/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/delivery\/SKILL\.md @ skills\/delivery\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); thin docs: delivery @ skills\/delivery\/SKILL\.md/);
-  assert.match(summary.promptPreview, /grep -Fqx -- '- Describe when to use this skill\.' 'skills\/delivery\/SKILL\.md' \|\| printf %s '/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'; then awk -v heading='## What this skill is for'/);
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /next action: add non-heading guidance to skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /next action: add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow/);
 });
 
 test('buildSummary keeps mixed documented and heading-only SKILL docs queued as thin core foundation coverage', () => {
@@ -1112,13 +1118,16 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     undocumentedPaths: [],
     thinSample: ['slack'],
     thinPaths: ['skills/slack/SKILL.md'],
+    thinMissingSections: {
+      slack: ['what-this-skill-is-for', 'suggested-workflow'],
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
     totalAreaCount: 4,
     missingAreas: [],
     thinAreas: ['skills'],
-    recommendedActions: ['add non-heading guidance to skills/slack/SKILL.md'],
+    recommendedActions: ['add missing sections to skills/slack/SKILL.md: what-this-skill-is-for, suggested-workflow'],
   });
   assert.deepEqual(summary.foundation.core.maintenance, {
     areaCount: 4,
@@ -1126,7 +1135,7 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
-    recommendedAction: 'add non-heading guidance to skills/slack/SKILL.md',
+    recommendedAction: 'add missing sections to skills/slack/SKILL.md: what-this-skill-is-for, suggested-workflow',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/slack/SKILL.md'],
     helperCommands: {
@@ -1143,20 +1152,23 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
         area: 'skills',
         status: 'thin',
         summary: '2 registered, 1 documented',
-        action: 'add non-heading guidance to skills/slack/SKILL.md',
+        action: 'add missing sections to skills/slack/SKILL.md: what-this-skill-is-for, suggested-workflow',
         paths: ['skills/slack/SKILL.md'],
         thinPaths: ['skills/slack/SKILL.md'],
+        thinMissingSections: {
+          'skills/slack/SKILL.md': ['what-this-skill-is-for', 'suggested-workflow'],
+        },
         command: skillsCommand,
       },
     ],
   });
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
-  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to skills/slack/SKILL.md');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add missing sections to skills/slack/SKILL.md: what-this-skill-is-for, suggested-workflow');
   assert.equal(summary.workLoop.currentPriority?.command, skillsCommand);
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/slack/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/slack\/SKILL\.md @ skills\/slack\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/slack\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack missing what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
 });
 
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {

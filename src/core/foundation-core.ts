@@ -120,24 +120,41 @@ function buildSkillsDocumentationPaths(undocumentedSkillNames: string[]): string
     .map((skillName) => `skills/${skillName}/SKILL.md`);
 }
 
+function formatSkillMissingSectionAction(skillName: string, missingSections: string[] | null | undefined): string {
+  const skillPath = `skills/${skillName}/SKILL.md`;
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => isNonEmptyString(value))
+    : [];
+
+  if (normalizedMissingSections.length === 0) {
+    return `add non-heading guidance to ${skillPath}`;
+  }
+
+  return `add missing sections to ${skillPath}: ${normalizedMissingSections.join(', ')}`;
+}
+
 function buildSkillsMaintenanceAction({
   skillsCount,
   undocumentedSkillNames,
   thinSkillNames,
+  thinSkillMissingSections,
 }: {
   skillsCount: number;
   undocumentedSkillNames: string[];
   thinSkillNames: string[];
+  thinSkillMissingSections?: Record<string, string[] | null | undefined>;
 }): string | null {
   if (skillsCount === 0) {
     return 'create skills/<name>/SKILL.md for at least one repo skill';
   }
 
   const documentationPaths = buildSkillsDocumentationPaths(undocumentedSkillNames);
-  const thinDocumentationPaths = buildSkillsDocumentationPaths(thinSkillNames);
+  const thinActions = thinSkillNames.map((skillName) =>
+    formatSkillMissingSectionAction(skillName, thinSkillMissingSections?.[skillName]),
+  );
   const actions = [
     documentationPaths.length > 0 ? `create ${formatList(documentationPaths)}` : null,
-    thinDocumentationPaths.length > 0 ? `add non-heading guidance to ${formatList(thinDocumentationPaths)}` : null,
+    thinActions.length > 0 ? thinActions.join(' | ') : null,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   if (actions.length === 0) {
@@ -153,6 +170,7 @@ function collectRecommendedActions({
   skillsCount,
   undocumentedSkillNames,
   thinSkillNames,
+  thinSkillMissingSections,
   soul,
   voice,
 }: {
@@ -161,6 +179,7 @@ function collectRecommendedActions({
   skillsCount: number;
   undocumentedSkillNames: string[];
   thinSkillNames: string[];
+  thinSkillMissingSections?: Record<string, string[] | null | undefined>;
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
 }): string[] {
@@ -179,6 +198,7 @@ function collectRecommendedActions({
     skillsCount,
     undocumentedSkillNames,
     thinSkillNames,
+    thinSkillMissingSections,
   });
   if (skillsAction) {
     actions.push(skillsAction);
@@ -270,6 +290,7 @@ function buildCoreFoundationMaintenance({
   skills,
   missingSkillNames,
   thinSkillNames,
+  thinSkillMissingSections,
   soul,
   voice,
 }: {
@@ -277,6 +298,7 @@ function buildCoreFoundationMaintenance({
   skills: CoreSkillsFoundationSummary;
   missingSkillNames: string[];
   thinSkillNames: string[];
+  thinSkillMissingSections?: Record<string, string[] | null | undefined>;
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
 }): CoreFoundationMaintenanceSummary {
@@ -285,9 +307,13 @@ function buildCoreFoundationMaintenance({
     skillsCount: skills.count,
     undocumentedSkillNames: missingSkillNames,
     thinSkillNames,
+    thinSkillMissingSections,
   });
   const missingSkillPaths = buildSkillsDocumentationPaths(missingSkillNames);
   const thinSkillPaths = buildSkillsDocumentationPaths(thinSkillNames);
+  const thinSkillMissingSectionsByPath = Object.fromEntries(
+    thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinMissingSections?.[skillName] ?? []]),
+  );
   const soulAction = buildDocumentMaintenanceAction(soul);
   const voiceAction = buildDocumentMaintenanceAction(voice);
 
@@ -315,6 +341,7 @@ function buildCoreFoundationMaintenance({
       paths: skills.count === 0 ? ['skills/'] : Array.from(new Set([...missingSkillPaths, ...thinSkillPaths])),
       ...(missingSkillPaths.length > 0 ? { missingPaths: missingSkillPaths } : {}),
       ...(thinSkillPaths.length > 0 ? { thinPaths: thinSkillPaths } : {}),
+      ...(Object.keys(thinSkillMissingSectionsByPath).length > 0 ? { thinMissingSections: thinSkillMissingSectionsByPath } : {}),
     },
     {
       area: 'soul',
@@ -453,6 +480,7 @@ export interface CoreSkillsFoundationSummary {
   undocumentedPaths: string[];
   thinSample: string[];
   thinPaths: string[];
+  thinMissingSections?: Record<string, string[]>;
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -561,6 +589,7 @@ export interface CoreFoundationMaintenanceQueueItem {
   paths: string[];
   missingPaths?: string[];
   thinPaths?: string[];
+  thinMissingSections?: Record<string, string[]>;
   command?: string | null;
 }
 
@@ -612,6 +641,7 @@ export interface BuildCoreFoundationSummaryOptions {
     undocumented?: string[];
     thin?: string[];
     documentedExcerpts?: Record<string, string | null>;
+    thinMissingSections?: Record<string, string[] | null | undefined>;
   } | null;
 }
 
@@ -645,6 +675,7 @@ export function buildCoreFoundationSummary({
   const thinSkillNames = Array.isArray(skillInventory?.thin)
     ? [...skillInventory.thin].sort((left, right) => left.localeCompare(right))
     : [];
+  const thinSkillMissingSections = skillInventory?.thinMissingSections ?? {};
   const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
@@ -678,6 +709,16 @@ export function buildCoreFoundationSummary({
     undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     thinSample: thinSkillNames.slice(0, 5),
     thinPaths: thinSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
+    ...(thinSkillNames.length > 0 ? {
+      thinMissingSections: Object.fromEntries(
+        thinSkillNames.map((skillName) => [
+          skillName,
+          Array.isArray(thinSkillMissingSections?.[skillName])
+            ? thinSkillMissingSections[skillName].filter((value): value is string => isNonEmptyString(value))
+            : [],
+        ]),
+      ),
+    } : {}),
   };
   const soul = buildSoulDocumentSummary(soulDocument);
   const voice = buildVoiceDocumentSummary(voiceDocument);
@@ -721,6 +762,7 @@ export function buildCoreFoundationSummary({
       skillsCount: skills.count,
       undocumentedSkillNames: missingSkillNames,
       thinSkillNames,
+      thinSkillMissingSections,
       soul,
       voice,
     }),
@@ -730,6 +772,7 @@ export function buildCoreFoundationSummary({
     skills,
     missingSkillNames,
     thinSkillNames,
+    thinSkillMissingSections,
     soul,
     voice,
   });
