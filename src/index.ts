@@ -1117,7 +1117,6 @@ function buildDeliveryPriority({
   const needsCredentialBootstrap = !envConfigPresent && templateCoversLeaderCredentials && pendingCount > configuredCount;
   const needsEnvTemplateRepair = !envConfigPresent
     && !needsCredentialBootstrap
-    && manifestMissing
     && firstQueuedMissingEnvVars.length > 0
     && typeof envTemplatePopulateCommand === 'string'
     && envTemplatePopulateCommand.length > 0;
