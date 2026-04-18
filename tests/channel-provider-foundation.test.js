@@ -253,22 +253,27 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
 });
 
-test('default channel and provider factories expose runtime helpers for delivery onboarding', () => {
+test('default channel/provider factories expose scaffold metadata and runtime helpers', () => {
   const originalEnv = {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   };
 
-  process.env.SLACK_BOT_TOKEN='***';
-  process.env.SLACK_SIGNING_SECRET='***';
-  process.env.TELEGRAM_BOT_TOKEN='***';
-  process.env.OPENAI_API_KEY='***';
+  process.env.SLACK_BOT_TOKEN = '***';
+  process.env.SLACK_SIGNING_SECRET = '***';
+  process.env.TELEGRAM_BOT_TOKEN = '***';
+  process.env.WHATSAPP_ACCESS_TOKEN = '***';
+  process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
+  process.env.OPENAI_API_KEY = '***';
 
   try {
     const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
     const telegram = createDefaultChannels().find((channel) => channel.id === 'telegram');
+    const whatsapp = createDefaultChannels().find((channel) => channel.id === 'whatsapp');
     const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
 
     assert.ok(slack);
@@ -354,6 +359,67 @@ test('default channel and provider factories expose runtime helpers for delivery
       },
     );
 
+    assert.ok(whatsapp);
+    assert.equal(typeof whatsapp.isConfigured, 'function');
+    assert.equal(typeof whatsapp.summary, 'function');
+    assert.equal(typeof whatsapp.normalizeInboundEvent, 'function');
+    assert.equal(typeof whatsapp.buildSessionSend, 'function');
+    assert.equal(whatsapp.isConfigured(), true);
+    assert.deepEqual(whatsapp.summary(), whatsappChannelScaffold);
+    assert.deepEqual(
+      whatsapp.normalizeInboundEvent({
+        entry: [{
+          changes: [{
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: '1234567890' },
+              contacts: [{ profile: { name: 'Harry' }, wa_id: '15551234567' }],
+              messages: [{
+                id: 'wamid.HBgNOD',
+                from: '15551234567',
+                timestamp: '1710000200',
+                type: 'text',
+                text: { body: 'hello from whatsapp' },
+                context: { id: 'wamid.previous' },
+              }],
+            },
+          }],
+        }],
+      }),
+      {
+        platform: 'whatsapp',
+        eventType: 'text',
+        phoneNumberId: '1234567890',
+        senderId: '15551234567',
+        profileName: 'Harry',
+        text: 'hello from whatsapp',
+        messageId: 'wamid.HBgNOD',
+        contextMessageId: 'wamid.previous',
+        timestamp: 1710000200,
+      },
+    );
+    assert.deepEqual(
+      whatsapp.buildSessionSend({
+        to: '15551234567',
+        text: 'roger that',
+        previewUrl: true,
+        contextMessageId: 'wamid.HBgNOD',
+      }),
+      {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: '15551234567',
+        type: 'text',
+        text: {
+          body: 'roger that',
+          preview_url: true,
+        },
+        context: {
+          message_id: 'wamid.HBgNOD',
+        },
+      },
+    );
+
     assert.ok(openai);
     assert.equal(typeof openai.isConfigured, 'function');
     assert.equal(typeof openai.supportsFeature, 'function');
@@ -362,33 +428,45 @@ test('default channel and provider factories expose runtime helpers for delivery
     assert.equal(openai.supportsFeature('audio'), false);
     assert.deepEqual(openai.summary(), openaiProviderScaffold);
   } finally {
-    if (originalEnv.SLACK_BOT_TOKEN=== undefined) {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
     } else {
-      process.env.SLACK_BOT_TOKEN=originalEnv.SLACK_BOT_TOKEN;
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
     }
 
-    if (originalEnv.SLACK_SIGNING_SECRET=== undefined) {
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
       delete process.env.SLACK_SIGNING_SECRET;
     } else {
-      process.env.SLACK_SIGNING_SECRET=originalEnv.SLACK_SIGNING_SECRET;
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
     }
 
-    if (originalEnv.TELEGRAM_BOT_TOKEN=== undefined) {
+    if (originalEnv.TELEGRAM_BOT_TOKEN === undefined) {
       delete process.env.TELEGRAM_BOT_TOKEN;
     } else {
-      process.env.TELEGRAM_BOT_TOKEN=originalEnv.TELEGRAM_BOT_TOKEN;
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
     }
 
-    if (originalEnv.OPENAI_API_KEY=== undefined) {
+    if (originalEnv.WHATSAPP_ACCESS_TOKEN === undefined) {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    }
+
+    if (originalEnv.WHATSAPP_PHONE_NUMBER_ID === undefined) {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    }
+
+    if (originalEnv.OPENAI_API_KEY === undefined) {
       delete process.env.OPENAI_API_KEY;
     } else {
-      process.env.OPENAI_API_KEY=originalEnv.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
     }
   }
 });
 
-test('buildSummary counts the checked-in Slack and Telegram delivery modules as runtime-ready while the rest stay scaffold-only', () => {
+test('buildSummary counts the checked-in Slack, Telegram, and WhatsApp delivery modules as runtime-ready while Feishu stays scaffold-only', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -410,20 +488,24 @@ test('buildSummary counts the checked-in Slack and Telegram delivery modules as 
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.delivery.readyChannelImplementationCount, 2);
+  assert.equal(summary.delivery.readyChannelImplementationCount, 3);
   assert.equal(summary.delivery.readyProviderImplementationCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 2);
+  assert.equal(summary.delivery.scaffoldOnlyChannelCount, 1);
   assert.equal(summary.delivery.scaffoldOnlyProviderCount, 6);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[1].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[1].implementationStatus, 'ready');
+  assert.equal(summary.delivery.channelQueue[2].implementationReady, true);
+  assert.equal(summary.delivery.channelQueue[2].implementationStatus, 'ready');
+  assert.equal(summary.delivery.channelQueue[3].implementationReady, false);
+  assert.equal(summary.delivery.channelQueue[3].implementationStatus, 'scaffold');
   assert.equal(summary.delivery.providerQueue[0].implementationReady, false);
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 2\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /runtime implementations: 3\/4 channels, 0\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
+  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned, scaffold-only\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
