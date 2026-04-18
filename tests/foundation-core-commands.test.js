@@ -7,6 +7,64 @@ import { execSync } from 'node:child_process';
 
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
+const VOICE_SECTIONS = [
+  {
+    heading: '## Tone',
+    sentinel: '- Describe the target cadence, directness, and emotional texture here.',
+    missingSectionAppend: '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n',
+    existingBulletAppend: '- Describe the target cadence, directness, and emotional texture here.\n',
+  },
+  {
+    heading: '## Signature moves',
+    sentinel: '- Capture recurring phrasing, structure, or rhetorical habits here.',
+    missingSectionAppend: '\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n',
+    existingBulletAppend: '- Capture recurring phrasing, structure, or rhetorical habits here.\n',
+  },
+  {
+    heading: '## Avoid',
+    sentinel: '- List wording, hedges, or habits that break the voice.',
+    missingSectionAppend: '\n## Avoid\n- List wording, hedges, or habits that break the voice.\n',
+    existingBulletAppend: '- List wording, hedges, or habits that break the voice.\n',
+  },
+];
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
+const SOUL_SECTIONS = [
+  {
+    heading: '## Core values',
+    sentinel: '- Describe the durable values and goals that should survive across tasks.',
+    missingSectionAppend: '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n',
+    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
+  },
+  {
+    heading: '## Boundaries',
+    sentinel: '- Capture what the agent should protect or refuse to compromise.',
+    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
+    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Decision rules',
+    sentinel: '- Note the principles to use when tradeoffs appear.',
+    missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
+  },
+];
+
+function shellSingleQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildDocumentRepairCommand(filePath, sentinel, sections) {
+  const file = shellSingleQuote(filePath);
+  const sectionCommands = sections.map((section) =>
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+  );
+
+  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+}
+
 test('buildCoreFoundationCommand scaffolds missing memory buckets with seed files', () => {
   assert.equal(
     buildCoreFoundationCommand({
@@ -79,7 +137,7 @@ test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
       status: 'thin',
       paths: ['voice/README.md'],
     }),
-    "grep -Fqx -- '- Add voice guidance here.' voice/README.md || printf %s '\n- Add voice guidance here.\n' >> voice/README.md",
+    buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS),
   );
 });
 
@@ -90,7 +148,66 @@ test('buildCoreFoundationCommand scaffolds missing soul guidance with starter co
       status: 'missing',
       paths: ['SOUL.md'],
     }),
-    "printf %s '# Soul\n\nAdd soul guidance here.\n' > SOUL.md",
+    `printf %s '${SOUL_STARTER_TEMPLATE}' > SOUL.md`,
+  );
+});
+
+test('buildCoreFoundationCommand scaffolds missing voice guidance with richer starter sections', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'voice',
+      status: 'missing',
+      paths: ['voice/README.md'],
+    }),
+    `mkdir -p voice && printf %s '${VOICE_STARTER_TEMPLATE}' > voice/README.md`,
+  );
+});
+
+test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'soul',
+      status: 'thin',
+      paths: ['SOUL.md'],
+    }),
+    buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS),
+  );
+});
+
+test('buildCoreFoundationCommand repairs heading-only thin voice scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-command-'));
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -116,6 +233,31 @@ test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', ()
   );
 });
 
+test('buildCoreFoundationCommand appends starter guidance to heading-only skill docs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  assert.equal(
+    command,
+    "grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md'",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
 test('buildCoreFoundationCommand seeds missing skill docs without clobbering existing content', () => {
   const command = buildCoreFoundationCommand({
     area: 'skills',
@@ -136,6 +278,36 @@ test('buildCoreFoundationCommand seeds missing skill docs without clobbering exi
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), 'utf8'),
     '# Existing skill\n\nKeep this content.\n',
+  );
+});
+
+test('buildCoreFoundationCommand combines missing and thin skill doc repairs without clobbering either side', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/slack/SKILL.md', 'skills/delivery/SKILL.md'],
+    missingPaths: ['skills/slack/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  assert.equal(
+    command,
+    "(mkdir -p 'skills/slack' && for file in 'skills/slack/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done) && (grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md')",
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skill-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
   );
 });
 

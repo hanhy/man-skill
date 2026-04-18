@@ -18,6 +18,55 @@ function quotePaths(paths: string[]): string {
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
+const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
+const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
+const SKILL_GUIDANCE_APPEND_TEMPLATE = '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
+const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_SECTIONS = [
+  {
+    heading: '## Tone',
+    sentinel: '- Describe the target cadence, directness, and emotional texture here.',
+    missingSectionAppend: '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n',
+    existingBulletAppend: '- Describe the target cadence, directness, and emotional texture here.\n',
+  },
+  {
+    heading: '## Signature moves',
+    sentinel: '- Capture recurring phrasing, structure, or rhetorical habits here.',
+    missingSectionAppend: '\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n',
+    existingBulletAppend: '- Capture recurring phrasing, structure, or rhetorical habits here.\n',
+  },
+  {
+    heading: '## Avoid',
+    sentinel: '- List wording, hedges, or habits that break the voice.',
+    missingSectionAppend: '\n## Avoid\n- List wording, hedges, or habits that break the voice.\n',
+    existingBulletAppend: '- List wording, hedges, or habits that break the voice.\n',
+  },
+] as const;
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
+const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_SECTIONS = [
+  {
+    heading: '## Core values',
+    sentinel: '- Describe the durable values and goals that should survive across tasks.',
+    missingSectionAppend: '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n',
+    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
+  },
+  {
+    heading: '## Boundaries',
+    sentinel: '- Capture what the agent should protect or refuse to compromise.',
+    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
+    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Decision rules',
+    sentinel: '- Note the principles to use when tradeoffs appear.',
+    missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
+  },
+] as const;
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -32,7 +81,7 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
     return null;
   }
 
-  return `mkdir -p skills/starter && printf %s ${shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n')} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
+  return `mkdir -p skills/starter && printf %s ${shellSingleQuote(SKILL_STARTER_TEMPLATE)} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
 }
 
 function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
@@ -42,10 +91,25 @@ function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
   }
 
   const mkdirPaths = Array.from(new Set(normalizedPaths.map((value) => path.posix.dirname(value))));
-  const starterTemplate = shellSingleQuote('# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n');
+  const starterTemplate = shellSingleQuote(SKILL_STARTER_TEMPLATE);
   const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
 
   return `mkdir -p ${quotePaths(mkdirPaths)} && for file in ${fileList}; do [ -f "$file" ] || printf %s ${starterTemplate} > "$file"; done`;
+}
+
+function buildSkillGuidanceAppendCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length === 0 || !normalizedPaths.every((value) => value.endsWith('/SKILL.md'))) {
+    return null;
+  }
+
+  if (normalizedPaths.length === 1) {
+    const filePath = shellSingleQuote(normalizedPaths[0]);
+    return `grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} ${filePath} || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> ${filePath}`;
+  }
+
+  const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
+  return `for file in ${fileList}; do grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} "$file" || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> "$file"; done`;
 }
 
 function buildMemorySeedCommand(paths: string[]): string | null {
@@ -83,13 +147,31 @@ function buildMemorySeedCommand(paths: string[]): string | null {
   return commandSegments.join(' && ');
 }
 
+function buildDocumentRepairCommand(
+  filePath: string,
+  sentinel: string,
+  sections: ReadonlyArray<{
+    heading: string;
+    sentinel: string;
+    missingSectionAppend: string;
+    existingBulletAppend: string;
+  }>,
+): string {
+  const file = shellSingleQuote(filePath);
+  const sectionCommands = sections.map((section) =>
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+  );
+
+  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+}
+
 function buildVoiceCommand(status: string | null): string | null {
   if (status === 'missing') {
-    return `mkdir -p voice && printf %s ${shellSingleQuote('# Voice\n\n- Add voice guidance here.\n')} > voice/README.md`;
+    return `mkdir -p voice && printf %s ${shellSingleQuote(VOICE_STARTER_TEMPLATE)} > voice/README.md`;
   }
 
   if (status === 'thin') {
-    return `grep -Fqx -- ${shellSingleQuote('- Add voice guidance here.')} voice/README.md || printf %s ${shellSingleQuote('\n- Add voice guidance here.\n')} >> voice/README.md`;
+    return buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS);
   }
 
   return null;
@@ -97,11 +179,11 @@ function buildVoiceCommand(status: string | null): string | null {
 
 function buildSoulCommand(status: string | null): string | null {
   if (status === 'missing') {
-    return `printf %s ${shellSingleQuote('# Soul\n\nAdd soul guidance here.\n')} > SOUL.md`;
+    return `printf %s ${shellSingleQuote(SOUL_STARTER_TEMPLATE)} > SOUL.md`;
   }
 
   if (status === 'thin') {
-    return `grep -Fqx -- ${shellSingleQuote('Add soul guidance here.')} SOUL.md || printf %s ${shellSingleQuote('\nAdd soul guidance here.\n')} >> SOUL.md`;
+    return buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
   }
 
   return null;
@@ -112,10 +194,22 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
     return null;
   }
 
-  const record = queuedArea as { area?: unknown; status?: unknown; paths?: unknown };
+  const record = queuedArea as { area?: unknown; status?: unknown; paths?: unknown; missingPaths?: unknown; thinPaths?: unknown };
   const area = typeof record.area === 'string' ? record.area : null;
   const status = typeof record.status === 'string' ? record.status : null;
   const paths = normalizeRelativePaths(record.paths).map((value) => value.split(path.sep).join('/'));
+  const missingPaths = normalizeRelativePaths(record.missingPaths).map((value) => value.split(path.sep).join('/'));
+  const thinPaths = normalizeRelativePaths(record.thinPaths).map((value) => value.split(path.sep).join('/'));
+
+  if (area === 'skills' && (missingPaths.length > 0 || thinPaths.length > 0)) {
+    const createCommand = buildSkillDocumentationSeedCommand(missingPaths);
+    const appendCommand = buildSkillGuidanceAppendCommand(thinPaths);
+    if (createCommand && appendCommand) {
+      return `(${createCommand}) && (${appendCommand})`;
+    }
+
+    return createCommand ?? appendCommand;
+  }
 
   if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
     return buildSkillDocumentationSeedCommand(paths);

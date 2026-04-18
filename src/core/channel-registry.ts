@@ -14,6 +14,8 @@ export interface ChannelRecord {
   capabilities: string[];
   auth: ChannelAuthRecord | null;
   deliveryModes: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   implementationPath?: string | null;
   nextStep?: string | null;
   [key: string]: unknown;
@@ -58,6 +60,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
     },
     deliveryModes: ['events-api', 'web-api'],
+    inboundPath: '/hooks/slack/events',
+    outboundMode: 'thread-reply',
     implementationPath: 'src/channels/slack.js',
     nextStep: 'implement inbound event handling and outbound thread replies',
   },
@@ -73,6 +77,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['TELEGRAM_BOT_TOKEN'],
     },
     deliveryModes: ['polling', 'webhook'],
+    inboundPath: '/hooks/telegram',
+    outboundMode: 'chat-send',
     implementationPath: 'src/channels/telegram.js',
     nextStep: 'wire bot webhook intake and outbound chat sends',
   },
@@ -88,6 +94,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'],
     },
     deliveryModes: ['cloud-api', 'session-bridge'],
+    inboundPath: '/hooks/whatsapp',
+    outboundMode: 'session-send',
     implementationPath: 'src/channels/whatsapp.js',
     nextStep: 'map business-api webhooks and outbound message delivery',
   },
@@ -103,6 +111,8 @@ const DEFAULT_CHANNELS: ChannelRecord[] = [
       envVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
     },
     deliveryModes: ['event-subscription', 'webhook'],
+    inboundPath: '/hooks/feishu/events',
+    outboundMode: 'bot-message',
     implementationPath: 'src/channels/feishu.js',
     nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
   },
@@ -126,6 +136,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
         capabilities: [],
         auth: null,
         deliveryModes: [],
+        inboundPath: null,
+        outboundMode: null,
         implementationPath: null,
         nextStep: null,
       };
@@ -139,6 +151,8 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
       capabilities: [],
       auth: null,
       deliveryModes: [],
+      inboundPath: null,
+      outboundMode: null,
       implementationPath: null,
       nextStep: null,
       ...defaultChannel,

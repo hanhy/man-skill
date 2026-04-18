@@ -1,0 +1,10 @@
+{
+  "id": "2026-04-17T19-03-57-999Z-text",
+  "personId": "harry-han",
+  "type": "text",
+  "createdAt": "2026-04-17T19:03:57.999Z",
+  "notes": "short writing sample",
+  "sourceFile": "samples/harry-post.txt",
+  "assetPath": null,
+  "content": "Move fast on the first pass, but keep the structure clean enough that the next change is obvious.\n\nI care more about a tight feedback loop than a polished first draft.\n"
+}

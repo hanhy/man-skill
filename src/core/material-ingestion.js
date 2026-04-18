@@ -19,6 +19,30 @@ function readJsonIfExists(filePath) {
   }
 }
 
+function readJsonFileState(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return {
+      exists: false,
+      parsed: null,
+      parseError: null,
+    };
+  }
+
+  try {
+    return {
+      exists: true,
+      parsed: JSON.parse(fs.readFileSync(filePath, 'utf8')),
+      parseError: null,
+    };
+  } catch (error) {
+    return {
+      exists: true,
+      parsed: null,
+      parseError: error instanceof Error ? error.message : 'Unable to parse JSON file',
+    };
+  }
+}
+
 function slugifyPersonId(value) {
   return value
     .trim()
@@ -206,7 +230,7 @@ function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoun
 }
 
 function buildImportIntakeCommand(personId) {
-  return `node src/index.js import intake --person ${shellQuote(personId)}`;
+  return `node src/index.js import intake --person ${shellQuote(personId)} --refresh-foundation`;
 }
 
 function buildIntakePaths(personId) {
@@ -217,6 +241,16 @@ function buildIntakePaths(personId) {
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
   };
+}
+
+function backupInvalidJsonFile(filePath) {
+  if (!isNonEmptyString(filePath) || !fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const backupPath = `${filePath}.invalid-${timestampId()}.bak`;
+  fs.copyFileSync(filePath, backupPath);
+  return backupPath;
 }
 
 function buildStarterManifestDocument({
@@ -443,7 +477,14 @@ export class MaterialIngestion {
       sampleTextPath: relativeSampleTextPath,
     });
 
-    const existingTemplate = readJsonIfExists(this.resolve(intakePaths.starterManifestPath));
+    const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
+    const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
+    const existingTemplate = existingTemplateState.parsed && typeof existingTemplateState.parsed === 'object' && !Array.isArray(existingTemplateState.parsed)
+      ? existingTemplateState.parsed
+      : null;
+    const invalidStarterManifestBackupPath = existingTemplateState.parseError
+      ? backupInvalidJsonFile(starterManifestAbsolutePath)
+      : null;
     const starterManifest = buildStarterManifestDocument({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -452,7 +493,7 @@ export class MaterialIngestion {
       existingEntryTemplates: existingTemplate?.entryTemplates,
       sampleTextPath: path.basename(relativeSampleTextPath),
     });
-    fs.writeFileSync(this.resolve(intakePaths.starterManifestPath), JSON.stringify(starterManifest, null, 2));
+    fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
     if (!fs.existsSync(this.resolve(intakePaths.sampleTextPath))) {
       fs.writeFileSync(
@@ -504,6 +545,9 @@ export class MaterialIngestion {
       intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
+      invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'
+        ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
+        : null,
       importManifestCommand,
       importIntakeCommand,
       updateIntakeCommand,
@@ -550,6 +594,19 @@ export class MaterialIngestion {
       });
   }
 
+  listProfilesWithReadyIntake({ includeImported = true } = {}) {
+    return new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => {
+        if (!includeImported && (profile?.materialCount ?? 0) > 0) {
+          return false;
+        }
+
+        return profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath);
+      })
+      .sort((left, right) => (left?.id ?? '').localeCompare(right?.id ?? ''));
+  }
+
   scaffoldAllProfileIntakes() {
     const profiles = this.listMetadataOnlyProfiles();
 
@@ -583,10 +640,11 @@ export class MaterialIngestion {
       throw new Error('personId is required for intake import');
     }
 
-    const profile = this.listMetadataOnlyProfiles()
+    const profile = new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
       .find((entry) => entry?.id === normalizedPersonId);
     if (!profile) {
-      throw new Error(`No metadata-only profile found for intake import: ${personId}`);
+      throw new Error(`No profile found for intake import: ${personId}`);
     }
 
     if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
@@ -600,8 +658,7 @@ export class MaterialIngestion {
   }
 
   importAllProfileIntakeManifests() {
-    const profiles = this.listMetadataOnlyProfiles()
-      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const profiles = this.listProfilesWithReadyIntake();
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
 
     return {
@@ -613,8 +670,7 @@ export class MaterialIngestion {
   }
 
   importStaleProfileIntakeManifests() {
-    const profiles = this.listMetadataOnlyProfiles()
-      .filter((profile) => profile?.intake?.ready && isNonEmptyString(profile?.intake?.starterManifestPath));
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
 
     return {

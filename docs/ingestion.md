@@ -45,13 +45,38 @@ node src/index.js import intake --stale
 
 This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
 
+### Re-import every ready profile-local intake manifest, even for already-imported profiles
+
+```bash
+node src/index.js import intake --all
+```
+
+Use this broader path when you intentionally want to replay every ready `profiles/<person-id>/imports/materials.template.json` starter manifest, including profiles that already have imported materials on disk.
+
+### Complete missing or partial intake landing zones for metadata-only profiles
+
+```bash
+node src/index.js update intake --stale
+```
+
+This repair path fills in only metadata-only profiles whose `imports/` starter area is missing files or still partial.
+
+### Rebuild intake landing zones for every metadata-only profile
+
+```bash
+node src/index.js update intake --all
+```
+
+Use this when you want to refresh the checked-in `imports/README.md`, `materials.template.json`, and `sample.txt` starter assets across every metadata-only profile, even if some of them are already complete.
+
 ### Import a JSON manifest of mixed materials
 
 ```bash
+node src/index.js import manifest --file ./samples/harry-materials.json
 node src/index.js import manifest --file ./samples/harry-materials.json --refresh-foundation
 ```
 
-A starter manifest now ships in-repo at `samples/harry-materials.json`, alongside `samples/harry-post.txt`, so there is always one copy-pasteable bootstrap path for the ingestion entrance on the main repo checkout.
+A starter manifest now ships in-repo at `samples/harry-materials.json`, alongside `samples/harry-post.txt` and `samples/harry-chat.png`, so there is always one copy-pasteable multimodal bootstrap path for the ingestion entrance on the main repo checkout. Use the `--refresh-foundation` variant when you want the imported materials to immediately regenerate the derived memory / voice / soul / skills drafts in the same pass.
 
 Manifest shape:
 
@@ -125,7 +150,7 @@ node src/index.js update profile --person harry-han --display-name "Harry Han" -
 node src/index.js update profile --person harry-han --summary "Direct operator with a bias for fast feedback loops." --refresh-foundation
 ```
 
-`update intake` bootstraps a profile-local landing zone at `profiles/<person-id>/imports/` with a `README.md`, a `sample.txt` placeholder, and a `materials.template.json` starter manifest so users have an obvious place to drop target-person materials before import. That starter manifest now includes `entryTemplates` for `text`, `message`, `talk`, and `screenshot`, while the generated README mirrors direct one-shot import commands for the same four paths so the first user-facing intake move does not require reconstructing CLI syntax by hand. Re-running `update intake` preserves any existing starter `entries[]`, per-type `entryTemplates` customizations, and the README's managed `Custom notes` block, so an operator can refine the intake scaffold over time without losing already-curated material placeholders or intake-specific guidance. `update profile` updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
+`update intake` bootstraps a profile-local landing zone at `profiles/<person-id>/imports/` with a `README.md`, a `sample.txt` placeholder, and a `materials.template.json` starter manifest so users have an obvious place to drop target-person materials before import. That starter manifest now includes `entryTemplates` for `text`, `message`, `talk`, and `screenshot`, while the generated README mirrors direct one-shot import commands for the same four paths so the first user-facing intake move does not require reconstructing CLI syntax by hand. Re-running `update intake` preserves any existing starter `entries[]`, per-type `entryTemplates` customizations, and the README's managed `Custom notes` block, so an operator can refine the intake scaffold over time without losing already-curated material placeholders or intake-specific guidance. When the existing `materials.template.json` has been edited into invalid JSON, `update intake` now snapshots the broken file to `materials.template.json.invalid-<timestamp>.bak` before rebuilding the scaffold, returns that backup location as `invalidStarterManifestBackupPath` in the CLI result, and keeps parseable placeholder JSON like `null` out of the invalid-backup flow. `update profile` updates `profiles/<person-id>/profile.json` without requiring a new material import. When you pass `--refresh-foundation`, the same command also regenerates that target profile's derived memory / voice / soul / skills drafts immediately so identity-bearing draft headers stay in sync with metadata edits.
 
 ## What happens
 
@@ -172,7 +197,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - queued profiles now also surface `generatedDraftCount`, `expectedDraftCount`, and `candidateDraftCount`, so the maintenance queue can prioritize the most incomplete profiles and show concrete draft coverage before you refresh anything
 - `update foundation --stale` now also repairs malformed generated markdown drafts (`voice/README.md`, `soul/README.md`, `skills/README.md`) when their provenance headers are missing or corrupted, instead of only refreshing fully missing/stale profiles
 - top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `helperCommands`, `profileCommands`, `allProfileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
-  - `helperCommands` now groups the repo-level intake/update/import shortcuts (`bootstrap`, `scaffoldAll`, `scaffoldStale`, `importManifest`, `importIntakeAll`, `importIntakeStale`, `refreshAllFoundation`, `refreshStaleFoundation`, plus any runnable sample starter/manifest/text/message/talk/screenshot commands) so downstream prompt builders and operators can lift a stable command bundle without reconstructing it from scattered top-level fields
+  - `helperCommands` now groups the repo-level intake/update/import shortcuts (`bootstrap`, `scaffoldAll`, `scaffoldStale`, `scaffoldBundle`, `importManifest`, `importIntakeAll`, `importIntakeStale`, `importIntakeBundle`, `refreshAllFoundation`, `refreshStaleFoundation`, `refreshFoundationBundle`, plus any runnable sample starter/manifest/text/message/talk/screenshot commands) so downstream prompt builders and operators can lift a stable command bundle without reconstructing it from scattered top-level fields
   - each profile command bundle now also carries `importCommands.text|message|talk|screenshot`, `intakeStatusSummary`, `importManifestCommand`, and a grouped `helperCommands` block (`scaffold`, `importIntake`, `importManifest`, `updateProfile`, `refreshFoundation`, `directImports`) so downstream tooling can surface one stable intake/update palette per target profile instead of stitching individual command fields together
   - `updateProfileCommand` / `helperCommands.updateProfile` now preserve the profile's current `displayName` and optional `summary`, making the surfaced metadata-edit command copy-pasteable without reconstructing those fields by hand
   - when a metadata-only profile already has `profiles/<id>/imports/materials.template.json`, both the prompt preview and work loop now prefer that profile-local starter manifest over unrelated sample bundles, while still preferring a runnable direct text import when one exists for the same profile
@@ -187,15 +212,24 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - when the repo also includes `samples/harry-post.txt`, the same block now advertises a real `sampleTextCommand` (`node src/index.js import text --person <sample-person> --file samples/harry-post.txt --refresh-foundation`) so the entrance exposes both a batch and one-shot bootstrap path
   - the ingestion block now stays visible even for empty repos, which makes the user-facing bootstrap path discoverable before any target profile has been created, and that empty-repo bootstrap now points at `update intake` so the first action creates real starter files instead of only a metadata stub
   - the top-level `workLoop` queue now mirrors those sample asset paths when ingestion is the current priority, so cron-style runs can see the concrete `samples/...` files backing the next import slice
+  - on first-run repos with a valid checked-in starter manifest, the active ingestion priority now promotes the exact `sampleManifestCommand` (`import manifest --file ... --refresh-foundation`) instead of the coarser `import sample` alias, keeping the surfaced command aligned with the displayed manifest/file paths
+  - when multiple metadata-only profiles are queued for scaffold or ready-intake import work, the work loop now prefers the exact bundled per-profile commands (`scaffoldBundle`, `importIntakeBundle`, `refreshFoundationBundle`) over coarse `--stale` aliases while still widening `paths` to the full batch
+  - ready profile-local intake manifests are now validated before they become the active import step; invalid edited manifests surface as fix-first work-loop items instead of advertising broken `import manifest` commands
 - top-level `foundation.core` repo diagnostics for the base memory / skills / soul / voice scaffold, including an `overview` block (`readyAreaCount`, `missingAreas`, `thinAreas`) that the prompt preview mirrors as a compact coverage line
   - `foundation.core.memory` now also exposes bucket coverage across `daily`, `long-term`, and `scratch` via `readyBucketCount`, `totalBucketCount`, `populatedBuckets`, and `emptyBuckets`, so partial repo memory scaffolds remain visibly thin until all three lanes are seeded
+  - the memory core summary also carries `rootExcerpt` from `memory/README.md`, and the prompt preview mirrors it on the memory line so operators can see the repo's durable memory framing without opening the file
   - the prompt preview mirrors that state directly with an `empty buckets:` suffix on the memory line when any repo-core memory bucket is still missing
   - `foundation.core.overview.recommendedActions` now lists concrete next fixes when any repo-core area is missing or thin (for example `create voice/README.md`, `document placeholder skill folders with SKILL.md`, or filling specific empty memory buckets)
+  - `foundation.core.maintenance` also carries per-area runnable commands plus grouped helper bundles (`helperCommands.scaffoldAll`, `helperCommands.scaffoldMissing`, `helperCommands.scaffoldThin`, `memory`, `skills`, `soul`, `voice`), so the repo-level memory / skills / soul / voice backlog is directly executable from JSON and the prompt preview instead of only described in prose
+  - when more than two repo-core areas are queued, the prompt preview now keeps the first two detailed lines and adds a compact remainder line (`+N more queued: ...`) so thin/missing foundation work stays visible without bloating the preview
 - manifest-backed `channels` / `models` summaries that keep the built-in foundation metadata while letting `manifests/channels.json` and `manifests/providers.json` override per-repo status or add extra adapters/providers
   - both summaries now also expose aggregate delivery planning metadata like `activeCount`, `plannedCount`, `candidateCount`, and deduped `authEnvVars`, which the prompt preview reuses directly instead of recomputing delivery readiness from raw manifests
   - each delivery summary also carries a compact `manifest` status block (`loaded`, `missing`, or `invalid`) so malformed channel/provider manifests fall back to built-in defaults without breaking the repo-level summary
 - top-level `delivery` setup guidance that turns channel/provider metadata into an operator queue (`pendingChannelCount`, `pendingProviderCount`, `configuredChannelCount`, `configuredProviderCount`, `missingChannelEnvVars`, `missingProviderEnvVars`, `requiredEnvVars`, `channelManifestPath`, `providerManifestPath`, `envTemplatePath`, `envTemplatePresent`, `envTemplateCommand`, `channelQueue`, `providerQueue`)
   - each queued channel/provider row now includes auth-readiness fields (`configured`, `missingEnvVars`) plus a concrete `setupHint` (for example `credentials present`, `set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET`, or `auth configured for gpt-5`) so the prompt preview can show rollout work as the next action instead of only listing adapter names
+  - the same delivery block now exposes stable helper bundles for rollout scaffolding (`helperCommands.bootstrapEnv`, `scaffoldChannelManifest`, `scaffoldProviderManifest`, `scaffoldChannelImplementation`, `scaffoldChannelImplementationBundle`, `scaffoldProviderImplementation`, `scaffoldProviderImplementationBundle`), so operators and downstream tooling can lift one copy-pasteable setup palette without reverse-engineering queue rows
+  - when multiple delivery implementations are missing, prompt previews now surface bundled `channel impl-all ...` / `provider impl-all ...` commands instead of only the first missing file, keeping the rendered helper line aligned with the underlying JSON helper bundle
+  - the work loop also keeps delivery guidance honest by preferring `.env.example` bootstrap only when the current queue leader is actually blocked on missing credentials; once auth is already present, the next action switches to manifest or implementation scaffolding and the surfaced `paths` drop `.env.example` so the displayed blast radius matches the runnable command
   - when `.env.example` is present, the prompt preview also surfaces the shared env template path, the total credential count, and a bootstrap copy command (`cp .env.example .env`) so channel/provider rollout has a concrete first step
 
 Generated draft files now also carry the target person's `displayName` and `summary` in both the memory JSON draft and the voice / soul / skills markdown headers, so the foundation layer keeps a direct identity anchor alongside extracted evidence. The memory draft also records `materialTypes`, while the markdown drafts stamp `Generated at`, `Latest material`, and `Source materials` headers for provenance. Prompt snapshots surface that summary as a one-line `profile summary:` field when it is available, and stale detection now treats profile-metadata changes as draft drift even when no new materials were imported.

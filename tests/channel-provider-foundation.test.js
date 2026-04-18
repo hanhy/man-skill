@@ -11,12 +11,14 @@ import { slackChannelScaffold } from '../src/channels/slack.js';
 import { telegramChannelScaffold } from '../src/channels/telegram.js';
 import { whatsappChannelScaffold } from '../src/channels/whatsapp.js';
 import { feishuChannelScaffold } from '../src/channels/feishu.js';
+import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { openaiProviderScaffold } from '../src/models/openai.js';
 import { anthropicProviderScaffold } from '../src/models/anthropic.js';
 import { kimiProviderScaffold } from '../src/models/kimi.js';
 import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
 import { qwenProviderScaffold } from '../src/models/qwen.js';
+import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 import { ManifestLoader as JsManifestLoader } from '../src/core/manifest-loader.js';
 import { ManifestLoader as TsManifestLoader } from '../src/core/manifest-loader.ts';
 
@@ -82,7 +84,7 @@ test('JS manifest loader shim stays aligned with the TypeScript implementation',
   assert.deepEqual(jsLoader.loadProviderManifest(), tsLoader.loadProviderManifest());
 });
 
-test('default channel and provider scaffold modules stay aligned with registry metadata', () => {
+test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
     slackChannelScaffold,
     telegramChannelScaffold,
@@ -100,6 +102,9 @@ test('default channel and provider scaffold modules stay aligned with registry m
   const channels = new JsChannelRegistry().summary().channels;
   const providers = new JsModelRegistry().summary().providers;
 
+  assert.deepEqual(DEFAULT_CHANNEL_SCAFFOLDS, channelScaffolds);
+  assert.deepEqual(DEFAULT_PROVIDER_SCAFFOLDS, providerScaffolds);
+
   assert.equal(channelScaffolds.length, channels.length);
   assert.equal(providerScaffolds.length, providers.length);
 
@@ -115,6 +120,8 @@ test('default channel and provider scaffold modules stay aligned with registry m
       capabilities: registryRecord.capabilities,
       auth: registryRecord.auth,
       deliveryModes: registryRecord.deliveryModes,
+      inboundPath: registryRecord.inboundPath,
+      outboundMode: registryRecord.outboundMode,
       implementationPath: registryRecord.implementationPath,
       nextStep: registryRecord.nextStep,
     });
@@ -135,6 +142,40 @@ test('default channel and provider scaffold modules stay aligned with registry m
       implementationPath: registryRecord.implementationPath,
       nextStep: registryRecord.nextStep,
     });
+  });
+});
+
+test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
+  const channelScaffolds = [
+    slackChannelScaffold,
+    telegramChannelScaffold,
+    whatsappChannelScaffold,
+    feishuChannelScaffold,
+  ];
+  const providerScaffolds = [
+    openaiProviderScaffold,
+    anthropicProviderScaffold,
+    kimiProviderScaffold,
+    minimaxProviderScaffold,
+    glmProviderScaffold,
+    qwenProviderScaffold,
+  ];
+  const channelManifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), 'utf8'));
+  const providerManifest = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), 'utf8'));
+
+  assert.equal(channelManifest.length, channelScaffolds.length);
+  assert.equal(providerManifest.length, providerScaffolds.length);
+
+  channelScaffolds.forEach((scaffold) => {
+    const manifestRecord = channelManifest.find((channel) => channel.id === scaffold.id);
+    assert.ok(manifestRecord, `missing checked-in channel manifest record for ${scaffold.id}`);
+    assert.deepEqual(manifestRecord, scaffold);
+  });
+
+  providerScaffolds.forEach((scaffold) => {
+    const manifestRecord = providerManifest.find((provider) => provider.id === scaffold.id);
+    assert.ok(manifestRecord, `missing checked-in provider manifest record for ${scaffold.id}`);
+    assert.deepEqual(manifestRecord, scaffold);
   });
 });
 
@@ -163,6 +204,8 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
     envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
   });
   assert.deepEqual(slack.deliveryModes, ['events-api', 'web-api']);
+  assert.equal(slack.inboundPath, '/hooks/slack/events');
+  assert.equal(slack.outboundMode, 'thread-reply');
   assert.equal(slack.implementationPath, 'src/channels/slack.js');
   assert.equal(slack.nextStep, 'implement inbound event handling and outbound thread replies');
   assert.deepEqual(telegram.auth, {
@@ -170,6 +213,8 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
     envVars: ['TELEGRAM_BOT_TOKEN'],
   });
   assert.deepEqual(telegram.deliveryModes, ['polling', 'webhook']);
+  assert.equal(telegram.inboundPath, '/hooks/telegram');
+  assert.equal(telegram.outboundMode, 'chat-send');
   assert.equal(telegram.implementationPath, 'src/channels/telegram.js');
   assert.equal(telegram.nextStep, 'wire bot webhook intake and outbound chat sends');
 });
@@ -227,6 +272,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.equal(summary.delivery.pendingProviderCount, 6);
     assert.equal(summary.delivery.configuredChannelCount, 1);
     assert.equal(summary.delivery.configuredProviderCount, 1);
+    assert.equal(summary.delivery.authBlockedChannelCount, 3);
+    assert.equal(summary.delivery.authBlockedProviderCount, 5);
     assert.deepEqual(summary.delivery.missingChannelEnvVars, [
       'FEISHU_APP_ID',
       'FEISHU_APP_SECRET',
@@ -261,6 +308,22 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.equal(summary.delivery.envTemplatePath, '.env.example');
     assert.equal(summary.delivery.envTemplatePresent, true);
     assert.equal(summary.delivery.envTemplateCommand, 'cp .env.example .env');
+    assert.deepEqual(summary.delivery.envTemplateVarNames, [
+      'ANTHROPIC_API_KEY',
+      'FEISHU_APP_ID',
+      'FEISHU_APP_SECRET',
+      'GLM_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'OPENAI_API_KEY',
+      'QWEN_API_KEY',
+      'SLACK_BOT_TOKEN',
+      'SLACK_SIGNING_SECRET',
+      'TELEGRAM_BOT_TOKEN',
+      'WHATSAPP_ACCESS_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
+    ]);
+    assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
@@ -274,8 +337,12 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       id: 'slack',
       name: 'Slack',
       status: 'planned',
+      authType: 'bot-token',
       authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
+      capabilities: ['threads', 'mentions', 'bot-token'],
       deliveryModes: ['events-api', 'web-api'],
+      inboundPath: '/hooks/slack/events',
+      outboundMode: 'thread-reply',
       implementationPath: 'src/channels/slack.js',
       implementationPresent: true,
       implementationScaffoldPath: 'src/channels/slack.js',
@@ -286,6 +353,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestScaffoldPath: 'manifests/channels.json',
       setupHint: 'credentials present',
       nextStep: 'implement inbound event handling and outbound thread replies',
+      helperCommands: {
+        bootstrapEnv: null,
+        scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
+        scaffoldImplementation: null,
+      },
     });
     assert.deepEqual(summary.delivery.providerQueue[0], {
       id: 'openai',
@@ -293,6 +365,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       status: 'planned',
       defaultModel: 'gpt-5',
       authEnvVar: 'OPENAI_API_KEY',
+      models: ['gpt-4.1', 'gpt-4o', 'gpt-5'],
+      features: ['chat', 'tools', 'reasoning'],
       modalities: ['chat', 'reasoning', 'vision'],
       implementationPath: 'src/models/openai.js',
       implementationPresent: true,
@@ -304,18 +378,25 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestScaffoldPath: 'manifests/providers.json',
       setupHint: 'auth configured for gpt-5',
       nextStep: 'implement chat/tool request translation and response normalization',
+      helperCommands: {
+        bootstrapEnv: null,
+        scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
+        scaffoldImplementation: null,
+      },
     });
     assert.match(summary.promptPreview, /Delivery foundation:/);
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
-    assert.match(summary.promptPreview, /env template: \.env\.example \(13 vars\)/);
+    assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
-    assert.match(summary.promptPreview, /channel queue: 4 pending via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api @ src\/channels\/slack\.js/);
+    assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, impl 4\/4 present via manifests\/channels\.json/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
-    assert.match(summary.promptPreview, /provider queue: 6 pending via manifests\/providers\.json/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} @ src\/models\/openai\.js/);
+    assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, impl 6\/6 present via manifests\/providers\.json/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic, Kimi, Minimax, GLM, Qwen/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -361,7 +442,9 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldProviderImplementation: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
     scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
+  assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: env cp \.env\.example \.env \| impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
 
 test('buildSummary delivery helper commands skip scaffolded queue leaders and target the first missing provider implementation', () => {
@@ -384,6 +467,7 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
 
   assert.equal(summary.delivery.providerQueue[0].implementationPresent, true);
   assert.equal(summary.delivery.providerQueue[1].implementationPresent, false);
+  assert.equal(summary.delivery.providerQueue[1].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
@@ -475,8 +559,10 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned\], Feishu \[planned\], Discord \[candidate\]/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
+  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned\], Minimax \[planned\], GLM \[planned\], Qwen \[planned\], DeepSeek \[candidate\]/);
 });
 
 test('buildSummary falls back to default delivery metadata when manifests are malformed', () => {
@@ -695,6 +781,8 @@ test('JS registry shims preserve merged channel and provider defaults', () => {
         envVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
       },
       deliveryModes: ['events-api', 'web-api', 'socket-mode'],
+      inboundPath: '/hooks/slack/events',
+      outboundMode: 'thread-reply',
       implementationPath: 'src/channels/slack.js',
       nextStep: 'ship slash-command routing',
     },

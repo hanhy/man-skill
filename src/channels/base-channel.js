@@ -8,6 +8,8 @@ export class BaseChannel {
     capabilities = [],
     auth = null,
     deliveryModes = [],
+    inboundPath = null,
+    outboundMode = null,
     implementationPath = null,
     nextStep = null,
   } = {}) {
@@ -19,6 +21,8 @@ export class BaseChannel {
     this.capabilities = capabilities;
     this.auth = auth;
     this.deliveryModes = deliveryModes;
+    this.inboundPath = inboundPath;
+    this.outboundMode = outboundMode;
     this.implementationPath = implementationPath;
     this.nextStep = nextStep;
   }
@@ -33,6 +37,8 @@ export class BaseChannel {
       capabilities: this.capabilities,
       auth: this.auth,
       deliveryModes: this.deliveryModes,
+      inboundPath: this.inboundPath,
+      outboundMode: this.outboundMode,
       implementationPath: this.implementationPath,
       nextStep: this.nextStep,
     };

@@ -10,10 +10,14 @@ type ChannelSummaryRecord = {
   id?: string;
   name?: string;
   status?: string;
+  capabilities?: string[];
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   implementationPath?: string | null;
   nextStep?: string | null;
   auth?: {
+    type?: string;
     envVars?: string[];
   } | null;
 };
@@ -29,6 +33,8 @@ type ProviderSummaryRecord = {
   status?: string;
   defaultModel?: string | null;
   authEnvVar?: string | null;
+  models?: string[];
+  features?: string[];
   modalities?: string[];
   implementationPath?: string | null;
   nextStep?: string | null;
@@ -39,12 +45,22 @@ type ModelsSummary = {
   manifest?: DeliveryManifestSummary;
 } | null;
 
+type DeliveryQueueHelperCommands = {
+  bootstrapEnv: string | null;
+  scaffoldManifest: string | null;
+  scaffoldImplementation: string | null;
+};
+
 export type DeliveryChannelQueueItem = {
   id: string | null;
   name: string | null;
   status: string;
+  authType: string | null;
   authEnvVars: string[];
+  capabilities: string[];
   deliveryModes: string[];
+  inboundPath: string | null;
+  outboundMode: string | null;
   implementationPath: string | null;
   implementationPresent: boolean;
   implementationScaffoldPath: string | null;
@@ -55,6 +71,7 @@ export type DeliveryChannelQueueItem = {
   manifestScaffoldPath: string | null;
   setupHint: string;
   nextStep: string | null;
+  helperCommands: DeliveryQueueHelperCommands;
 };
 
 export type DeliveryProviderQueueItem = {
@@ -63,6 +80,8 @@ export type DeliveryProviderQueueItem = {
   status: string;
   defaultModel: string | null;
   authEnvVar: string | null;
+  models: string[];
+  features: string[];
   modalities: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
@@ -74,6 +93,7 @@ export type DeliveryProviderQueueItem = {
   manifestScaffoldPath: string | null;
   setupHint: string;
   nextStep: string | null;
+  helperCommands: DeliveryQueueHelperCommands;
 };
 
 export type DeliverySummary = {
@@ -81,6 +101,8 @@ export type DeliverySummary = {
   pendingProviderCount: number;
   configuredChannelCount: number;
   configuredProviderCount: number;
+  authBlockedChannelCount: number;
+  authBlockedProviderCount: number;
   readyChannelScaffoldCount: number;
   readyProviderScaffoldCount: number;
   missingChannelScaffoldCount: number;
@@ -93,6 +115,8 @@ export type DeliverySummary = {
   envTemplatePath: string | null;
   envTemplatePresent: boolean;
   envTemplateCommand: string | null;
+  envTemplateVarNames: string[];
+  envTemplateMissingRequiredVars: string[];
   helperCommands: {
     bootstrapEnv: string | null;
     scaffoldChannelManifest: string | null;
@@ -220,6 +244,9 @@ export function buildDeliverySummary(
   const rootDir = options.rootDir ?? null;
   const channelManifestPath = channels?.manifest?.path ?? 'manifests/channels.json';
   const providerManifestPath = models?.manifest?.path ?? 'manifests/providers.json';
+  const envTemplatePath = normalizeRepoRelativePath('.env.example', rootDir);
+  const envTemplatePresent = isRepoRelativePathPresent(envTemplatePath, rootDir);
+  const envTemplateCommand = envTemplatePresent && envTemplatePath ? `cp ${envTemplatePath} .env` : null;
   const allChannelRecords = channels?.channels ?? [];
   const allProviderRecords = models?.providers ?? [];
   const channelQueue = (channels?.channels ?? [])
@@ -231,14 +258,19 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(channelManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(channelManifestPath, rootDir);
+      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
       return {
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
         status: channel.status ?? 'unknown',
+        authType: channel.auth?.type ?? null,
         authEnvVars,
+        capabilities: (channel.capabilities ?? []).filter(Boolean),
         deliveryModes: (channel.deliveryModes ?? []).filter(Boolean),
+        inboundPath: typeof channel.inboundPath === 'string' && channel.inboundPath.trim().length > 0 ? channel.inboundPath.trim() : null,
+        outboundMode: typeof channel.outboundMode === 'string' && channel.outboundMode.trim().length > 0 ? channel.outboundMode.trim() : null,
         implementationPath,
-        implementationPresent: isImplementationPresent(implementationPath, rootDir),
+        implementationPresent,
         implementationScaffoldPath,
         configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
         missingEnvVars,
@@ -247,6 +279,11 @@ export function buildDeliverySummary(
         manifestScaffoldPath,
         setupHint: buildChannelSetupHint(channel, environment),
         nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
+        helperCommands: {
+          bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
+          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+        },
       };
     });
   const providerQueue = (models?.providers ?? [])
@@ -257,15 +294,18 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(providerManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(providerManifestPath, rootDir);
+      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
       return {
         id: provider.id ?? null,
         name: provider.name ?? provider.id ?? null,
         status: provider.status ?? 'unknown',
         defaultModel: provider.defaultModel ?? null,
         authEnvVar: provider.authEnvVar ?? null,
+        models: (provider.models ?? []).filter(Boolean),
+        features: (provider.features ?? []).filter(Boolean),
         modalities: (provider.modalities ?? []).filter(Boolean),
         implementationPath,
-        implementationPresent: isImplementationPresent(implementationPath, rootDir),
+        implementationPresent,
         implementationScaffoldPath,
         configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
         missingEnvVars,
@@ -274,6 +314,11 @@ export function buildDeliverySummary(
         manifestScaffoldPath,
         setupHint: buildProviderSetupHint(provider, environment),
         nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
+        helperCommands: {
+          bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
+          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+        },
       };
     });
 
@@ -303,6 +348,8 @@ export function buildDeliverySummary(
     pendingProviderCount: providerQueue.length,
     configuredChannelCount: channelQueue.filter((channel) => channel.configured).length,
     configuredProviderCount: providerQueue.filter((provider) => provider.configured).length,
+    authBlockedChannelCount: channelQueue.filter((channel) => channel.missingEnvVars.length > 0).length,
+    authBlockedProviderCount: providerQueue.filter((provider) => provider.missingEnvVars.length > 0).length,
     readyChannelScaffoldCount: channelScaffoldCoverage.filter(Boolean).length,
     readyProviderScaffoldCount: providerScaffoldCoverage.filter(Boolean).length,
     missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,
@@ -312,9 +359,11 @@ export function buildDeliverySummary(
     requiredEnvVars: [...new Set(requiredEnvVars)].sort((left, right) => left.localeCompare(right)),
     channelManifestPath,
     providerManifestPath,
-    envTemplatePath: null,
-    envTemplatePresent: false,
-    envTemplateCommand: null,
+    envTemplatePath,
+    envTemplatePresent,
+    envTemplateCommand,
+    envTemplateVarNames: [],
+    envTemplateMissingRequiredVars: [],
     helperCommands: {
       bootstrapEnv: null,
       scaffoldChannelManifest: firstChannelMissingManifest

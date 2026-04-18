@@ -6,7 +6,11 @@ function readTextIfExists(filePath) {
     return null;
   }
 
-  return fs.readFileSync(filePath, 'utf8');
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 function listFilesIfExists(dirPath) {
@@ -33,15 +37,123 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function stripWrappingQuotes(value) {
+  if (!isNonEmptyString(value)) {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function extractFrontmatterDescription(document) {
+  if (!isNonEmptyString(document) || !document.startsWith('---')) {
+    return null;
+  }
+
+  const lines = document.split(/\r?\n/);
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  if (closingIndex < 0) {
+    return null;
+  }
+
+  const frontmatterLines = lines.slice(1, closingIndex + 1);
+  for (let index = 0; index < frontmatterLines.length; index += 1) {
+    const line = frontmatterLines[index];
+    const match = line.match(/^description\s*:\s*(.*)$/i);
+    if (!match) {
+      continue;
+    }
+
+    const rawValue = match[1].trim();
+    if (/^[>|][0-9+-]*$/.test(rawValue)) {
+      const blockLines = [];
+      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
+        const nestedLine = frontmatterLines[nestedIndex];
+        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
+          break;
+        }
+
+        blockLines.push(nestedLine.trim());
+      }
+
+      const description = blockLines.join('\n').trim();
+      if (isNonEmptyString(description)) {
+        return description;
+      }
+
+      continue;
+    }
+
+    const description = stripWrappingQuotes(rawValue);
+    if (isNonEmptyString(description)) {
+      return description;
+    }
+  }
+
+  return null;
+}
+
+function extractDocumentExcerpt(document, maxLength = 160) {
+  if (!isNonEmptyString(document)) {
+    return null;
+  }
+
+  const frontmatterDescription = extractFrontmatterDescription(document);
+  if (isNonEmptyString(frontmatterDescription)) {
+    return buildExcerpt(frontmatterDescription, maxLength);
+  }
+
+  const lines = document.split(/\r?\n/);
+  const bodyLines = document.startsWith('---')
+    ? (() => {
+        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+      })()
+    : lines;
+  const candidate = bodyLines
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
+
+  return buildExcerpt(candidate, maxLength);
+}
+
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
-  const documented = skillNames.filter((skillName) => fs.existsSync(path.join(rootDir, 'skills', skillName, 'SKILL.md')));
-  const undocumented = skillNames.filter((skillName) => !documented.includes(skillName));
+  const documented = [];
+  const undocumented = [];
+  const thin = [];
+  /** @type {Record<string, string>} */
+  const documentedExcerpts = {};
+
+  for (const skillName of skillNames) {
+    const skillPath = path.join(rootDir, 'skills', skillName, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) {
+      undocumented.push(skillName);
+      continue;
+    }
+
+    const document = readTextIfExists(skillPath);
+    const excerpt = extractDocumentExcerpt(document);
+    if (isNonEmptyString(excerpt)) {
+      documented.push(skillName);
+      documentedExcerpts[skillName] = excerpt;
+      continue;
+    }
+
+    thin.push(skillName);
+  }
 
   return {
     names: skillNames,
     documented,
     undocumented,
+    thin,
+    documentedExcerpts,
   };
 }
 

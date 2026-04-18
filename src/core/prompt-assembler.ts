@@ -103,9 +103,11 @@ type FoundationMaintenance = {
   incompleteProfileCount?: number;
   refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
+  refreshBundleCommand?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
     refreshStale?: string | null;
+    refreshBundle?: string | null;
   };
   queuedProfiles?: MaintenanceQueueItem[];
 };
@@ -149,6 +151,8 @@ type FoundationCoreMaintenance = {
   thinAreaCount?: number;
   helperCommands?: {
     scaffoldAll?: string | null;
+    scaffoldMissing?: string | null;
+    scaffoldThin?: string | null;
     memory?: string | null;
     skills?: string | null;
     soul?: string | null;
@@ -161,6 +165,7 @@ type FoundationCore = {
   memory?: {
     hasRootDocument?: boolean;
     rootPath?: string;
+    rootExcerpt?: string | null;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -175,10 +180,14 @@ type FoundationCore = {
     count?: number;
     documentedCount?: number;
     undocumentedCount?: number;
+    thinCount?: number;
     sample?: string[];
     samplePaths?: string[];
+    sampleExcerpts?: string[];
     undocumentedSample?: string[];
     undocumentedPaths?: string[];
+    thinSample?: string[];
+    thinPaths?: string[];
   };
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
@@ -207,6 +216,8 @@ type ChannelSummaryRecord = {
   name?: string;
   status?: string;
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   implementationPath?: string | null;
   nextStep?: string | null;
   auth?: ChannelAuth | null;
@@ -262,18 +273,30 @@ type DeliveryQueueItem = {
   id?: string | null;
   name?: string | null;
   status?: string;
+  authType?: string | null;
   authEnvVars?: string[];
+  capabilities?: string[];
   deliveryModes?: string[];
+  inboundPath?: string | null;
+  outboundMode?: string | null;
   defaultModel?: string | null;
   authEnvVar?: string | null;
+  models?: string[];
+  features?: string[];
   modalities?: string[];
   implementationPath?: string | null;
   implementationPresent?: boolean;
   configured?: boolean;
   missingEnvVars?: string[];
   manifestPath?: string;
+  manifestPresent?: boolean;
   setupHint?: string;
   nextStep?: string | null;
+  helperCommands?: {
+    bootstrapEnv?: string | null;
+    scaffoldManifest?: string | null;
+    scaffoldImplementation?: string | null;
+  };
 };
 
 type DeliverySummary = {
@@ -281,6 +304,8 @@ type DeliverySummary = {
   pendingProviderCount?: number;
   configuredChannelCount?: number;
   configuredProviderCount?: number;
+  authBlockedChannelCount?: number;
+  authBlockedProviderCount?: number;
   readyChannelScaffoldCount?: number;
   readyProviderScaffoldCount?: number;
   missingChannelScaffoldCount?: number;
@@ -293,6 +318,8 @@ type DeliverySummary = {
   envTemplatePath?: string | null;
   envTemplatePresent?: boolean;
   envTemplateCommand?: string | null;
+  envTemplateVarNames?: string[];
+  envTemplateMissingRequiredVars?: string[];
   helperCommands?: {
     bootstrapEnv?: string | null;
     scaffoldChannelManifest?: string | null;
@@ -339,11 +366,17 @@ type IngestionHelperCommands = {
   bootstrap?: string | null;
   scaffoldAll?: string | null;
   scaffoldStale?: string | null;
+  scaffoldBundle?: string | null;
   importManifest?: string | null;
+  importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  importIntakeBundle?: string | null;
+  updateProfileBundle?: string | null;
+  updateProfileAndRefreshBundle?: string | null;
   refreshAllFoundation?: string | null;
   refreshStaleFoundation?: string | null;
+  refreshFoundationBundle?: string | null;
   sampleStarter?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
@@ -368,6 +401,7 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  importManifestAndRefreshCommand?: string | null;
   refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
   sampleManifestPresent?: boolean;
@@ -390,6 +424,7 @@ type IngestionSummary = {
     type?: 'text' | 'screenshot' | string;
     path?: string | null;
     personId?: string | null;
+    sourcePath?: string | null;
     command?: string | null;
   }>;
   sampleInlineCommands?: Array<{
@@ -400,6 +435,7 @@ type IngestionSummary = {
     command?: string | null;
   }>;
   staleRefreshCommand?: string | null;
+  refreshFoundationBundleCommand?: string | null;
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -570,6 +606,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const helperLine = [
     maintenance.helperCommands?.refreshAll ? `refresh-all ${maintenance.helperCommands.refreshAll}` : null,
     maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
+    maintenance.helperCommands?.refreshBundle ? `refresh-bundle ${maintenance.helperCommands.refreshBundle}` : null,
   ].filter(Boolean).join(' | ');
 
   return [
@@ -636,6 +673,22 @@ function formatChannelAuth(auth: ChannelAuth | null | undefined) {
   return envVars.length > 0 ? `${auth.type}: ${envVars.join(', ')}` : auth.type;
 }
 
+function formatChannelFlow(channel: {
+  deliveryModes?: string[];
+  outboundMode?: string | null;
+  inboundPath?: string | null;
+}) {
+  const deliveryModes = (channel.deliveryModes ?? []).join('/') || 'unspecified';
+  const outboundMode = typeof channel.outboundMode === 'string' && channel.outboundMode.length > 0
+    ? ` -> ${channel.outboundMode}`
+    : '';
+  const inboundPath = typeof channel.inboundPath === 'string' && channel.inboundPath.length > 0
+    ? ` @ ${channel.inboundPath}`
+    : '';
+
+  return `${deliveryModes}${outboundMode}${inboundPath}`;
+}
+
 function formatManifestSummary(label: string, manifest: ChannelManifestSummary | ProviderManifestSummary | undefined) {
   if (!manifest?.path) {
     return null;
@@ -655,6 +708,9 @@ function formatManifestSummary(label: string, manifest: ChannelManifestSummary |
 function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: ModelsSummary = null, delivery: DeliverySummary = null) {
   const channelRecords = channels?.channels ?? [];
   const providerRecords = models?.providers ?? [];
+  const channelRecordsById = new Map(channelRecords
+    .filter((channel) => channel?.id)
+    .map((channel) => [channel.id, channel]));
   const helperCommands = delivery?.helperCommands ?? {};
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
@@ -681,13 +737,26 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       id: channel.id,
       status: channel.status ?? 'unknown',
       deliveryModes: channel.deliveryModes ?? [],
+      inboundPath: channel.inboundPath ?? null,
+      outboundMode: channel.outboundMode ?? null,
       implementationPath: channel.implementationPath ?? null,
       implementationPresent: false,
+      manifestPath: channels?.manifest?.path ?? 'manifests/channels.json',
+      manifestPresent: channels?.manifest?.status === 'loaded',
       setupHint: (channel.auth?.envVars ?? []).length > 0
         ? `set ${(channel.auth?.envVars ?? []).join(', ')}`
         : 'define channel credentials',
       nextStep: channel.nextStep ?? null,
     }));
+  const enrichedChannelQueue = channelQueue.map((channel) => {
+    const registryRecord = channel.id ? channelRecordsById.get(channel.id) : null;
+    return {
+      ...channel,
+      inboundPath: channel.inboundPath ?? registryRecord?.inboundPath ?? null,
+      outboundMode: channel.outboundMode ?? registryRecord?.outboundMode ?? null,
+      deliveryModes: (channel.deliveryModes ?? []).length > 0 ? channel.deliveryModes : (registryRecord?.deliveryModes ?? []),
+    };
+  });
   const providerQueue = delivery?.providerQueue ?? providerRecords
     .filter((provider) => provider?.status !== 'active')
     .map((provider) => ({
@@ -697,6 +766,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       modalities: provider.modalities ?? [],
       implementationPath: provider.implementationPath ?? null,
       implementationPresent: false,
+      manifestPath: models?.manifest?.path ?? 'manifests/providers.json',
+      manifestPresent: models?.manifest?.status === 'loaded',
       setupHint: provider.authEnvVar && provider.defaultModel
         ? `set ${provider.authEnvVar} for ${provider.defaultModel}`
         : provider.authEnvVar
@@ -706,7 +777,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
             : 'choose auth and default model',
       nextStep: provider.nextStep ?? null,
     }));
-  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && channelQueue.length === 0 && providerQueue.length === 0) {
+  if (channelRecords.length === 0 && providerRecords.length === 0 && !channelManifestSummary && !providerManifestSummary && enrichedChannelQueue.length === 0 && providerQueue.length === 0) {
     return null;
   }
 
@@ -716,6 +787,68 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
+  const visibleChannelRecords = channelRecords.slice(0, 2);
+  const remainingChannelRecords = channelRecords.slice(2);
+  const remainingChannelRecordsSummary = remainingChannelRecords.length > 0
+    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => `${channel.name ?? channel.id ?? 'unknown-channel'} [${channel.status ?? 'unknown'}]`).join(', ')}`
+    : null;
+  const visibleProviderRecords = providerRecords.slice(0, 2);
+  const remainingProviderRecords = providerRecords.slice(2);
+  const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
+    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
+    : null;
+  const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
+  const remainingChannelQueue = enrichedChannelQueue.slice(1);
+  const remainingChannelQueueSummary = remainingChannelQueue.length > 0
+    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => channel.name ?? channel.id ?? 'unknown-channel').join(', ')}`
+    : null;
+  const visibleProviderQueue = providerQueue.slice(0, 1);
+  const remainingProviderQueue = providerQueue.slice(1);
+  const remainingProviderQueueSummary = remainingProviderQueue.length > 0
+    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
+    : null;
+  const formatDeliveryQueueSummary = (queue: DeliveryQueueItem[], {
+    pendingCount,
+    authBlockedCount,
+    manifestPath,
+  }: {
+    pendingCount?: number;
+    authBlockedCount?: number;
+    manifestPath: string;
+  }) => {
+    if (queue.length === 0) {
+      return null;
+    }
+
+    const queuePendingCount = typeof pendingCount === 'number' ? pendingCount : queue.length;
+    const queueAuthBlockedCount = typeof authBlockedCount === 'number'
+      ? authBlockedCount
+      : undefined;
+    const manifestReady = queue.every((item) => item?.manifestPresent === true);
+    const implementationPresentCount = queue.filter((item) => item?.implementationPresent === true).length;
+
+    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
+  };
+  const channelQueueSummary = formatDeliveryQueueSummary(enrichedChannelQueue, {
+    pendingCount: delivery?.pendingChannelCount,
+    authBlockedCount: delivery?.authBlockedChannelCount,
+    manifestPath: delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json',
+  });
+  const providerQueueSummary = formatDeliveryQueueSummary(providerQueue, {
+    pendingCount: delivery?.pendingProviderCount,
+    authBlockedCount: delivery?.authBlockedProviderCount,
+    manifestPath: delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json',
+  });
+  const envTemplateVarCount = (delivery?.envTemplateVarNames ?? []).length;
+  const missingTemplateVars = (delivery?.envTemplateMissingRequiredVars ?? []).filter(Boolean);
+  const requiredEnvVars = (delivery?.requiredEnvVars ?? []).filter(Boolean);
+  const coveredRequiredEnvVarCount = requiredEnvVars.filter((envVar, index, values) => values.indexOf(envVar) === index && (delivery?.envTemplateVarNames ?? []).includes(envVar)).length;
+  const requiredEnvVarCount = requiredEnvVars.length;
+  const envTemplateCoverageSuffix = requiredEnvVarCount > 0
+    ? ` (${coveredRequiredEnvVarCount}/${requiredEnvVarCount} required vars${missingTemplateVars.length > 0 ? `; missing ${missingTemplateVars.join(', ')}` : ''})`
+    : envTemplateVarCount > 0
+      ? ` (${envTemplateVarCount} vars)`
+      : '';
 
   return [
     channelManifestSummary,
@@ -723,10 +856,10 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- channels: ${channelRecords.length} total (${activeChannelCount} active, ${plannedChannelCount} planned, ${candidateChannelCount} candidate)`
       : null,
     (delivery?.envTemplatePresent && delivery.envTemplatePath)
-      ? `- env template: ${delivery.envTemplatePath}${(delivery.requiredEnvVars ?? []).length > 0 ? ` (${delivery.requiredEnvVars.length} vars)` : ''}`
+      ? `- env template: ${delivery.envTemplatePath}${envTemplateCoverageSuffix}`
       : null,
-    delivery?.envTemplatePresent && delivery.envTemplateCommand
-      ? `- env bootstrap: ${delivery.envTemplateCommand}`
+    delivery?.helperCommands?.bootstrapEnv
+      ? `- env bootstrap: ${delivery.helperCommands.bootstrapEnv}`
       : null,
     helperLine ? `- helpers: ${helperLine}` : null,
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
@@ -735,41 +868,71 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
-    ...channelRecords.slice(0, 2).map((channel) =>
-      `- ${channel.name ?? channel.id} via ${(channel.deliveryModes ?? []).join('/') || 'unspecified'} [${formatChannelAuth(channel.auth)}]`,
+    ...visibleChannelRecords.map((channel) =>
+      `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
-    channelQueue.length > 0
-      ? `- channel queue: ${delivery?.pendingChannelCount ?? channelQueue.length} pending via ${delivery?.channelManifestPath ?? channels?.manifest?.path ?? 'manifests/channels.json'}`
+    remainingChannelRecordsSummary,
+    channelQueueSummary
+      ? `- channel queue: ${channelQueueSummary}`
       : null,
-    ...channelQueue.slice(0, 1).map((channel) =>
-      `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${(channel.deliveryModes ?? []).length > 0 ? ` via ${(channel.deliveryModes ?? []).join('/')}` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}`,
-    ),
+    ...visibleChannelQueue.map((channel) => {
+      const authDetails = [
+        channel.authType ?? null,
+        (channel.capabilities ?? []).length > 0 ? `caps ${(channel.capabilities ?? []).join(', ')}` : null,
+      ].filter(Boolean).join('; ');
+      const flow = ((channel.deliveryModes ?? []).length > 0 || channel.outboundMode || channel.inboundPath)
+        ? ` via ${formatChannelFlow(channel)}`
+        : '';
+      const helperLine = [
+        channel.helperCommands?.bootstrapEnv ? `env ${channel.helperCommands.bootstrapEnv}` : null,
+        channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
+        channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
+      ].filter(Boolean).join(' | ');
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+    }),
+    remainingChannelQueueSummary,
     providerManifestSummary,
     providerRecords.length > 0
       ? `- models: ${providerRecords.length} total (${activeProviderCount} active, ${plannedProviderCount} planned, ${candidateProviderCount} candidate)`
       : null,
-    ...providerRecords.slice(0, 2).map((provider) => {
+    ...visibleProviderRecords.map((provider) => {
       const modalities = (provider.modalities ?? []).join(', ');
       return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
-    providerQueue.length > 0
-      ? `- provider queue: ${delivery?.pendingProviderCount ?? providerQueue.length} pending via ${delivery?.providerManifestPath ?? models?.manifest?.path ?? 'manifests/providers.json'}`
+    remainingProviderRecordsSummary,
+    providerQueueSummary
+      ? `- provider queue: ${providerQueueSummary}`
       : null,
-    ...providerQueue.slice(0, 1).map((provider) =>
-      `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}`,
-    ),
+    ...visibleProviderQueue.map((provider) => {
+      const providerDetails = [
+        (provider.features ?? []).length > 0 ? `features: ${(provider.features ?? []).join(', ')}` : null,
+        (provider.models ?? []).length > 0 ? `models: ${(provider.models ?? []).join(', ')}` : null,
+      ].filter(Boolean).join('; ');
+      const helperLine = [
+        provider.helperCommands?.bootstrapEnv ? `env ${provider.helperCommands.bootstrapEnv}` : null,
+        provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
+        provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
+      ].filter(Boolean).join(' | ');
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+    }),
+    remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
 }
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const helperCommands = ingestion?.helperCommands ?? {};
+  const sampleTextSourcePath = (ingestion?.sampleFileCommands ?? []).find(
+    (entry) => entry?.type === 'text' && entry?.command === ingestion?.sampleTextCommand,
+  )?.sourcePath ?? null;
   const hasProfileData = (ingestion?.profileCount ?? 0) > 0;
   const hasBootstrapData = Boolean(
     ingestion?.bootstrapProfileCommand
       || helperCommands.bootstrap
       || ingestion?.sampleImportCommand
       || ingestion?.importManifestCommand
+      || ingestion?.importManifestAndRefreshCommand
       || helperCommands.importManifest
+      || helperCommands.importManifestAndRefresh
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.refreshAllFoundationCommand
@@ -778,12 +941,22 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.importIntakeStale
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
+      || helperCommands.refreshFoundationBundle
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
   if (!ingestion || (!hasProfileData && !hasBootstrapData)) {
     return null;
   }
+
+  const profileCommandRecords = (ingestion.allProfileCommands?.length ?? 0) > 0
+    ? (ingestion.allProfileCommands ?? [])
+    : (ingestion.profileCommands ?? []);
+  const visibleProfileCommands = profileCommandRecords.slice(0, 2);
+  const remainingProfileCommands = profileCommandRecords.slice(2);
+  const remainingProfileSummary = remainingProfileCommands.length > 0
+    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => profile?.label ?? profile?.personId ?? 'unknown-profile').join(', ')}`
+    : null;
 
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
@@ -796,41 +969,61 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
     (() => {
-      const helperEntries = [
-        helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null,
-        helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null,
-        helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null,
-        helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null,
-        helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null,
-        helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null,
-        helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null,
-        helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null,
-        helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null,
-        helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null,
-        ...((ingestion.sampleFileCommands ?? [])
-          .filter((entry) => {
-            if (!entry?.command || !entry?.type) {
-              return false;
-            }
+      const helperEntries: string[] = [];
+      const pushHelperEntry = (entry: string | null | undefined) => {
+        if (entry && !helperEntries.includes(entry)) {
+          helperEntries.push(entry);
+        }
+      };
 
-            if (entry.type !== 'text') {
-              return true;
-            }
+      pushHelperEntry(helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null);
+      pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
+      pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
+      pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
+      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
+      pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
+      pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
+      pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
+      pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
+      pushHelperEntry(helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null);
+      pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
+      pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
+      pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
+      pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
+      pushHelperEntry(helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null);
+      pushHelperEntry(helperCommands.sampleMessage ? `sample-message ${helperCommands.sampleMessage}` : null);
+      pushHelperEntry(helperCommands.sampleTalk ? `sample-talk ${helperCommands.sampleTalk}` : null);
+      pushHelperEntry(helperCommands.sampleScreenshot ? `sample-screenshot ${helperCommands.sampleScreenshot}` : null);
 
-            return entry.command !== ingestion.sampleTextCommand;
-          })
-          .map((entry) => `sample-${entry.type} ${entry.command}`)),
-        ...((ingestion.sampleInlineCommands ?? [])
-          .filter((entry) => entry?.command && entry?.type)
-          .map((entry) => `sample-${entry.type} ${entry.command}`)),
-      ].filter(Boolean);
+      (ingestion.sampleFileCommands ?? [])
+        .filter((entry) => {
+          if (!entry?.command || !entry?.type) {
+            return false;
+          }
+
+          if (entry.type !== 'text') {
+            return true;
+          }
+
+          return entry.command !== ingestion.sampleTextCommand;
+        })
+        .forEach((entry) => pushHelperEntry(`sample-${entry.type} ${entry.command}`));
+      (ingestion.sampleInlineCommands ?? [])
+        .filter((entry) => entry?.command && entry?.type)
+        .forEach((entry) => pushHelperEntry(`sample-${entry.type} ${entry.command}`));
 
       return helperEntries.length > 0
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[ingestion.importManifestCommand, ingestion.refreshAllFoundationCommand, ingestion.staleRefreshCommand].filter(Boolean).join(' | ')}`
+    (ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${[
+        ingestion.importManifestCommand,
+        ingestion.importManifestAndRefreshCommand,
+        ingestion.refreshAllFoundationCommand,
+        ingestion.staleRefreshCommand,
+      ].filter(Boolean).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
@@ -842,7 +1035,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`
       : null,
     ingestion.sampleTextPresent && ingestion.sampleTextCommand
-      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}`
+      ? `- sample text: ${ingestion.sampleTextPersonId ?? 'sample-profile'} -> ${ingestion.sampleTextCommand}${sampleTextSourcePath ? ` @ ${sampleTextSourcePath}` : ''}`
       : null,
     ...((ingestion.sampleFileCommands ?? [])
       .filter((entry) => {
@@ -856,14 +1049,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
 
         return entry.command !== ingestion.sampleTextCommand;
       })
-      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}`)),
+      .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),
     ...((ingestion.sampleInlineCommands ?? [])
       .filter((entry) => entry?.command && entry?.type)
       .map((entry) => `- sample ${entry.type}: ${entry.personId ?? 'sample-profile'} -> ${entry.command}${entry.sourcePath ? ` @ ${entry.sourcePath}` : ''}`)),
     ingestion.sampleManifestStatus === 'invalid' && ingestion.sampleManifestPath
       ? `- sample manifest invalid: ${ingestion.sampleManifestError ?? 'unable to parse'} @ ${ingestion.sampleManifestPath}`
       : null,
-    ...(ingestion.profileCommands ?? []).slice(0, 2).map((profile) => {
+    ...visibleProfileCommands.map((profile) => {
       const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
@@ -884,6 +1077,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
       return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
+    remainingProfileSummary,
   ].filter(Boolean).join('\n');
 }
 
@@ -905,6 +1099,16 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     ? `- coverage: ${overview.readyAreaCount ?? 0}/${overview.totalAreaCount ?? 4} ready${missingAreas.length > 0 ? `; missing ${missingAreas.join(', ')}` : ''}${thinAreas.length > 0 ? `; thin ${thinAreas.join(', ')}` : ''}`
     : null;
 
+  const queuedAreas = maintenance?.queuedAreas ?? [];
+  const queuedAreaLines = queuedAreas.slice(0, 2).map((area) => {
+    const command = area.command ?? buildCoreFoundationCommand(area);
+    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
+  });
+  const remainingQueuedAreas = queuedAreas.slice(2);
+  const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
+    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]`).join(', ')}`
+    : null;
+
   return [
     coverageLine,
     maintenance
@@ -913,6 +1117,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     (() => {
       const helperEntries = [
         maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
+        maintenance?.helperCommands?.scaffoldMissing ? `scaffold-missing ${maintenance.helperCommands.scaffoldMissing}` : null,
+        maintenance?.helperCommands?.scaffoldThin ? `scaffold-thin ${maintenance.helperCommands.scaffoldThin}` : null,
         maintenance?.helperCommands?.memory ? `memory ${maintenance.helperCommands.memory}` : null,
         maintenance?.helperCommands?.skills ? `skills ${maintenance.helperCommands.skills}` : null,
         maintenance?.helperCommands?.soul ? `soul ${maintenance.helperCommands.soul}` : null,
@@ -923,15 +1129,13 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    ...(maintenance?.queuedAreas ?? []).slice(0, 2).map((area) => {
-      const command = area.command ?? buildCoreFoundationCommand(area);
-      return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
-    }),
+    ...queuedAreaLines,
+    remainingQueuedAreaSummary,
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
       : null,
     skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}`
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     soul
       ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`

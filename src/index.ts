@@ -72,6 +72,7 @@ type QueueLike = {
   manifestPath?: string | null;
   manifestPresent?: boolean;
   manifestScaffoldPath?: string | null;
+  missingEnvVars?: string[];
 };
 
 type ProfileSummaryLike = {
@@ -156,8 +157,13 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const textFilePersonIds: Record<string, string> = {};
     const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
     const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
-    const filePaths = new Set<string>();
+    const filePaths: string[] = [];
     const profileDisplayNames = new Map<string, string>();
+    const pushUniqueFilePath = (value: string) => {
+      if (!filePaths.includes(value)) {
+        filePaths.push(value);
+      }
+    };
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
 
@@ -166,14 +172,18 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         return null;
       }
 
-      const normalized = slugifyPersonId(value);
+      const trimmedValue = value.trim();
+      const normalized = slugifyPersonId(trimmedValue);
       if (!normalized) {
         return null;
       }
 
       profileIds.add(normalized);
-      if (typeof displayName === 'string' && displayName.trim().length > 0) {
-        profileDisplayNames.set(normalized, displayName.trim());
+      const normalizedDisplayName = typeof displayName === 'string' && displayName.trim().length > 0
+        ? displayName.trim()
+        : (trimmedValue !== normalized ? trimmedValue : null);
+      if (normalizedDisplayName && normalizedDisplayName !== normalized) {
+        profileDisplayNames.set(normalized, normalizedDisplayName);
       }
       return normalized;
     };
@@ -265,7 +275,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         }
 
         const normalizedRelativeFilePath = relativeFilePath.split(path.sep).join('/');
-        filePaths.add(normalizedRelativeFilePath);
+        pushUniqueFilePath(normalizedRelativeFilePath);
 
         if (entryRecord.type === 'text') {
           textFilePersonIds[normalizedRelativeFilePath] = normalizedPersonId;
@@ -318,7 +328,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
         return left.personId.localeCompare(right.personId);
       }),
-      filePaths: [...filePaths].sort(),
+      filePaths: filePaths.slice(),
       error: null,
     };
   } catch (error) {
@@ -482,7 +492,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? 'queued'
     : 'ready';
 
-  const useBulkRefreshCommand = refreshProfileCount > 1 && typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0;
+  const useBulkRefreshCommand = refreshProfileCount > 1
+    && (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
+      || typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0);
   const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
     ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -502,10 +514,33 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const bulkRefreshPaths = useBulkRefreshCommand
     ? collectFoundationDraftPaths(queuedProfileSummaries)
     : [];
-  const bulkCoreScaffoldCommand = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
-    ? coreMaintenance.helperCommands.scaffoldAll
-    : null;
-  const useBulkCoreScaffoldCommand = !queuedProfile?.refreshCommand && queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
+  const bulkCoreScaffoldCommand = (() => {
+    if (queuedAreas.length <= 1) {
+      return null;
+    }
+
+    const scaffoldMissing = typeof coreMaintenance?.helperCommands?.scaffoldMissing === 'string' && coreMaintenance.helperCommands.scaffoldMissing.length > 0
+      ? coreMaintenance.helperCommands.scaffoldMissing
+      : null;
+    const scaffoldThin = typeof coreMaintenance?.helperCommands?.scaffoldThin === 'string' && coreMaintenance.helperCommands.scaffoldThin.length > 0
+      ? coreMaintenance.helperCommands.scaffoldThin
+      : null;
+    const scaffoldAll = typeof coreMaintenance?.helperCommands?.scaffoldAll === 'string' && coreMaintenance.helperCommands.scaffoldAll.length > 0
+      ? coreMaintenance.helperCommands.scaffoldAll
+      : null;
+    const queuedStatuses = new Set(queuedAreas.map((area: any) => area?.status).filter((value: unknown): value is string => typeof value === 'string' && value.length > 0));
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing') && scaffoldMissing) {
+      return scaffoldMissing;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin') && scaffoldThin) {
+      return scaffoldThin;
+    }
+
+    return scaffoldAll;
+  })();
+  const useBulkCoreScaffoldCommand = queuedAreas.length > 1 && Boolean(bulkCoreScaffoldCommand);
   const bulkCoreScaffoldPaths = useBulkCoreScaffoldCommand
     ? Array.from(new Set(
       queuedAreas.flatMap((area: any) => Array.isArray(area?.paths)
@@ -513,28 +548,63 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
         : []),
     ))
     : [];
-  const bulkCoreScaffoldLabel = queuedArea?.action
-    ? `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`
-    : 'scaffold missing or thin core foundation areas';
+  const bulkCoreScaffoldLabel = (() => {
+    if (!queuedArea?.action) {
+      if (missingAreaCount > 0 && thinAreaCount === 0) {
+        return 'scaffold missing core foundation areas';
+      }
+
+      if (thinAreaCount > 0 && missingAreaCount === 0) {
+        return 'repair thin core foundation areas';
+      }
+
+      return 'scaffold missing or thin core foundation areas';
+    }
+
+    if (missingAreaCount > 0 && thinAreaCount === 0) {
+      return `scaffold missing core foundation areas — starting with ${queuedArea.action}`;
+    }
+
+    if (thinAreaCount > 0 && missingAreaCount === 0) {
+      return `repair thin core foundation areas — starting with ${queuedArea.action}`;
+    }
+
+    return `scaffold missing or thin core foundation areas — starting with ${queuedArea.action}`;
+  })();
+
+  const coreQueueSummary = thinAreaCount > 0 || missingAreaCount > 0
+    ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
+    : '';
+  const hasQueuedCoreFoundation = queuedAreas.length > 0;
+  const coreNextAction = useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null);
+  const coreCommand = useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand;
+  const corePaths = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldPaths
+    : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []);
+  const profileNextAction = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
+    : null;
+  const profileCommand = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand
+      ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
+        ? maintenance.refreshBundleCommand
+        : maintenance.staleRefreshCommand)
+      : queuedProfile.refreshCommand)
+    : null;
+  const profilePaths = queuedProfile?.refreshCommand
+    ? (useBulkRefreshCommand
+      ? bulkRefreshPaths
+      : buildFoundationDraftPaths(queuedProfileSummary))
+    : [];
 
   return {
     id: 'foundation',
     label: 'Foundation',
     status,
-    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
-    nextAction: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
-      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null)),
-    command: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand ? maintenance.staleRefreshCommand : queuedProfile.refreshCommand)
-      : (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand),
-    paths: queuedProfile?.refreshCommand
-      ? (useBulkRefreshCommand
-          ? bulkRefreshPaths
-          : buildFoundationDraftPaths(queuedProfileSummary))
-      : (useBulkCoreScaffoldCommand
-          ? bulkCoreScaffoldPaths
-          : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : [])),
+    summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
+    nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
+    command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
+    paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
   };
 }
 
@@ -574,7 +644,22 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
-function buildIngestionPriority(ingestionSummary: any): WorkPriority {
+function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
+  if (!fs.existsSync(envTemplateAbsolutePath)) {
+    return [];
+  }
+
+  return Array.from(new Set(
+    fs.readFileSync(envTemplateAbsolutePath, 'utf8')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#'))
+      .map((line) => line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1] ?? null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  )).sort((left, right) => left.localeCompare(right));
+}
+
+function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const importedProfileCount = ingestionSummary?.importedProfileCount ?? 0;
   const metadataOnlyProfileCount = ingestionSummary?.metadataOnlyProfileCount ?? 0;
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
@@ -584,12 +669,75 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     ? 'ready'
     : 'queued';
 
+  const getReadyIntakeManifestSummary = (profile: any) => {
+    const intakePaths = Array.isArray(profile?.intakePaths)
+      ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+      : [];
+    const starterManifestPath = intakePaths.find((value) => value.endsWith('materials.template.json')) ?? null;
+    if (!starterManifestPath) {
+      return {
+        intakePaths,
+        starterManifestPath: null,
+        manifestSummary: null,
+      };
+    }
+
+    const manifestSummary = readSampleManifestSummary(rootDir, starterManifestPath);
+    if (manifestSummary.status === 'invalid') {
+      try {
+        const parsedManifest = JSON.parse(fs.readFileSync(path.join(rootDir, starterManifestPath), 'utf8')) as {
+          entries?: unknown;
+          entryTemplates?: unknown;
+        };
+        const hasStarterTemplates = parsedManifest
+          && typeof parsedManifest === 'object'
+          && !Array.isArray(parsedManifest)
+          && Array.isArray(parsedManifest.entries)
+          && parsedManifest.entries.length === 0
+          && parsedManifest.entryTemplates
+          && typeof parsedManifest.entryTemplates === 'object'
+          && !Array.isArray(parsedManifest.entryTemplates)
+          && Object.keys(parsedManifest.entryTemplates).length > 0;
+        if (hasStarterTemplates) {
+          return {
+            intakePaths,
+            starterManifestPath,
+            manifestSummary: null,
+          };
+        }
+      } catch {
+        // Preserve the invalid manifest summary below.
+      }
+    }
+
+    return {
+      intakePaths,
+      starterManifestPath,
+      manifestSummary,
+    };
+  };
+
+  const collectReadyIntakeImportPaths = (profile: any) => {
+    const { intakePaths, manifestSummary } = getReadyIntakeManifestSummary(profile);
+    if (!manifestSummary || manifestSummary.status !== 'loaded') {
+      return intakePaths;
+    }
+
+    return Array.from(new Set([
+      ...intakePaths,
+      ...manifestSummary.filePaths,
+    ]));
+  };
+
   let nextAction: string | null = null;
   let command: string | null = null;
   let paths: string[] = [];
 
   if ((ingestionSummary?.profileCount ?? 0) === 0) {
     const sampleStarterCommand = ingestionSummary?.sampleStarterCommand ?? null;
+    const exactSampleManifestCommand = typeof ingestionSummary?.sampleManifestCommand === 'string' && ingestionSummary.sampleManifestCommand.length > 0
+      ? ingestionSummary.sampleManifestCommand
+      : null;
     const samplePaths = collectSampleManifestPaths(ingestionSummary);
     const sampleManifestPath = typeof ingestionSummary?.sampleManifestPath === 'string' && ingestionSummary.sampleManifestPath.length > 0
       ? ingestionSummary.sampleManifestPath
@@ -598,7 +746,7 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
 
     if (sampleStarterCommand) {
       nextAction = buildSampleImportNextAction(ingestionSummary);
-      command = sampleStarterCommand;
+      command = exactSampleManifestCommand ?? sampleStarterCommand;
       paths = samplePaths;
     } else if (sampleManifestInvalid) {
       nextAction = 'fix the checked-in sample manifest for first imports';
@@ -611,7 +759,21 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     }
   } else if (refreshProfileCount > 0 || incompleteProfileCount > 0) {
     nextAction = 'refresh stale or incomplete target profiles';
-    command = ingestionSummary?.staleRefreshCommand ?? null;
+    command = typeof ingestionSummary?.refreshFoundationBundleCommand === 'string' && ingestionSummary.refreshFoundationBundleCommand.length > 0
+      ? ingestionSummary.refreshFoundationBundleCommand
+      : (ingestionSummary?.staleRefreshCommand ?? null);
+    const refreshProfileIds = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands
+        .filter((profile: any) => profile?.refreshFoundationCommand && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0))
+        .map((profile: any) => profile.personId)
+        .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const refreshProfiles = refreshProfileIds.length > 0
+      ? refreshProfileIds
+        .map((profileId) => profiles.find((profile) => profile?.id === profileId) ?? null)
+        .filter((profile): profile is ProfileSummaryLike => Boolean(profile?.id))
+      : [];
+    paths = collectFoundationDraftPaths(refreshProfiles);
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
@@ -619,11 +781,27 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand);
     const readyIntakeProfiles = metadataProfileCommands.filter((profile: any) =>
       profile?.intakeReady === true
+      && profile?.intakeManifestStatus !== 'invalid'
       && profile?.importManifestCommand
       && profile.importManifestCommand === profile.importMaterialCommand
       && !profile.importManifestCommand.includes('<'),
     );
-    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? null;
+    const invalidReadyIntakeProfiles = metadataProfileCommands
+      .filter((profile: any) =>
+        profile?.intakeReady === true
+        && profile?.intakeManifestStatus === 'invalid'
+        && typeof profile?.intakeManifestPath === 'string'
+        && profile.intakeManifestPath.length > 0,
+      )
+      .map((profile: any) => ({
+        profile,
+        starterManifestPath: profile.intakeManifestPath,
+        manifestSummary: {
+          status: 'invalid',
+          error: profile.intakeManifestError ?? null,
+        },
+      }));
+    const metadataOnlyProfile = metadataProfileCommands.find((profile: any) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? invalidReadyIntakeProfiles[0]?.profile ?? null;
     const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
       ? metadataOnlyProfile.importMaterialCommand
       : null;
@@ -641,13 +819,21 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
     if (metadataOnlyProfileNeedingScaffold) {
       const intakeCompletion = metadataOnlyProfileNeedingScaffold?.intakeCompletion;
       const isPartialIntake = intakeCompletion === 'partial';
-      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0;
+      const bundledIntakeCommand = typeof ingestionSummary?.helperCommands?.scaffoldBundle === 'string' && ingestionSummary.helperCommands.scaffoldBundle.length > 0
+        ? ingestionSummary.helperCommands.scaffoldBundle
+        : null;
+      const fallbackBulkIntakeCommand = typeof ingestionSummary?.intakeStaleCommand === 'string' && ingestionSummary.intakeStaleCommand.length > 0
+        ? ingestionSummary.intakeStaleCommand
+        : null;
+      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && Boolean(bundledIntakeCommand ?? fallbackBulkIntakeCommand);
       nextAction = metadataOnlyProfileNeedingScaffold?.label
         ? (useBulkIntakeCommand
           ? `${isPartialIntake ? 'complete' : 'scaffold'} incomplete intake landing zones — starting with ${metadataOnlyProfileNeedingScaffold.label}`
           : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${metadataOnlyProfileNeedingScaffold.label}`)
         : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
-      command = useBulkIntakeCommand ? ingestionSummary.intakeStaleCommand : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
+      command = useBulkIntakeCommand
+        ? (bundledIntakeCommand ?? fallbackBulkIntakeCommand)
+        : metadataOnlyProfileNeedingScaffold.updateIntakeCommand;
       const collectIntakePaths = (profile: any) => {
         const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
           ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
@@ -665,27 +851,36 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
           .filter((profile: any) => profile?.intakeReady === false && profile?.updateIntakeCommand)
           .flatMap((profile: any) => collectIntakePaths(profile))
         : collectIntakePaths(metadataOnlyProfileNeedingScaffold);
+    } else if (invalidReadyIntakeProfiles.length > 0) {
+      const [firstInvalidReadyIntakeProfile] = invalidReadyIntakeProfiles;
+      nextAction = invalidReadyIntakeProfiles.length > 1
+        ? (firstInvalidReadyIntakeProfile?.profile?.label
+          ? `repair invalid profile-local intake manifests — starting with ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'repair invalid profile-local intake manifests')
+        : (firstInvalidReadyIntakeProfile?.profile?.label
+          ? `repair the invalid intake manifest for ${firstInvalidReadyIntakeProfile.profile.label}`
+          : 'repair the invalid profile-local intake manifest');
+      command = null;
+      paths = Array.from(new Set(invalidReadyIntakeProfiles.map((entry: any) => entry.starterManifestPath)));
     } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label
         ? `import source materials for ready intake profiles — starting with ${readyIntakeProfiles[0].label}`
         : 'import source materials for ready intake profiles';
-      command = typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
-        ? ingestionSummary.intakeImportStaleCommand
-        : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
-            ? ingestionSummary.intakeImportAllCommand
-            : null);
-      paths = readyIntakeProfiles.flatMap((profile: any) => Array.isArray(profile?.intakePaths)
-        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
-        : []);
+      command = typeof ingestionSummary?.helperCommands?.importIntakeBundle === 'string' && ingestionSummary.helperCommands.importIntakeBundle.length > 0
+        ? ingestionSummary.helperCommands.importIntakeBundle
+        : (typeof ingestionSummary?.intakeImportStaleCommand === 'string' && ingestionSummary.intakeImportStaleCommand.length > 0
+            ? ingestionSummary.intakeImportStaleCommand
+            : (typeof ingestionSummary?.intakeImportAllCommand === 'string' && ingestionSummary.intakeImportAllCommand.length > 0
+                ? ingestionSummary.intakeImportAllCommand
+                : null));
+      paths = readyIntakeProfiles.flatMap((profile: any) => collectReadyIntakeImportPaths(profile));
     } else if (runnableImportCommand) {
       nextAction = metadataOnlyProfile?.label
         ? `import source materials for ${metadataOnlyProfile.label}`
         : 'import source materials for metadata-only profiles';
       command = runnableImportCommand;
       paths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
-        ? (Array.isArray(metadataOnlyProfile?.intakePaths)
-          ? metadataOnlyProfile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
-          : [])
+        ? collectReadyIntakeImportPaths(metadataOnlyProfile)
         : (() => {
           const matchingSampleFile = sampleFileCommands.find((entry: any) =>
             entry?.personId === metadataOnlyProfile?.personId
@@ -695,7 +890,26 @@ function buildIngestionPriority(ingestionSummary: any): WorkPriority {
           );
 
           if (matchingSampleFile) {
-            return [matchingSampleFile.path];
+            return Array.from(new Set([
+              typeof matchingSampleFile.sourcePath === 'string' && matchingSampleFile.sourcePath.length > 0
+                ? matchingSampleFile.sourcePath
+                : null,
+              matchingSampleFile.path,
+            ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
+          }
+
+          const sampleInlineCommands = Array.isArray(ingestionSummary?.sampleInlineCommands)
+            ? ingestionSummary.sampleInlineCommands.filter((entry: any) => entry && typeof entry === 'object')
+            : [];
+          const matchingSampleInline = sampleInlineCommands.find((entry: any) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.sourcePath === 'string'
+            && entry.sourcePath.length > 0,
+          );
+
+          if (matchingSampleInline) {
+            return [matchingSampleInline.sourcePath];
           }
 
           if (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId) {
@@ -752,25 +966,31 @@ function buildDeliveryPriority({
   label,
   pendingCount,
   configuredCount,
+  authBlockedCount,
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
+  envTemplateVarNames = [],
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
   label: 'Channels' | 'Providers';
   pendingCount: number;
   configuredCount: number;
+  authBlockedCount?: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
+  envTemplateVarNames?: string[];
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
   const bundledImplementationPaths = Array.isArray(queue)
     ? queue
       .filter((item) => item?.implementationPresent === false)
-      .map((item) => typeof item?.implementationPath === 'string' && item.implementationPath.length > 0 ? item.implementationPath : null)
+      .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
+        ? item.implementationScaffoldPath
+        : null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
@@ -778,19 +998,39 @@ function buildDeliveryPriority({
   const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
     ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const needsCredentialBootstrap = firstQueuedMissingEnvVars.length > 0 && pendingCount > configuredCount;
+  const normalizedEnvTemplateVarNames = Array.isArray(envTemplateVarNames)
+    ? envTemplateVarNames.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const templateCoversLeaderCredentials = firstQueuedMissingEnvVars.length > 0
+    && firstQueuedMissingEnvVars.every((envVar) => normalizedEnvTemplateVarNames.includes(envVar));
+  const needsCredentialBootstrap = templateCoversLeaderCredentials && pendingCount > configuredCount;
   const bundledImplementationCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
     : 0;
+  const normalizedAuthBlockedCount = typeof authBlockedCount === 'number'
+    ? authBlockedCount
+    : Array.isArray(queue)
+      ? queue.filter((item) => Array.isArray(item?.missingEnvVars) && item.missingEnvVars.length > 0).length
+      : Math.max(pendingCount - configuredCount, 0);
+  const implementationPresentCount = Array.isArray(queue)
+    ? queue.filter((item) => item?.implementationPresent === true).length
+    : 0;
+  const manifestReady = Array.isArray(queue) && queue.length > 0
+    ? queue.every((item) => item?.manifestPresent === true)
+    : false;
   const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
-  const paths = [
-    envTemplatePath,
-    typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
-    ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
-    ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
-      ? [firstQueued.implementationPath]
-      : []),
-  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
+  const paths = includeEnvTemplatePath
+    ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
+    : [
+      typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
+      ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
+      ...(!shouldUseImplementationBundle
+        && typeof firstQueued?.implementationScaffoldPath === 'string'
+        && firstQueued.implementationScaffoldPath.length > 0
+        ? [firstQueued.implementationScaffoldPath]
+        : []),
+    ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 
   const followUpParts = [
     firstQueued?.setupHint,
@@ -818,7 +1058,9 @@ function buildDeliveryPriority({
     id,
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
-    summary: `${pendingCount} pending, ${configuredCount} configured`,
+    summary: pendingCount > 0
+      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
+      : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
     paths,
@@ -859,6 +1101,19 @@ export function relativizeDraftPaths(rootDir: string, result: DraftRefreshResult
   };
 }
 
+function readOptionalStringOption(options: ParsedOptions, key: string): string | undefined {
+  if (!(key in options)) {
+    return undefined;
+  }
+
+  const value = options[key];
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Missing value for --${key}`);
+  }
+
+  return value;
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -884,8 +1139,9 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   });
 
   if (subcommand === 'manifest') {
+    const manifestFile = readOptionalStringOption(options, 'file');
     const result = ingestion.importManifest({
-      manifestFile: typeof options.file === 'string' ? options.file : undefined,
+      manifestFile,
       refreshFoundation: Boolean(options['refresh-foundation']),
     });
 
@@ -893,9 +1149,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'sample') {
-    const requestedSampleManifestPath = typeof options.file === 'string' && options.file.trim().length > 0
-      ? options.file.trim()
-      : null;
+    const requestedSampleManifestPath = readOptionalStringOption(options, 'file')?.trim() ?? null;
     const sampleManifestRelativePath = requestedSampleManifestPath ?? detectSampleManifestRelativePath(rootDir);
     const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
     if (sampleManifest.status !== 'loaded' || !sampleManifestRelativePath) {
@@ -923,7 +1177,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
     if (!intakePersonId) {
-      throw new Error('Missing required --person argument');
+      throw new Error('import intake requires --person, --stale, or --all');
     }
 
     return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
@@ -985,7 +1239,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   throw new Error(`Unsupported import type: ${subcommand}`);
 }
 
-export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
+export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions): any {
   const ingestion = new MaterialIngestion(rootDir);
   const personId = typeof options.person === 'string' ? options.person : undefined;
 
@@ -1045,7 +1299,9 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (!personId) {
-    throw new Error('Missing required --person argument');
+    throw new Error(subcommand === 'foundation'
+      ? 'update foundation requires --person, --stale, or --all'
+      : 'Missing required --person argument');
   }
 
   if (subcommand === 'foundation') {
@@ -1063,16 +1319,24 @@ export function buildSummary(rootDir: string) {
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
+  const skillRecords = skillNames.map((skillName) => ({
+    id: skillName,
+    name: skillName,
+    description: skillInventory.documentedExcerpts?.[skillName] ?? null,
+    status: 'discovered',
+  }));
   const channelManifest = manifestLoader.loadChannelManifestSummary();
   const providerManifest = manifestLoader.loadProviderManifestSummary();
 
-  const voice = new VoiceProfile({
-    tone: 'human',
-    style: 'person-specific',
-    constraints: ['stay faithful to learned voice'],
-    signatures: ['consistent persona', 'compact but vivid phrasing'],
-    languageHints: ['preserve bilingual or multilingual behavior when present'],
-  });
+  const voice = typeof voiceDocument === 'string' && voiceDocument.trim().length > 0
+    ? VoiceProfile.fromDocument(voiceDocument)
+    : new VoiceProfile({
+      tone: 'human',
+      style: 'person-specific',
+      constraints: ['stay faithful to learned voice'],
+      signatures: ['consistent persona', 'compact but vivid phrasing'],
+      languageHints: ['preserve bilingual or multilingual behavior when present'],
+    });
   const soul = SoulProfile.fromDocument(soulDocument);
 
   const profile = new AgentProfile({
@@ -1090,7 +1354,7 @@ export function buildSummary(rootDir: string) {
     shortTerm: memoryIndex.daily,
     longTerm: memoryIndex.longTerm,
   });
-  const skills = new SkillRegistry(skillNames);
+  const skills = new SkillRegistry(skillRecords);
   const channels = new ChannelRegistry();
   if (Array.isArray(channelManifest.records)) {
     channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
@@ -1114,6 +1378,7 @@ export function buildSummary(rootDir: string) {
   const sampleText = readSampleTextSummary(rootDir, sampleTextRelativePath);
   const foundation = buildFoundationRollup(profiles) as any;
   const ingestionSummary = buildIngestionSummary(profiles, {
+    rootDir,
     sampleManifestPath: sampleManifestRelativePath,
     sampleManifest,
     sampleTextPath: sampleText.present ? sampleText.path : null,
@@ -1146,15 +1411,21 @@ export function buildSummary(rootDir: string) {
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
+  const envConfigPresent = fs.existsSync(path.join(rootDir, '.env'));
+  const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
+  const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
+  const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
     envTemplatePresent,
-    envTemplateCommand: envTemplatePresent ? 'cp .env.example .env' : null,
+    envTemplateCommand: completeEnvBootstrapCommand,
+    envTemplateVarNames,
+    envTemplateMissingRequiredVars,
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
-      bootstrapEnv: envTemplatePresent ? 'cp .env.example .env' : null,
+      bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,
     },
   };
   const workLoop = new WorkLoop({
@@ -1162,15 +1433,17 @@ export function buildSummary(rootDir: string) {
     objectives: workLoopObjectives,
     priorities: [
       buildFoundationPriority(foundation, coreFoundation, profiles),
-      buildIngestionPriority(ingestionSummary),
+      buildIngestionPriority(ingestionSummary, rootDir, profiles),
       buildDeliveryPriority({
         id: 'channels',
         label: 'Channels',
         pendingCount: deliverySummary.pendingChannelCount,
         configuredCount: deliverySummary.configuredChannelCount,
+        authBlockedCount: deliverySummary.authBlockedChannelCount,
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplateVarNames: deliverySummary.envTemplateVarNames,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1178,9 +1451,11 @@ export function buildSummary(rootDir: string) {
         label: 'Providers',
         pendingCount: deliverySummary.pendingProviderCount,
         configuredCount: deliverySummary.configuredProviderCount,
+        authBlockedCount: deliverySummary.authBlockedProviderCount,
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplateVarNames: deliverySummary.envTemplateVarNames,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],
@@ -1221,7 +1496,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(8000),
+    promptPreview: prompt.buildPreview(12500),
   };
 }
 
@@ -1234,8 +1509,8 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
-    '  node src/index.js import intake --stale             Import every ready metadata-only intake manifest and refresh drafts',
-    '  node src/index.js import intake --all               Import every ready profile-local intake manifest and refresh drafts',
+    '  node src/index.js import intake --stale             Import ready intake manifests for metadata-only profiles that still need first imports',
+    '  node src/index.js import intake --all               Import every ready profile-local intake manifest, including already-imported profiles',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
@@ -1243,8 +1518,8 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
     '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
-    '  node src/index.js update intake --stale',
-    '  node src/index.js update intake --all',
+    '  node src/index.js update intake --stale             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
+    '  node src/index.js update intake --all               Rebuild intake scaffolds for every metadata-only profile',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
     '  node src/index.js update foundation --all',
@@ -1253,6 +1528,18 @@ function buildCliUsageLines(): string[] {
 
 function formatCliUsage(): string {
   return `${buildCliUsageLines().join('\n')}\n`;
+}
+
+function formatUsageHint(usage: string, examples: string[] = []): string {
+  if (examples.length === 0) {
+    return usage;
+  }
+
+  return [
+    usage,
+    'Examples:',
+    ...examples.map((example) => `  ${example}`),
+  ].join('\n');
 }
 
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
@@ -1265,7 +1552,13 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' && subcommand === 'intake') {
-    return 'Usage: node src/index.js import intake --person <person-id> | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js import intake --person <person-id> | --stale | --all',
+      [
+        "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+        'node src/index.js import intake --stale --refresh-foundation',
+      ],
+    );
   }
 
   if (command === 'import' && subcommand === 'text') {
@@ -1289,11 +1582,23 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'update' && subcommand === 'intake') {
-    return 'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all',
+      [
+        "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        'node src/index.js update intake --stale',
+      ],
+    );
   }
 
   if (command === 'update' && subcommand === 'foundation') {
-    return 'Usage: node src/index.js update foundation --person <person-id> | --stale | --all';
+    return formatUsageHint(
+      'Usage: node src/index.js update foundation --person <person-id> | --stale | --all',
+      [
+        "node src/index.js update foundation --person 'harry-han'",
+        'node src/index.js update foundation --stale',
+      ],
+    );
   }
 
   if (command === 'import' || command === 'update') {

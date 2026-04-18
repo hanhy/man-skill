@@ -121,20 +121,28 @@ function buildSkillsDocumentationPaths(undocumentedSkillNames: string[]): string
 function buildSkillsMaintenanceAction({
   skillsCount,
   undocumentedSkillNames,
+  thinSkillNames,
 }: {
   skillsCount: number;
   undocumentedSkillNames: string[];
+  thinSkillNames: string[];
 }): string | null {
   if (skillsCount === 0) {
     return 'create skills/<name>/SKILL.md for at least one repo skill';
   }
 
   const documentationPaths = buildSkillsDocumentationPaths(undocumentedSkillNames);
-  if (documentationPaths.length === 0) {
+  const thinDocumentationPaths = buildSkillsDocumentationPaths(thinSkillNames);
+  const actions = [
+    documentationPaths.length > 0 ? `create ${formatList(documentationPaths)}` : null,
+    thinDocumentationPaths.length > 0 ? `add non-heading guidance to ${formatList(thinDocumentationPaths)}` : null,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (actions.length === 0) {
     return null;
   }
 
-  return `create ${formatList(documentationPaths)}`;
+  return actions.join(' | ');
 }
 
 function collectRecommendedActions({
@@ -142,6 +150,7 @@ function collectRecommendedActions({
   memoryEmptyBuckets,
   skillsCount,
   undocumentedSkillNames,
+  thinSkillNames,
   soulPresent,
   soulLineCount,
   voicePresent,
@@ -151,6 +160,7 @@ function collectRecommendedActions({
   memoryEmptyBuckets: string[];
   skillsCount: number;
   undocumentedSkillNames: string[];
+  thinSkillNames: string[];
   soulPresent: boolean;
   soulLineCount: number;
   voicePresent: boolean;
@@ -170,6 +180,7 @@ function collectRecommendedActions({
   const skillsAction = buildSkillsMaintenanceAction({
     skillsCount,
     undocumentedSkillNames,
+    thinSkillNames,
   });
   if (skillsAction) {
     actions.push(skillsAction);
@@ -233,21 +244,26 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
 function buildCoreFoundationMaintenance({
   memory,
   skills,
-  undocumentedSkillNames,
+  missingSkillNames,
+  thinSkillNames,
   soul,
   voice,
 }: {
   memory: CoreMemoryFoundationSummary;
   skills: CoreSkillsFoundationSummary;
-  undocumentedSkillNames: string[];
+  missingSkillNames: string[];
+  thinSkillNames: string[];
   soul: CoreDocumentFoundationSummary;
   voice: CoreDocumentFoundationSummary;
 }): CoreFoundationMaintenanceSummary {
   const queue: CoreFoundationMaintenanceQueueItem[] = [];
   const skillsAction = buildSkillsMaintenanceAction({
     skillsCount: skills.count,
-    undocumentedSkillNames,
+    undocumentedSkillNames: missingSkillNames,
+    thinSkillNames,
   });
+  const missingSkillPaths = buildSkillsDocumentationPaths(missingSkillNames);
+  const thinSkillPaths = buildSkillsDocumentationPaths(thinSkillNames);
   const soulAction = !soul.present
     ? 'create SOUL.md'
     : (soul.lineCount === 0 ? 'add non-heading guidance to SOUL.md' : null);
@@ -276,7 +292,9 @@ function buildCoreFoundationMaintenance({
       status: skills.count === 0 ? 'missing' : (skills.documentedCount < skills.count ? 'thin' : 'ready'),
       summary: summarizeSkillsFoundation(skills),
       action: skillsAction,
-      paths: skills.count === 0 ? ['skills/'] : buildSkillsDocumentationPaths(undocumentedSkillNames),
+      paths: skills.count === 0 ? ['skills/'] : Array.from(new Set([...missingSkillPaths, ...thinSkillPaths])),
+      ...(missingSkillPaths.length > 0 ? { missingPaths: missingSkillPaths } : {}),
+      ...(thinSkillPaths.length > 0 ? { thinPaths: thinSkillPaths } : {}),
     },
     {
       area: 'soul',
@@ -311,6 +329,12 @@ function buildCoreFoundationMaintenance({
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
     helperCommands: {
       scaffoldAll: buildFoundationScaffoldBundle(queue.map((area) => area.command)),
+      scaffoldMissing: buildFoundationScaffoldBundle(queue
+        .filter((area) => area.status === 'missing')
+        .map((area) => area.command)),
+      scaffoldThin: buildFoundationScaffoldBundle(queue
+        .filter((area) => area.status === 'thin')
+        .map((area) => area.command)),
       memory: queue.find((area) => area.area === 'memory')?.command ?? null,
       skills: queue.find((area) => area.area === 'skills')?.command ?? null,
       soul: queue.find((area) => area.area === 'soul')?.command ?? null,
@@ -323,6 +347,7 @@ function buildCoreFoundationMaintenance({
 export interface CoreMemoryFoundationSummary {
   hasRootDocument: boolean;
   rootPath: string;
+  rootExcerpt: string | null;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -338,10 +363,14 @@ export interface CoreSkillsFoundationSummary {
   count: number;
   documentedCount: number;
   undocumentedCount: number;
+  thinCount: number;
   sample: string[];
   samplePaths: string[];
+  sampleExcerpts: string[];
   undocumentedSample: string[];
   undocumentedPaths: string[];
+  thinSample: string[];
+  thinPaths: string[];
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -365,11 +394,15 @@ export interface CoreFoundationMaintenanceQueueItem {
   summary: string;
   action: string | null;
   paths: string[];
+  missingPaths?: string[];
+  thinPaths?: string[];
   command?: string | null;
 }
 
 export interface CoreFoundationMaintenanceHelperCommands {
   scaffoldAll: string | null;
+  scaffoldMissing: string | null;
+  scaffoldThin: string | null;
   memory: string | null;
   skills: string | null;
   soul: string | null;
@@ -408,6 +441,8 @@ export interface BuildCoreFoundationSummaryOptions {
     names?: string[];
     documented?: string[];
     undocumented?: string[];
+    thin?: string[];
+    documentedExcerpts?: Record<string, string | null>;
   } | null;
 }
 
@@ -434,12 +469,18 @@ export function buildCoreFoundationSummary({
   const documentedSkillNames = Array.isArray(skillInventory?.documented)
     ? [...skillInventory.documented].sort((left, right) => left.localeCompare(right))
     : [...safeSkillNames];
-  const undocumentedSkillNames = Array.isArray(skillInventory?.undocumented)
+  const documentedSkillExcerpts = skillInventory?.documentedExcerpts ?? {};
+  const missingSkillNames = Array.isArray(skillInventory?.undocumented)
     ? [...skillInventory.undocumented].sort((left, right) => left.localeCompare(right))
     : safeSkillNames.filter((skillName) => !documentedSkillNames.includes(skillName));
+  const thinSkillNames = Array.isArray(skillInventory?.thin)
+    ? [...skillInventory.thin].sort((left, right) => left.localeCompare(right))
+    : [];
+  const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
     rootPath: 'memory/README.md',
+    rootExcerpt: extractExcerpt(memoryIndex?.root),
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,
@@ -454,10 +495,20 @@ export function buildCoreFoundationSummary({
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
+    thinCount: thinSkillNames.length,
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
+    sampleExcerpts: documentedSkillNames
+      .slice(0, 5)
+      .map((skillName) => {
+        const excerpt = documentedSkillExcerpts[skillName];
+        return isNonEmptyString(excerpt) ? `${skillName}: ${excerpt}` : null;
+      })
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
     undocumentedSample: undocumentedSkillNames.slice(0, 5),
     undocumentedPaths: undocumentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
+    thinSample: thinSkillNames.slice(0, 5),
+    thinPaths: thinSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
   };
   const soul = {
     present: isNonEmptyString(soulDocument),
@@ -509,7 +560,8 @@ export function buildCoreFoundationSummary({
       memoryHasRootDocument: memory.hasRootDocument,
       memoryEmptyBuckets: memory.emptyBuckets,
       skillsCount: skills.count,
-      undocumentedSkillNames,
+      undocumentedSkillNames: missingSkillNames,
+      thinSkillNames,
       soulPresent: soul.present,
       soulLineCount: soul.lineCount,
       voicePresent: voice.present,
@@ -519,7 +571,8 @@ export function buildCoreFoundationSummary({
   const maintenance = buildCoreFoundationMaintenance({
     memory,
     skills,
-    undocumentedSkillNames,
+    missingSkillNames,
+    thinSkillNames,
     soul,
     voice,
   });
