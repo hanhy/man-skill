@@ -138,6 +138,46 @@ function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, gen
   ];
 }
 
+function buildVoiceDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  voiceSamples,
+}) {
+  const toneLine = buildExcerpt(
+    profileDocument?.summary ?? voiceSamples[0]?.excerpt ?? 'Preserve the strongest cadence present in the imported materials.',
+  ) ?? 'Preserve the strongest cadence present in the imported materials.';
+  const signatureLines = voiceSamples.length > 0
+    ? voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`)
+    : ['- Add representative phrasing from imported materials here.'];
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Voice draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Tone',
+    toneLine,
+    '',
+    '## Signature moves',
+    ...signatureLines,
+    '',
+    '## Avoid',
+    'Avoid padding, hedging, or over-explaining beyond what the imported materials support.',
+    '',
+    '## Language hints',
+    'Preserve bilingual, dialect, or code-switching patterns when they appear in the imported materials.',
+  ];
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
@@ -1145,19 +1185,15 @@ export class MaterialIngestion {
 
     fs.writeFileSync(
       voiceDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Voice draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Representative voice excerpts:',
-        ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
-      ].join('\n'),
+      buildVoiceDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        voiceSamples,
+      }).join('\n'),
     );
 
     fs.writeFileSync(

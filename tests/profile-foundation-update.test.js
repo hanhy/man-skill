@@ -89,9 +89,15 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
   assert.match(voiceDraft, /Display name: Harry Han/);
   assert.match(voiceDraft, /Summary: Direct operator with a bias for momentum\./);
-  assert.match(voiceDraft, /Representative voice excerpts/);
-  assert.match(voiceDraft, /Ship the thin slice first\./);
-  assert.match(voiceDraft, /Cut the scope, keep the momentum/);
+  assert.match(voiceDraft, /## Tone/);
+  assert.match(voiceDraft, /Direct operator with a bias for momentum\./);
+  assert.match(voiceDraft, /## Signature moves/);
+  assert.match(voiceDraft, /- \[message\] Ship the thin slice first\./);
+  assert.match(voiceDraft, /- \[talk\] Cut the scope, keep the momentum/);
+  assert.match(voiceDraft, /## Avoid/);
+  assert.match(voiceDraft, /padding, hedging, or over-explaining/i);
+  assert.match(voiceDraft, /## Language hints/);
+  assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
   assert.match(soulDraft, /Candidate soul signals/);

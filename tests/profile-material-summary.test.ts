@@ -272,7 +272,7 @@ test('loadProfilesIndex marks malformed markdown foundation drafts as stale and 
 
   fs.writeFileSync(
     path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md'),
-    '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n',
+    '# Voice draft\n\n## Tone\nStay direct.\n\n## Signature moves\n- [message] Ship the first slice.\n\n## Avoid\nSkip padding.\n\n## Language hints\nPreserve bilingual phrasing when the source material switches languages.\n',
   );
 
   const [profile] = loader.loadProfilesIndex();
