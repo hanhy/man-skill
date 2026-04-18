@@ -682,12 +682,15 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(metadataOnlyCommand?.importManifestCommand, null);
   assert.equal(metadataOnlyCommand?.importMaterialCommand, null);
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
   assert.doesNotMatch(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);

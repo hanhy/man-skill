@@ -1372,12 +1372,38 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
   assert.equal(harry?.intakeReady, true);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
+});
+
+test('buildSummary keeps metadata-only profiles with invalid intake manifests visible in the ingestion entrance diagnostics', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  const summary = buildSummary(rootDir);
+  const metadataOnly = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
+
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
+  assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
@@ -1600,6 +1626,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     incompleteProfileCount: 0,
     importedIntakeBackfillProfileCount: 0,
     importedInvalidIntakeManifestProfileCount: 0,
+    invalidMetadataOnlyIntakeManifestProfileCount: 0,
     intakeReadyProfileCount: 0,
     intakePartialProfileCount: 0,
     intakeMissingProfileCount: 0,

@@ -644,6 +644,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
   const importedInvalidIntakeManifestProfiles = allProfileCommands
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const metadataInvalidIntakeManifestProfiles = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
   const orderedProfileCommands = allProfileCommands
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;
@@ -718,6 +720,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
     importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
     importedInvalidIntakeManifestProfileCount: importedInvalidIntakeManifestProfiles.length,
+    invalidMetadataOnlyIntakeManifestProfileCount: metadataInvalidIntakeManifestProfiles.length,
     intakeReadyProfileCount,
     intakePartialProfileCount,
     intakeMissingProfileCount,

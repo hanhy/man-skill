@@ -1000,6 +1000,9 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
   const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
     ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
     : '';
+  const invalidMetadataOnlyIntakeSummary = (ingestionSummary?.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
+    ? `, ${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount} invalid metadata-only intake manifest${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'}`
+    : '';
   const invalidImportedIntakeSummary = importedInvalidIntakeManifestProfileCount > 0
     ? `, ${importedInvalidIntakeManifestProfileCount} invalid imported intake manifest${importedInvalidIntakeManifestProfileCount === 1 ? '' : 's'}`
     : '';
@@ -1008,7 +1011,7 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidImportedIntakeSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction,
     command,
     paths,
