@@ -15,7 +15,7 @@ import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { createDefaultChannels } from '../src/channels/index.js';
 import { buildOpenAIChatRequest, normalizeOpenAIChatResponse, openaiProviderScaffold } from '../src/models/openai.js';
 import { buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse, anthropicProviderScaffold } from '../src/models/anthropic.js';
-import { kimiProviderScaffold } from '../src/models/kimi.js';
+import { buildKimiChatRequest, normalizeKimiChatResponse, kimiProviderScaffold } from '../src/models/kimi.js';
 import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
 import { qwenProviderScaffold } from '../src/models/qwen.js';
@@ -264,6 +264,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    KIMI_API_KEY: process.env.KIMI_API_KEY,
   };
 
   process.env.SLACK_BOT_TOKEN='***';
@@ -275,6 +276,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   process.env.FEISHU_APP_SECRET='***';
   process.env.OPENAI_API_KEY='***';
   process.env.ANTHROPIC_API_KEY='***';
+  process.env.KIMI_API_KEY='***';
 
   try {
     const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
@@ -283,6 +285,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     const feishu = createDefaultChannels().find((channel) => channel.id === 'feishu');
     const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
     const anthropic = createDefaultProviders().find((provider) => provider.id === 'anthropic');
+    const kimi = createDefaultProviders().find((provider) => provider.id === 'kimi');
 
     assert.ok(slack);
     assert.equal(typeof slack.isConfigured, 'function');
@@ -611,6 +614,61 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         },
       }),
     );
+
+    assert.ok(kimi);
+    assert.equal(typeof kimi.isConfigured, 'function');
+    assert.equal(typeof kimi.buildChatRequest, 'function');
+    assert.equal(typeof kimi.normalizeChatResponse, 'function');
+    assert.equal(kimi.isConfigured(), true);
+    assert.deepEqual(kimi.summary(), kimiProviderScaffold);
+    assert.deepEqual(
+      kimi.buildChatRequest({
+        messages: [{ role: 'user', content: 'hello from kimi' }],
+        temperature: 0.3,
+        maxOutputTokens: 300,
+        metadata: { profile: 'harry-han' },
+      }),
+      buildKimiChatRequest({
+        messages: [{ role: 'user', content: 'hello from kimi' }],
+        temperature: 0.3,
+        maxOutputTokens: 300,
+        metadata: { profile: 'harry-han' },
+      }),
+    );
+    assert.deepEqual(
+      kimi.normalizeChatResponse({
+        id: 'chatcmpl-kimi',
+        model: 'moonshot-v1-32k',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Kimi says keep the loop tight.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 64,
+          completion_tokens: 18,
+          total_tokens: 82,
+        },
+      }),
+      normalizeKimiChatResponse({
+        id: 'chatcmpl-kimi',
+        model: 'moonshot-v1-32k',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Kimi says keep the loop tight.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 64,
+          completion_tokens: 18,
+          total_tokens: 82,
+        },
+      }),
+    );
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -653,10 +711,16 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     } else {
       process.env.ANTHROPIC_API_KEY = originalEnv.ANTHROPIC_API_KEY;
     }
+
+    if (originalEnv.KIMI_API_KEY === undefined) {
+      delete process.env.KIMI_API_KEY;
+    } else {
+      process.env.KIMI_API_KEY = originalEnv.KIMI_API_KEY;
+    }
   }
 });
 
-test('buildSummary counts the checked-in channel delivery modules and the OpenAI/Anthropic provider helpers as runtime-ready', () => {
+test('buildSummary counts the checked-in channel delivery modules and the OpenAI/Anthropic/Kimi provider helpers as runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -679,9 +743,9 @@ test('buildSummary counts the checked-in channel delivery modules and the OpenAI
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.delivery.readyChannelImplementationCount, 4);
-  assert.equal(summary.delivery.readyProviderImplementationCount, 2);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 3);
   assert.equal(summary.delivery.scaffoldOnlyChannelCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 4);
+  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 3);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[1].implementationReady, true);
@@ -694,12 +758,14 @@ test('buildSummary counts the checked-in channel delivery modules and the OpenAI
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'ready');
   assert.equal(summary.delivery.providerQueue[1].implementationReady, true);
   assert.equal(summary.delivery.providerQueue[1].implementationStatus, 'ready');
-  assert.equal(summary.delivery.providerQueue[2].implementationReady, false);
-  assert.equal(summary.delivery.providerQueue[2].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 2\/6 providers ready/);
+  assert.equal(summary.delivery.providerQueue[2].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[2].implementationStatus, 'ready');
+  assert.equal(summary.delivery.providerQueue[3].implementationReady, false);
+  assert.equal(summary.delivery.providerQueue[3].implementationStatus, 'scaffold');
+  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 3\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned, configured\]/);
+  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned(?:, configured)?\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
 });
 
