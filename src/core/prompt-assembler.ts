@@ -919,6 +919,28 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   ].filter(Boolean).join('\n');
 }
 
+function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | undefined): string | null {
+  const intakeStatusSummary = typeof profile?.intakeStatusSummary === 'string'
+    ? profile.intakeStatusSummary.trim()
+    : '';
+
+  if (!intakeStatusSummary || intakeStatusSummary === 'ready') {
+    return null;
+  }
+
+  const [statusPrefix] = intakeStatusSummary.split(' — ');
+  return statusPrefix?.trim() || intakeStatusSummary;
+}
+
+function formatIngestionProfileLabel(profile: IngestionProfileCommand | null | undefined): string {
+  const baseLabel = profile?.label ?? profile?.personId ?? 'unknown-profile';
+  const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+
+  return compactIntakeStatus
+    ? `${baseLabel} [intake ${compactIntakeStatus}]`
+    : baseLabel;
+}
+
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const helperCommands = ingestion?.helperCommands ?? {};
   const sampleTextSourcePath = (ingestion?.sampleFileCommands ?? []).find(
@@ -955,7 +977,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const visibleProfileCommands = profileCommandRecords.slice(0, 2);
   const remainingProfileCommands = profileCommandRecords.slice(2);
   const remainingProfileSummary = remainingProfileCommands.length > 0
-    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => profile?.label ?? profile?.personId ?? 'unknown-profile').join(', ')}`
+    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
 
   return [
@@ -1061,10 +1083,10 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
-      const intakeStatusSegment = (profile.materialCount ?? 0) <= 0 && typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
+      const intakeStatusSegment = typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
         ? `, intake ${profile.intakeStatusSummary}`
         : '';
-      const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
+      const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
       const intakeShortcutSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === true && profile.importIntakeCommand
