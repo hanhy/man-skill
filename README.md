@@ -45,6 +45,7 @@ node src/index.js update profile --person harry-han --summary "Direct operator w
 node src/index.js update foundation --person harry-han
 node src/index.js update foundation --stale
 node src/index.js update foundation --all
+node src/index.js update intake --imported
 node src/index.js
 ```
 
@@ -53,6 +54,7 @@ This creates a profile-specific material structure under `profiles/<person-id>/`
 The current operator-facing entrance is:
 - seed or edit target metadata with `update profile`
 - scaffold a profile-local intake landing zone with `update intake`
+- backfill missing intake landing zones for already-imported profiles with `update intake --imported`
 - import checked-in starter material with `import sample`
 - import profile-local intake manifests with `import intake --person <id>`
 - regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation`, `update foundation --person <id>`, or `update foundation --stale`

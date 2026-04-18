@@ -196,7 +196,7 @@ test('CLI update intake --all reruns intake scaffolding for every metadata-only 
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
 });
 
-test('CLI update intake --imported backfills imported profiles with missing intake landing zones', () => {
+test('CLI update intake --imported backfills imported profiles with missing intake landing zones', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -210,6 +210,8 @@ test('CLI update intake --imported backfills imported profiles with missing inta
     text: 'This profile already has imported material.',
   });
   fs.rmSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports'), { recursive: true, force: true });
+  const importedMissingProfilePath = path.join(rootDir, 'profiles', 'imported-missing', 'profile.json');
+  const importedMissingProfileBefore = JSON.parse(fs.readFileSync(importedMissingProfilePath, 'utf8'));
 
   ingestion.updateProfile({
     personId: 'Metadata Only',
@@ -227,17 +229,21 @@ test('CLI update intake --imported backfills imported profiles with missing inta
     text: 'Already imported and already scaffolded.',
   });
 
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
   const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--imported'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
   const result = JSON.parse(output);
+  const importedMissingProfileAfter = JSON.parse(fs.readFileSync(importedMissingProfilePath, 'utf8'));
 
   assert.equal(result.ok, true);
   assert.equal(result.profileCount, 1);
   assert.deepEqual(result.results.map((entry) => entry.personId), ['imported-missing']);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports', 'materials.template.json')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json')), false);
+  assert.equal(importedMissingProfileAfter.updatedAt, importedMissingProfileBefore.updatedAt);
 });
 
 test('CLI import intake --person loads a profile-local starter manifest and refreshes foundation drafts', () => {

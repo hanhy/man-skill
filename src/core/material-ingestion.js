@@ -180,6 +180,21 @@ function buildProfileDocument({ existingProfile = null, normalizedId, personId, 
   };
 }
 
+function shouldRewriteProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
+  if (!existingProfile) {
+    return true;
+  }
+
+  const normalizedDisplayName = normalizeText(displayName);
+  const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
+  const nextDisplayName = normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId;
+  const nextSummary = normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary;
+
+  return existingProfile.id !== normalizedId
+    || existingProfile.displayName !== nextDisplayName
+    || (existingProfile.summary ?? null) !== nextSummary;
+}
+
 function buildManifestImportCommand(manifestPath) {
   return `node src/index.js import manifest --file ${shellQuote(manifestPath)}`;
 }
@@ -444,7 +459,13 @@ export class MaterialIngestion {
     const profilePath = path.join(profileDir, 'profile.json');
 
     const existingProfile = readJsonIfExists(profilePath);
-    if (!existingProfile || Object.keys(profileUpdates).length > 0) {
+    if (shouldRewriteProfileDocument({
+      existingProfile,
+      normalizedId,
+      personId,
+      displayName: profileUpdates.displayName,
+      summary: profileUpdates.summary,
+    })) {
       const profileDocument = buildProfileDocument({
         existingProfile,
         normalizedId,
