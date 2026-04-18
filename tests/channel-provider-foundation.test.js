@@ -1049,11 +1049,14 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /provider env backlog: .*ANTHROPIC_API_KEY.*GLM_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*OPENAI_API_KEY.*QWEN_API_KEY/);
   assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
   assert.doesNotMatch(summary.promptPreview, /Slack \[planned, runtime-ready\]:[^\n]*; next: implement inbound event handling and outbound thread replies/);
-  assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
+  assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(summary.promptPreview, /Telegram \[planned, runtime-ready\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
   assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, runtime-ready\], WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned, runtime-ready\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
   assert.doesNotMatch(summary.promptPreview, /OpenAI \[planned, runtime-ready\]:[^\n]*; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /OpenAI \[planned, runtime-ready\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+  assert.match(summary.promptPreview, /Anthropic \[planned, runtime-ready\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
   assert.match(summary.promptPreview, /\+4 more providers: Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, runtime-ready\], Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
 });
@@ -1220,6 +1223,10 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channel env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
+    assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+    assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
+    assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+    assert.match(summary.promptPreview, /Anthropic \[planned, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
     assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);

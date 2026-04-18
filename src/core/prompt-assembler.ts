@@ -981,7 +981,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- provider env backlog: ${missingProviderEnvVars.join(', ')}`
       : null,
     ...visibleChannelRecords.map((channel) =>
-      `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
+      `- ${formatCompactDeliveryRecordLabel(channel, enrichedChannelQueue, 'unknown-channel')} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
     remainingChannelRecordsSummary,
     channelQueueSummary
@@ -1014,7 +1014,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       : null,
     ...visibleProviderRecords.map((provider) => {
       const modalities = (provider.modalities ?? []).join(', ');
-      return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
+      return `- ${formatCompactDeliveryRecordLabel(provider, providerQueue, 'unknown-provider')} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
     remainingProviderRecordsSummary,
     providerQueueSummary
