@@ -462,13 +462,14 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
       isNonEmptyString(profile.tone) ? null : 'tone',
       profile.signatures.length > 0 ? null : 'signature-moves',
       profile.constraints.length > 0 ? null : 'avoid',
+      profile.languageHints.length > 0 ? null : 'language-hints',
     ].filter((value): value is string => typeof value === 'string')
     : [];
 
   const lineCount = countContentLines(document);
   const readySectionCount = !present || lineCount === 0
     ? 0
-    : (structured ? 3 - missingSections.length : 3);
+    : (structured ? 4 - missingSections.length : 4);
 
   return {
     present,
@@ -477,7 +478,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     excerpt: extractExcerpt(document),
     structured,
     readySectionCount,
-    totalSectionCount: 3,
+    totalSectionCount: 4,
     missingSections,
   };
 }

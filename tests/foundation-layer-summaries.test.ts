@@ -158,6 +158,22 @@ test('voice profile falls back to voice capture/default sections when explicit s
   });
 });
 
+test('voice profile accepts prose lines inside signature, avoid, and language hint sections', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\nUse crisp examples without bullets.\n\n## Avoid\nNever pad the answer.\n\n## Language hints\nPreserve bilingual phrasing when the source material switches languages.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples without bullets.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
 
@@ -264,12 +280,13 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'continuity']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 1);
   assert.equal(summary.foundation.core.voice.readySectionCount, 1);
-  assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid']);
+  assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
   assert.deepEqual(summary.foundation.core.overview.recommendedActions, [
     'add missing sections to SOUL.md: boundaries, continuity',
-    'add missing sections to voice/README.md: signature-moves, avoid',
+    'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
   ]);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /SOUL\.md/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Boundaries/);
@@ -277,4 +294,5 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /voice\/README\.md/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Avoid/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Language hints/);
 });
