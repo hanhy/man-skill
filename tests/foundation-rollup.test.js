@@ -170,6 +170,15 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    missingDraftCounts: {
+      memory: 1,
+      skills: 1,
+      soul: 1,
+      voice: 1,
+    },
+    refreshReasonCounts: {
+      'missing drafts': 1,
+    },
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
@@ -249,6 +258,16 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    missingDraftCounts: {
+      memory: 1,
+      skills: 1,
+      soul: 1,
+      voice: 1,
+    },
+    refreshReasonCounts: {
+      'missing drafts': 1,
+      'new materials': 1,
+    },
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',

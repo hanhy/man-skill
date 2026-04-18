@@ -10,6 +10,7 @@ import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/in
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { PromptAssembler } from '../src/core/prompt-assembler.ts';
+import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
@@ -442,6 +443,118 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
   assert.match(prompt, /Ship the first slice\./);
+});
+
+test('buildFoundationRollup maintenance aggregates missing draft coverage and refresh reasons', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'harry-han',
+      materialCount: 2,
+      latestMaterialAt: '2026-04-16T15:00:00.000Z',
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+        refreshReasons: ['metadata-updated'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 2, latestSummaries: ['Ship the first slice.'] },
+        voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
+        soul: { generated: true, highlights: ['- [text] Stay faithful.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 2, sampleSummaries: ['Ship the first slice.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Ship the first slice.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Stay faithful.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+      profile: { displayName: 'Harry Han' },
+    },
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'voice'],
+        refreshReasons: ['missing-draft', 'new-material'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        voice: { generated: false, highlights: [] },
+        soul: { generated: false, highlights: [] },
+        skills: { generated: false, highlights: [] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+      profile: { displayName: 'Jane Doe' },
+    },
+  ]);
+
+  assert.deepEqual(rollup.maintenance.missingDraftCounts, {
+    memory: 1,
+    skills: 1,
+    soul: 0,
+    voice: 1,
+  });
+  assert.deepEqual(rollup.maintenance.refreshReasonCounts, {
+    'metadata-updated': 1,
+    'missing-draft': 1,
+    'new-material': 1,
+  });
+});
+
+test('PromptAssembler includes aggregated foundation maintenance counts in the system prompt', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    profiles: [],
+    foundationRollup: {
+      maintenance: {
+        profileCount: 2,
+        readyProfileCount: 0,
+        refreshProfileCount: 2,
+        incompleteProfileCount: 1,
+        missingDraftCounts: {
+          memory: 1,
+          skills: 1,
+          soul: 0,
+          voice: 1,
+        },
+        refreshReasonCounts: {
+          'metadata-updated': 1,
+          'missing-draft': 1,
+          'new-material': 1,
+        },
+        staleRefreshCommand: 'node src/index.js update foundation --stale',
+        helperCommands: {
+          refreshStale: 'node src/index.js update foundation --stale',
+        },
+        queuedProfiles: [],
+      },
+      memory: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        repoStaleProfileCount: 2,
+        totalEntries: 3,
+        highlights: ['Ship the first slice.'],
+      },
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /Foundation maintenance:/);
+  assert.match(prompt, /- missing drafts: memory 1, skills 1, voice 1/);
+  assert.match(prompt, /- refresh reasons: metadata-updated 1, missing-draft 1, new-material 1/);
 });
 
 test('PromptAssembler includes delivery foundation snapshots in the system prompt', () => {

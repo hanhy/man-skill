@@ -101,6 +101,8 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  missingDraftCounts?: Record<string, number>;
+  refreshReasonCounts?: Record<string, number>;
   refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
   refreshBundleCommand?: string | null;
@@ -610,6 +612,22 @@ function formatFoundationHighlights(highlights: string[] = []) {
   return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
 }
 
+function formatCountMap(counts: Record<string, number> | null | undefined) {
+  if (!counts || typeof counts !== 'object') {
+    return null;
+  }
+
+  const entries = Object.entries(counts)
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return entries.map(([key, count]) => `${key} ${count}`).join(', ');
+}
+
 function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = null) {
   const maintenance = foundationRollup?.maintenance;
   if (!maintenance || (maintenance.profileCount ?? 0) === 0) {
@@ -622,9 +640,13 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
     maintenance.helperCommands?.refreshBundle ? `refresh-bundle ${maintenance.helperCommands.refreshBundle}` : null,
   ].filter(Boolean).join(' | ');
+  const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
+  const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
 
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    missingDraftSummary ? `- missing drafts: ${missingDraftSummary}` : null,
+    refreshReasonSummary ? `- refresh reasons: ${refreshReasonSummary}` : null,
     helperLine ? `- helpers: ${helperLine}` : null,
     maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
     ...queuedProfiles.map((profile) => {

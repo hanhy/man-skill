@@ -35,6 +35,22 @@ function countCandidateProfiles(profiles: any[], key: string): number {
   return profiles.filter((profile) => (profile.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
 }
 
+function countStringValues(values: unknown[]): Record<string, number> {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    if (typeof value !== 'string') {
+      return counts;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return counts;
+    }
+
+    counts[normalized] = (counts[normalized] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 function buildProfileLabel(profile: any): string {
   const profileId = profile?.id ?? 'unknown-profile';
   const displayName = profile?.profile?.displayName;
@@ -101,6 +117,11 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: queuedProfiles.length,
     incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    missingDraftCounts: FOUNDATION_DRAFT_KEYS.reduce<Record<string, number>>((counts, draftKey) => {
+      counts[draftKey] = queuedProfiles.filter((profile) => profile.missingDrafts.includes(draftKey)).length;
+      return counts;
+    }, {}),
+    refreshReasonCounts: countStringValues(queuedProfiles.flatMap((profile) => profile.refreshReasons ?? [])),
     refreshAllCommand: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
     staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
     refreshBundleCommand: buildCommandBundle(queuedProfiles.map((profile) => profile.refreshCommand)),
