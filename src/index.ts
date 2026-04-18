@@ -1025,8 +1025,10 @@ function buildDeliveryPriority({
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
       ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
-      ...(!shouldUseImplementationBundle && typeof firstQueued?.implementationPath === 'string' && firstQueued.implementationPath.length > 0
-        ? [firstQueued.implementationPath]
+      ...(!shouldUseImplementationBundle
+        && typeof firstQueued?.implementationScaffoldPath === 'string'
+        && firstQueued.implementationScaffoldPath.length > 0
+        ? [firstQueued.implementationScaffoldPath]
         : []),
     ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 

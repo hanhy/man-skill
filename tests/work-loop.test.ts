@@ -1383,7 +1383,8 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
   assert.equal(summary.workLoop.currentPriority.id, 'providers');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set DEEPSEEK_API_KEY for deepseek-chat; next: implement deepseek transport adapter');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', '../outside-provider.js']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json']);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*outside-provider\.js/);
   assert.doesNotMatch(summary.promptPreview, /outside-provider\.js'.*touch/);
 });
 
