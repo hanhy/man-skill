@@ -45,6 +45,14 @@ node src/index.js import intake --stale
 
 This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
 
+### Import every ready profile-local intake manifest only for already-imported profiles
+
+```bash
+node src/index.js import intake --imported --refresh-foundation
+```
+
+Use this selective replay when you want to re-run profile-local intake manifests only for profiles that already have imported materials on disk, for example after editing `profiles/<person-id>/imports/materials.template.json` and wanting to pull the revised entries back through the same intake entrance without touching first-run metadata-only profiles.
+
 ### Re-import every ready profile-local intake manifest, even for already-imported profiles
 
 ```bash
@@ -60,6 +68,14 @@ node src/index.js update intake --stale
 ```
 
 This repair path fills in only metadata-only profiles whose `imports/` starter area is missing files or still partial.
+
+### Backfill missing intake landing zones for already-imported profiles
+
+```bash
+node src/index.js update intake --imported
+```
+
+Use this when imported profiles still need their `profiles/<person-id>/imports/README.md`, `sample.txt`, or `materials.template.json` landing zone restored without re-scaffolding metadata-only profiles that have never been imported.
 
 ### Rebuild intake landing zones for every metadata-only profile
 
@@ -196,8 +212,8 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - the maintenance rollup also exposes a stable helper bundle for `update foundation --all` and `update foundation --stale`, so downstream prompt builders can show one copy-pasteable repair palette for target-profile drafts instead of depending on scattered scalar fields
   - queued profiles now also surface `generatedDraftCount`, `expectedDraftCount`, and `candidateDraftCount`, so the maintenance queue can prioritize the most incomplete profiles and show concrete draft coverage before you refresh anything
 - `update foundation --stale` now also repairs malformed generated markdown drafts (`voice/README.md`, `soul/README.md`, `skills/README.md`) when their provenance headers are missing or corrupted, instead of only refreshing fully missing/stale profiles
-- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `helperCommands`, `profileCommands`, `allProfileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
-  - `helperCommands` now groups the repo-level intake/update/import shortcuts (`bootstrap`, `scaffoldAll`, `scaffoldStale`, `scaffoldBundle`, `importManifest`, `importIntakeAll`, `importIntakeStale`, `importIntakeBundle`, `refreshAllFoundation`, `refreshStaleFoundation`, `refreshFoundationBundle`, plus any runnable sample starter/manifest/text/message/talk/screenshot commands) so downstream prompt builders and operators can lift a stable command bundle without reconstructing it from scattered top-level fields
+- top-level `ingestion` entrance data (`profileCount`, `importedProfileCount`, `metadataOnlyProfileCount`, `readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `importedIntakeBackfillProfileCount`, `supportedImportTypes`, `bootstrapProfileCommand`, `sampleImportCommand`, `importManifestCommand`, `sampleManifestPath`, `sampleManifestPresent`, `sampleStarterCommand`, `sampleStarterSource`, `sampleManifestCommand`, `sampleTextPath`, `sampleTextPresent`, `sampleTextCommand`, `staleRefreshCommand`, `intakeImportedCommand`, `intakeImportImportedCommand`, `helperCommands`, `profileCommands`, `allProfileCommands`) so the summary exposes the default material-import/update commands alongside the foundation maintenance queue
+  - `helperCommands` now groups the repo-level intake/update/import shortcuts (`bootstrap`, `scaffoldAll`, `scaffoldStale`, `scaffoldImported`, `scaffoldImportedBundle`, `scaffoldBundle`, `importManifest`, `importIntakeAll`, `importIntakeStale`, `importIntakeImported`, `importIntakeBundle`, `refreshAllFoundation`, `refreshStaleFoundation`, `refreshFoundationBundle`, plus any runnable sample starter/manifest/text/message/talk/screenshot commands) so downstream prompt builders and operators can lift a stable command bundle without reconstructing it from scattered top-level fields
   - each profile command bundle now also carries `importCommands.text|message|talk|screenshot`, `intakeStatusSummary`, `importManifestCommand`, and a grouped `helperCommands` block (`scaffold`, `importIntake`, `importManifest`, `updateProfile`, `refreshFoundation`, `directImports`) so downstream tooling can surface one stable intake/update palette per target profile instead of stitching individual command fields together
   - `updateProfileCommand` / `helperCommands.updateProfile` now preserve the profile's current `displayName` and optional `summary`, making the surfaced metadata-edit command copy-pasteable without reconstructing those fields by hand
   - when a metadata-only profile already has `profiles/<id>/imports/materials.template.json`, both the prompt preview and work loop now prefer that profile-local starter manifest over unrelated sample bundles, while still preferring a runnable direct text import when one exists for the same profile

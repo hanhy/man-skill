@@ -46,6 +46,7 @@ node src/index.js update foundation --person harry-han
 node src/index.js update foundation --stale
 node src/index.js update foundation --all
 node src/index.js update intake --imported
+node src/index.js import intake --imported --refresh-foundation
 node src/index.js
 ```
 
@@ -57,6 +58,8 @@ The current operator-facing entrance is:
 - backfill missing intake landing zones for already-imported profiles with `update intake --imported`
 - import checked-in starter material with `import sample`
 - import profile-local intake manifests with `import intake --person <id>`
+- bulk-import only first-run metadata-only intake manifests with `import intake --stale --refresh-foundation`
+- bulk-import only already-imported profile-local intake manifests with `import intake --imported --refresh-foundation`
 - regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation`, `update foundation --person <id>`, or `update foundation --stale`
 
 `update intake` writes `profiles/<person-id>/imports/README.md`, `sample.txt`, and `materials.template.json` so a fresh target profile immediately has an obvious place for user-supplied materials before anything is imported. That scaffold includes per-type `entryTemplates`, direct `import text|message|talk|screenshot` command hints, and higher-level rerun shortcuts for `update intake`, `import intake`, and metadata sync. One-off imports and manifest/sample imports now keep that same profile-local intake scaffold present automatically, so the entrance stays discoverable even after the first materials have already landed.
