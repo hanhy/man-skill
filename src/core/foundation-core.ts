@@ -153,20 +153,16 @@ function collectRecommendedActions({
   skillsCount,
   undocumentedSkillNames,
   thinSkillNames,
-  soulPresent,
-  soulLineCount,
-  voicePresent,
-  voiceLineCount,
+  soul,
+  voice,
 }: {
   memoryHasRootDocument: boolean;
   memoryEmptyBuckets: string[];
   skillsCount: number;
   undocumentedSkillNames: string[];
   thinSkillNames: string[];
-  soulPresent: boolean;
-  soulLineCount: number;
-  voicePresent: boolean;
-  voiceLineCount: number;
+  soul: CoreDocumentFoundationSummary;
+  voice: CoreDocumentFoundationSummary;
 }): string[] {
   const actions: string[] = [];
 
@@ -188,16 +184,14 @@ function collectRecommendedActions({
     actions.push(skillsAction);
   }
 
-  if (!soulPresent) {
-    actions.push('create SOUL.md');
-  } else if (soulLineCount === 0) {
-    actions.push('add non-heading guidance to SOUL.md');
+  const soulAction = buildDocumentMaintenanceAction(soul);
+  if (soulAction) {
+    actions.push(soulAction);
   }
 
-  if (!voicePresent) {
-    actions.push('create voice/README.md');
-  } else if (voiceLineCount === 0) {
-    actions.push('add non-heading guidance to voice/README.md');
+  const voiceAction = buildDocumentMaintenanceAction(voice);
+  if (voiceAction) {
+    actions.push(voiceAction);
   }
 
   return actions;
@@ -660,10 +654,8 @@ export function buildCoreFoundationSummary({
       skillsCount: skills.count,
       undocumentedSkillNames: missingSkillNames,
       thinSkillNames,
-      soulPresent: soul.present,
-      soulLineCount: soul.lineCount,
-      voicePresent: voice.present,
-      voiceLineCount: voice.lineCount,
+      soul,
+      voice,
     }),
   };
   const maintenance = buildCoreFoundationMaintenance({

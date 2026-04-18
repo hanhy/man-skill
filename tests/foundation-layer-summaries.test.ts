@@ -267,4 +267,14 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid']);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
+  assert.deepEqual(summary.foundation.core.overview.recommendedActions, [
+    'add missing sections to SOUL.md: boundaries, continuity',
+    'add missing sections to voice/README.md: signature-moves, avoid',
+  ]);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /SOUL\.md/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Boundaries/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Decision rules/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /voice\/README\.md/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Avoid/);
 });
