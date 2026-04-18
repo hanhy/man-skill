@@ -956,7 +956,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       const implementationTag = channel.implementationStatus === 'scaffold'
         ? ', scaffold-only'
         : (channel.implementationStatus === 'ready' ? ', runtime-ready' : '');
-      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}${implementationTag}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const actionableNextStep = channel.implementationStatus === 'ready' ? null : channel.nextStep;
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}${implementationTag}]: ${channel.setupHint ?? 'define channel credentials'}${actionableNextStep ? `; next: ${actionableNextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingChannelQueueSummary,
     providerManifestSummary,
@@ -984,7 +985,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       const implementationTag = provider.implementationStatus === 'scaffold'
         ? ', scaffold-only'
         : (provider.implementationStatus === 'ready' ? ', runtime-ready' : '');
-      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}${implementationTag}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const actionableNextStep = provider.implementationStatus === 'ready' ? null : provider.nextStep;
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}${implementationTag}]: ${provider.setupHint ?? 'choose auth and default model'}${actionableNextStep ? `; next: ${actionableNextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');

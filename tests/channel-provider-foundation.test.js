@@ -1035,11 +1035,13 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.equal(summary.delivery.providerQueue[5].implementationReady, true);
   assert.equal(summary.delivery.providerQueue[5].implementationStatus, 'ready');
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
-  assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /Slack \[planned, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
+  assert.doesNotMatch(summary.promptPreview, /Slack \[planned, runtime-ready\]:[^\n]*; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
   assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, runtime-ready\], WhatsApp \[planned, runtime-ready\], Feishu \[planned(?:, configured)?, runtime-ready\]/);
-  assert.match(summary.promptPreview, /OpenAI \[planned, runtime-ready\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /OpenAI \[planned, runtime-ready\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
+  assert.doesNotMatch(summary.promptPreview, /OpenAI \[planned, runtime-ready\]:[^\n]*; next: implement chat\/tool request translation and response normalization/);
   assert.match(summary.promptPreview, /\+4 more providers: Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, runtime-ready\], Kimi \[planned, runtime-ready\], Minimax \[planned, runtime-ready\], GLM \[planned, runtime-ready\], Qwen \[planned, runtime-ready\]/);
 });

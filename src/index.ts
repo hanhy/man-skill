@@ -1146,9 +1146,12 @@ function buildDeliveryPriority({
         : []),
     ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 
+  const actionableNextStep = firstQueued?.implementationReady === true
+    ? null
+    : (firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null);
   const followUpParts = [
     firstQueued?.setupHint,
-    firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
+    actionableNextStep,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   let nextAction = firstQueued ? followUpParts.join('; ') : null;
