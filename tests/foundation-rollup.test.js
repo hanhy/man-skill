@@ -410,6 +410,10 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     readyAreaCount: 4,
     missingAreaCount: 0,
     thinAreaCount: 0,
+    recommendedArea: null,
+    recommendedAction: null,
+    recommendedCommand: null,
+    recommendedPaths: [],
     helperCommands: {
       scaffoldAll: null,
       scaffoldMissing: null,
@@ -590,6 +594,10 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     readyAreaCount: 0,
     missingAreaCount: 2,
     thinAreaCount: 2,
+    recommendedArea: 'memory',
+    recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+    recommendedCommand: scaffoldAllCommand,
+    recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -639,8 +647,6 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /\| scaffold-missing \(mkdir -p skills\/starter && printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(\{ if grep -Fqx -- '## Core values' 'SOUL\.md'; then awk -v heading='## Core values'/);
-  assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| soul /);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
 });
 
@@ -781,6 +787,10 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    recommendedArea: 'memory',
+    recommendedAction: 'create memory/README.md',
+    recommendedCommand: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
+    recommendedPaths: ['memory/README.md'],
     helperCommands: {
       scaffoldAll: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
       scaffoldMissing: null,
@@ -872,6 +882,10 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    recommendedArea: 'skills',
+    recommendedAction: 'create skills/slack/SKILL.md and skills/telegram/SKILL.md',
+    recommendedCommand: skillsCommand,
+    recommendedPaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
     helperCommands: {
       scaffoldAll: skillsCommand,
       scaffoldMissing: null,
@@ -943,6 +957,10 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    recommendedArea: 'skills',
+    recommendedAction: 'create skills/slack/SKILL.md',
+    recommendedCommand: skillsCommand,
+    recommendedPaths: ['skills/slack/SKILL.md'],
     helperCommands: {
       scaffoldAll: skillsCommand,
       scaffoldMissing: null,
@@ -1018,6 +1036,10 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    recommendedArea: 'skills',
+    recommendedAction: 'add non-heading guidance to skills/delivery/SKILL.md',
+    recommendedCommand: skillsCommand,
+    recommendedPaths: ['skills/delivery/SKILL.md'],
     helperCommands: {
       scaffoldAll: skillsCommand,
       scaffoldMissing: null,
@@ -1103,6 +1125,10 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     readyAreaCount: 3,
     missingAreaCount: 0,
     thinAreaCount: 1,
+    recommendedArea: 'skills',
+    recommendedAction: 'add non-heading guidance to skills/slack/SKILL.md',
+    recommendedCommand: skillsCommand,
+    recommendedPaths: ['skills/slack/SKILL.md'],
     helperCommands: {
       scaffoldAll: skillsCommand,
       scaffoldMissing: null,

@@ -151,6 +151,10 @@ type FoundationCoreMaintenance = {
   readyAreaCount?: number;
   missingAreaCount?: number;
   thinAreaCount?: number;
+  recommendedArea?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
   helperCommands?: {
     scaffoldAll?: string | null;
     scaffoldMissing?: string | null;
@@ -1212,12 +1216,16 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
     ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]`).join(', ')}`
     : null;
+  const recommendedRepairLine = maintenance?.recommendedAction
+    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}`
+    : null;
 
   return [
     coverageLine,
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
+    recommendedRepairLine,
     (() => {
       const helperEntries = [
         maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,

@@ -483,6 +483,15 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const queuedAreas = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas : [];
   const queuedArea = queuedAreas[0] ?? null;
   const queuedAreaCommand = queuedArea?.command ?? buildCoreFoundationCommand(queuedArea);
+  const recommendedCoreAction = typeof coreMaintenance?.recommendedAction === 'string' && coreMaintenance.recommendedAction.length > 0
+    ? coreMaintenance.recommendedAction
+    : null;
+  const recommendedCoreCommand = typeof coreMaintenance?.recommendedCommand === 'string' && coreMaintenance.recommendedCommand.length > 0
+    ? coreMaintenance.recommendedCommand
+    : null;
+  const recommendedCorePaths = Array.isArray(coreMaintenance?.recommendedPaths)
+    ? coreMaintenance.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
   const queuedProfileSummary = queuedProfile?.id
     ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
     : null;
@@ -578,11 +587,13 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
     : '';
   const hasQueuedCoreFoundation = queuedAreas.length > 0;
-  const coreNextAction = useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null);
-  const coreCommand = useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand;
-  const corePaths = useBulkCoreScaffoldCommand
-    ? bulkCoreScaffoldPaths
-    : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []);
+  const coreNextAction = recommendedCoreAction ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null));
+  const coreCommand = recommendedCoreCommand ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand);
+  const corePaths = recommendedCorePaths.length > 0
+    ? recommendedCorePaths
+    : (useBulkCoreScaffoldCommand
+      ? bulkCoreScaffoldPaths
+      : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
   const profileNextAction = queuedProfile?.refreshCommand
     ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
     : null;

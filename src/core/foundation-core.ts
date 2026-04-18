@@ -342,24 +342,86 @@ function buildCoreFoundationMaintenance({
     }
   });
 
+  const helperCommands = {
+    scaffoldAll: buildFoundationScaffoldBundle(queue.map((area) => area.command)),
+    scaffoldMissing: buildFoundationScaffoldBundle(queue
+      .filter((area) => area.status === 'missing')
+      .map((area) => area.command)),
+    scaffoldThin: buildFoundationScaffoldBundle(queue
+      .filter((area) => area.status === 'thin')
+      .map((area) => area.command)),
+    memory: queue.find((area) => area.area === 'memory')?.command ?? null,
+    skills: queue.find((area) => area.area === 'skills')?.command ?? null,
+    soul: queue.find((area) => area.area === 'soul')?.command ?? null,
+    voice: queue.find((area) => area.area === 'voice')?.command ?? null,
+  };
+  const recommendedArea = queue[0]?.area ?? null;
+  const recommendedPaths = queue.length > 1
+    ? Array.from(new Set(queue.flatMap((area) => area.paths ?? [])))
+    : [...(queue[0]?.paths ?? [])];
+  const queuedStatuses = new Set(queue.map((area) => area.status));
+  const recommendedCommand = (() => {
+    if (queue.length === 0) {
+      return null;
+    }
+
+    if (queue.length === 1) {
+      return queue[0]?.command ?? null;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing') && helperCommands.scaffoldMissing) {
+      return helperCommands.scaffoldMissing;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin') && helperCommands.scaffoldThin) {
+      return helperCommands.scaffoldThin;
+    }
+
+    return helperCommands.scaffoldAll;
+  })();
+  const recommendedAction = (() => {
+    const firstAction = queue[0]?.action ?? null;
+    if (queue.length === 0) {
+      return null;
+    }
+
+    if (queue.length === 1) {
+      return firstAction;
+    }
+
+    if (!firstAction) {
+      if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
+        return 'scaffold missing core foundation areas';
+      }
+
+      if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
+        return 'repair thin core foundation areas';
+      }
+
+      return 'scaffold missing or thin core foundation areas';
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
+      return `scaffold missing core foundation areas — starting with ${firstAction}`;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
+      return `repair thin core foundation areas — starting with ${firstAction}`;
+    }
+
+    return `scaffold missing or thin core foundation areas — starting with ${firstAction}`;
+  })();
+
   return {
     areaCount: areas.length,
     readyAreaCount: areas.filter((area) => area.status === 'ready').length,
     missingAreaCount: areas.filter((area) => area.status === 'missing').length,
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
-    helperCommands: {
-      scaffoldAll: buildFoundationScaffoldBundle(queue.map((area) => area.command)),
-      scaffoldMissing: buildFoundationScaffoldBundle(queue
-        .filter((area) => area.status === 'missing')
-        .map((area) => area.command)),
-      scaffoldThin: buildFoundationScaffoldBundle(queue
-        .filter((area) => area.status === 'thin')
-        .map((area) => area.command)),
-      memory: queue.find((area) => area.area === 'memory')?.command ?? null,
-      skills: queue.find((area) => area.area === 'skills')?.command ?? null,
-      soul: queue.find((area) => area.area === 'soul')?.command ?? null,
-      voice: queue.find((area) => area.area === 'voice')?.command ?? null,
-    },
+    recommendedArea,
+    recommendedAction,
+    recommendedCommand,
+    recommendedPaths,
+    helperCommands,
     queuedAreas: queue,
   };
 }
@@ -517,6 +579,10 @@ export interface CoreFoundationMaintenanceSummary {
   readyAreaCount: number;
   missingAreaCount: number;
   thinAreaCount: number;
+  recommendedArea: string | null;
+  recommendedAction: string | null;
+  recommendedCommand: string | null;
+  recommendedPaths: string[];
   helperCommands: CoreFoundationMaintenanceHelperCommands;
   queuedAreas: CoreFoundationMaintenanceQueueItem[];
 }
