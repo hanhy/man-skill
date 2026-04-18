@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const openaiProviderScaffold = {
   id: 'openai',
   name: 'OpenAI',
@@ -10,3 +12,7 @@ export const openaiProviderScaffold = {
   implementationPath: 'src/models/openai.js',
   nextStep: 'implement chat/tool request translation and response normalization',
 };
+
+export function createOpenAIProvider(overrides = {}) {
+  return new BaseProvider({ ...openaiProviderScaffold, ...overrides });
+}

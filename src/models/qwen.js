@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const qwenProviderScaffold = {
   id: 'qwen',
   name: 'Qwen',
@@ -10,3 +12,7 @@ export const qwenProviderScaffold = {
   implementationPath: 'src/models/qwen.js',
   nextStep: 'implement qwen chat wrapper and multimodal request mapping',
 };
+
+export function createQwenProvider(overrides = {}) {
+  return new BaseProvider({ ...qwenProviderScaffold, ...overrides });
+}

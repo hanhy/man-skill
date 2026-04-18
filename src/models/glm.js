@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const glmProviderScaffold = {
   id: 'glm',
   name: 'GLM',
@@ -10,3 +12,7 @@ export const glmProviderScaffold = {
   implementationPath: 'src/models/glm.js',
   nextStep: 'implement glm request payload translation with tool support',
 };
+
+export function createGLMProvider(overrides = {}) {
+  return new BaseProvider({ ...glmProviderScaffold, ...overrides });
+}

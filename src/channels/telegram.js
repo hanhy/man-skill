@@ -1,3 +1,5 @@
+import { BaseChannel } from './base-channel.js';
+
 export const telegramChannelScaffold = {
   id: 'telegram',
   name: 'Telegram',
@@ -15,3 +17,7 @@ export const telegramChannelScaffold = {
   implementationPath: 'src/channels/telegram.js',
   nextStep: 'wire bot webhook intake and outbound chat sends',
 };
+
+export function createTelegramChannel(overrides = {}) {
+  return new BaseChannel({ ...telegramChannelScaffold, ...overrides });
+}

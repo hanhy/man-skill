@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const minimaxProviderScaffold = {
   id: 'minimax',
   name: 'Minimax',
@@ -10,3 +12,7 @@ export const minimaxProviderScaffold = {
   implementationPath: 'src/models/minimax.js',
   nextStep: 'implement minimax request signing and chat completion mapping',
 };
+
+export function createMinimaxProvider(overrides = {}) {
+  return new BaseProvider({ ...minimaxProviderScaffold, ...overrides });
+}

@@ -1,3 +1,5 @@
+import { BaseChannel } from './base-channel.js';
+
 export const feishuChannelScaffold = {
   id: 'feishu',
   name: 'Feishu',
@@ -15,3 +17,7 @@ export const feishuChannelScaffold = {
   implementationPath: 'src/channels/feishu.js',
   nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
 };
+
+export function createFeishuChannel(overrides = {}) {
+  return new BaseChannel({ ...feishuChannelScaffold, ...overrides });
+}

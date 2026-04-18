@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const kimiProviderScaffold = {
   id: 'kimi',
   name: 'Kimi',
@@ -10,3 +12,7 @@ export const kimiProviderScaffold = {
   implementationPath: 'src/models/kimi.js',
   nextStep: 'implement moonshot-compatible client setup and model selection',
 };
+
+export function createKimiProvider(overrides = {}) {
+  return new BaseProvider({ ...kimiProviderScaffold, ...overrides });
+}

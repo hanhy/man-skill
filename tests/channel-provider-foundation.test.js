@@ -12,6 +12,7 @@ import { telegramChannelScaffold } from '../src/channels/telegram.js';
 import { whatsappChannelScaffold } from '../src/channels/whatsapp.js';
 import { feishuChannelScaffold } from '../src/channels/feishu.js';
 import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
+import { createDefaultChannels } from '../src/channels/index.js';
 import { openaiProviderScaffold } from '../src/models/openai.js';
 import { anthropicProviderScaffold } from '../src/models/anthropic.js';
 import { kimiProviderScaffold } from '../src/models/kimi.js';
@@ -19,6 +20,7 @@ import { minimaxProviderScaffold } from '../src/models/minimax.js';
 import { glmProviderScaffold } from '../src/models/glm.js';
 import { qwenProviderScaffold } from '../src/models/qwen.js';
 import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
+import { createDefaultProviders } from '../src/models/index.js';
 import { ManifestLoader as JsManifestLoader } from '../src/core/manifest-loader.js';
 import { ManifestLoader as TsManifestLoader } from '../src/core/manifest-loader.ts';
 
@@ -249,6 +251,55 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
   assert.equal(anthropic.implementationPath, 'src/models/anthropic.js');
   assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
+});
+
+test('default channel and provider factories expose runtime helpers for delivery onboarding', () => {
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+
+  process.env.SLACK_BOT_TOKEN = '***';
+  process.env.SLACK_SIGNING_SECRET = '***';
+  process.env.OPENAI_API_KEY = '***';
+
+  try {
+    const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
+    const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
+
+    assert.ok(slack);
+    assert.equal(typeof slack.isConfigured, 'function');
+    assert.equal(typeof slack.summary, 'function');
+    assert.equal(slack.isConfigured(), true);
+    assert.deepEqual(slack.summary(), slackChannelScaffold);
+
+    assert.ok(openai);
+    assert.equal(typeof openai.isConfigured, 'function');
+    assert.equal(typeof openai.supportsFeature, 'function');
+    assert.equal(openai.isConfigured(), true);
+    assert.equal(openai.supportsFeature('tools'), true);
+    assert.equal(openai.supportsFeature('audio'), false);
+    assert.deepEqual(openai.summary(), openaiProviderScaffold);
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+
+    if (originalEnv.OPENAI_API_KEY === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+    }
+  }
 });
 
 test('buildSummary exposes a delivery setup queue and prompt preview includes setup hints', () => {

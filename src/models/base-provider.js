@@ -23,6 +23,26 @@ export class BaseProvider {
     this.nextStep = nextStep;
   }
 
+  missingEnvVars(environment = process.env) {
+    if (!this.authEnvVar) {
+      return [];
+    }
+
+    return environment?.[this.authEnvVar] ? [] : [this.authEnvVar];
+  }
+
+  isConfigured(environment = process.env) {
+    return this.authEnvVar ? this.missingEnvVars(environment).length === 0 : false;
+  }
+
+  supportsFeature(feature) {
+    return typeof feature === 'string' && this.features.includes(feature);
+  }
+
+  supportsModality(modality) {
+    return typeof modality === 'string' && this.modalities.includes(modality);
+  }
+
   summary() {
     return {
       id: this.id,

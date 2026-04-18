@@ -1,3 +1,5 @@
+import { BaseProvider } from './base-provider.js';
+
 export const anthropicProviderScaffold = {
   id: 'anthropic',
   name: 'Anthropic',
@@ -10,3 +12,7 @@ export const anthropicProviderScaffold = {
   implementationPath: 'src/models/anthropic.js',
   nextStep: 'implement messages api wrapper with long-context defaults',
 };
+
+export function createAnthropicProvider(overrides = {}) {
+  return new BaseProvider({ ...anthropicProviderScaffold, ...overrides });
+}

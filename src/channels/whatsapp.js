@@ -1,3 +1,5 @@
+import { BaseChannel } from './base-channel.js';
+
 export const whatsappChannelScaffold = {
   id: 'whatsapp',
   name: 'WhatsApp',
@@ -15,3 +17,7 @@ export const whatsappChannelScaffold = {
   implementationPath: 'src/channels/whatsapp.js',
   nextStep: 'map business-api webhooks and outbound message delivery',
 };
+
+export function createWhatsAppChannel(overrides = {}) {
+  return new BaseChannel({ ...whatsappChannelScaffold, ...overrides });
+}

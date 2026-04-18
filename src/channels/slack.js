@@ -1,3 +1,5 @@
+import { BaseChannel } from './base-channel.js';
+
 export const slackChannelScaffold = {
   id: 'slack',
   name: 'Slack',
@@ -15,3 +17,7 @@ export const slackChannelScaffold = {
   implementationPath: 'src/channels/slack.js',
   nextStep: 'implement inbound event handling and outbound thread replies',
 };
+
+export function createSlackChannel(overrides = {}) {
+  return new BaseChannel({ ...slackChannelScaffold, ...overrides });
+}
