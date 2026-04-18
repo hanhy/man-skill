@@ -1,4 +1,6 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { SoulProfile } from './soul-profile.ts';
+import { VoiceProfile } from './voice-profile.ts';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -238,7 +240,35 @@ function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string 
 }
 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
-  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines`;
+  const missingSections = Array.isArray(document.missingSections) ? document.missingSections : [];
+  const sectionSummary = document.present && document.lineCount > 0
+    && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
+    ? `, sections ${document.readySectionCount}/${document.totalSectionCount} ready`
+    : '';
+  const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
+    ? `, missing ${missingSections.join(', ')}`
+    : '';
+  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${missingSectionSummary}`;
+}
+
+function buildDocumentMaintenanceAction(document: CoreDocumentFoundationSummary): string | null {
+  if (!document.present) {
+    return document.path === 'SOUL.md' ? 'create SOUL.md' : 'create voice/README.md';
+  }
+
+  if (document.lineCount === 0) {
+    return document.path === 'SOUL.md'
+      ? 'add non-heading guidance to SOUL.md'
+      : 'add non-heading guidance to voice/README.md';
+  }
+
+  const missingSections = Array.isArray(document.missingSections) ? document.missingSections : [];
+  if (missingSections.length > 0) {
+    const target = document.path === 'SOUL.md' ? 'SOUL.md' : 'voice/README.md';
+    return `add missing sections to ${target}: ${missingSections.join(', ')}`;
+  }
+
+  return null;
 }
 
 function buildCoreFoundationMaintenance({
@@ -264,12 +294,8 @@ function buildCoreFoundationMaintenance({
   });
   const missingSkillPaths = buildSkillsDocumentationPaths(missingSkillNames);
   const thinSkillPaths = buildSkillsDocumentationPaths(thinSkillNames);
-  const soulAction = !soul.present
-    ? 'create SOUL.md'
-    : (soul.lineCount === 0 ? 'add non-heading guidance to SOUL.md' : null);
-  const voiceAction = !voice.present
-    ? 'create voice/README.md'
-    : (voice.lineCount === 0 ? 'add non-heading guidance to voice/README.md' : null);
+  const soulAction = buildDocumentMaintenanceAction(soul);
+  const voiceAction = buildDocumentMaintenanceAction(voice);
 
   const areas: CoreFoundationMaintenanceQueueItem[] = [
     {
@@ -298,14 +324,14 @@ function buildCoreFoundationMaintenance({
     },
     {
       area: 'soul',
-      status: !soul.present ? 'missing' : (soul.lineCount === 0 ? 'thin' : 'ready'),
+      status: !soul.present ? 'missing' : ((soul.lineCount === 0 || soul.missingSections.length > 0) ? 'thin' : 'ready'),
       summary: summarizeDocumentFoundation(soul),
       action: soulAction,
       paths: ['SOUL.md'],
     },
     {
       area: 'voice',
-      status: !voice.present ? 'missing' : (voice.lineCount === 0 ? 'thin' : 'ready'),
+      status: !voice.present ? 'missing' : ((voice.lineCount === 0 || voice.missingSections.length > 0) ? 'thin' : 'ready'),
       summary: summarizeDocumentFoundation(voice),
       action: voiceAction,
       paths: ['voice/README.md'],
@@ -378,6 +404,88 @@ export interface CoreDocumentFoundationSummary {
   path: string;
   lineCount: number;
   excerpt: string | null;
+  structured: boolean;
+  readySectionCount: number;
+  totalSectionCount: number;
+  missingSections: string[];
+}
+
+function hasStructuredHeading(document: string | null | undefined, headings: string[]): boolean {
+  if (!isNonEmptyString(document)) {
+    return false;
+  }
+
+  const normalizedHeadings = headings.map((heading) => heading.toLowerCase());
+  return document
+    .split('\n')
+    .map((line) => line.trim().toLowerCase())
+    .some((line) => line.startsWith('## ') && normalizedHeadings.includes(line.slice(3).trim()));
+}
+
+function buildSoulDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
+  const profile = SoulProfile.fromDocument(document ?? '');
+  const present = isNonEmptyString(document);
+  const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
+  const missingSections = structured
+    ? [
+      profile.coreTruths.length > 0 ? null : 'core-truths',
+      profile.boundaries.length > 0 ? null : 'boundaries',
+      profile.continuity.length > 0 ? null : 'continuity',
+    ].filter((value): value is string => typeof value === 'string')
+    : [];
+
+  const lineCount = countContentLines(document);
+  const readySectionCount = !present || lineCount === 0
+    ? 0
+    : (structured ? 3 - missingSections.length : 3);
+
+  return {
+    present,
+    path: 'SOUL.md',
+    lineCount,
+    excerpt: extractExcerpt(document),
+    structured,
+    readySectionCount,
+    totalSectionCount: 3,
+    missingSections,
+  };
+}
+
+function buildVoiceDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
+  const profile = VoiceProfile.fromDocument(document ?? '');
+  const present = isNonEmptyString(document);
+  const structured = hasStructuredHeading(document, [
+    'tone',
+    'signature moves',
+    'avoid',
+    'language hints',
+    'voice should capture',
+    'voice should not capture',
+    'current default for manskill',
+  ]);
+  const missingSections = structured
+    ? [
+      isNonEmptyString(profile.tone) ? null : 'tone',
+      profile.signatures.length > 0 ? null : 'signature-moves',
+      profile.constraints.length > 0 ? null : 'avoid',
+    ].filter((value): value is string => typeof value === 'string')
+    : [];
+
+  const lineCount = countContentLines(document);
+  const readySectionCount = !present || lineCount === 0
+    ? 0
+    : (structured ? 3 - missingSections.length : 3);
+
+  return {
+    present,
+    path: 'voice/README.md',
+    lineCount,
+    excerpt: extractExcerpt(document),
+    structured,
+    readySectionCount,
+    totalSectionCount: 3,
+    missingSections,
+  };
 }
 
 export interface CoreFoundationOverview {
@@ -510,18 +618,8 @@ export function buildCoreFoundationSummary({
     thinSample: thinSkillNames.slice(0, 5),
     thinPaths: thinSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
   };
-  const soul = {
-    present: isNonEmptyString(soulDocument),
-    path: 'SOUL.md',
-    lineCount: countContentLines(soulDocument),
-    excerpt: extractExcerpt(soulDocument),
-  };
-  const voice = {
-    present: isNonEmptyString(voiceDocument),
-    path: 'voice/README.md',
-    lineCount: countContentLines(voiceDocument),
-    excerpt: extractExcerpt(voiceDocument),
-  };
+  const soul = buildSoulDocumentSummary(soulDocument);
+  const voice = buildVoiceDocumentSummary(voiceDocument);
 
   const missingAreas: string[] = [];
   const thinAreas: string[] = [];
@@ -540,13 +638,13 @@ export function buildCoreFoundationSummary({
 
   if (!soul.present) {
     missingAreas.push('soul');
-  } else if (soul.lineCount === 0) {
+  } else if (soul.lineCount === 0 || soul.missingSections.length > 0) {
     thinAreas.push('soul');
   }
 
   if (!voice.present) {
     missingAreas.push('voice');
-  } else if (voice.lineCount === 0) {
+  } else if (voice.lineCount === 0 || voice.missingSections.length > 0) {
     thinAreas.push('voice');
   }
 

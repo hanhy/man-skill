@@ -56,13 +56,13 @@ function shellSingleQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function buildDocumentRepairCommand(filePath, sentinel, sections) {
+function buildDocumentRepairCommand(filePath, _sentinel, sections) {
   const file = shellSingleQuote(filePath);
   const sectionCommands = sections.map((section) =>
     `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
-  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+  return `{ ${sectionCommands.join('; ')}; }`;
 }
 
 test('buildCoreFoundationCommand scaffolds missing memory buckets with seed files', () => {

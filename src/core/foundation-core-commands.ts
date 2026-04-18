@@ -149,7 +149,7 @@ function buildMemorySeedCommand(paths: string[]): string | null {
 
 function buildDocumentRepairCommand(
   filePath: string,
-  sentinel: string,
+  _sentinel: string,
   sections: ReadonlyArray<{
     heading: string;
     sentinel: string;
@@ -162,7 +162,7 @@ function buildDocumentRepairCommand(
     `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
-  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+  return `{ ${sectionCommands.join('; ')}; }`;
 }
 
 function buildVoiceCommand(status: string | null): string | null {

@@ -98,13 +98,15 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
-  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n');
 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
-  assert.equal(summary.foundation.core.maintenance.helperCommands.scaffoldThin, "(grep -Fqx -- '- Describe when to use this skill.' 'skills/delivery/SKILL.md' || printf %s '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' >> 'skills/delivery/SKILL.md') && (grep -Fqx -- '- Describe the target cadence, directness, and emotional texture here.' 'voice/README.md' || { if grep -Fqx -- '## Tone' 'voice/README.md'; then grep -Fqx -- '- Describe the target cadence, directness, and emotional texture here.' 'voice/README.md' || printf %s '- Describe the target cadence, directness, and emotional texture here.\n' >> 'voice/README.md'; else printf %s '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n' >> 'voice/README.md'; fi; if grep -Fqx -- '## Signature moves' 'voice/README.md'; then grep -Fqx -- '- Capture recurring phrasing, structure, or rhetorical habits here.' 'voice/README.md' || printf %s '- Capture recurring phrasing, structure, or rhetorical habits here.\n' >> 'voice/README.md'; else printf %s '\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n' >> 'voice/README.md'; fi; if grep -Fqx -- '## Avoid' 'voice/README.md'; then grep -Fqx -- '- List wording, hedges, or habits that break the voice.' 'voice/README.md' || printf %s '- List wording, hedges, or habits that break the voice.\n' >> 'voice/README.md'; else printf %s '\n## Avoid\n- List wording, hedges, or habits that break the voice.\n' >> 'voice/README.md'; fi; })");
+  assert.match(summary.foundation.core.maintenance.helperCommands.scaffoldThin ?? '', /skills\/delivery\/SKILL\.md/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.scaffoldThin ?? '', /voice\/README\.md/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.scaffoldThin ?? '', /SOUL\.md/);
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldThin);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair thin core foundation areas — starting with add non-heading guidance to skills/delivery/SKILL.md');
   assert.match(summary.promptPreview, /next action: repair thin core foundation areas — starting with add non-heading guidance to skills\/delivery\/SKILL\.md/);

@@ -243,3 +243,28 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.deepEqual(summary.skills.statusCounts, { discovered: 1 });
   assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; empty buckets: scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Keep durable memory organized by horizon\./);
 });
+
+test('buildSummary foundation core marks partially structured soul and voice docs as thin with missing sections', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable memory organized by horizon.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nHow to deliver verified slices.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'continuity']);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 1);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 1);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid']);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
+});

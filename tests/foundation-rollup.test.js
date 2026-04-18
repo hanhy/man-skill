@@ -38,13 +38,13 @@ function shellSingleQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function buildDocumentRepairCommand(filePath, sentinel, sections) {
+function buildDocumentRepairCommand(filePath, _sentinel, sections) {
   const file = shellSingleQuote(filePath);
   const sectionCommands = sections.map((section) =>
     `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
-  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+  return `{ ${sectionCommands.join('; ')}; }`;
 }
 
 function makeTempRepo() {
@@ -358,12 +358,20 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     path: 'SOUL.md',
     lineCount: 2,
     excerpt: 'Build a faithful operator core.',
+    structured: false,
+    readySectionCount: 3,
+    totalSectionCount: 3,
+    missingSections: [],
   });
   assert.deepEqual(summary.foundation.core.voice, {
     present: true,
     path: 'voice/README.md',
     lineCount: 2,
     excerpt: 'Keep replies direct.',
+    structured: false,
+    readySectionCount: 3,
+    totalSectionCount: 3,
+    missingSections: [],
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 4,
@@ -605,7 +613,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /\| scaffold-missing \(mkdir -p skills\/starter && printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.'/);
+  assert.match(summary.promptPreview, /\| scaffold-thin \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch' && touch "memory\/daily\/\$\(date \+%F\)\.md" 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'\) && \(\{ if grep -Fqx -- '## Core values' 'SOUL\.md'; then grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.'/);
   assert.match(summary.promptPreview, /\| skills mkdir -p skills\/starter && printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\| soul /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\], voice \[missing\]/);
@@ -724,7 +732,7 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
   assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
   assert.equal(soulSummary.workLoop.currentPriority?.command, buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS));
   assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
-  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.' 'SOUL\.md' \|\| \{ /);
+  assert.match(soulSummary.promptPreview, /soul \[thin\]: add non-heading guidance to SOUL\.md @ SOUL\.md; command \{ if grep -Fqx -- '## Core values' 'SOUL\.md'; then grep -Fqx -- '- Describe the durable values and goals that should survive across tasks\.'/);
 });
 
 test('buildSummary keeps thin memory queue actionable when bucket files exist but memory README is missing', () => {
