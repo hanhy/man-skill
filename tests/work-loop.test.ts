@@ -1762,7 +1762,8 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/voice/README.md',
   ]);
   assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with jane-doe \(missing drafts \+ new materials\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person jane-doe\) && \(node src\/index\.js update foundation --person harry-han\)/);
+  assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].generatedDraftCount, 0);
