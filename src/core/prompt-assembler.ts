@@ -811,15 +811,23 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
     ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
     : null;
+  const formatCompactDeliveryQueueLabel = (item: DeliveryQueueItem, fallbackLabel: string) => {
+    const statusTags = [
+      item?.status ?? null,
+      item?.configured ? 'configured' : null,
+      item?.implementationStatus === 'scaffold' ? 'scaffold-only' : null,
+    ].filter(Boolean);
+    return `${item?.name ?? item?.id ?? fallbackLabel}${statusTags.length > 0 ? ` [${statusTags.join(', ')}]` : ''}`;
+  };
   const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
   const remainingChannelQueue = enrichedChannelQueue.slice(1);
   const remainingChannelQueueSummary = remainingChannelQueue.length > 0
-    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => channel.name ?? channel.id ?? 'unknown-channel').join(', ')}`
+    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => formatCompactDeliveryQueueLabel(channel, 'unknown-channel')).join(', ')}`
     : null;
   const visibleProviderQueue = providerQueue.slice(0, 1);
   const remainingProviderQueue = providerQueue.slice(1);
   const remainingProviderQueueSummary = remainingProviderQueue.length > 0
-    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
+    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => formatCompactDeliveryQueueLabel(provider, 'unknown-provider')).join(', ')}`
     : null;
   const formatDeliveryQueueSummary = (queue: DeliveryQueueItem[], {
     pendingCount,

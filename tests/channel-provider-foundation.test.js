@@ -396,11 +396,11 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
     assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
-    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram, WhatsApp, Feishu/);
+    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
-    assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic, Kimi, Minimax, GLM, Qwen/);
+    assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, scaffold-only\], Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\]/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
