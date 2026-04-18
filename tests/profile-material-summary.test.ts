@@ -1082,6 +1082,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.intakeImportAllCommand, 'node src/index.js import intake --all --refresh-foundation');
   assert.deepEqual(summary.ingestion.supportedImportTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.ingestion.bootstrapProfileCommand, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"');
+  assert.equal(summary.ingestion.intakeImportedCommand, 'node src/index.js update intake --imported');
   assert.equal(summary.ingestion.sampleImportCommand, 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation');
   assert.equal(summary.ingestion.importManifestCommand, 'node src/index.js import manifest --file <manifest.json>');
   assert.equal(summary.ingestion.importManifestAndRefreshCommand, 'node src/index.js import manifest --file <manifest.json> --refresh-foundation');
@@ -1109,6 +1110,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
+    scaffoldImported: 'node src/index.js update intake --imported',
     scaffoldBundle: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     scaffoldImportedBundle: null,
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
@@ -1290,6 +1292,7 @@ test('buildSummary surfaces imported profiles that still need intake backfill af
   const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
   assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 1);
+  assert.equal(summary.ingestion.helperCommands?.scaffoldImported, 'node src/index.js update intake --imported');
   assert.equal(summary.ingestion.helperCommands?.scaffoldImportedBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(harry?.intakeReady, false);
   assert.equal(harry?.intakeStatusSummary, 'missing — create imports, README.md, materials.template.json, sample.txt');
@@ -1529,6 +1532,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     bootstrapProfileCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     intakeAllCommand: 'node src/index.js update intake --all',
     intakeStaleCommand: 'node src/index.js update intake --stale',
+    intakeImportedCommand: 'node src/index.js update intake --imported',
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
@@ -1558,6 +1562,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
       scaffoldAll: 'node src/index.js update intake --all',
       scaffoldStale: 'node src/index.js update intake --stale',
+      scaffoldImported: 'node src/index.js update intake --imported',
       scaffoldBundle: null,
       scaffoldImportedBundle: null,
       importManifest: 'node src/index.js import manifest --file <manifest.json>',
@@ -1587,7 +1592,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
-  assert.match(summary.promptPreview, /helpers: scaffold-all node src\/index\.js update intake --all \| scaffold-stale node src\/index\.js update intake --stale \| manifest node src\/index\.js import manifest --file <manifest\.json> \| manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation \| import-all node src\/index\.js import intake --all --refresh-foundation \| import-stale node src\/index\.js import intake --stale --refresh-foundation \| refresh-all node src\/index\.js update foundation --all \| refresh node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /helpers: scaffold-all node src\/index\.js update intake --all \| scaffold-stale node src\/index\.js update intake --stale \| scaffold-imported node src\/index\.js update intake --imported \| manifest node src\/index\.js import manifest --file <manifest\.json> \| manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation \| import-all node src\/index\.js import intake --all --refresh-foundation \| import-stale node src\/index\.js import intake --stale --refresh-foundation \| refresh-all node src\/index\.js update foundation --all \| refresh node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
 });
 

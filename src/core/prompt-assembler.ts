@@ -366,6 +366,7 @@ type IngestionHelperCommands = {
   bootstrap?: string | null;
   scaffoldAll?: string | null;
   scaffoldStale?: string | null;
+  scaffoldImported?: string | null;
   scaffoldBundle?: string | null;
   scaffoldImportedBundle?: string | null;
   importManifest?: string | null;
@@ -401,6 +402,7 @@ type IngestionSummary = {
   intakeScaffoldProfileCount?: number;
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
+  intakeImportedCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
@@ -1007,6 +1009,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
 
       pushHelperEntry(helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null);
       pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
+      pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);

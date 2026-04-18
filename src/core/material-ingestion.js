@@ -634,6 +634,22 @@ export class MaterialIngestion {
     };
   }
 
+  scaffoldImportedProfileIntakes() {
+    const profiles = new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => (profile?.materialCount ?? 0) > 0 && !profile?.intake?.ready)
+      .sort((left, right) => (left?.id ?? '').localeCompare(right?.id ?? ''));
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
   importProfileIntakeManifest({ personId }) {
     const normalizedPersonId = slugifyPersonId(personId ?? '');
     if (!normalizedPersonId) {

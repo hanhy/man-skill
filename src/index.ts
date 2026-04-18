@@ -1312,8 +1312,12 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
       return ingestion.scaffoldStaleProfileIntakes();
     }
 
+    if (options.imported) {
+      return ingestion.scaffoldImportedProfileIntakes();
+    }
+
     if (!personId) {
-      throw new Error('update intake requires --person, --stale, or --all');
+      throw new Error('update intake requires --person, --stale, --imported, or --all');
     }
 
     return ingestion.scaffoldProfileIntake({
@@ -1560,6 +1564,7 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
     '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
     '  node src/index.js update intake --stale             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
+    '  node src/index.js update intake --imported          Backfill intake scaffolds only for already-imported profiles missing imports/ assets',
     '  node src/index.js update intake --all               Rebuild intake scaffolds for every metadata-only profile',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
@@ -1624,10 +1629,11 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'update' && subcommand === 'intake') {
     return formatUsageHint(
-      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all',
+      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --imported | --all',
       [
         "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         'node src/index.js update intake --stale',
+        'node src/index.js update intake --imported',
       ],
     );
   }

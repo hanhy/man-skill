@@ -651,10 +651,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
   const bootstrapProfileCommand = 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"';
+  const importedIntakeScaffoldCommand = 'node src/index.js update intake --imported';
   const helperCommands = {
     bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
+    scaffoldImported: importedIntakeScaffoldCommand,
     scaffoldBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === false)
@@ -719,6 +721,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     bootstrapProfileCommand,
     intakeAllCommand: 'node src/index.js update intake --all',
     intakeStaleCommand: 'node src/index.js update intake --stale',
+    intakeImportedCommand: importedIntakeScaffoldCommand,
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',

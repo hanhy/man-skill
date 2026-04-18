@@ -196,6 +196,50 @@ test('CLI update intake --all reruns intake scaffolding for every metadata-only 
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
 });
 
+test('CLI update intake --imported backfills imported profiles with missing intake landing zones', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Imported Missing',
+    displayName: 'Imported Missing',
+    summary: 'Imported already but still missing the intake landing zone.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Missing',
+    text: 'This profile already has imported material.',
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports'), { recursive: true, force: true });
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Still metadata-only, so --imported should skip it.',
+  });
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Ready',
+    displayName: 'Imported Ready',
+    summary: 'Imported profile with an intact intake scaffold.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Ready',
+    text: 'Already imported and already scaffolded.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--imported'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['imported-missing']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports', 'materials.template.json')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json')), false);
+});
+
 test('CLI import intake --person loads a profile-local starter manifest and refreshes foundation drafts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -611,7 +655,7 @@ test('CLI command errors print a concise usage hint without a stack trace', () =
   );
 });
 
-test('CLI update intake errors advertise the full usage surface for person, stale, and all modes', () => {
+test('CLI update intake errors advertise the full usage surface for person, stale, imported, and all modes', () => {
   const rootDir = makeTempRepo();
 
   assert.throws(
@@ -622,11 +666,12 @@ test('CLI update intake errors advertise the full usage surface for person, stal
     }),
     (error) => {
       assert.equal(error.status, 1);
-      assert.match(error.stderr, /Error: update intake requires --person, --stale, or --all/);
-      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --all/);
+      assert.match(error.stderr, /Error: update intake requires --person, --stale, --imported, or --all/);
+      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --imported \| --all/);
       assert.match(error.stderr, /Examples:/);
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
       assert.match(error.stderr, /node src\/index\.js update intake --stale/);
+      assert.match(error.stderr, /node src\/index\.js update intake --imported/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
