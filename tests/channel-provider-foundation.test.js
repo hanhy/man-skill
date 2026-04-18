@@ -16,9 +16,9 @@ import { createDefaultChannels } from '../src/channels/index.js';
 import { buildOpenAIChatRequest, normalizeOpenAIChatResponse, openaiProviderScaffold } from '../src/models/openai.js';
 import { buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse, anthropicProviderScaffold } from '../src/models/anthropic.js';
 import { buildKimiChatRequest, normalizeKimiChatResponse, kimiProviderScaffold } from '../src/models/kimi.js';
-import { minimaxProviderScaffold } from '../src/models/minimax.js';
-import { glmProviderScaffold } from '../src/models/glm.js';
-import { qwenProviderScaffold } from '../src/models/qwen.js';
+import { buildMinimaxChatRequest, normalizeMinimaxChatResponse, minimaxProviderScaffold } from '../src/models/minimax.js';
+import { buildGLMChatRequest, normalizeGLMChatResponse, glmProviderScaffold } from '../src/models/glm.js';
+import { buildQwenChatRequest, normalizeQwenChatResponse, qwenProviderScaffold } from '../src/models/qwen.js';
 import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 import { createDefaultProviders } from '../src/models/index.js';
 import { ManifestLoader as JsManifestLoader } from '../src/core/manifest-loader.js';
@@ -720,7 +720,230 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   }
 });
 
-test('buildSummary counts the checked-in channel delivery modules and the OpenAI/Anthropic/Kimi provider helpers as runtime-ready', () => {
+test('default provider factories expose runtime helpers for Minimax, GLM, and Qwen', () => {
+  const originalEnv = {
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
+    GLM_API_KEY: process.env.GLM_API_KEY,
+    QWEN_API_KEY: process.env.QWEN_API_KEY,
+  };
+
+  process.env.MINIMAX_API_KEY='***';
+  process.env.GLM_API_KEY='***';
+  process.env.QWEN_API_KEY='***';
+
+  try {
+    const minimax = createDefaultProviders().find((provider) => provider.id === 'minimax');
+    const glm = createDefaultProviders().find((provider) => provider.id === 'glm');
+    const qwen = createDefaultProviders().find((provider) => provider.id === 'qwen');
+
+    assert.ok(minimax);
+    assert.equal(typeof minimax.isConfigured, 'function');
+    assert.equal(typeof minimax.buildChatRequest, 'function');
+    assert.equal(typeof minimax.normalizeChatResponse, 'function');
+    assert.equal(minimax.isConfigured(), true);
+    assert.deepEqual(minimax.summary(), minimaxProviderScaffold);
+    assert.deepEqual(
+      minimax.buildChatRequest({
+        messages: [{ role: 'user', content: 'hello from minimax' }],
+        temperature: 0.4,
+        maxOutputTokens: 180,
+        botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
+      }),
+      buildMinimaxChatRequest({
+        messages: [{ role: 'user', content: 'hello from minimax' }],
+        temperature: 0.4,
+        maxOutputTokens: 180,
+        botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
+      }),
+    );
+    assert.deepEqual(
+      minimax.normalizeChatResponse({
+        id: 'chatcmpl-minimax',
+        model: 'minimax-text-01',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Minimax keeps it short.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 42,
+          completion_tokens: 14,
+          total_tokens: 56,
+        },
+      }),
+      normalizeMinimaxChatResponse({
+        id: 'chatcmpl-minimax',
+        model: 'minimax-text-01',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Minimax keeps it short.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 42,
+          completion_tokens: 14,
+          total_tokens: 56,
+        },
+      }),
+    );
+
+    assert.ok(glm);
+    assert.equal(typeof glm.isConfigured, 'function');
+    assert.equal(typeof glm.buildChatRequest, 'function');
+    assert.equal(typeof glm.normalizeChatResponse, 'function');
+    assert.equal(glm.isConfigured(), true);
+    assert.deepEqual(glm.summary(), glmProviderScaffold);
+    assert.deepEqual(
+      glm.buildChatRequest({
+        messages: [{ role: 'user', content: 'hello from glm' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.2,
+        maxOutputTokens: 220,
+      }),
+      buildGLMChatRequest({
+        messages: [{ role: 'user', content: 'hello from glm' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.2,
+        maxOutputTokens: 220,
+      }),
+    );
+    assert.deepEqual(
+      glm.normalizeChatResponse({
+        id: 'chatcmpl-glm',
+        model: 'glm-4-plus',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: 'GLM wants profile context.',
+            tool_calls: [{
+              id: 'call_glm_1',
+              type: 'function',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
+          },
+        }],
+        usage: {
+          prompt_tokens: 88,
+          completion_tokens: 20,
+          total_tokens: 108,
+        },
+      }),
+      normalizeGLMChatResponse({
+        id: 'chatcmpl-glm',
+        model: 'glm-4-plus',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: 'GLM wants profile context.',
+            tool_calls: [{
+              id: 'call_glm_1',
+              type: 'function',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
+          },
+        }],
+        usage: {
+          prompt_tokens: 88,
+          completion_tokens: 20,
+          total_tokens: 108,
+        },
+      }),
+    );
+
+    assert.ok(qwen);
+    assert.equal(typeof qwen.isConfigured, 'function');
+    assert.equal(typeof qwen.buildChatRequest, 'function');
+    assert.equal(typeof qwen.normalizeChatResponse, 'function');
+    assert.equal(qwen.isConfigured(), true);
+    assert.deepEqual(qwen.summary(), qwenProviderScaffold);
+    assert.deepEqual(
+      qwen.buildChatRequest({
+        messages: [{ role: 'user', content: 'hello from qwen' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.1,
+        maxOutputTokens: 260,
+        responseFormat: { type: 'json_object' },
+      }),
+      buildQwenChatRequest({
+        messages: [{ role: 'user', content: 'hello from qwen' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
+        temperature: 0.1,
+        maxOutputTokens: 260,
+        responseFormat: { type: 'json_object' },
+      }),
+    );
+    assert.deepEqual(
+      qwen.normalizeChatResponse({
+        id: 'chatcmpl-qwen',
+        model: 'qwen-max',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Qwen can emit structured updates.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 96,
+          completion_tokens: 24,
+          total_tokens: 120,
+        },
+      }),
+      normalizeQwenChatResponse({
+        id: 'chatcmpl-qwen',
+        model: 'qwen-max',
+        choices: [{
+          finish_reason: 'stop',
+          message: {
+            role: 'assistant',
+            content: 'Qwen can emit structured updates.',
+          },
+        }],
+        usage: {
+          prompt_tokens: 96,
+          completion_tokens: 24,
+          total_tokens: 120,
+        },
+      }),
+    );
+  } finally {
+    if (originalEnv.MINIMAX_API_KEY === undefined) {
+      delete process.env.MINIMAX_API_KEY;
+    } else {
+      process.env.MINIMAX_API_KEY = originalEnv.MINIMAX_API_KEY;
+    }
+
+    if (originalEnv.GLM_API_KEY === undefined) {
+      delete process.env.GLM_API_KEY;
+    } else {
+      process.env.GLM_API_KEY = originalEnv.GLM_API_KEY;
+    }
+
+    if (originalEnv.QWEN_API_KEY === undefined) {
+      delete process.env.QWEN_API_KEY;
+    } else {
+      process.env.QWEN_API_KEY = originalEnv.QWEN_API_KEY;
+    }
+  }
+});
+
+test('buildSummary counts the checked-in channel delivery modules and all provider helpers as runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -743,9 +966,9 @@ test('buildSummary counts the checked-in channel delivery modules and the OpenAI
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.delivery.readyChannelImplementationCount, 4);
-  assert.equal(summary.delivery.readyProviderImplementationCount, 3);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 6);
   assert.equal(summary.delivery.scaffoldOnlyChannelCount, 0);
-  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 3);
+  assert.equal(summary.delivery.scaffoldOnlyProviderCount, 0);
   assert.equal(summary.delivery.channelQueue[0].implementationReady, true);
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.delivery.channelQueue[1].implementationReady, true);
@@ -760,13 +983,18 @@ test('buildSummary counts the checked-in channel delivery modules and the OpenAI
   assert.equal(summary.delivery.providerQueue[1].implementationStatus, 'ready');
   assert.equal(summary.delivery.providerQueue[2].implementationReady, true);
   assert.equal(summary.delivery.providerQueue[2].implementationStatus, 'ready');
-  assert.equal(summary.delivery.providerQueue[3].implementationReady, false);
-  assert.equal(summary.delivery.providerQueue[3].implementationStatus, 'scaffold');
-  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 3\/6 providers ready/);
+  assert.equal(summary.delivery.providerQueue[3].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[3].implementationStatus, 'ready');
+  assert.equal(summary.delivery.providerQueue[4].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[4].implementationStatus, 'ready');
+  assert.equal(summary.delivery.providerQueue[5].implementationReady, true);
+  assert.equal(summary.delivery.providerQueue[5].implementationStatus, 'ready');
+  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
   assert.match(summary.promptPreview, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /Telegram via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned\], WhatsApp \[planned\], Feishu \[planned(?:, configured)?\]/);
   assert.match(summary.promptPreview, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned\], Kimi \[planned\], Minimax \[planned\], GLM \[planned\], Qwen \[planned\]/);
 });
 
 test('buildSummary exposes a delivery setup queue and prompt preview includes setup hints', () => {
