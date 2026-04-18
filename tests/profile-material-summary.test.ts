@@ -617,9 +617,9 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /Slack via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
   assert.match(prompt, /models: 2 total \(1 active, 1 planned, 0 candidate\)/);
   assert.match(prompt, /Anthropic default claude-3.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
-  assert.match(prompt, /channel queue: 1 pending, manifest missing, impl 0\/1 present via manifests\/channels\.json/);
+  assert.match(prompt, /channel queue: 1 pending, manifest missing, scaffolds 0\/1 present via manifests\/channels\.json/);
   assert.match(prompt, /Slack \[planned\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
-  assert.match(prompt, /provider queue: 1 pending, manifest missing, impl 0\/1 present via manifests\/providers\.json/);
+  assert.match(prompt, /provider queue: 1 pending, manifest missing, scaffolds 0\/1 present via manifests\/providers\.json/);
   assert.match(prompt, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });
 
@@ -744,7 +744,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           id: 'channels',
           label: 'Channels',
           status: 'queued',
-          summary: '4 pending, 0 configured, manifest missing, impl 1/4 present',
+          summary: '4 pending, 0 configured, manifest missing, scaffolds 1/4 present',
           nextAction: 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET',
           command: null,
           paths: ['src/channels/slack.js'],
@@ -753,7 +753,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           id: 'providers',
           label: 'Providers',
           status: 'queued',
-          summary: '6 pending, 0 configured, manifest missing, impl 1/6 present',
+          summary: '6 pending, 0 configured, manifest missing, scaffolds 1/6 present',
           nextAction: 'set OPENAI_API_KEY for gpt-5',
           command: null,
           paths: ['src/models/openai.js'],

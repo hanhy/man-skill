@@ -1059,7 +1059,7 @@ function buildDeliveryPriority({
     label,
     status: pendingCount > 0 ? 'queued' : 'ready',
     summary: pendingCount > 0
-      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
+      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${pendingCount} present`
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,

@@ -827,7 +827,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     const manifestReady = queue.every((item) => item?.manifestPresent === true);
     const implementationPresentCount = queue.filter((item) => item?.implementationPresent === true).length;
 
-    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
+    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
   };
   const channelQueueSummary = formatDeliveryQueueSummary(enrichedChannelQueue, {
     pendingCount: delivery?.pendingChannelCount,
