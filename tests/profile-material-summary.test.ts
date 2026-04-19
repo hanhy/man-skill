@@ -607,6 +607,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Foundation rollup:/);
   assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profiles, 3 entries/);
   assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
+  assert.match(prompt, /skills: 0\/2 generated, 1 candidate, highlights: execution heuristic/);
   assert.match(prompt, /Profiles:/);
   assert.match(prompt, /"jane-doe"/);
   assert.match(prompt, /Profile foundation snapshots:/);

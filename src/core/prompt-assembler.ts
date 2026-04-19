@@ -803,6 +803,9 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
+  const skillsCandidateCount = skills?.candidateCount ?? 0;
+  const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
+
   return [
     memory
       ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.candidateProfileCount ?? 0} candidate profiles, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
@@ -814,7 +817,7 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
       ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${soul.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
-      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skills.candidateCount} candidates, highlights: ${formatFoundationHighlights(skills.highlights)}`
+      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
 }
