@@ -98,6 +98,28 @@ function extractFrontmatterDescription(document) {
   return null;
 }
 
+function isMarkdownFenceDelimiter(line) {
+  return /^(```+|~~~+)/.test(line.trim());
+}
+
+function filterOutsideMarkdownFences(lines) {
+  const visibleLines = [];
+  let insideFence = false;
+
+  for (const rawLine of lines) {
+    if (isMarkdownFenceDelimiter(rawLine)) {
+      insideFence = !insideFence;
+      continue;
+    }
+
+    if (!insideFence) {
+      visibleLines.push(rawLine);
+    }
+  }
+
+  return visibleLines;
+}
+
 function extractDocumentExcerpt(document, maxLength = 160) {
   if (!isNonEmptyString(document)) {
     return null;
@@ -115,7 +137,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
         return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
       })()
     : lines;
-  const candidate = bodyLines
+  const candidate = filterOutsideMarkdownFences(bodyLines)
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
@@ -162,17 +184,7 @@ function collectSkillSectionState(document) {
     };
   }
 
-  const lines = document
-    .split(/\r?\n/)
-    .filter((line, index, allLines) => {
-      let insideFence = false;
-      for (let lineIndex = 0; lineIndex <= index; lineIndex += 1) {
-        if (allLines[lineIndex].trim().startsWith('```')) {
-          insideFence = !insideFence;
-        }
-      }
-      return !insideFence;
-    });
+  const lines = filterOutsideMarkdownFences(document.split(/\r?\n/));
   const ready = [];
   const missing = [];
 
@@ -220,17 +232,7 @@ function hasStructuredSkillHeading(document) {
     return false;
   }
 
-  return document
-    .split(/\r?\n/)
-    .filter((line, index, allLines) => {
-      let insideFence = false;
-      for (let lineIndex = 0; lineIndex <= index; lineIndex += 1) {
-        if (allLines[lineIndex].trim().startsWith('```')) {
-          insideFence = !insideFence;
-        }
-      }
-      return !insideFence;
-    })
+  return filterOutsideMarkdownFences(document.split(/\r?\n/))
     .map((line) => line.trim().toLowerCase())
     .some((line) => line.startsWith('## ') && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(line.slice(3).trim())));
 }
