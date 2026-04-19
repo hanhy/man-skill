@@ -19,6 +19,21 @@ function quotePaths(paths: string[]): string {
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
+const SKILLS_README_SECTIONS = [
+  {
+    heading: '## What lives here',
+    sentinel: '- Reusable operator procedures and behavior modules.',
+    missingSectionAppend: '\n## What lives here\n- Reusable operator procedures and behavior modules.\n',
+    existingBulletAppend: '- Reusable operator procedures and behavior modules.\n',
+  },
+  {
+    heading: '## Layout',
+    sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  },
+] as const;
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
 const SKILL_SECTIONS = [
@@ -111,6 +126,15 @@ function buildSkillsRootReadmeCommand(paths: string[]): string | null {
   }
 
   return `mkdir -p ${shellSingleQuote('skills')} && printf %s ${shellSingleQuote(SKILLS_README_TEMPLATE)} > ${shellSingleQuote('skills/README.md')}`;
+}
+
+function buildSkillsRootReadmeRepairCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/README.md') {
+    return null;
+  }
+
+  return buildDocumentRepairCommand('skills/README.md', SKILLS_README_GUIDANCE_SENTINEL, SKILLS_README_SECTIONS);
 }
 
 function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
@@ -246,10 +270,13 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
 
   if (area === 'skills') {
     const rootReadmePaths = paths.filter((value) => value === 'skills/README.md');
+    const rootThinPaths = thinPaths.filter((value) => value === 'skills/README.md');
     const skillPaths = paths.filter((value) => value.endsWith('/SKILL.md'));
     const normalizedMissingSkillPaths = missingPaths.filter((value) => value.endsWith('/SKILL.md'));
     const normalizedThinSkillPaths = thinPaths.filter((value) => value.endsWith('/SKILL.md'));
-    const rootReadmeCommand = buildSkillsRootReadmeCommand(rootReadmePaths);
+    const rootReadmeCommand = rootThinPaths.length > 0
+      ? buildSkillsRootReadmeRepairCommand(rootThinPaths)
+      : buildSkillsRootReadmeCommand(rootReadmePaths);
 
     if (normalizedMissingSkillPaths.length > 0 || normalizedThinSkillPaths.length > 0 || rootReadmeCommand) {
       const createCommand = buildSkillDocumentationSeedCommand(normalizedMissingSkillPaths);

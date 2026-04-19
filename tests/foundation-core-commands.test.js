@@ -37,6 +37,21 @@ const VOICE_SECTIONS = [
 ];
 const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
+const SKILLS_README_SECTIONS = [
+  {
+    heading: '## What lives here',
+    sentinel: '- Reusable operator procedures and behavior modules.',
+    missingSectionAppend: '\n## What lives here\n- Reusable operator procedures and behavior modules.\n',
+    existingBulletAppend: '- Reusable operator procedures and behavior modules.\n',
+  },
+  {
+    heading: '## Layout',
+    sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  },
+];
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
 const SOUL_SECTIONS = [
   {
@@ -149,6 +164,18 @@ test('buildCoreFoundationCommand seeds a starter memory README when repo memory 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
     '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root README sections without clobbering the file', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'skills',
+      status: 'thin',
+      paths: ['skills/README.md'],
+      thinPaths: ['skills/README.md'],
+    }),
+    buildDocumentRepairCommand('skills/README.md', SKILLS_README_GUIDANCE_SENTINEL, SKILLS_README_SECTIONS),
   );
 });
 

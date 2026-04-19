@@ -1318,6 +1318,128 @@ test('buildSummary surfaces ready sections for partially structured thin skill d
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(slack\); thin docs: slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/slack\/SKILL\.md/);
 });
 
+test('buildSummary treats partially structured skills root guidance as thin core foundation coverage', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+  const skillsCommand = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: true,
+    rootPath: 'skills/README.md',
+    rootExcerpt: 'Shared repo guidance for reusable procedures.',
+    rootMissingSections: ['layout'],
+    rootReadySections: ['what-lives-here'],
+    count: 1,
+    documentedCount: 1,
+    undocumentedCount: 0,
+    thinCount: 0,
+    sample: ['delivery'],
+    samplePaths: ['skills/delivery/SKILL.md'],
+    sampleExcerpts: ['delivery: Deliver concise handoffs.'],
+    undocumentedSample: [],
+    undocumentedPaths: [],
+    thinSample: [],
+    thinPaths: [],
+  });
+  assert.deepEqual(summary.foundation.core.overview, {
+    readyAreaCount: 3,
+    totalAreaCount: 4,
+    missingAreas: [],
+    thinAreas: ['skills'],
+    recommendedActions: ['add missing sections to skills/README.md: layout'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance, {
+    areaCount: 4,
+    readyAreaCount: 3,
+    missingAreaCount: 0,
+    thinAreaCount: 1,
+    recommendedArea: 'skills',
+    recommendedAction: 'add missing sections to skills/README.md: layout',
+    recommendedCommand: skillsCommand,
+    recommendedPaths: ['skills/README.md'],
+    helperCommands: {
+      scaffoldAll: skillsCommand,
+      scaffoldMissing: null,
+      scaffoldThin: skillsCommand,
+      memory: null,
+      skills: skillsCommand,
+      soul: null,
+      voice: null,
+    },
+    queuedAreas: [
+      {
+        area: 'skills',
+        status: 'thin',
+        summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
+        action: 'add missing sections to skills/README.md: layout',
+        paths: ['skills/README.md'],
+        thinPaths: ['skills/README.md'],
+        rootThinMissingSections: ['layout'],
+        rootThinReadySections: ['what-lives-here'],
+        command: skillsCommand,
+      },
+    ],
+  });
+  assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority?.nextAction, 'add missing sections to skills/README.md: layout');
+  assert.equal(summary.workLoop.currentPriority?.command, skillsCommand);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/README.md']);
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(delivery\); root: Shared repo guidance for reusable procedures\.\; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\./);
+  assert.match(summary.promptPreview, /if grep -Fqx -- '## Layout' 'skills\/README\.md'; then awk -v heading='## Layout'/);
+});
+
+test('buildSummary ignores skills root section headings that only appear inside fenced code blocks', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nShared repo guidance for reusable procedures.\n\n```md\n## What lives here\n- Example template only.\n\n## Layout\n- Example template only.\n```\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.skills.rootMissingSections, undefined);
+  assert.equal(summary.foundation.core.skills.rootReadySections, undefined);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
+  assert.doesNotMatch(summary.promptPreview, /root sections .* missing/);
+  assert.doesNotMatch(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md/);
+});
+
 test('buildSummary ignores skill section headings that only appear inside fenced code blocks', () => {
   const rootDir = makeTempRepo();
 
