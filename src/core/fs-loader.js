@@ -102,6 +102,22 @@ function isMarkdownFenceDelimiter(line) {
   return /^(```+|~~~+)/.test(line.trim());
 }
 
+function parseMarkdownHeading(line) {
+  if (!isNonEmptyString(line)) {
+    return null;
+  }
+
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: match[2].trim().toLowerCase(),
+  };
+}
+
 function filterOutsideMarkdownFences(lines) {
   const visibleLines = [];
   let insideFence = false;
@@ -229,17 +245,19 @@ function collectSkillSectionState(document) {
   for (const section of SKILL_SECTION_DEFINITIONS) {
     let inSection = false;
     let hasContent = false;
+    let sectionHeadingLevel = null;
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
-      if (trimmed.startsWith('## ')) {
-        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
-        if (section.headings.includes(normalizedHeading)) {
+      const heading = parseMarkdownHeading(trimmed);
+      if (heading) {
+        if (heading.level >= 2 && section.headings.includes(heading.text)) {
           inSection = true;
           hasContent = false;
+          sectionHeadingLevel = heading.level;
           continue;
         }
 
-        if (inSection) {
+        if (inSection && sectionHeadingLevel !== null && heading.level <= sectionHeadingLevel) {
           break;
         }
       }
@@ -271,8 +289,8 @@ function hasStructuredSkillHeading(document) {
   }
 
   return filterOutsideMarkdownFences(document.split(/\r?\n/))
-    .map((line) => line.trim().toLowerCase())
-    .some((line) => line.startsWith('## ') && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(line.slice(3).trim())));
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading && heading.level >= 2 && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(heading.text)));
 }
 
 function loadSkillInventory(rootDir) {
@@ -610,17 +628,19 @@ function summarizeFoundationDraftSections(filePath, content = null) {
   for (const section of sectionDefinitions) {
     let inSection = false;
     let hasContent = false;
+    let sectionHeadingLevel = null;
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
-      if (trimmed.startsWith('## ')) {
-        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
-        if (section.headings.includes(normalizedHeading)) {
+      const heading = parseMarkdownHeading(trimmed);
+      if (heading) {
+        if (heading.level >= 2 && section.headings.includes(heading.text)) {
           inSection = true;
           hasContent = false;
+          sectionHeadingLevel = heading.level;
           continue;
         }
 
-        if (inSection) {
+        if (inSection && sectionHeadingLevel !== null && heading.level <= sectionHeadingLevel) {
           break;
         }
       }

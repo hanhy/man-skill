@@ -744,6 +744,22 @@ function stripFencedCodeBlocks(document: string | null | undefined): string {
   return filteredLines.join('\n');
 }
 
+function parseMarkdownHeading(line: string | null | undefined): { level: number; text: string } | null {
+  if (!isNonEmptyString(line)) {
+    return null;
+  }
+
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: match[2].trim().toLowerCase(),
+  };
+}
+
 function hasStructuredHeading(document: string | null | undefined, headings: string[]): boolean {
   if (!isNonEmptyString(document)) {
     return false;
@@ -753,8 +769,8 @@ function hasStructuredHeading(document: string | null | undefined, headings: str
   const visibleDocument = stripFencedCodeBlocks(document);
   return visibleDocument
     .split('\n')
-    .map((line) => line.trim().toLowerCase())
-    .some((line) => line.startsWith('## ') && normalizedHeadings.includes(line.slice(3).trim()));
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading !== null && heading.level >= 2 && normalizedHeadings.includes(heading.text));
 }
 
 function summarizeStructuredSections(
@@ -771,20 +787,26 @@ function summarizeStructuredSections(
   const missingSections: string[] = [];
 
   sections.forEach((section) => {
-    const heading = section.heading.trim().toLowerCase();
-    const headingIndex = lines.findIndex((line) => line.trim().toLowerCase() === heading);
+    const headingText = section.heading.trim().replace(/^##\s+/, '').toLowerCase();
+    const headingIndex = lines.findIndex((line) => {
+      const parsed = parseMarkdownHeading(line);
+      return parsed !== null && parsed.level >= 2 && parsed.text === headingText;
+    });
     if (headingIndex === -1) {
       missingSections.push(section.key);
       return;
     }
 
+    const sectionHeading = parseMarkdownHeading(lines[headingIndex]);
+    const sectionHeadingLevel = sectionHeading?.level ?? 2;
     let hasContent = false;
     for (let index = headingIndex + 1; index < lines.length; index += 1) {
       const normalizedLine = lines[index]?.trim() ?? '';
-      if (normalizedLine.startsWith('## ')) {
+      const parsedHeading = parseMarkdownHeading(normalizedLine);
+      if (parsedHeading !== null && parsedHeading.level <= sectionHeadingLevel) {
         break;
       }
-      if (normalizedLine.length > 0) {
+      if (normalizedLine.length > 0 && !normalizedLine.startsWith('#')) {
         hasContent = true;
         break;
       }

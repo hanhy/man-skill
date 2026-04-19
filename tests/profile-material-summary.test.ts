@@ -469,6 +469,37 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
   });
 });
 
+test('loadProfilesIndex accepts deeper markdown headings in structured foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+
+  const deeperVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace(/## /g, '### ');
+  const deeperSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
+    .replace(/## /g, '### ');
+
+  fs.writeFileSync(voiceDraftPath, deeperVoiceDraft);
+  fs.writeFileSync(soulDraftPath, deeperSoulDraft);
+
+  assert.equal(hasValidFoundationMarkdownDraft(voiceDraftPath), true);
+  assert.equal(hasValidFoundationMarkdownDraft(soulDraftPath), true);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+});
+
 test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice headings as valid structured drafts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
