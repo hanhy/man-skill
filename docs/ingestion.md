@@ -283,5 +283,5 @@ Running `node src/index.js` will also expose these generated draft paths under `
 
 ## Current limitation
 
-The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup.
+The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup, including memory candidate coverage when some profiles still need draft refreshes.
 They are still heuristic draft artifacts rather than a fully learned memory store, reusable skill schema, or production channel/provider runtime.

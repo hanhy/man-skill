@@ -66,7 +66,7 @@ The project aims to keep personal-agent construction simple:
 - expose generated draft paths, freshness status, and lightweight draft summaries back through `loadProfilesIndex()` for prompt/runtime consumption
 - carry per-draft provenance forward (`latestMaterialId`, `materialTypes`, markdown draft headers) so generated memory / voice / soul / skills artifacts remain auditable after ingestion
 - mirror memory-draft provenance (`generatedAt`, latest material id/timestamp, source counts, material types) back into `foundationDraftSummaries.memory` so prompt/runtime consumers can inspect freshness without reopening raw draft files
-- aggregate per-profile draft state into a repo-level `foundation` rollup so memory / voice / soul / skills progress is visible without manually scanning every profile
+- aggregate per-profile draft state into a repo-level `foundation` rollup so memory / voice / soul / skills progress is visible without manually scanning every profile, including memory candidate-profile coverage when drafts are still missing
 - expose `foundation.core` diagnostics for the repo's own memory / skills / soul / voice assets so the prompt/runtime layer can quickly audit whether the base agent scaffolding is actually populated
 - include compact source references in `foundation.core` (`memory/README.md`, sample bucket entries, `SOUL.md`, `voice/README.md`) so the prompt preview can point operators at the exact files backing the current foundation state
 - carry the `memory/README.md` excerpt into `foundation.core.memory.rootExcerpt` so repo-level memory guidance stays visible in JSON summaries and the prompt preview, not only in the underlying file
@@ -77,7 +77,7 @@ The project aims to keep personal-agent construction simple:
 - treat target-person metadata changes (`displayName`, `summary`) as foundation-draft drift so stale-only refreshes also regenerate identity-bearing drafts after profile updates
 - render compact per-profile foundation snapshots in `PromptAssembler` so the runtime can see stale drafts, missing pieces, key highlights, a short target summary, and exact markdown section gaps for thin voice / soul / skills drafts without parsing the full profile JSON blob
 - fall back to text-first memory sample summaries when a profile has imported materials but no generated memory draft yet, so prompt snapshots and repo rollups still surface likely durable facts before refresh runs
-- render a compact foundation-rollup block in `PromptAssembler` that summarizes generated vs stale foundation state plus top memory / voice / soul / skills highlights across the repo
+- render a compact foundation-rollup block in `PromptAssembler` that summarizes generated vs stale foundation state plus memory candidate-profile coverage and top memory / voice / soul / skills highlights across the repo
 - render a separate `Foundation maintenance:` block in `PromptAssembler` so queued stale/incomplete profiles are visible by name before the aggregate rollup
 - attach refresh commands to `foundation.maintenance` (`update foundation --stale` plus per-profile `--person <id>`) so the maintenance view is actionable, not just descriptive
 - support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`

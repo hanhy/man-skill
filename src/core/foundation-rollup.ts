@@ -173,6 +173,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
     memory: {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'memory'),
+      candidateProfileCount: countCandidateProfiles(safeProfiles, 'memory'),
       repoStaleProfileCount: staleProfileCount,
       totalEntries: safeProfiles.reduce(
         (total, profile) => total + (profile.foundationDraftSummaries?.memory?.entryCount ?? 0),

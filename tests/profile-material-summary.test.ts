@@ -540,6 +540,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
       memory: {
         profileCount: 2,
         generatedProfileCount: 1,
+        candidateProfileCount: 2,
         repoStaleProfileCount: 1,
         totalEntries: 3,
         highlights: ['Ship the first slice.', 'Direct writing sample.'],
@@ -566,7 +567,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   }).buildSystemPrompt();
 
   assert.match(prompt, /Foundation rollup:/);
-  assert.match(prompt, /memory: 1\/2 generated, 1 repo-stale profiles, 3 entries/);
+  assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profiles, 3 entries/);
   assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
   assert.match(prompt, /Profiles:/);
   assert.match(prompt, /"jane-doe"/);

@@ -164,6 +164,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
   assert.deepEqual(rollup.memory, {
     profileCount: 2,
     generatedProfileCount: 1,
+    candidateProfileCount: 2,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Ship the first slice.', 'Keep the scope tight.', 'Tight loops beat big plans.'],
@@ -265,6 +266,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.deepEqual(summary.foundation.memory, {
     profileCount: 2,
     generatedProfileCount: 1,
+    candidateProfileCount: 2,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.', 'Tight loops beat big plans.'],
@@ -347,6 +349,7 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
   assert.deepEqual(summary.foundation.memory, {
     profileCount: 0,
     generatedProfileCount: 0,
+    candidateProfileCount: 0,
     repoStaleProfileCount: 0,
     totalEntries: 0,
     highlights: [],
