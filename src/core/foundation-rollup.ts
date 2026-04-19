@@ -80,6 +80,33 @@ function buildCommandBundle(commands: Array<string | null | undefined> = []): st
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function summarizeDraftGap(summary: any, key: string): string | null {
+  const totalSectionCount = summary?.totalSectionCount ?? 0;
+  const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+  const readySections = Array.isArray(summary?.readySections)
+    ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const missingSections = Array.isArray(summary?.missingSections)
+    ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  if (totalSectionCount <= 0 || missingSections.length === 0) {
+    return null;
+  }
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+}
+
+function summarizeProfileDraftGaps(profile: any): string | null {
+  const gapSummaries = [
+    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
+}
+
 function summarizeMaintenanceQueue(profiles: any[] = []) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
@@ -95,6 +122,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
       refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
       latestMaterialAt: profile.latestMaterialAt ?? null,
+      draftGapSummary: summarizeProfileDraftGaps(profile),
       refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
     }))
     .sort((left, right) => {

@@ -97,6 +97,7 @@ type MaintenanceQueueItem = {
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
+  draftGapSummary?: string | null;
   refreshCommand?: string | null;
 };
 
@@ -710,7 +711,10 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
       ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
+    const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+      ? `, gaps ${profile.draftGapSummary}`
+      : '';
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
   };
   const remainingQueuedProfilePreview = remainingQueuedProfiles
     .slice(0, 2)

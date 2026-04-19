@@ -735,6 +735,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills', 'soul', 'voice'],
             refreshReasons: ['missing drafts', 'metadata-updated'],
+            draftGapSummary: 'voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules',
           },
           {
             id: 'harry-han',
@@ -760,6 +761,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   }).buildSystemPrompt();
 
   assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules/);
   assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
   assert.match(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
   assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
