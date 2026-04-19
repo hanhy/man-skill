@@ -142,13 +142,14 @@ function parseMarkdownHeadingAt(lines: string[], index: number): { level: number
   };
 }
 
-function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCount: number } | null {
+function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCount: number; level: number } | null {
   for (let index = 0; index < lines.length; index += 1) {
     const heading = parseMarkdownHeadingAt(lines, index);
-    if (heading && heading.level >= 2 && heading.text === 'current product direction') {
+    if (heading && heading.level >= 1 && heading.text === 'current product direction') {
       return {
         index,
         lineCount: heading.lineCount,
+        level: heading.level,
       };
     }
   }
@@ -170,7 +171,7 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
   const objectives: string[] = [];
   for (let index = heading.index + heading.lineCount; index < lines.length; index += 1) {
     const nextHeading = parseMarkdownHeadingAt(lines, index);
-    if (nextHeading && nextHeading.level >= 2) {
+    if (nextHeading && nextHeading.level <= heading.level) {
       break;
     }
 
