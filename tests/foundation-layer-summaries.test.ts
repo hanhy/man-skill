@@ -257,6 +257,9 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.skills.discoveredCount, 1);
   assert.equal(summary.skills.customCount, 0);
   assert.deepEqual(summary.skills.statusCounts, { discovered: 1 });
+  assert.equal(summary.foundation.core.skills.hasRootDocument, false);
+  assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
+  assert.equal(summary.foundation.core.skills.rootExcerpt, null);
   assert.match(summary.promptPreview, /coverage: 2\/4 ready; thin memory, skills/);
 });
 

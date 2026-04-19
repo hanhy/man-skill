@@ -469,6 +469,9 @@ export interface CoreMemoryFoundationSummary {
 }
 
 export interface CoreSkillsFoundationSummary {
+  hasRootDocument: boolean;
+  rootPath: string;
+  rootExcerpt: string | null;
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -636,6 +639,7 @@ export interface BuildCoreFoundationSummaryOptions {
   } | null;
   skillNames?: string[];
   skillInventory?: {
+    root?: string | null;
     names?: string[];
     documented?: string[];
     undocumented?: string[];
@@ -692,6 +696,9 @@ export function buildCoreFoundationSummary({
     sampleEntries: collectMemorySampleEntries({ daily, longTerm, scratch }),
   };
   const skills = {
+    hasRootDocument: isNonEmptyString(skillInventory?.root),
+    rootPath: 'skills/README.md',
+    rootExcerpt: extractExcerpt(skillInventory?.root),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,

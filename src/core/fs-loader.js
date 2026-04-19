@@ -192,6 +192,7 @@ function collectMissingSkillSections(document) {
 
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const root = readTextIfExists(path.join(rootDir, 'skills', 'README.md'));
   const documented = [];
   const undocumented = [];
   const thin = [];
@@ -220,6 +221,7 @@ function loadSkillInventory(rootDir) {
   }
 
   return {
+    root,
     names: skillNames,
     documented,
     undocumented,

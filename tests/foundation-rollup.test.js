@@ -340,6 +340,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'obsidian'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
   fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill\n\nCapture durable operator notes.');
   fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
@@ -366,6 +367,9 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     sampleEntries: ['daily/2026-04-16.md', 'long-term/operator.json', 'scratch/draft.txt'],
   });
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: true,
+    rootPath: 'skills/README.md',
+    rootExcerpt: 'Keep reusable operator procedures here.',
     count: 2,
     documentedCount: 2,
     undocumentedCount: 0,
@@ -429,7 +433,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\./);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\.; docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
 });
@@ -456,6 +460,9 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
   const summary = buildSummary(rootDir);
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 1,
     documentedCount: 1,
     undocumentedCount: 0,
@@ -860,6 +867,9 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'thin', paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'] });
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 2,
     documentedCount: 0,
     undocumentedCount: 2,
@@ -935,6 +945,9 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'thin', paths: ['skills/slack/SKILL.md'] });
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 2,
     documentedCount: 1,
     undocumentedCount: 1,
@@ -1014,6 +1027,9 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   });
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 1,
     documentedCount: 0,
     undocumentedCount: 0,
@@ -1109,6 +1125,9 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
   });
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 2,
     documentedCount: 1,
     undocumentedCount: 0,
@@ -1205,6 +1224,9 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
   });
 
   assert.deepEqual(summary.foundation.core.skills, {
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
+    rootExcerpt: null,
     count: 6,
     documentedCount: 0,
     undocumentedCount: 6,
