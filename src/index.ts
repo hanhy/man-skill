@@ -1508,9 +1508,42 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   throw new Error(`Unsupported import type: ${subcommand}`);
 }
 
-export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions): any {
+export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
-  const personId = typeof options.person === 'string' ? options.person : undefined;
+  const personId = readOptionalStringOption(options, 'person');
+  const refreshFoundation = Boolean(options['refresh-foundation']);
+
+  const maybeAttachFoundationRefresh = (result: any) => {
+    if (!refreshFoundation) {
+      return result;
+    }
+
+    const resultEntries = Array.isArray(result?.results)
+      ? result.results.filter((entry: any) => entry && typeof entry.personId === 'string')
+      : (result && typeof result.personId === 'string' ? [result] : []);
+    const eligiblePersonIds = [...new Set(resultEntries
+      .map((entry: any) => entry.personId)
+      .filter((candidate: string) => typeof candidate === 'string' && candidate.length > 0)
+      .filter((candidate: string) => ingestion.loadMaterialRecords(candidate).length > 0))];
+
+    if (eligiblePersonIds.length === 0) {
+      return {
+        ...result,
+        foundationRefresh: {
+          profileCount: 0,
+          results: [],
+        },
+      };
+    }
+
+    return {
+      ...result,
+      foundationRefresh: {
+        profileCount: eligiblePersonIds.length,
+        results: eligiblePersonIds.map((candidate: string) => relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId: candidate }))),
+      },
+    };
+  };
 
   if (subcommand === 'profile') {
     if (!personId) {
@@ -1535,22 +1568,22 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
     assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'update intake requires exactly one of --person, --stale, --imported, or --all');
 
     if (options.all) {
-      return ingestion.scaffoldAllProfileIntakes();
+      return maybeAttachFoundationRefresh(ingestion.scaffoldAllProfileIntakes());
     }
 
     if (options.stale) {
-      return ingestion.scaffoldStaleProfileIntakes();
+      return maybeAttachFoundationRefresh(ingestion.scaffoldStaleProfileIntakes());
     }
 
     if (options.imported) {
-      return ingestion.scaffoldImportedProfileIntakes();
+      return maybeAttachFoundationRefresh(ingestion.scaffoldImportedProfileIntakes());
     }
 
-    return ingestion.scaffoldProfileIntake({
+    return maybeAttachFoundationRefresh(ingestion.scaffoldProfileIntake({
       personId,
       displayName: typeof options['display-name'] === 'string' ? options['display-name'] : undefined,
       summary: typeof options.summary === 'string' ? options.summary : undefined,
-    });
+    }));
   }
 
   if (subcommand === 'foundation') {
@@ -1836,10 +1869,10 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
-    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
-    '  node src/index.js update intake --stale             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
-    '  node src/index.js update intake --imported          Backfill intake scaffolds only for already-imported profiles missing imports/ assets',
-    '  node src/index.js update intake --all               Rebuild intake scaffolds for every metadata-only profile',
+    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update intake --stale [--refresh-foundation]             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
+    '  node src/index.js update intake --imported [--refresh-foundation]          Backfill intake scaffolds only for already-imported profiles missing imports/ assets',
+    '  node src/index.js update intake --all [--refresh-foundation]               Rebuild intake scaffolds for every metadata-only profile',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
     '  node src/index.js update foundation --all',
@@ -1904,11 +1937,11 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'update' && subcommand === 'intake') {
     return formatUsageHint(
-      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --imported | --all',
+      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         'node src/index.js update intake --stale',
-        'node src/index.js update intake --imported',
+        'node src/index.js update intake --imported --refresh-foundation',
       ],
     );
   }

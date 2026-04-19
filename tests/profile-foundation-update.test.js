@@ -264,6 +264,29 @@ test('CLI update intake --imported backfills imported profiles with missing inta
   assert.equal(importedMissingProfileAfter.updatedAt, importedMissingProfileBefore.updatedAt);
 });
 
+test('CLI update intake refreshes foundation drafts for imported profiles when --refresh-foundation is passed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, but the intake backfill should also refresh drafts.',
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'imported-already', 'imports'), { recursive: true, force: true });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--imported', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.results[0].personId, 'imported-already');
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['imported-already']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-already', 'voice', 'README.md')), true);
+});
+
 test('CLI import intake --person loads a profile-local starter manifest without refreshing foundation drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -770,8 +793,9 @@ test('CLI --help prints a concise usage guide instead of the repo summary JSON',
   assert.match(output, /import intake --stale \[--refresh-foundation\]\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
   assert.match(output, /import intake --imported \[--refresh-foundation\]\s+Import ready intake manifests only for already-imported profiles/);
   assert.match(output, /import intake --all \[--refresh-foundation\]\s+Import every ready profile-local intake manifest, including already-imported profiles/);
-  assert.match(output, /update intake --stale\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
-  assert.match(output, /update intake --all\s+Rebuild intake scaffolds for every metadata-only profile/);
+  assert.match(output, /update intake --stale \[--refresh-foundation\]\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
+  assert.match(output, /update intake --imported \[--refresh-foundation\]\s+Backfill intake scaffolds only for already-imported profiles missing imports\/ assets/);
+  assert.match(output, /update intake --all \[--refresh-foundation\]\s+Rebuild intake scaffolds for every metadata-only profile/);
   assert.doesNotMatch(output, /"profile": \{/);
 });
 
@@ -806,11 +830,11 @@ test('CLI update intake errors advertise the full usage surface for person, stal
     (error) => {
       assert.equal(error.status, 1);
       assert.match(error.stderr, /Error: update intake requires exactly one of --person, --stale, --imported, or --all/);
-      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --imported \| --all/);
+      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/);
       assert.match(error.stderr, /Examples:/);
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
       assert.match(error.stderr, /node src\/index\.js update intake --stale/);
-      assert.match(error.stderr, /node src\/index\.js update intake --imported/);
+      assert.match(error.stderr, /node src\/index\.js update intake --imported --refresh-foundation/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
@@ -877,7 +901,7 @@ test('CLI batch-capable intake and foundation commands reject ambiguous mode sel
     {
       args: ['update', 'intake', '--person', 'harry-han', '--stale'],
       expectedError: /Error: update intake requires exactly one of --person, --stale, --imported, or --all/,
-      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --imported \| --all/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
     },
     {
       args: ['update', 'foundation', '--person', 'harry-han', '--all'],
