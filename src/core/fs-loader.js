@@ -120,6 +120,20 @@ function filterOutsideMarkdownFences(lines) {
   return visibleLines;
 }
 
+function extractDocumentBodyLines(document) {
+  if (!isNonEmptyString(document)) {
+    return [];
+  }
+
+  const lines = document.split(/\r?\n/);
+  if (!document.startsWith('---')) {
+    return lines;
+  }
+
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+}
+
 function extractDocumentExcerpt(document, maxLength = 160) {
   if (!isNonEmptyString(document)) {
     return null;
@@ -130,18 +144,17 @@ function extractDocumentExcerpt(document, maxLength = 160) {
     return buildExcerpt(frontmatterDescription, maxLength);
   }
 
-  const lines = document.split(/\r?\n/);
-  const bodyLines = document.startsWith('---')
-    ? (() => {
-        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
-      })()
-    : lines;
-  const candidate = filterOutsideMarkdownFences(bodyLines)
+  const candidate = filterOutsideMarkdownFences(extractDocumentBodyLines(document))
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
   return buildExcerpt(candidate, maxLength);
+}
+
+function hasMeaningfulDocumentBody(document) {
+  return filterOutsideMarkdownFences(extractDocumentBodyLines(document))
+    .map((line) => line.trim())
+    .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 }
 
 const SKILL_SECTION_DEFINITIONS = [
@@ -252,9 +265,10 @@ function loadSkillInventory(rootDir) {
 
     const document = readTextIfExists(skillPath);
     const excerpt = extractDocumentExcerpt(document);
+    const hasMeaningfulBody = hasMeaningfulDocumentBody(document);
     const sectionState = collectSkillSectionState(document);
     const structured = hasStructuredSkillHeading(document);
-    if (isNonEmptyString(excerpt) && (!structured || sectionState.missing.length === 0)) {
+    if (isNonEmptyString(excerpt) && hasMeaningfulBody && (!structured || sectionState.missing.length === 0)) {
       documented.push(skillName);
       documentedExcerpts[skillName] = excerpt;
       continue;

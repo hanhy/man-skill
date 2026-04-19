@@ -1327,6 +1327,38 @@ test('buildSummary keeps ready skills root sections visible in maintenance summa
   assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); root: Shared repo guidance for reusable procedures\.\; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/telegram\/SKILL\.md; excerpts: telegram: Deliver concise thread updates\.\; missing docs: slack @ skills\/slack\/SKILL\.md/);
 });
 
+test('buildSummary treats frontmatter-only SKILL docs as thin core foundation coverage', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    ['---', 'name: delivery', 'description: Keep handoffs crisp.', '---', '', '# Delivery'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.skills.documentedCount, 0);
+  assert.equal(summary.foundation.core.skills.thinCount, 1);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, []);
+  assert.deepEqual(summary.foundation.core.skills.thinSample, ['delivery']);
+  assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
+    delivery: ['what-this-skill-is-for', 'suggested-workflow'],
+  });
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.doesNotMatch(summary.promptPreview, /excerpts: delivery: Keep handoffs crisp\./);
+});
+
 test('buildSummary keeps mixed documented and heading-only SKILL docs queued as thin core foundation coverage', () => {
   const rootDir = makeTempRepo();
 
