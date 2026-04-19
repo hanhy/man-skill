@@ -406,6 +406,44 @@ test('Feishu channel runtime helpers cover readiness, rich-post text normalizati
   );
 
   assert.deepEqual(
+    channel.normalizeInboundEvent({
+      type: 'event_callback',
+      header: {
+        event_type: 'im.message.receive_v1',
+        tenant_key: 'tenant-1',
+      },
+      event: {
+        sender: {
+          sender_id: {
+            open_id: 'ou_sender',
+          },
+        },
+        message: {
+          message_id: 'om_message_3',
+          message_type: 'text',
+          chat_id: 'oc_chat_1',
+          create_time: '1710000302',
+          content: {
+            text: 'Already parsed object payload',
+          },
+        },
+      },
+    }),
+    {
+      platform: 'feishu',
+      eventType: 'im.message.receive_v1',
+      tenantKey: 'tenant-1',
+      chatId: 'oc_chat_1',
+      senderId: 'ou_sender',
+      messageId: 'om_message_3',
+      messageType: 'text',
+      text: 'Already parsed object payload',
+      threadId: null,
+      timestamp: 1710000302,
+    },
+  );
+
+  assert.deepEqual(
     channel.buildWebhookResponse({ type: 'url_verification', challenge: 'challenge-token' }),
     { challenge: 'challenge-token' },
   );

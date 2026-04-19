@@ -19,6 +19,10 @@ export const feishuChannelScaffold = {
 };
 
 function parseFeishuMessageContent(rawContent) {
+  if (rawContent && typeof rawContent === 'object') {
+    return rawContent;
+  }
+
   if (typeof rawContent !== 'string' || rawContent.length === 0) {
     return {};
   }
