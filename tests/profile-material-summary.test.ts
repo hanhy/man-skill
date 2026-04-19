@@ -1724,6 +1724,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   });
   assert.deepEqual(janeCommand.helperCommands, {
     scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
+    importIntakeWithoutRefresh: "node src/index.js import intake --person 'jane-doe'",
     importIntake: null,
     importManifest: null,
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
@@ -1750,6 +1751,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateProfileCommand: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     updateProfileAndRefreshCommand: null,
     updateIntakeCommand: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
+    importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'metadata-only'",
     importIntakeCommand: "node src/index.js import intake --person 'metadata-only' --refresh-foundation",
     intakeReady: false,
     intakeCompletion: 'missing',
@@ -1779,6 +1781,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     },
     helperCommands: {
       scaffold: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
+      importIntakeWithoutRefresh: "node src/index.js import intake --person 'metadata-only'",
       importIntake: "node src/index.js import intake --person 'metadata-only' --refresh-foundation",
       importManifest: null,
       updateProfile: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
@@ -2089,6 +2092,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
   assert.equal(metadataOnlyCommand.intakeReady, true);
   assert.equal(metadataOnlyCommand.intakeCompletion, 'ready');
   assert.equal(metadataOnlyCommand.intakeStatusSummary, 'ready');
+  assert.equal(metadataOnlyCommand.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'metadata-only'");
   assert.equal(metadataOnlyCommand.importIntakeCommand, "node src/index.js import intake --person 'metadata-only' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importMaterialCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");

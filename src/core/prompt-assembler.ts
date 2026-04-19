@@ -423,6 +423,7 @@ type IngestionProfileCommand = {
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;

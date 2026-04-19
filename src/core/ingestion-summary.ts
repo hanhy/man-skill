@@ -560,6 +560,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
+  const importIntakeWithoutRefreshCommand = intakeManifestRunnable
+    ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
+    : null;
   const importIntakeCommand = (imported ? importedIntakeCommandsAvailable : intakeManifestRunnable)
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
@@ -577,6 +580,7 @@ function buildProfileCommands(profile, options: any = {}) {
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     updateIntakeCommand,
+    importIntakeWithoutRefreshCommand,
     importIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
@@ -591,6 +595,7 @@ function buildProfileCommands(profile, options: any = {}) {
     importCommands,
     helperCommands: {
       scaffold: updateIntakeCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: imported && !importedIntakeCommandsAvailable ? null : intakeImportManifestCommand,
       updateProfile: updateProfileCommand,
