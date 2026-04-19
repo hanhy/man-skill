@@ -295,4 +295,6 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Avoid/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Language hints/);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/3 ready, missing boundaries, continuity/);
+  assert.match(summary.promptPreview, /- voice: present, 1 lines, Warm and grounded\. @ voice\/README\.md, sections 1\/4 ready, missing signature-moves, avoid, language-hints/);
 });

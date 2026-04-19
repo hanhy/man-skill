@@ -1276,6 +1276,25 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
+    memory
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
+      : null,
+    skills
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+        const missingSections = skills.thinMissingSections?.[skillName] ?? [];
+        const missingSummary = missingSections.length > 0 ? ` missing ${missingSections.join(', ')}` : '';
+        return `${skillName}${missingSummary}`;
+      }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
+      : null,
+    soul
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}`
+      : null,
+    voice
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}`
+      : null,
+    recommendedActions.length > 0
+      ? `- next actions: ${recommendedActions.join(' | ')}`
+      : null,
     recommendedRepairLine,
     (() => {
       const helperEntries = [
@@ -1294,25 +1313,6 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     })(),
     ...queuedAreaLines,
     remainingQueuedAreaSummary,
-    memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
-      : null,
-    skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
-        const missingSections = skills.thinMissingSections?.[skillName] ?? [];
-        const missingSummary = missingSections.length > 0 ? ` missing ${missingSections.join(', ')}` : '';
-        return `${skillName}${missingSummary}`;
-      }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
-      : null,
-    soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`
-      : null,
-    voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}`
-      : null,
-    recommendedActions.length > 0
-      ? `- next actions: ${recommendedActions.join(' | ')}`
-      : null,
   ].filter(Boolean).join('\n');
 }
 
@@ -1428,12 +1428,12 @@ export class PromptAssembler {
       workLoopBlock ? '' : null,
       workLoopBlock ? 'Work loop:' : null,
       workLoopBlock,
-      deliveryFoundationBlock ? '' : null,
-      deliveryFoundationBlock ? 'Delivery foundation:' : null,
-      deliveryFoundationBlock,
       coreFoundationBlock ? '' : null,
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      deliveryFoundationBlock ? '' : null,
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       foundationMaintenanceBlock ? '' : null,
       foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
       foundationMaintenanceBlock,
@@ -1484,11 +1484,11 @@ export class PromptAssembler {
       workLoopBlock ? 'Work loop:' : null,
       workLoopBlock,
       '',
-      deliveryFoundationBlock ? 'Delivery foundation:' : null,
-      deliveryFoundationBlock,
-      '',
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      '',
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       '',
       foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
       foundationMaintenanceBlock,
