@@ -37,6 +37,18 @@ function normalizeHeadingText(value: string) {
     .toLowerCase();
 }
 
+function parseStructuredHeading(line: string): { level: number; text: string } | null {
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: normalizeHeadingText(match[2]),
+  };
+}
+
 function cleanVoiceLine(value: string) {
   return value
     .trim()
@@ -109,50 +121,50 @@ export class VoiceProfile {
         return;
       }
 
-      if (line.startsWith('## ')) {
-        const heading = normalizeHeadingText(line.slice(3));
-        if (heading === 'tone') {
+      const heading = parseStructuredHeading(line);
+      if (heading) {
+        if (heading.level < 2) {
+          currentSection = null;
+          currentSectionHasContent = false;
+          return;
+        }
+
+        if (heading.text === 'tone') {
           currentSection = 'tone';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'signature moves') {
+        if (heading.text === 'signature moves') {
           currentSection = 'signature-moves';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'avoid') {
+        if (heading.text === 'avoid') {
           currentSection = 'avoid';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'language hints') {
+        if (heading.text === 'language hints') {
           currentSection = 'language-hints';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'voice should capture') {
+        if (heading.text === 'voice should capture') {
           currentSection = 'voice-should-capture';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'voice should not capture') {
+        if (heading.text === 'voice should not capture') {
           currentSection = 'voice-should-not-capture';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'current default for manskill') {
+        if (heading.text === 'current default for manskill') {
           currentSection = 'current-default';
           currentSectionHasContent = false;
           return;
         }
 
-        currentSection = null;
-        currentSectionHasContent = false;
-        return;
-      }
-
-      if (line.startsWith('#')) {
         currentSection = null;
         currentSectionHasContent = false;
         return;

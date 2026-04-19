@@ -246,6 +246,59 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
+test('buildSummary treats nested soul and voice structured headings as ready foundation guidance', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), [
+    '# Soul',
+    '',
+    'Durable posture.',
+    '',
+    '## Foundation posture',
+    '',
+    '### Core truths',
+    '- Stay faithful to the source material.',
+    '',
+    '### Boundaries',
+    '- Do not bluff certainty.',
+    '',
+    '### Continuity',
+    '- Carry durable lessons forward.',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), [
+    '# Voice',
+    '',
+    'Stay direct.',
+    '',
+    '## House style',
+    '',
+    '### Tone',
+    'Warm and grounded.',
+    '',
+    '### Signature moves',
+    '- Use crisp examples.',
+    '',
+    '### Avoid',
+    '- Never pad the answer.',
+    '',
+    '### Language hints',
+    '- Preserve bilingual phrasing when the source material switches languages.',
+    '',
+  ].join('\n'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.soul.readySectionCount, 3);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+});
+
 test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

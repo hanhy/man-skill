@@ -38,6 +38,18 @@ function normalizeHeadingText(value: string) {
     .toLowerCase();
 }
 
+function parseStructuredHeading(line: string): { level: number; text: string } | null {
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: normalizeHeadingText(match[2]),
+  };
+}
+
 function mapSoulHeadingToSection(heading: string): SoulSection {
   switch (heading) {
     case 'core truths':
@@ -95,13 +107,9 @@ export class SoulProfile {
         return;
       }
 
-      if (line.startsWith('## ')) {
-        const heading = normalizeHeadingText(line.slice(3));
-        currentSection = mapSoulHeadingToSection(heading);
-        return;
-      }
-
-      if (line.startsWith('#')) {
+      const heading = parseStructuredHeading(line);
+      if (heading) {
+        currentSection = heading.level >= 2 ? mapSoulHeadingToSection(heading.text) : null;
         return;
       }
 
