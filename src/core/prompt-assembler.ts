@@ -1050,12 +1050,17 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
     ? profile.intakeStatusSummary.trim()
     : '';
 
-  if (!intakeStatusSummary || intakeStatusSummary === 'ready') {
-    return null;
+  if (intakeStatusSummary && intakeStatusSummary !== 'ready') {
+    const [statusPrefix] = intakeStatusSummary.split(' — ');
+    return statusPrefix?.trim() || intakeStatusSummary;
   }
 
-  const [statusPrefix] = intakeStatusSummary.split(' — ');
-  return statusPrefix?.trim() || intakeStatusSummary;
+  const materialCount = typeof profile?.materialCount === 'number' ? profile.materialCount : 0;
+  if (profile?.intakeReady === true && materialCount === 0) {
+    return 'ready';
+  }
+
+  return null;
 }
 
 function formatIngestionProfileLabel(profile: IngestionProfileCommand | null | undefined): string {
