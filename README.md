@@ -74,6 +74,18 @@ The repo now also carries a delivery layer for chat surfaces and model backends.
 
 Per-repo rollout can override or extend those defaults through `manifests/channels.json` and `manifests/providers.json`. The summary/prompt preview keeps those manifest diagnostics, runtime-readiness counts, `.env.example` bootstrap hints, auth-readiness gaps, and next scaffold commands visible so the delivery backlog stays operator-facing instead of hidden in raw files.
 
+## Foundation contract
+
+The repo-level foundation is intentionally OpenClaw-like: `memory/`, `skills/`, `SOUL.md`, and `voice/README.md` are treated as durable operator-facing surfaces, not just passive notes.
+
+The current structured contract is:
+- `memory/README.md` explains `## What belongs here` and `## Buckets`
+- `skills/README.md` explains `## What lives here` and `## Layout`
+- `SOUL.md` captures `## Core truths`, `## Boundaries`, and `## Continuity`
+- `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
+
+`buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
+
 ---
 
 ## English

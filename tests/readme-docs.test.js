@@ -25,6 +25,14 @@ test('README documents the default delivery foundation targets and repo manifest
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
+  assert.match(readme, /Foundation contract/i);
+  assert.match(readme, /OpenClaw-like/i);
+  assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
+  assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
+  assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Continuity/i);
+  assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
+  assert.match(readme, /prompt preview surfaces the exact missing sections plus a runnable repair command/i);
+
   assert.match(memoryDoc, /## What belongs here/);
   assert.match(memoryDoc, /## Buckets/);
 
