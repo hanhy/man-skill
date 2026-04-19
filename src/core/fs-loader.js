@@ -105,6 +105,7 @@ function isMarkdownFenceDelimiter(line) {
 function filterOutsideMarkdownFences(lines) {
   const visibleLines = [];
   let insideFence = false;
+  let insideHtmlComment = false;
 
   for (const rawLine of lines) {
     if (isMarkdownFenceDelimiter(rawLine)) {
@@ -112,9 +113,40 @@ function filterOutsideMarkdownFences(lines) {
       continue;
     }
 
-    if (!insideFence) {
-      visibleLines.push(rawLine);
+    if (insideFence) {
+      continue;
     }
+
+    let visibleLine = rawLine;
+
+    if (insideHtmlComment) {
+      const commentEnd = visibleLine.indexOf('-->');
+      if (commentEnd < 0) {
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(commentEnd + 3);
+      insideHtmlComment = false;
+    }
+
+    while (true) {
+      const commentStart = visibleLine.indexOf('<!--');
+      if (commentStart < 0) {
+        break;
+      }
+
+      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
+      if (commentEnd >= 0) {
+        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(0, commentStart);
+      insideHtmlComment = true;
+      break;
+    }
+
+    visibleLines.push(visibleLine);
   }
 
   return visibleLines;

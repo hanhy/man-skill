@@ -652,6 +652,42 @@ test('buildSummary ignores fenced template blocks when deriving memory and skill
   assert.doesNotMatch(summary.promptPreview, /Template memory guidance that should stay hidden/);
 });
 
+test('buildSummary ignores html comments when deriving memory and skills excerpts', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    ['# Skills', '', '<!-- Generated summary should stay hidden. -->', '', 'Keep shared operator procedures discoverable outside managed comments.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    ['# Memory', '', '<!-- Generated memory note should stay hidden. -->', '', '- Keep durable repo knowledge outside managed comments.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['# Cron', '', '<!-- Generated skill note should stay hidden. -->', '', 'Keep scheduled follow-ups reliable.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nKeep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge outside managed comments.');
+  assert.equal(summary.foundation.core.skills.rootExcerpt, 'Keep shared operator procedures discoverable outside managed comments.');
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: Keep scheduled follow-ups reliable.']);
+  assert.doesNotMatch(summary.promptPreview, /Generated summary should stay hidden/);
+  assert.doesNotMatch(summary.promptPreview, /Generated memory note should stay hidden/);
+  assert.doesNotMatch(summary.promptPreview, /Generated skill note should stay hidden/);
+});
+
 test('buildSummary prefers multiline skill frontmatter descriptions over raw yaml markers in core foundation excerpts', () => {
   const rootDir = makeTempRepo();
 
