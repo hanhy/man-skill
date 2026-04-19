@@ -130,6 +130,10 @@ type CoreDocumentFoundationSummary = {
   path?: string;
   lineCount?: number;
   excerpt?: string | null;
+  structured?: boolean;
+  readySectionCount?: number;
+  totalSectionCount?: number;
+  missingSections?: string[];
 };
 
 type FoundationCoreOverview = {

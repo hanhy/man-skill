@@ -33,11 +33,16 @@ function seedMinimalRepo(rootDir) {
   fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory');
-  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-19.md'), '# Daily note\n\n- Checked delivery readiness.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), '# Scratch\n\nInvestigate provider parity.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron skill\n\nUse this skill when validating recurring delivery loops.\n');
   ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
     fs.writeFileSync(path.join(rootDir, 'src', 'channels', `${channelId}.js`), `export const channelId = '${channelId}';\n`);
   });
@@ -45,19 +50,19 @@ function seedMinimalRepo(rootDir) {
     fs.writeFileSync(path.join(rootDir, 'src', 'models', `${providerId}.js`), `export const providerId = '${providerId}';\n`);
   });
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
-    'SLACK_BOT_TOKEN=',
-    'SLACK_SIGNING_SECRET=',
-    'TELEGRAM_BOT_TOKEN=',
-    'WHATSAPP_ACCESS_TOKEN=',
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
     'WHATSAPP_PHONE_NUMBER_ID=',
     'FEISHU_APP_ID=',
-    'FEISHU_APP_SECRET=',
-    'OPENAI_API_KEY=',
-    'ANTHROPIC_API_KEY=',
-    'KIMI_API_KEY=',
-    'MINIMAX_API_KEY=',
-    'GLM_API_KEY=',
-    'QWEN_API_KEY=',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
     '',
   ].join('\n'));
 }
