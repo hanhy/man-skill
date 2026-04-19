@@ -115,7 +115,7 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.match(summary.promptPreview, /Work loop:/);
   assert.match(summary.promptPreview, /priorities: 4 total \(1 ready, 3 queued\)/);
   assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
@@ -463,7 +463,7 @@ test('buildSummary work loop targets metadata-only profiles with their direct im
     'samples/metadata-only-materials.json',
     'samples/metadata-only.txt',
   ]);
-  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, 0 ready, 0 queued for refresh/);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only\.txt/);
@@ -773,13 +773,13 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
+  assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
-  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
   assert.doesNotMatch(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
@@ -1175,7 +1175,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.equal(summary.workLoop.currentPriority.summary, '1 imported, 0 metadata-only, 1 ready, 0 queued for refresh, 1 intake backfill');
+  assert.equal(summary.workLoop.currentPriority.summary, '1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 intake backfill');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'backfill the intake landing zone for imported profiles — starting with Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
@@ -1184,7 +1184,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 0 metadata-only, 1 ready, 0 queued for refresh, 1 intake backfill/);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 intake backfill/);
   assert.match(summary.promptPreview, /next action: backfill the intake landing zone for imported profiles — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);

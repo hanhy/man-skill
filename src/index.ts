@@ -1118,7 +1118,7 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction,
     command,
     paths,

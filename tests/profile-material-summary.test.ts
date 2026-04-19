@@ -1082,7 +1082,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
         id: 'ingestion',
         label: 'Ingestion',
         status: 'queued',
-        summary: '0 imported, 0 metadata-only, 0 ready, 0 queued for refresh',
+        summary: '0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh',
         nextAction: 'bootstrap a target profile',
         command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
         paths: [],
@@ -1101,7 +1101,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           id: 'ingestion',
           label: 'Ingestion',
           status: 'queued',
-          summary: '0 imported, 0 metadata-only, 0 ready, 0 queued for refresh',
+          summary: '0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh',
           nextAction: 'bootstrap a target profile',
           command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
           paths: [],
@@ -1131,7 +1131,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /Work loop:/);
   assert.match(prompt, /priorities: 4 total \(1 ready, 3 queued\)/);
   assert.match(prompt, /cadence: every 10 minutes/);
-  assert.match(prompt, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, 0 ready, 0 queued for refresh/);
+  assert.match(prompt, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(prompt, /next action: bootstrap a target profile/);
   assert.match(prompt, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
