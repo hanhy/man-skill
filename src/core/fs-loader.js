@@ -151,29 +151,22 @@ const SKILL_SECTION_DEFINITIONS = [
 
 const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   voice: [
-    { key: 'tone', heading: '## Tone' },
-    { key: 'signature-moves', heading: '## Signature moves' },
-    { key: 'avoid', heading: '## Avoid' },
-    { key: 'language-hints', heading: '## Language hints' },
+    { key: 'tone', headings: ['tone'] },
+    { key: 'signature-moves', headings: ['signature moves', 'voice should capture'] },
+    { key: 'avoid', headings: ['avoid', 'voice should not capture'] },
+    { key: 'language-hints', headings: ['language hints', 'current default for manskill'] },
   ],
   soul: [
-    { key: 'core-values', heading: '## Core values' },
-    { key: 'boundaries', heading: '## Boundaries' },
-    { key: 'decision-rules', heading: '## Decision rules' },
+    { key: 'core-values', headings: ['core values', 'core truths'] },
+    { key: 'boundaries', headings: ['boundaries'] },
+    { key: 'decision-rules', headings: ['decision rules', 'continuity'] },
   ],
   skills: [
-    { key: 'candidate-skills', heading: '## Candidate skills' },
-    { key: 'evidence', heading: '## Evidence' },
-    { key: 'gaps-to-validate', heading: '## Gaps to validate' },
+    { key: 'candidate-skills', headings: ['candidate skills'] },
+    { key: 'evidence', headings: ['evidence'] },
+    { key: 'gaps-to-validate', headings: ['gaps to validate'] },
   ],
 };
-
-const FOUNDATION_DRAFT_SECTION_REQUIREMENTS = Object.fromEntries(
-  Object.entries(FOUNDATION_DRAFT_SECTION_DEFINITIONS).map(([draftKind, sections]) => [
-    draftKind,
-    sections.map((section) => section.heading),
-  ]),
-);
 
 
 function collectSkillSectionState(document) {
@@ -574,7 +567,8 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
       if (trimmed.startsWith('## ')) {
-        if (trimmed === section.heading) {
+        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
+        if (section.headings.includes(normalizedHeading)) {
           inSection = true;
           hasContent = false;
           continue;

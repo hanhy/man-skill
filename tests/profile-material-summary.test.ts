@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { FileSystemLoader } from '../src/core/fs-loader.js';
+import { FileSystemLoader, hasValidFoundationMarkdownDraft } from '../src/core/fs-loader.js';
 import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
@@ -467,6 +467,40 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     readySections: ['candidate-skills'],
     missingSections: ['evidence', 'gaps-to-validate'],
   });
+});
+
+test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice headings as valid structured drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+
+  const legacyVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace('## Signature moves', '## Voice should capture')
+    .replace('## Avoid', '## Voice should not capture')
+    .replace('## Language hints', '## Current default for ManSkill');
+  const openclawSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
+    .replace('## Core values', '## Core truths')
+    .replace('## Decision rules', '## Continuity');
+
+  fs.writeFileSync(voiceDraftPath, legacyVoiceDraft);
+  fs.writeFileSync(soulDraftPath, openclawSoulDraft);
+
+  assert.equal(hasValidFoundationMarkdownDraft(voiceDraftPath), true);
+  assert.equal(hasValidFoundationMarkdownDraft(soulDraftPath), true);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
 });
 
 test('loadProfilesIndex marks valid markdown drafts as stale when their target-person metadata drifts', () => {
