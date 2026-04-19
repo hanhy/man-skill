@@ -1,3 +1,20 @@
+export function normalizeProviderToolArguments(argumentsValue) {
+  if (typeof argumentsValue === 'string') {
+    return argumentsValue.length > 0 ? argumentsValue : '{}';
+  }
+
+  if (argumentsValue && typeof argumentsValue === 'object') {
+    try {
+      const serialized = JSON.stringify(argumentsValue);
+      return typeof serialized === 'string' && serialized.length > 0 ? serialized : '{}';
+    } catch {
+      return '{}';
+    }
+  }
+
+  return '{}';
+}
+
 export class BaseProvider {
   constructor({
     id,

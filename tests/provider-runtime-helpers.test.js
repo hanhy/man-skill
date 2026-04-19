@@ -192,6 +192,14 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
         ],
       },
     ],
+    toolCalls: [{
+      id: 'call_openai_nested',
+      type: 'function',
+      function: {
+        name: 'lookup_profile',
+        arguments: { personId: 'harry-han', includeDrafts: true },
+      },
+    }],
   });
   const kimiResponse = createArrayTextResponse({
     id: 'chatcmpl-kimi-nested',
@@ -199,6 +207,13 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
     providerTextBlocks: [
       { type: 'text', text: { value: 'Kimi can unpack nested SDK text.' } },
     ],
+    toolCalls: [{
+      id: 'call_kimi_nested',
+      function: {
+        name: 'queue_refresh',
+        arguments: { personId: 'jane-doe', refresh: true },
+      },
+    }],
   });
   const minimaxResponse = createArrayTextResponse({
     id: 'chatcmpl-minimax-nested',
@@ -224,6 +239,13 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
         ],
       },
     ],
+    toolCalls: [{
+      id: 'call_glm_nested',
+      function: {
+        name: 'lookup_skill',
+        arguments: ['voice', 'soul'],
+      },
+    }],
   });
   const qwenResponse = createArrayTextResponse({
     id: 'chatcmpl-qwen-nested',
@@ -237,11 +259,28 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
         ],
       },
     ],
+    toolCalls: [{
+      id: 'call_qwen_nested',
+      function: {
+        name: 'lookup_materials',
+        arguments: { personId: 'ready-pal', kinds: ['talk', 'message'] },
+      },
+    }],
   });
 
-  assert.equal(normalizeOpenAIChatResponse(openaiResponse).text, 'Ship nested text first. Then tighten it with feedback.');
-  assert.equal(normalizeKimiChatResponse(kimiResponse).text, 'Kimi can unpack nested SDK text.');
-  assert.equal(normalizeMinimaxChatResponse(minimaxResponse).text, 'Minimax nested blocks still read cleanly.');
-  assert.equal(normalizeGLMChatResponse(glmResponse).text, 'GLM keeps the full sentence.');
-  assert.equal(normalizeQwenChatResponse(qwenResponse).text, 'Qwen nested responses normalize too.');
+  const normalizedOpenAI = normalizeOpenAIChatResponse(openaiResponse);
+  const normalizedKimi = normalizeKimiChatResponse(kimiResponse);
+  const normalizedMinimax = normalizeMinimaxChatResponse(minimaxResponse);
+  const normalizedGLM = normalizeGLMChatResponse(glmResponse);
+  const normalizedQwen = normalizeQwenChatResponse(qwenResponse);
+
+  assert.equal(normalizedOpenAI.text, 'Ship nested text first. Then tighten it with feedback.');
+  assert.equal(normalizedOpenAI.toolCalls[0]?.arguments, '{"personId":"harry-han","includeDrafts":true}');
+  assert.equal(normalizedKimi.text, 'Kimi can unpack nested SDK text.');
+  assert.equal(normalizedKimi.toolCalls[0]?.arguments, '{"personId":"jane-doe","refresh":true}');
+  assert.equal(normalizedMinimax.text, 'Minimax nested blocks still read cleanly.');
+  assert.equal(normalizedGLM.text, 'GLM keeps the full sentence.');
+  assert.equal(normalizedGLM.toolCalls[0]?.arguments, '["voice","soul"]');
+  assert.equal(normalizedQwen.text, 'Qwen nested responses normalize too.');
+  assert.equal(normalizedQwen.toolCalls[0]?.arguments, '{"personId":"ready-pal","kinds":["talk","message"]}');
 });
