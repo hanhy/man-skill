@@ -97,8 +97,33 @@ function summarizeDraftGap(summary: any, key: string): string | null {
   return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
 }
 
+function summarizeMemoryDraftGap(profile: any): string | null {
+  const missingDrafts = Array.isArray(profile?.foundationDraftStatus?.missingDrafts)
+    ? profile.foundationDraftStatus.missingDrafts
+    : [];
+  if (!missingDrafts.includes('memory')) {
+    return null;
+  }
+
+  const candidateCount = Number(profile?.foundationReadiness?.memory?.candidateCount ?? 0);
+  const summaryPreview = collectUnique([
+    ...(profile?.foundationDraftSummaries?.memory?.latestSummaries ?? []),
+    ...(profile?.foundationReadiness?.memory?.sampleSummaries ?? []),
+  ], 1);
+
+  if (candidateCount > 0) {
+    const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
+    return summaryPreview.length > 0
+      ? `memory missing, ${candidateLabel} (${summaryPreview[0]})`
+      : `memory missing, ${candidateLabel}`;
+  }
+
+  return 'memory missing';
+}
+
 function summarizeProfileDraftGaps(profile: any): string | null {
   const gapSummaries = [
+    summarizeMemoryDraftGap(profile),
     summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
     summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
     summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),

@@ -552,29 +552,56 @@ function cleanHighlight(value: string) {
 }
 
 function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
+    ? profile.foundationDraftStatus.missingDrafts
+    : [];
   const draftKinds = [
     { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
     { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
   ];
 
-  const gapSummaries = draftKinds
-    .map(({ key, summary }) => {
-      const totalSectionCount = summary?.totalSectionCount ?? 0;
-      const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
-      const readySections = Array.isArray(summary?.readySections)
-        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      const missingSections = Array.isArray(summary?.missingSections)
-        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      if (totalSectionCount <= 0 || missingSections.length === 0) {
-        return null;
-      }
+  const memoryGapSummary = (() => {
+    if (!missingDrafts.includes('memory')) {
+      return null;
+    }
 
-      return `${key} ${readySectionCount}/${totalSectionCount}${readySections.length > 0 ? ` ready (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
-    })
-    .filter(Boolean);
+    const candidateCount = Number(profile.foundationReadiness?.memory?.candidateCount ?? 0);
+    const memoryHighlights = [
+      ...(profile.foundationDraftSummaries?.memory?.latestSummaries ?? []),
+      ...(profile.foundationReadiness?.memory?.sampleSummaries ?? []),
+    ].filter((value, index, values) => typeof value === 'string' && value.trim().length > 0 && values.indexOf(value) === index);
+
+    if (candidateCount > 0) {
+      const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
+      return memoryHighlights.length > 0
+        ? `memory missing, ${candidateLabel} (${memoryHighlights[0]})`
+        : `memory missing, ${candidateLabel}`;
+    }
+
+    return 'memory missing';
+  })();
+
+  const gapSummaries = [
+    memoryGapSummary,
+    ...draftKinds
+      .map(({ key, summary }) => {
+        const totalSectionCount = summary?.totalSectionCount ?? 0;
+        const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+        const readySections = Array.isArray(summary?.readySections)
+          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        const missingSections = Array.isArray(summary?.missingSections)
+          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        if (totalSectionCount <= 0 || missingSections.length === 0) {
+          return null;
+        }
+
+        return `${key} ${readySectionCount}/${totalSectionCount}${readySections.length > 0 ? ` ready (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+      })
+      .filter(Boolean),
+  ].filter(Boolean);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
 }
