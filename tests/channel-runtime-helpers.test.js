@@ -345,6 +345,52 @@ test('Feishu channel runtime helpers cover readiness, rich-post text normalizati
     },
   );
 
+  assert.equal(
+    channel.normalizeInboundEvent({
+      type: 'event_callback',
+      header: {
+        event_type: 'im.message.receive_v1',
+        tenant_key: 'tenant-1',
+      },
+      event: {
+        sender: {
+          sender_id: {
+            open_id: 'ou_sender',
+          },
+        },
+        message: {
+          message_id: 'om_message_2',
+          message_type: 'post',
+          chat_id: 'oc_chat_1',
+          thread_id: 'omt-thread-1',
+          create_time: '1710000301',
+          content: JSON.stringify({
+            post: {
+              zh_cn: {
+                title: 'Daily notes',
+                content: [
+                  [],
+                ],
+              },
+              en_us: {
+                title: 'Daily notes',
+                content: [
+                  [
+                    { tag: 'text', text: 'Ship' },
+                    { tag: 'text', text: 'the' },
+                    { tag: 'text', text: 'thin' },
+                    { tag: 'text', text: 'slice' },
+                  ],
+                ],
+              },
+            },
+          }),
+        },
+      },
+    }).text,
+    'Ship the thin slice',
+  );
+
   assert.deepEqual(
     channel.buildWebhookResponse({ type: 'url_verification', challenge: 'challenge-token' }),
     { challenge: 'challenge-token' },
