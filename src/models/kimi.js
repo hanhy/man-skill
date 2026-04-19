@@ -5,10 +5,10 @@ export const kimiProviderScaffold = {
   name: 'Kimi',
   models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
   status: 'planned',
-  features: ['chat', 'long-context'],
+  features: ['chat', 'tools', 'long-context'],
   defaultModel: 'moonshot-v1-32k',
   authEnvVar: 'KIMI_API_KEY',
-  modalities: ['chat', 'long-context'],
+  modalities: ['chat', 'tools', 'long-context'],
   implementationPath: 'src/models/kimi.js',
   nextStep: 'implement moonshot-compatible client setup and model selection',
 };

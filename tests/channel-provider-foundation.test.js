@@ -282,6 +282,7 @@ test('buildSummary exposes capability metadata for default model providers', () 
   const summary = buildSummary(rootDir);
   const openai = summary.models.providers.find((provider) => provider.id === 'openai');
   const anthropic = summary.models.providers.find((provider) => provider.id === 'anthropic');
+  const kimi = summary.models.providers.find((provider) => provider.id === 'kimi');
 
   assert.equal(summary.models.activeCount, 0);
   assert.equal(summary.models.plannedCount, 6);
@@ -305,6 +306,12 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
   assert.equal(anthropic.implementationPath, 'src/models/anthropic.js');
   assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
+  assert.equal(kimi.defaultModel, 'moonshot-v1-32k');
+  assert.equal(kimi.authEnvVar, 'KIMI_API_KEY');
+  assert.deepEqual(kimi.features, ['chat', 'tools', 'long-context']);
+  assert.deepEqual(kimi.modalities, ['chat', 'tools', 'long-context']);
+  assert.equal(kimi.implementationPath, 'src/models/kimi.js');
+  assert.equal(kimi.nextStep, 'implement moonshot-compatible client setup and model selection');
 });
 
 test('buildSummary treats repo-local .env values as configured delivery auth', () => {
@@ -790,18 +797,23 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     assert.equal(typeof kimi.buildChatRequest, 'function');
     assert.equal(typeof kimi.normalizeChatResponse, 'function');
     assert.equal(kimi.isConfigured(), true);
+    assert.equal(kimi.supportsFeature('tools'), true);
     assert.deepEqual(kimi.summary(), kimiProviderScaffold);
     assert.deepEqual(
       kimi.buildChatRequest({
         messages: [{ role: 'user', content: 'hello from kimi' }],
         temperature: 0.3,
         maxOutputTokens: 300,
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         metadata: { profile: 'harry-han' },
       }),
       buildKimiChatRequest({
         messages: [{ role: 'user', content: 'hello from kimi' }],
         temperature: 0.3,
         maxOutputTokens: 300,
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         metadata: { profile: 'harry-han' },
       }),
     );
