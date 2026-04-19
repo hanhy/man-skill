@@ -6,7 +6,7 @@ import { createTelegramChannel } from '../src/channels/telegram.js';
 import { createWhatsAppChannel } from '../src/channels/whatsapp.js';
 import { createFeishuChannel } from '../src/channels/feishu.js';
 
-test('Slack channel exposes env readiness and thread reply helpers', () => {
+test('Slack channel exposes env readiness, webhook verification, and thread reply helpers', () => {
   const slack = createSlackChannel();
 
   assert.deepEqual(slack.requiredEnvVars(), ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET']);
@@ -31,6 +31,13 @@ test('Slack channel exposes env readiness and thread reply helpers', () => {
     threadTs: '1710000000.123',
     teamId: 'T123',
   });
+  assert.deepEqual(slack.buildWebhookResponse({
+    type: 'url_verification',
+    challenge: 'slack-challenge-token',
+  }), {
+    challenge: 'slack-challenge-token',
+  });
+  assert.equal(slack.buildWebhookResponse({ type: 'event_callback' }), null);
   assert.deepEqual(slack.buildThreadReply({
     channelId: 'C123',
     text: 'working on it',
@@ -88,7 +95,7 @@ test('Telegram channel normalizes callback queries into chat-send payloads', () 
   });
 });
 
-test('WhatsApp channel normalizes interactive reply selections into text', () => {
+test('WhatsApp channel normalizes interactive reply selections and webhook verification into actionable helpers', () => {
   const whatsapp = createWhatsAppChannel();
 
   assert.deepEqual(whatsapp.normalizeInboundEvent({
@@ -127,9 +134,17 @@ test('WhatsApp channel normalizes interactive reply selections into text', () =>
     contextMessageId: null,
     timestamp: 1710000000,
   });
+  assert.equal(whatsapp.buildWebhookVerificationResponse({
+    'hub.mode': 'subscribe',
+    'hub.challenge': 'verify-me',
+  }), 'verify-me');
+  assert.equal(whatsapp.buildWebhookVerificationResponse({
+    'hub.mode': 'unsubscribe',
+    'hub.challenge': 'verify-me',
+  }), null);
 });
 
-test('Feishu channel extracts post text and thread-aware bot messages', () => {
+test('Feishu channel extracts post text, webhook verification, and thread-aware bot messages', () => {
   const feishu = createFeishuChannel();
 
   assert.deepEqual(feishu.normalizeInboundEvent({
@@ -170,6 +185,13 @@ test('Feishu channel extracts post text and thread-aware bot messages', () => {
     threadId: 'omt_123',
     timestamp: 1710000000,
   });
+  assert.deepEqual(feishu.buildWebhookResponse({
+    type: 'url_verification',
+    challenge: 'feishu-challenge-token',
+  }), {
+    challenge: 'feishu-challenge-token',
+  });
+  assert.equal(feishu.buildWebhookResponse({ type: 'event_callback' }), null);
   assert.deepEqual(feishu.buildBotMessage({
     receiveId: 'oc_123',
     text: 'Acknowledged',

@@ -41,6 +41,16 @@ export function normalizeSlackInboundEvent(payload = {}) {
   };
 }
 
+export function buildSlackWebhookResponse(payload = {}) {
+  if (payload?.type === 'url_verification' && typeof payload?.challenge === 'string' && payload.challenge.length > 0) {
+    return {
+      challenge: payload.challenge,
+    };
+  }
+
+  return null;
+}
+
 export function buildSlackThreadReply({ channelId, text, threadTs, replyBroadcast = false } = {}) {
   return {
     channel: channelId,
@@ -53,6 +63,10 @@ export function buildSlackThreadReply({ channelId, text, threadTs, replyBroadcas
 export class SlackChannel extends BaseChannel {
   normalizeInboundEvent(payload) {
     return normalizeSlackInboundEvent(payload);
+  }
+
+  buildWebhookResponse(payload) {
+    return buildSlackWebhookResponse(payload);
   }
 
   buildThreadReply(options) {

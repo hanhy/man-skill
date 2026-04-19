@@ -88,6 +88,14 @@ export function normalizeWhatsAppInboundEvent(payload = {}) {
   };
 }
 
+export function buildWhatsAppWebhookVerificationResponse(query = {}) {
+  if (query?.['hub.mode'] === 'subscribe' && typeof query?.['hub.challenge'] === 'string' && query['hub.challenge'].length > 0) {
+    return query['hub.challenge'];
+  }
+
+  return null;
+}
+
 export function buildWhatsAppSessionSend({
   to,
   text,
@@ -117,6 +125,10 @@ export function buildWhatsAppSessionSend({
 export class WhatsAppChannel extends BaseChannel {
   normalizeInboundEvent(payload) {
     return normalizeWhatsAppInboundEvent(payload);
+  }
+
+  buildWebhookVerificationResponse(query) {
+    return buildWhatsAppWebhookVerificationResponse(query);
   }
 
   buildSessionSend(options) {

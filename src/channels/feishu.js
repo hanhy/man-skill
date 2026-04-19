@@ -79,6 +79,16 @@ export function normalizeFeishuInboundEvent(payload = {}) {
   };
 }
 
+export function buildFeishuWebhookResponse(payload = {}) {
+  if (payload?.type === 'url_verification' && typeof payload?.challenge === 'string' && payload.challenge.length > 0) {
+    return {
+      challenge: payload.challenge,
+    };
+  }
+
+  return null;
+}
+
 export function buildFeishuBotMessage({ receiveId, text, replyInThread = false, threadId } = {}) {
   const payload = {
     receive_id: receiveId,
@@ -100,6 +110,10 @@ export function buildFeishuBotMessage({ receiveId, text, replyInThread = false, 
 export class FeishuChannel extends BaseChannel {
   normalizeInboundEvent(payload) {
     return normalizeFeishuInboundEvent(payload);
+  }
+
+  buildWebhookResponse(payload) {
+    return buildFeishuWebhookResponse(payload);
   }
 
   buildBotMessage(options) {
