@@ -9,6 +9,8 @@ import { buildSummary } from '../src/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
+const memoryDoc = fs.readFileSync(path.join(repoRoot, 'memory', 'README.md'), 'utf8');
+const skillsDoc = fs.readFileSync(path.join(repoRoot, 'skills', 'README.md'), 'utf8');
 const soulDoc = fs.readFileSync(path.join(repoRoot, 'SOUL.md'), 'utf8');
 const voiceDoc = fs.readFileSync(path.join(repoRoot, 'voice', 'README.md'), 'utf8');
 
@@ -20,7 +22,13 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /manifests\/providers\.json/);
 });
 
-test('repo soul and voice docs stay aligned with the structured foundation sections', () => {
+test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
+  assert.match(memoryDoc, /## What belongs here/);
+  assert.match(memoryDoc, /## Buckets/);
+
+  assert.match(skillsDoc, /## What lives here/);
+  assert.match(skillsDoc, /## Layout/);
+
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);
   assert.match(soulDoc, /## Continuity/);
@@ -34,6 +42,12 @@ test('repo soul and voice docs stay aligned with the structured foundation secti
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
   assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
+  assert.deepEqual(summary.foundation.core.memory.rootReadySections, ['what-belongs-here', 'buckets']);
+  assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
   assert.equal(summary.foundation.core.soul.readySectionCount, 3);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.match(summary.promptPreview, /- memory: .*root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /- skills: .*root sections 2\/2 ready \(what-lives-here, layout\)/);
 });
