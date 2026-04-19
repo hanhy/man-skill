@@ -177,6 +177,33 @@ test('voice profile accepts prose lines inside signature, avoid, and language hi
   });
 });
 
+test('voice profile uses frontmatter description as the default tone instead of YAML metadata lines', () => {
+  const voice = VoiceProfile.fromDocument(`---
+name: ManSkill voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+---
+
+# Voice
+
+## Current default for ManSkill
+- concise by default
+- preserve 中文 and English switching when the source does
+`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
 
@@ -191,6 +218,36 @@ test('soul profile falls back to foundation starter headings when core truths an
     vibeLineCount: 0,
     continuityCount: 2,
     sectionCount: 3,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile uses frontmatter description as the excerpt instead of YAML metadata lines', () => {
+  const soul = SoulProfile.fromDocument(`---
+name: ManSkill soul
+Description: Keep the operating posture grounded.
+---
+
+# Soul
+
+## Core values
+- Stay faithful to the source material.
+
+## Boundaries
+- Do not bluff certainty.
+`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Keep the operating posture grounded.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 2,
     hasGuidance: true,
   });
 });

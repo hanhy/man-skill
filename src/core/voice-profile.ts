@@ -1,3 +1,5 @@
+import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+
 export interface VoiceProfileSummary {
   tone: string;
   style: string;
@@ -20,23 +22,12 @@ export interface VoiceProfileOptions {
 
 type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'voice-should-capture' | 'voice-should-not-capture' | 'current-default' | null;
 
-function normalizeDocument(document: unknown) {
-  return typeof document === 'string' ? document : '';
-}
-
 function cleanVoiceLine(value: string) {
   return value
     .trim()
     .replace(/^[-*]\s+/, '')
     .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
     .trim();
-}
-
-function findExcerpt(document: unknown) {
-  return normalizeDocument(document)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
 }
 
 function looksLikeLanguageHint(value: string) {
@@ -80,7 +71,7 @@ export class VoiceProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const excerpt = findExcerpt(normalizedDocument);
+    const excerpt = findDocumentExcerpt(normalizedDocument);
     const voice = new VoiceProfile({
       tone: excerpt ?? 'clear',
       style: excerpt ? 'documented' : 'adaptive',

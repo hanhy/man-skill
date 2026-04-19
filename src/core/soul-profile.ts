@@ -1,3 +1,5 @@
+import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+
 export interface SoulProfileSummary {
   excerpt: string | null;
   coreTruths: string[];
@@ -47,17 +49,6 @@ function cleanSoulLine(value: string) {
     .trim();
 }
 
-function normalizeDocument(document: unknown) {
-  return typeof document === 'string' ? document : '';
-}
-
-function findExcerpt(document: unknown) {
-  return normalizeDocument(document)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
-}
-
 export class SoulProfile {
   excerpt: string | null;
   coreTruths: string[];
@@ -75,7 +66,7 @@ export class SoulProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const soul = new SoulProfile({ excerpt: findExcerpt(normalizedDocument) });
+    const soul = new SoulProfile({ excerpt: findDocumentExcerpt(normalizedDocument) });
     let currentSection: SoulSection = null;
 
     normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
