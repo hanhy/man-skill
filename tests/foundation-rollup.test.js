@@ -1096,6 +1096,9 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     thinMissingSections: {
       delivery: ['what-this-skill-is-for', 'suggested-workflow'],
     },
+    thinReadySections: {
+      delivery: [],
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -1132,6 +1135,9 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
         thinPaths: ['skills/delivery/SKILL.md'],
         thinMissingSections: {
           'skills/delivery/SKILL.md': ['what-this-skill-is-for', 'suggested-workflow'],
+        },
+        thinReadySections: {
+          'skills/delivery/SKILL.md': [],
         },
         command: skillsCommand,
       },
@@ -1194,6 +1200,9 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     thinMissingSections: {
       slack: ['what-this-skill-is-for', 'suggested-workflow'],
     },
+    thinReadySections: {
+      slack: [],
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -1231,6 +1240,9 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
         thinMissingSections: {
           'skills/slack/SKILL.md': ['what-this-skill-is-for', 'suggested-workflow'],
         },
+        thinReadySections: {
+          'skills/slack/SKILL.md': [],
+        },
         command: skillsCommand,
       },
     ],
@@ -1242,6 +1254,71 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/slack\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/README\.md, skills\/slack\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack missing what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
+});
+
+test('buildSummary surfaces ready sections for partially structured thin skill docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'slack', 'SKILL.md'),
+    '# Slack\n\n## What this skill is for\n- Keep Slack thread replies grounded in the source discussion.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
+    slack: ['suggested-workflow'],
+  });
+  assert.deepEqual(summary.foundation.core.skills.thinReadySections, {
+    slack: ['what-this-skill-is-for'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinMissingSections, {
+    'skills/slack/SKILL.md': ['suggested-workflow'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
+    'skills/slack/SKILL.md': ['what-this-skill-is-for'],
+  });
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(slack\); thin docs: slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/slack\/SKILL\.md/);
+});
+
+test('buildSummary ignores skill section headings that only appear inside fenced code blocks', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    '# Cron\n\nKeep scheduled follow-ups reliable.\n\n```md\n## What this skill is for\n- Example template only.\n```\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.skills.documentedCount, 1);
+  assert.equal(summary.foundation.core.skills.thinCount, 0);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: Keep scheduled follow-ups reliable.']);
+  assert.equal(summary.foundation.core.skills.thinMissingSections, undefined);
+  assert.equal(summary.foundation.core.skills.thinReadySections, undefined);
+  assert.doesNotMatch(summary.promptPreview, /thin docs: cron/);
 });
 
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {

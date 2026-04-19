@@ -151,6 +151,8 @@ type FoundationCoreMaintenanceQueueItem = {
   summary?: string;
   action?: string | null;
   paths?: string[];
+  thinMissingSections?: Record<string, string[]>;
+  thinReadySections?: Record<string, string[]>;
   command?: string | null;
 };
 
@@ -206,6 +208,7 @@ type FoundationCore = {
     thinSample?: string[];
     thinPaths?: string[];
     thinMissingSections?: Record<string, string[]>;
+    thinReadySections?: Record<string, string[]>;
   };
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
@@ -1313,9 +1316,15 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       : null,
     skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+        const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
-        const missingSummary = missingSections.length > 0 ? ` missing ${missingSections.join(', ')}` : '';
-        return `${skillName}${missingSummary}`;
+        const readySummary = readySections.length > 0
+          ? ` sections ${readySections.length}/${readySections.length + missingSections.length} ready (${readySections.join(', ')})`
+          : '';
+        const missingSummary = missingSections.length > 0
+          ? `${readySections.length > 0 ? ', ' : ' '}missing ${missingSections.join(', ')}`
+          : '';
+        return `${skillName}${readySummary}${missingSummary}`;
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     soul

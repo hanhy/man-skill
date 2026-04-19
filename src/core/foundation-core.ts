@@ -347,6 +347,9 @@ function buildCoreFoundationMaintenance({
   const thinSkillMissingSectionsByPath = Object.fromEntries(
     thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinMissingSections?.[skillName] ?? []]),
   );
+  const thinSkillReadySectionsByPath = Object.fromEntries(
+    thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinReadySections?.[skillName] ?? []]),
+  );
   const soulAction = buildDocumentMaintenanceAction(soul);
   const voiceAction = buildDocumentMaintenanceAction(voice);
 
@@ -384,6 +387,7 @@ function buildCoreFoundationMaintenance({
       ...(missingSkillPaths.length > 0 ? { missingPaths: missingSkillPaths } : {}),
       ...(thinSkillPaths.length > 0 ? { thinPaths: thinSkillPaths } : {}),
       ...(Object.keys(thinSkillMissingSectionsByPath).length > 0 ? { thinMissingSections: thinSkillMissingSectionsByPath } : {}),
+      ...(Object.keys(thinSkillReadySectionsByPath).length > 0 ? { thinReadySections: thinSkillReadySectionsByPath } : {}),
     },
     {
       area: 'soul',
@@ -526,6 +530,7 @@ export interface CoreSkillsFoundationSummary {
   thinSample: string[];
   thinPaths: string[];
   thinMissingSections?: Record<string, string[]>;
+  thinReadySections?: Record<string, string[]>;
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -653,6 +658,7 @@ export interface CoreFoundationMaintenanceQueueItem {
   missingPaths?: string[];
   thinPaths?: string[];
   thinMissingSections?: Record<string, string[]>;
+  thinReadySections?: Record<string, string[]>;
   command?: string | null;
 }
 
@@ -706,6 +712,7 @@ export interface BuildCoreFoundationSummaryOptions {
     thin?: string[];
     documentedExcerpts?: Record<string, string | null>;
     thinMissingSections?: Record<string, string[] | null | undefined>;
+    thinReadySections?: Record<string, string[] | null | undefined>;
   } | null;
 }
 
@@ -740,6 +747,7 @@ export function buildCoreFoundationSummary({
     ? [...skillInventory.thin].sort((left, right) => left.localeCompare(right))
     : [];
   const thinSkillMissingSections = skillInventory?.thinMissingSections ?? {};
+  const thinSkillReadySections = skillInventory?.thinReadySections ?? {};
   const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
@@ -782,6 +790,14 @@ export function buildCoreFoundationSummary({
           skillName,
           Array.isArray(thinSkillMissingSections?.[skillName])
             ? thinSkillMissingSections[skillName].filter((value): value is string => isNonEmptyString(value))
+            : [],
+        ]),
+      ),
+      thinReadySections: Object.fromEntries(
+        thinSkillNames.map((skillName) => [
+          skillName,
+          Array.isArray(thinSkillReadySections?.[skillName])
+            ? thinSkillReadySections[skillName].filter((value): value is string => isNonEmptyString(value))
             : [],
         ]),
       ),

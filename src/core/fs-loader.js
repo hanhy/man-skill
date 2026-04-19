@@ -153,41 +153,86 @@ const FOUNDATION_DRAFT_SECTION_REQUIREMENTS = Object.fromEntries(
   ]),
 );
 
-function collectMissingSkillSections(document) {
+
+function collectSkillSectionState(document) {
   if (!isNonEmptyString(document)) {
-    return SKILL_SECTION_DEFINITIONS.map((section) => section.key);
+    return {
+      ready: [],
+      missing: SKILL_SECTION_DEFINITIONS.map((section) => section.key),
+    };
   }
 
-  const lines = document.split(/\r?\n/);
-  return SKILL_SECTION_DEFINITIONS
-    .filter(({ headings }) => {
-      let inSection = false;
-      let hasContent = false;
-      for (const rawLine of lines) {
-        const trimmed = rawLine.trim();
-        if (trimmed.startsWith('## ')) {
-          const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
-          if (headings.includes(normalizedHeading)) {
-            inSection = true;
-            hasContent = false;
-            continue;
-          }
-
-          if (inSection) {
-            break;
-          }
+  const lines = document
+    .split(/\r?\n/)
+    .filter((line, index, allLines) => {
+      let insideFence = false;
+      for (let lineIndex = 0; lineIndex <= index; lineIndex += 1) {
+        if (allLines[lineIndex].trim().startsWith('```')) {
+          insideFence = !insideFence;
         }
+      }
+      return !insideFence;
+    });
+  const ready = [];
+  const missing = [];
 
-        if (!inSection || trimmed.length === 0 || trimmed.startsWith('#')) {
+  for (const section of SKILL_SECTION_DEFINITIONS) {
+    let inSection = false;
+    let hasContent = false;
+    for (const rawLine of lines) {
+      const trimmed = rawLine.trim();
+      if (trimmed.startsWith('## ')) {
+        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
+        if (section.headings.includes(normalizedHeading)) {
+          inSection = true;
+          hasContent = false;
           continue;
         }
 
-        hasContent = true;
+        if (inSection) {
+          break;
+        }
       }
 
-      return !hasContent;
+      if (!inSection || trimmed.length === 0 || trimmed.startsWith('#')) {
+        continue;
+      }
+
+      hasContent = true;
+    }
+
+    if (hasContent) {
+      ready.push(section.key);
+    } else {
+      missing.push(section.key);
+    }
+  }
+
+  return { ready, missing };
+}
+
+function collectMissingSkillSections(document) {
+  return collectSkillSectionState(document).missing;
+}
+
+function hasStructuredSkillHeading(document) {
+  if (!isNonEmptyString(document)) {
+    return false;
+  }
+
+  return document
+    .split(/\r?\n/)
+    .filter((line, index, allLines) => {
+      let insideFence = false;
+      for (let lineIndex = 0; lineIndex <= index; lineIndex += 1) {
+        if (allLines[lineIndex].trim().startsWith('```')) {
+          insideFence = !insideFence;
+        }
+      }
+      return !insideFence;
     })
-    .map((section) => section.key);
+    .map((line) => line.trim().toLowerCase())
+    .some((line) => line.startsWith('## ') && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(line.slice(3).trim())));
 }
 
 function loadSkillInventory(rootDir) {
@@ -200,6 +245,8 @@ function loadSkillInventory(rootDir) {
   const documentedExcerpts = {};
   /** @type {Record<string, string[]>} */
   const thinMissingSections = {};
+  /** @type {Record<string, string[]>} */
+  const thinReadySections = {};
 
   for (const skillName of skillNames) {
     const skillPath = path.join(rootDir, 'skills', skillName, 'SKILL.md');
@@ -210,14 +257,17 @@ function loadSkillInventory(rootDir) {
 
     const document = readTextIfExists(skillPath);
     const excerpt = extractDocumentExcerpt(document);
-    if (isNonEmptyString(excerpt)) {
+    const sectionState = collectSkillSectionState(document);
+    const structured = hasStructuredSkillHeading(document);
+    if (isNonEmptyString(excerpt) && (!structured || sectionState.missing.length === 0)) {
       documented.push(skillName);
       documentedExcerpts[skillName] = excerpt;
       continue;
     }
 
     thin.push(skillName);
-    thinMissingSections[skillName] = collectMissingSkillSections(document);
+    thinMissingSections[skillName] = sectionState.missing;
+    thinReadySections[skillName] = sectionState.ready;
   }
 
   return {
@@ -228,6 +278,7 @@ function loadSkillInventory(rootDir) {
     thin,
     documentedExcerpts,
     thinMissingSections,
+    thinReadySections,
   };
 }
 
