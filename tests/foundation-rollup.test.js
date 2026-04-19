@@ -462,8 +462,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\./);
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\.; docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
-  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
-  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md, sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });
 
 test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in core foundation excerpts', () => {

@@ -288,7 +288,7 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
     && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
     ? `, sections ${document.readySectionCount}/${document.totalSectionCount} ready`
     : '';
-  const readySectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0 && readySections.length > 0
+  const readySectionSummary = document.present && document.lineCount > 0 && readySections.length > 0
     ? ` (${readySections.join(', ')})`
     : '';
   const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
