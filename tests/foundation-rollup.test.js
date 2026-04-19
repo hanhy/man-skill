@@ -1652,6 +1652,67 @@ test('buildSummary treats deeper markdown headings in skills root docs as struct
   assert.doesNotMatch(summary.promptPreview, /root missing @ skills\/README\.md/);
 });
 
+test('buildSummary treats skills root headings with closing hashes as structured sections', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n### What lives here ###\n- Shared repo guidance for reusable procedures.\n\n### Layout ###\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
+  assert.doesNotMatch(summary.promptPreview, /root missing @ skills\/README\.md/);
+});
+
+test('buildSummary treats soul and voice headings with closing hashes as structured sections', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone ##\n- Keep replies direct.\n\n## Signature moves ##\n- Lead with the operational takeaway.\n\n## Avoid ##\n- Avoid vague filler.\n\n## Language hints ##\n- Prefer plain English unless source material clearly code-switches.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths ##\n- Preserve durable operator intent.\n\n## Boundaries ##\n- Do not invent source material.\n\n## Continuity ##\n- Prefer verified repo state over assumptions.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
+  assert.match(summary.promptPreview, /soul: present, \d+ lines, .*sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /voice: present, \d+ lines, .*sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+});
+
 test('buildSummary ignores skills root section headings that only appear inside fenced code blocks', () => {
   const rootDir = makeTempRepo();
 
@@ -1693,6 +1754,35 @@ test('buildSummary treats deeper markdown headings in skill docs as structured g
   fs.writeFileSync(
     path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
     '# Cron\n\n### What this skill is for\n- Keep scheduled follow-ups reliable.\n\n### Suggested workflow\n- Re-run the narrowest verification first.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.skills.documentedCount, 1);
+  assert.equal(summary.foundation.core.skills.thinCount, 0);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: - Keep scheduled follow-ups reliable.']);
+  assert.equal(summary.foundation.core.skills.thinMissingSections, undefined);
+  assert.equal(summary.foundation.core.skills.thinReadySections, undefined);
+  assert.doesNotMatch(summary.promptPreview, /thin docs: cron/);
+});
+
+test('buildSummary treats skill doc headings with closing hashes as structured guidance', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    '# Cron\n\n### What this skill is for ###\n- Keep scheduled follow-ups reliable.\n\n### Suggested workflow ###\n- Re-run the narrowest verification first.\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');

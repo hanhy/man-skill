@@ -24,6 +24,14 @@ export interface SoulProfileOptions {
 
 type SoulSection = 'core-truths' | 'boundaries' | 'vibe' | 'continuity' | null;
 
+function normalizeHeadingText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+}
+
 function mapSoulHeadingToSection(heading: string): SoulSection {
   switch (heading) {
     case 'core truths':
@@ -76,7 +84,7 @@ export class SoulProfile {
       }
 
       if (line.startsWith('## ')) {
-        const heading = line.slice(3).trim().toLowerCase();
+        const heading = normalizeHeadingText(line.slice(3));
         currentSection = mapSoulHeadingToSection(heading);
         return;
       }

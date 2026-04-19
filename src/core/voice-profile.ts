@@ -22,6 +22,14 @@ export interface VoiceProfileOptions {
 
 type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'voice-should-capture' | 'voice-should-not-capture' | 'current-default' | null;
 
+function normalizeHeadingText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+}
+
 function cleanVoiceLine(value: string) {
   return value
     .trim()
@@ -86,7 +94,7 @@ export class VoiceProfile {
       }
 
       if (line.startsWith('## ')) {
-        const heading = line.slice(3).trim().toLowerCase();
+        const heading = normalizeHeadingText(line.slice(3));
         if (heading === 'tone') {
           currentSection = 'tone';
           currentSectionHasContent = false;

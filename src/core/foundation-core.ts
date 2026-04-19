@@ -754,9 +754,15 @@ function parseMarkdownHeading(line: string | null | undefined): { level: number;
     return null;
   }
 
+  const normalizedText = match[2]
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+
   return {
     level: match[1].length,
-    text: match[2].trim().toLowerCase(),
+    text: normalizedText,
   };
 }
 
