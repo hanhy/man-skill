@@ -487,6 +487,48 @@ test('buildCoreFoundationCommand normalizes mixed soul heading dialects toward o
   );
 });
 
+test('buildCoreFoundationCommand normalizes legacy setext soul headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-setext-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\nCore values\n-----------\n- Stay faithful to source material.\n\nDecision rules\n--------------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand normalizes closing-hash soul headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-closing-hash-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core values ##\n- Stay faithful to source material.\n\n## Decision rules ##\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
 test('buildCoreFoundationCommand treats boundaries-only thin soul docs as openclaw-style scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'soul',
