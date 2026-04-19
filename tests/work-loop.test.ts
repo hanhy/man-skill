@@ -27,6 +27,63 @@ function seedReadyFoundationRepo(rootDir: string) {
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nStable voice guidance.\n');
 }
 
+function writeFullDeliveryEnv(rootDir: string, fileName: '.env' | '.env.example' = '.env.example') {
+  fs.writeFileSync(path.join(rootDir, fileName), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+}
+
+function seedRuntimeReadyDeliveryRepo(rootDir: string) {
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), path.join(rootDir, 'manifests', 'channels.json'));
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), path.join(rootDir, 'manifests', 'providers.json'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+  fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'models', `${providerId}.js`),
+      path.join(rootDir, 'src', 'models', `${providerId}.js`),
+    );
+  });
+}
+
+function markManifestEntriesActive(rootDir: string, relativeManifestPath: string) {
+  const manifestPath = path.join(rootDir, relativeManifestPath);
+  const records = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      Array.isArray(records)
+        ? records.map((record) => ({
+          ...record,
+          status: 'active',
+        }))
+        : records,
+      null,
+      2,
+    ),
+  );
+}
+
 test('buildSummary work loop advances to ingestion when the base foundation is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -1203,6 +1260,44 @@ test('buildSummary work loop drops stale implementation follow-ups during env bo
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
   assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+});
+
+test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  writeFullDeliveryEnv(rootDir, '.env');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
+
+  assert.equal(summary.workLoop.readyPriorityCount, 4);
+  assert.equal(summary.workLoop.queuedPriorityCount, 0);
+  assert.equal(summary.workLoop.blockedPriorityCount, 0);
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.nextAction, null);
+  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
+  assert.match(summary.promptPreview, /priorities: 4 total \(4 ready, 0 queued\)/);
+  assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:ready \| providers:ready/);
+  assert.doesNotMatch(summary.promptPreview, /lead: Foundation \[ready\]/);
+  assert.doesNotMatch(workLoopBlock, /next action:/);
+  assert.doesNotMatch(workLoopBlock, /- command:/);
+  assert.doesNotMatch(workLoopBlock, /- paths:/);
 });
 
 test('buildSummary work loop skips env bootstrap once a repo-local .env already exists', () => {
