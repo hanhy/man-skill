@@ -234,7 +234,10 @@ function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string 
 }
 
 function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
-  return `${skills.count} registered, ${skills.documentedCount} documented`;
+  const missingRootSummary = skills.count > 0 && !skills.hasRootDocument && isNonEmptyString(skills.rootPath)
+    ? `, root missing @ ${skills.rootPath}`
+    : '';
+  return `${skills.count} registered, ${skills.documentedCount} documented${missingRootSummary}`;
 }
 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
@@ -361,6 +364,8 @@ export interface CoreMemoryFoundationSummary {
 
 export interface CoreSkillsFoundationSummary {
   count: number;
+  hasRootDocument: boolean;
+  rootPath: string;
   documentedCount: number;
   undocumentedCount: number;
   thinCount: number;
@@ -439,6 +444,8 @@ export interface BuildCoreFoundationSummaryOptions {
   skillNames?: string[];
   skillInventory?: {
     names?: string[];
+    hasRootDocument?: boolean;
+    rootPath?: string;
     documented?: string[];
     undocumented?: string[];
     thin?: string[];
@@ -493,6 +500,10 @@ export function buildCoreFoundationSummary({
   };
   const skills = {
     count: safeSkillNames.length,
+    hasRootDocument: skillInventory?.hasRootDocument === true,
+    rootPath: typeof skillInventory?.rootPath === 'string' && skillInventory.rootPath.length > 0
+      ? skillInventory.rootPath
+      : 'skills/README.md',
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
     thinCount: thinSkillNames.length,
