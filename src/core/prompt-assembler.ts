@@ -1290,6 +1290,21 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   ].filter(Boolean).join('\n');
 }
 
+function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
+  if (!memory || typeof memory.readyBucketCount !== 'number' || typeof memory.totalBucketCount !== 'number') {
+    return null;
+  }
+
+  const populatedBuckets = Array.isArray(memory.populatedBuckets)
+    ? memory.populatedBuckets.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const emptyBuckets = Array.isArray(memory.emptyBuckets)
+    ? memory.emptyBuckets.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
+}
+
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   if (!foundationCore) {
     return null;
@@ -1332,7 +1347,7 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
       : null,
     skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {

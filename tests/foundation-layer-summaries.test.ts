@@ -261,6 +261,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
   assert.equal(summary.foundation.core.skills.rootExcerpt, null);
   assert.match(summary.promptPreview, /coverage: 2\/4 ready; thin memory, skills/);
+  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Keep durable memory organized by horizon\./);
 });
 
 test('buildSummary foundation core marks partially structured soul and voice docs as thin with missing sections', () => {
