@@ -252,7 +252,7 @@ Description: Preserve terse bilingual delivery.
   });
 });
 
-test('voice profile keeps a real "clear" excerpt documented instead of treating it like starter fallback tone', () => {
+test('voice profile treats a documented tone-only excerpt as real guidance', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nclear\n`);
 
   assert.deepEqual(voice.summary(), {
@@ -264,7 +264,23 @@ test('voice profile keeps a real "clear" excerpt documented instead of treating 
     constraintCount: 0,
     signatureCount: 0,
     languageHintCount: 0,
-    hasGuidance: false,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile marks structured tone-only docs as guided even without other sections', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\nWarm and grounded.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: [],
+    signatures: [],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 0,
+    hasGuidance: true,
   });
 });
 

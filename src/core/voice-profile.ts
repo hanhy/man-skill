@@ -224,7 +224,7 @@ export class VoiceProfile {
       constraintCount: this.constraints.length,
       signatureCount: this.signatures.length,
       languageHintCount: this.languageHints.length,
-      hasGuidance: this.constraints.length > 0 || this.signatures.length > 0 || this.languageHints.length > 0,
+      hasGuidance: this.hasToneGuidance || this.constraints.length > 0 || this.signatures.length > 0 || this.languageHints.length > 0,
     };
   }
 }
