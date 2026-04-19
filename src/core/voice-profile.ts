@@ -22,6 +22,13 @@ export interface VoiceProfileOptions {
 
 type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'voice-should-capture' | 'voice-should-not-capture' | 'current-default' | null;
 
+const VOICE_STARTER_GUIDANCE_LINES = new Set([
+  'Describe the target cadence, directness, and emotional texture here.',
+  'Capture recurring phrasing, structure, or rhetorical habits here.',
+  'List wording, hedges, or habits that break the voice.',
+  'Note bilingual, dialect, or code-switching habits worth preserving.',
+]);
+
 function normalizeHeadingText(value: string) {
   return value
     .trim()
@@ -53,6 +60,10 @@ function pushUnique(target: string[], value: string) {
   }
 }
 
+function isStarterVoiceGuidance(value: string) {
+  return VOICE_STARTER_GUIDANCE_LINES.has(value);
+}
+
 function isListSection(section: VoiceSection) {
   return section === 'signature-moves'
     || section === 'avoid'
@@ -68,6 +79,7 @@ export class VoiceProfile {
   constraints: string[];
   signatures: string[];
   languageHints: string[];
+  hasToneGuidance: boolean;
 
   constructor({ tone = 'clear', style = 'adaptive', constraints = [], signatures = [], languageHints = [] }: VoiceProfileOptions = {}) {
     this.tone = tone;
@@ -75,14 +87,18 @@ export class VoiceProfile {
     this.constraints = constraints;
     this.signatures = signatures;
     this.languageHints = languageHints;
+    this.hasToneGuidance = style === 'documented' && tone.trim().length > 0;
   }
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
     const excerpt = findDocumentExcerpt(normalizedDocument);
+    const normalizedExcerpt = excerpt ? cleanVoiceLine(excerpt) : null;
+    const hasExcerptToneGuidance = normalizedExcerpt !== null && !isStarterVoiceGuidance(normalizedExcerpt);
+    const defaultTone = hasExcerptToneGuidance ? normalizedExcerpt : 'clear';
     const voice = new VoiceProfile({
-      tone: excerpt ?? 'clear',
-      style: excerpt ? 'documented' : 'adaptive',
+      tone: defaultTone,
+      style: hasExcerptToneGuidance ? 'documented' : 'adaptive',
     });
     let currentSection: VoiceSection = null;
     let currentSectionHasContent = false;
@@ -149,13 +165,14 @@ export class VoiceProfile {
       }
 
       const cleaned = cleanVoiceLine(line);
-      if (!cleaned || cleaned === '---') {
+      if (!cleaned || cleaned === '---' || isStarterVoiceGuidance(cleaned)) {
         return;
       }
 
       if (currentSection === 'tone') {
         voice.tone = cleaned;
         voice.style = 'documented';
+        voice.hasToneGuidance = true;
         currentSectionHasContent = true;
       } else if (currentSection === 'signature-moves') {
         pushUnique(voice.signatures, cleaned);

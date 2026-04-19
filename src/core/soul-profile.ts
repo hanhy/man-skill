@@ -24,6 +24,12 @@ export interface SoulProfileOptions {
 
 type SoulSection = 'core-truths' | 'boundaries' | 'vibe' | 'continuity' | null;
 
+const SOUL_STARTER_GUIDANCE_LINES = new Set([
+  'Describe the durable values and goals that should survive across tasks.',
+  'Capture what the agent should protect or refuse to compromise.',
+  'Note the principles to use when tradeoffs appear.',
+]);
+
 function normalizeHeadingText(value: string) {
   return value
     .trim()
@@ -57,6 +63,10 @@ function cleanSoulLine(value: string) {
     .trim();
 }
 
+function isStarterSoulGuidance(value: string) {
+  return SOUL_STARTER_GUIDANCE_LINES.has(value);
+}
+
 export class SoulProfile {
   excerpt: string | null;
   coreTruths: string[];
@@ -74,7 +84,9 @@ export class SoulProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const soul = new SoulProfile({ excerpt: findDocumentExcerpt(normalizedDocument) });
+    const excerpt = findDocumentExcerpt(normalizedDocument);
+    const normalizedExcerpt = excerpt ? cleanSoulLine(excerpt) : null;
+    const soul = new SoulProfile({ excerpt: normalizedExcerpt && !isStarterSoulGuidance(normalizedExcerpt) ? normalizedExcerpt : null });
     let currentSection: SoulSection = null;
 
     collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
@@ -94,7 +106,7 @@ export class SoulProfile {
       }
 
       const cleaned = cleanSoulLine(line);
-      if (!cleaned || cleaned === '---') {
+      if (!cleaned || cleaned === '---' || isStarterSoulGuidance(cleaned)) {
         return;
       }
 

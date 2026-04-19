@@ -881,7 +881,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     : [];
 
   const lineCount = countContentLines(document);
-  const excerpt = extractExcerpt(document);
+  const excerpt = profile.excerpt;
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;
@@ -915,7 +915,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
   ]);
   const readySections = structured
     ? [
-      isNonEmptyString(profile.tone) ? 'tone' : null,
+      profile.hasToneGuidance ? 'tone' : null,
       profile.signatures.length > 0 ? 'signature-moves' : null,
       profile.constraints.length > 0 ? 'avoid' : null,
       profile.languageHints.length > 0 ? 'language-hints' : null,
@@ -923,7 +923,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
   const missingSections = structured
     ? [
-      isNonEmptyString(profile.tone) ? null : 'tone',
+      profile.hasToneGuidance ? null : 'tone',
       profile.signatures.length > 0 ? null : 'signature-moves',
       profile.constraints.length > 0 ? null : 'avoid',
       profile.languageHints.length > 0 ? null : 'language-hints',
@@ -931,7 +931,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     : [];
 
   const lineCount = countContentLines(document);
-  const excerpt = extractExcerpt(document);
+  const excerpt = profile.style === 'documented' ? profile.tone : null;
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;

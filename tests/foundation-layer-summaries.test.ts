@@ -145,6 +145,22 @@ test('voice profile parses tone, signature moves, avoid, and language hints from
   });
 });
 
+test('voice profile ignores untouched starter-template guidance bullets', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: [],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 0,
+    hasGuidance: false,
+  });
+});
+
 test('voice profile falls back to voice capture/default sections when explicit signature and avoid headings are missing', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for ManSkill\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n\nAs the project matures, this directory can hold:\n- a main voice profile\n- example writing samples\n`);
 
@@ -217,6 +233,22 @@ Description: Preserve terse bilingual delivery.
     signatureCount: 1,
     languageHintCount: 1,
     hasGuidance: true,
+  });
+});
+
+test('voice profile keeps a real "clear" excerpt documented instead of treating it like starter fallback tone', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nclear\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'documented',
+    constraints: [],
+    signatures: [],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 0,
+    hasGuidance: false,
   });
 });
 
@@ -523,6 +555,24 @@ test('soul profile strips numbered list markers inside structured sections', () 
     continuityCount: 1,
     sectionCount: 4,
     hasGuidance: true,
+  });
+});
+
+test('soul profile ignores untouched starter-template guidance bullets', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: null,
+    coreTruths: [],
+    boundaries: [],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 0,
+    boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 0,
+    hasGuidance: false,
   });
 });
 
