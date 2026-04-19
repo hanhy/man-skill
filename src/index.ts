@@ -63,6 +63,7 @@ interface SampleTextSummary {
 }
 
 type QueueLike = {
+  id?: string | null;
   status?: string;
   setupHint?: string | null;
   nextStep?: string | null;
@@ -76,6 +77,56 @@ type QueueLike = {
   manifestScaffoldPath?: string | null;
   missingEnvVars?: string[];
 };
+
+type DeliveryRecordLike = {
+  id?: string | null;
+  status?: string;
+};
+
+type DeliverySummaryLike<TRecord extends DeliveryRecordLike> = {
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  channels?: TRecord[];
+  providers?: TRecord[];
+};
+
+type DeliveryCollectionKey = 'channels' | 'providers';
+
+function promoteRuntimeReadyStatus(status?: string | null, implementationReady?: boolean): string {
+  if (status === 'planned' && implementationReady) {
+    return 'candidate';
+  }
+
+  return status ?? 'unknown';
+}
+
+function applyRuntimeReadyStatuses<
+  TRecord extends DeliveryRecordLike,
+  TSummary extends DeliverySummaryLike<TRecord>,
+>(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
+  const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
+  const promotedStatuses = new Map(
+    queue
+      .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
+      .map((item) => [item.id, promoteRuntimeReadyStatus(item.status, item.implementationReady)]),
+  );
+  const promotedRecords = records.map((record) => ({
+    ...record,
+    status: promotedStatuses.get(record.id ?? '') ?? record.status ?? 'unknown',
+  }));
+  const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
+  const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
+  const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;
+
+  return {
+    ...summary,
+    [collectionKey]: promotedRecords,
+    activeCount,
+    plannedCount,
+    candidateCount,
+  };
+}
 
 type ProfileSummaryLike = {
   id?: string;
@@ -1600,7 +1651,7 @@ export function buildSummary(rootDir: string) {
     skillNames,
     skillInventory,
   });
-  const channelsSummary = {
+  const rawChannelsSummary = {
     ...channels.summary(),
     manifest: {
       path: channelManifest.path,
@@ -1609,7 +1660,7 @@ export function buildSummary(rootDir: string) {
       error: channelManifest.error,
     },
   };
-  const modelsSummary = {
+  const rawModelsSummary = {
     ...models.summary(),
     manifest: {
       path: providerManifest.path,
@@ -1626,7 +1677,17 @@ export function buildSummary(rootDir: string) {
   const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
   const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
-  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, deliveryEnvironment, { rootDir });
+  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
+  const promotedChannelQueue = baseDeliverySummary.channelQueue.map((channel) => ({
+    ...channel,
+    status: promoteRuntimeReadyStatus(channel.status, channel.implementationReady),
+  }));
+  const promotedProviderQueue = baseDeliverySummary.providerQueue.map((provider) => ({
+    ...provider,
+    status: promoteRuntimeReadyStatus(provider.status, provider.implementationReady),
+  }));
+  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
+  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
   const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
@@ -1656,8 +1717,8 @@ export function buildSummary(rootDir: string) {
     envTemplateCommand: completeEnvBootstrapCommand,
     envTemplateVarNames,
     envTemplateMissingRequiredVars,
-    channelQueue: sanitizeDeliveryQueueBootstrap(baseDeliverySummary.channelQueue),
-    providerQueue: sanitizeDeliveryQueueBootstrap(baseDeliverySummary.providerQueue),
+    channelQueue: sanitizeDeliveryQueueBootstrap(promotedChannelQueue),
+    providerQueue: sanitizeDeliveryQueueBootstrap(promotedProviderQueue),
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
       bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,
