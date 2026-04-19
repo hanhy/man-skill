@@ -2,10 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   FileSystemLoader,
-  hasFoundationDraftProfileMetadataMismatch,
-  hasFoundationMemoryDraftProfileMetadataMismatch,
-  hasValidFoundationMarkdownDraft,
-  parseDraftMetadata,
+  loadFoundationDraftStatus,
 } from './fs-loader.js';
 
 function readJsonIfExists(filePath) {
@@ -1382,42 +1379,17 @@ export class MaterialIngestion {
 
         const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
         const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+        const latestMaterialId = latestMaterialRecord?.id ?? null;
         const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
+        const foundationDraftStatus = loadFoundationDraftStatus(
+          this.rootDir,
+          profileId,
+          latestMaterialAt,
+          latestMaterialId,
+          profileDocument,
+        );
 
-        const memoryDraftPath = this.resolve('profiles', profileId, 'memory', 'long-term', 'foundation.json');
-        const voiceDraftPath = this.resolve('profiles', profileId, 'voice', 'README.md');
-        const soulDraftPath = this.resolve('profiles', profileId, 'soul', 'README.md');
-        const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
-
-        if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
-          return true;
-        }
-
-        if (!hasValidFoundationMarkdownDraft(voiceDraftPath) || !hasValidFoundationMarkdownDraft(soulDraftPath) || !hasValidFoundationMarkdownDraft(skillsDraftPath)) {
-          return true;
-        }
-
-        const voiceMetadata = parseDraftMetadata(voiceDraftPath);
-        const soulMetadata = parseDraftMetadata(soulDraftPath);
-        const skillsMetadata = parseDraftMetadata(skillsDraftPath);
-        if ([voiceMetadata, soulMetadata, skillsMetadata].some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument))) {
-          return true;
-        }
-
-        const memoryDraft = readJsonIfExists(memoryDraftPath);
-        if (!memoryDraft?.generatedAt) {
-          return true;
-        }
-
-        if (hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft, profileId, profileDocument)) {
-          return true;
-        }
-
-        if (memoryDraft.latestMaterialId && latestMaterialRecord?.id) {
-          return memoryDraft.latestMaterialId !== latestMaterialRecord.id;
-        }
-
-        return Boolean(latestMaterialAt) && latestMaterialAt > memoryDraft.generatedAt;
+        return foundationDraftStatus.needsRefresh;
       });
 
     return {

@@ -783,7 +783,7 @@ export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = nu
     || (memoryDraft.summary ?? null) !== expectedSummary;
 }
 
-function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
+export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),

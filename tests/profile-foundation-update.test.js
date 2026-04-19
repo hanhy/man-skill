@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { FileSystemLoader } from '../src/core/fs-loader.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 
 function makeTempRepo() {
@@ -1149,6 +1150,78 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
     fs.readFileSync(path.join(rootDir, 'profiles', 'fresh-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
   );
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
+});
+
+test('refreshStaleFoundationDrafts follows the same stale-foundation status as loadProfilesIndex', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.updateProfile({
+    personId: 'Metadata Drift',
+    displayName: 'Metadata Drift',
+    summary: 'First summary.',
+  });
+  ingestion.importMessage({
+    personId: 'Metadata Drift',
+    text: 'Keep the staged rollout honest.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Metadata Drift' });
+  ingestion.updateProfile({
+    personId: 'Metadata Drift',
+    displayName: 'Metadata Drift',
+    summary: 'Updated summary after draft generation.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const staleByLoader = loader.loadProfilesIndex()
+    .filter((profile) => profile.foundationDraftStatus.needsRefresh)
+    .map((profile) => ({
+      personId: profile.id,
+      refreshReasons: profile.foundationDraftStatus.refreshReasons,
+    }))
+    .sort((left, right) => left.personId.localeCompare(right.personId));
+  const staleByRefresh = ingestion.refreshStaleFoundationDrafts().results
+    .map((entry) => entry.personId)
+    .sort();
+
+  assert.deepEqual(staleByRefresh, staleByLoader.map((entry) => entry.personId));
+  assert.deepEqual(staleByLoader, [
+    {
+      personId: 'metadata-drift',
+      refreshReasons: ['profile metadata drift', 'draft metadata drift'],
+    },
+    {
+      personId: 'missing-drafts',
+      refreshReasons: ['missing drafts', 'new materials'],
+    },
+    {
+      personId: 'stale-person',
+      refreshReasons: ['new materials'],
+    },
+  ]);
 });
 
 test('refreshStaleFoundationDrafts refreshes profiles when memory draft personId metadata drifts', () => {
