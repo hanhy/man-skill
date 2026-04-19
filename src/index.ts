@@ -1296,6 +1296,7 @@ function buildDeliveryPriority({
   authBlockedCount,
   queue,
   envTemplatePath = null,
+  envConfigPath = '.env',
   envTemplateCommand = null,
   envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
@@ -1309,6 +1310,7 @@ function buildDeliveryPriority({
   authBlockedCount?: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
+  envConfigPath?: string | null;
   envTemplateCommand?: string | null;
   envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
@@ -1386,8 +1388,10 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
+  const envBootstrapPaths = [envTemplatePath, needsCredentialBootstrap ? envConfigPath : null]
+    .filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
-    ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
+    ? envBootstrapPaths
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
       ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
@@ -1930,6 +1934,7 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedChannelCount,
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
@@ -1944,6 +1949,7 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedProviderCount,
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
+        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,

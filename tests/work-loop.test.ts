@@ -1667,11 +1667,11 @@ test('buildSummary work loop narrows paths to the env template during credential
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
 });
@@ -1722,7 +1722,7 @@ test('buildSummary work loop drops stale implementation follow-ups during env bo
   assert.equal(summary.workLoop.priorities[2].status, 'blocked');
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
