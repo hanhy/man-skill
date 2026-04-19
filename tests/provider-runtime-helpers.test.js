@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createOpenAIProvider, normalizeOpenAIChatResponse } from '../src/models/openai.js';
-import { createAnthropicProvider } from '../src/models/anthropic.js';
+import { createAnthropicProvider, buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse } from '../src/models/anthropic.js';
 import { createKimiProvider, normalizeKimiChatResponse } from '../src/models/kimi.js';
 import { createMinimaxProvider, normalizeMinimaxChatResponse } from '../src/models/minimax.js';
 import { createGLMProvider, normalizeGLMChatResponse } from '../src/models/glm.js';
@@ -47,6 +47,70 @@ test('provider runtime helpers expose required env vars and configuration checks
   assert.equal(openai.isConfigured({ OPENAI_API_KEY: 'test-key' }), true);
   assert.deepEqual(anthropic.missingEnvVars({}), ['ANTHROPIC_API_KEY']);
   assert.equal(anthropic.isConfigured({ ANTHROPIC_API_KEY: 'test-key' }), true);
+});
+
+test('anthropic provider runtime helpers build request payloads and normalize text/tool blocks compactly', () => {
+  const anthropic = createAnthropicProvider();
+
+  assert.deepEqual(
+    anthropic.buildMessagesRequest({
+      system: 'Stay direct.',
+      messages: [{ role: 'user', content: 'Ship it.' }],
+      tools: [{ name: 'lookup_profile' }],
+      toolChoice: { type: 'tool', name: 'lookup_profile' },
+      maxTokens: 2048,
+      temperature: 0.2,
+      metadata: { source: 'test' },
+    }),
+    buildAnthropicMessagesRequest({
+      model: 'claude-3.7-sonnet',
+      system: 'Stay direct.',
+      messages: [{ role: 'user', content: 'Ship it.' }],
+      tools: [{ name: 'lookup_profile' }],
+      toolChoice: { type: 'tool', name: 'lookup_profile' },
+      maxTokens: 2048,
+      temperature: 0.2,
+      metadata: { source: 'test' },
+    }),
+  );
+
+  assert.deepEqual(
+    normalizeAnthropicMessagesResponse({
+      id: 'msg_123',
+      model: 'claude-3.7-sonnet',
+      role: 'assistant',
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'text', text: ' Ship the thin slice ' },
+        { type: 'thinking', thinking: 'skip me' },
+        { type: 'text', text: 'first, then tighten it.' },
+        { type: 'tool_use', id: 'toolu_1', name: 'lookup_profile', input: { personId: 'harry-han' } },
+      ],
+      usage: {
+        input_tokens: 32,
+        output_tokens: 12,
+      },
+    }),
+    {
+      provider: 'anthropic',
+      id: 'msg_123',
+      model: 'claude-3.7-sonnet',
+      role: 'assistant',
+      text: 'Ship the thin slice first, then tighten it.',
+      stopReason: 'tool_use',
+      toolCalls: [
+        {
+          id: 'toolu_1',
+          name: 'lookup_profile',
+          input: { personId: 'harry-han' },
+        },
+      ],
+      usage: {
+        inputTokens: 32,
+        outputTokens: 12,
+      },
+    },
+  );
 });
 
 test('openai-compatible provider runtime helpers normalize structured text content arrays', () => {
