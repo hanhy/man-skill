@@ -1,4 +1,4 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, extractProviderTextContent } from './base-provider.js';
 
 export const kimiProviderScaffold = {
   id: 'kimi',
@@ -53,7 +53,7 @@ export function normalizeKimiChatResponse(response = {}) {
     id: typeof response.id === 'string' && response.id.length > 0 ? response.id : null,
     model: typeof response.model === 'string' && response.model.length > 0 ? response.model : null,
     role: typeof message.role === 'string' && message.role.length > 0 ? message.role : 'assistant',
-    text: typeof message.content === 'string' && message.content.length > 0 ? message.content : null,
+    text: extractProviderTextContent(message.content),
     finishReason: typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0 ? choice.finish_reason : null,
     toolCalls: normalizeKimiToolCalls(message.tool_calls),
     usage: {

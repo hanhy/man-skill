@@ -23,16 +23,17 @@ export class BaseProvider {
     this.nextStep = nextStep;
   }
 
-  missingEnvVars(environment = process.env) {
-    if (!this.authEnvVar) {
-      return [];
-    }
+  requiredEnvVars() {
+    return typeof this.authEnvVar === 'string' && this.authEnvVar.length > 0 ? [this.authEnvVar] : [];
+  }
 
-    return environment?.[this.authEnvVar] ? [] : [this.authEnvVar];
+  missingEnvVars(environment = process.env) {
+    return this.requiredEnvVars().filter((envVar) => !environment?.[envVar]);
   }
 
   isConfigured(environment = process.env) {
-    return this.authEnvVar ? this.missingEnvVars(environment).length === 0 : false;
+    const envVars = this.requiredEnvVars();
+    return envVars.length > 0 && this.missingEnvVars(environment).length === 0;
   }
 
   supportsFeature(feature) {
@@ -57,4 +58,36 @@ export class BaseProvider {
       nextStep: this.nextStep,
     };
   }
+}
+
+export function extractProviderTextContent(content) {
+  if (typeof content === 'string' && content.length > 0) {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    return null;
+  }
+
+  const text = content
+    .map((part) => {
+      if (!part || typeof part !== 'object') {
+        return null;
+      }
+
+      if (typeof part.text === 'string' && part.text.trim().length > 0) {
+        return part.text.trim();
+      }
+
+      if (typeof part.content === 'string' && part.content.trim().length > 0) {
+        return part.content.trim();
+      }
+
+      return null;
+    })
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return text.length > 0 ? text : null;
 }
