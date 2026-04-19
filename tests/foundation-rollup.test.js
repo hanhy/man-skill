@@ -390,6 +390,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     structured: false,
     readySectionCount: 3,
     totalSectionCount: 3,
+    readySections: ['core-truths', 'boundaries', 'continuity'],
     missingSections: [],
   });
   assert.deepEqual(summary.foundation.core.voice, {
@@ -400,6 +401,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     structured: false,
     readySectionCount: 4,
     totalSectionCount: 4,
+    readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
     missingSections: [],
   });
   assert.deepEqual(summary.foundation.core.overview, {

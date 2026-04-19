@@ -255,14 +255,18 @@ function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string 
 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
   const missingSections = Array.isArray(document.missingSections) ? document.missingSections : [];
+  const readySections = Array.isArray(document.readySections) ? document.readySections : [];
   const sectionSummary = document.present && document.lineCount > 0
     && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
     ? `, sections ${document.readySectionCount}/${document.totalSectionCount} ready`
     : '';
+  const readySectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0 && readySections.length > 0
+    ? ` (${readySections.join(', ')})`
+    : '';
   const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
     ? `, missing ${missingSections.join(', ')}`
     : '';
-  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${missingSectionSummary}`;
+  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}`;
 }
 
 function buildDocumentMaintenanceAction(document: CoreDocumentFoundationSummary): string | null {
@@ -494,6 +498,7 @@ export interface CoreDocumentFoundationSummary {
   structured: boolean;
   readySectionCount: number;
   totalSectionCount: number;
+  readySections: string[];
   missingSections: string[];
 }
 
@@ -513,6 +518,13 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
   const profile = SoulProfile.fromDocument(document ?? '');
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
+  const readySections = structured
+    ? [
+      profile.coreTruths.length > 0 ? 'core-truths' : null,
+      profile.boundaries.length > 0 ? 'boundaries' : null,
+      profile.continuity.length > 0 ? 'continuity' : null,
+    ].filter((value): value is string => typeof value === 'string')
+    : (present ? ['core-truths', 'boundaries', 'continuity'] : []);
   const missingSections = structured
     ? [
       profile.coreTruths.length > 0 ? null : 'core-truths',
@@ -524,7 +536,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
   const lineCount = countContentLines(document);
   const readySectionCount = !present || lineCount === 0
     ? 0
-    : (structured ? 3 - missingSections.length : 3);
+    : readySections.length;
 
   return {
     present,
@@ -534,6 +546,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     structured,
     readySectionCount,
     totalSectionCount: 3,
+    readySections,
     missingSections,
   };
 }
@@ -550,6 +563,14 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'voice should not capture',
     'current default for manskill',
   ]);
+  const readySections = structured
+    ? [
+      isNonEmptyString(profile.tone) ? 'tone' : null,
+      profile.signatures.length > 0 ? 'signature-moves' : null,
+      profile.constraints.length > 0 ? 'avoid' : null,
+      profile.languageHints.length > 0 ? 'language-hints' : null,
+    ].filter((value): value is string => typeof value === 'string')
+    : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
   const missingSections = structured
     ? [
       isNonEmptyString(profile.tone) ? null : 'tone',
@@ -562,7 +583,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
   const lineCount = countContentLines(document);
   const readySectionCount = !present || lineCount === 0
     ? 0
-    : (structured ? 4 - missingSections.length : 4);
+    : readySections.length;
 
   return {
     present,
@@ -572,6 +593,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     structured,
     readySectionCount,
     totalSectionCount: 4,
+    readySections,
     missingSections,
   };
 }

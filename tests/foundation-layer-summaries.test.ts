@@ -280,8 +280,10 @@ test('buildSummary foundation core marks partially structured soul and voice doc
 
   const summary = buildSummary(rootDir);
 
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'continuity']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 1);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 1);
   assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
   assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid', 'language-hints']);
@@ -298,6 +300,6 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Avoid/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Language hints/);
-  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/3 ready, missing boundaries, continuity/);
-  assert.match(summary.promptPreview, /- voice: present, 1 lines, Warm and grounded\. @ voice\/README\.md, sections 1\/4 ready, missing signature-moves, avoid, language-hints/);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/3 ready \(core-truths\), missing boundaries, continuity/);
+  assert.match(summary.promptPreview, /- voice: present, 1 lines, Warm and grounded\. @ voice\/README\.md, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints/);
 });
