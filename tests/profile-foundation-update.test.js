@@ -146,6 +146,27 @@ test('refreshFoundationDrafts rewrites a memory foundation draft when its stored
   assert.equal(repairedDraft.summary, 'Direct operator with a bias for momentum.');
 });
 
+test('scaffoldProfileIntake hides imported-profile intake shortcuts until the local manifest has real entries', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+
+  const intakeReadmePath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'README.md');
+  const intakeReadme = fs.readFileSync(intakeReadmePath, 'utf8');
+
+  assert.match(intakeReadme, /Recommended helper commands:/);
+  assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Import after editing: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.doesNotMatch(intakeReadme, /profile-local intake shortcut without refreshing drafts/);
+  assert.doesNotMatch(intakeReadme, /profile-local intake shortcut and refresh drafts/);
+  assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
+});
+
 test('CLI update foundation command writes derived profile drafts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

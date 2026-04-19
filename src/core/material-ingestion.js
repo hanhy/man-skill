@@ -497,8 +497,12 @@ function buildIntakeReadme({
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
-    `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`,
-    `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`,
+    importIntakeWithoutRefreshCommand
+      ? `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`
+      : null,
+    importIntakeCommand
+      ? `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`
+      : null,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
@@ -513,7 +517,7 @@ function buildIntakeReadme({
     managedCustomNotes,
     INTAKE_CUSTOM_NOTES_END,
     '',
-  ].join('\n');
+  ].filter((line) => line !== null).join('\n');
 }
 
 function buildProfileLabel({ personId, displayName }) {
@@ -660,8 +664,15 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
     });
-    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
-    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
+    const existingMaterialCount = this.loadMaterialRecords(profileUpdate.personId).length;
+    const intakeShortcutCommandsAvailable = existingMaterialCount === 0
+      || (Array.isArray(starterManifest.entries) && starterManifest.entries.length > 0);
+    const importIntakeWithoutRefreshCommand = intakeShortcutCommandsAvailable
+      ? buildImportIntakeCommand(profileUpdate.personId)
+      : null;
+    const importIntakeCommand = intakeShortcutCommandsAvailable
+      ? buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true })
+      : null;
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
