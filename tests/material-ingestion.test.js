@@ -816,6 +816,60 @@ test('scaffoldAllProfileIntakes reruns intake scaffolding for every metadata-onl
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
 });
 
+test('importAllProfileIntakeManifests aggregates profileSummaries and top-level foundationRefresh like importManifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Alpha Ready',
+    displayName: 'Alpha Ready',
+    summary: 'Ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Already',
+    displayName: 'Imported Already',
+    summary: 'Ready intake manifest with existing materials.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, so the local intake manifest should rerun cleanly.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'sample.txt'), 'Alpha sample.\n');
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-already', 'imports', 'sample.txt'), 'Imported again.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Alpha Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-already', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Already',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importAllProfileIntakeManifests({ refreshFoundation: true });
+
+  assert.equal(result.profileCount, 2);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'imported-already']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['alpha-ready', 'imported-already']);
+  assert.equal(result.profileSummaries[0].label, 'Alpha Ready (alpha-ready)');
+  assert.equal(result.profileSummaries[0].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[0].missingDrafts, []);
+  assert.equal(result.profileSummaries[1].label, 'Imported Already (imported-already)');
+  assert.equal(result.profileSummaries[1].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[1].materialTypes, { text: 1 });
+  assert.equal(result.foundationRefresh.profileCount, 2);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['alpha-ready', 'imported-already']);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/alpha-ready\/voice\/README\.md$/);
+  assert.match(result.foundationRefresh.results[1].voiceDraftPath, /profiles\/imported-already\/voice\/README\.md$/);
+});
+
 test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

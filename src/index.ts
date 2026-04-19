@@ -1272,6 +1272,16 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
 
   const relativizeManifestImportBatchResult = (result: any) => ({
     ...result,
+    ...(result?.foundationRefresh && typeof result.foundationRefresh === 'object'
+      ? {
+          foundationRefresh: {
+            ...result.foundationRefresh,
+            results: Array.isArray((result.foundationRefresh as { results?: DraftRefreshResult[] }).results)
+              ? (result.foundationRefresh as { results: DraftRefreshResult[] }).results.map((entry) => relativizeDraftPaths(rootDir, entry))
+              : [],
+          },
+        }
+      : {}),
     results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
   });
 

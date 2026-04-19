@@ -817,28 +817,46 @@ export class MaterialIngestion {
     });
   }
 
-  importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
-    const profiles = this.listProfilesWithReadyIntake();
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
+  buildBatchManifestImportResult(profiles, results) {
+    const profileIds = [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort();
+    const profileSummaries = profileIds.map((personId) => results
+      .flatMap((result) => result?.profileSummaries ?? [])
+      .find((entry) => entry?.personId === personId))
+      .filter(Boolean);
+    const foundationRefreshResults = profileIds.map((personId) => results
+      .flatMap((result) => result?.foundationRefresh?.results ?? [])
+      .find((entry) => entry?.personId === personId))
+      .filter(Boolean);
 
     return {
       profileCount: profiles.length,
       entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
-      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
+      profileIds,
+      ...(profileSummaries.length > 0 ? { profileSummaries } : {}),
+      ...(foundationRefreshResults.length > 0
+        ? {
+            foundationRefresh: {
+              profileCount: foundationRefreshResults.length,
+              results: foundationRefreshResults,
+            },
+          }
+        : {}),
       results,
     };
+  }
+
+  importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
+    const profiles = this.listProfilesWithReadyIntake();
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
+
+    return this.buildBatchManifestImportResult(profiles, results);
   }
 
   importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return {
-      profileCount: profiles.length,
-      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
-      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
-      results,
-    };
+    return this.buildBatchManifestImportResult(profiles, results);
   }
 
   importImportedProfileIntakeManifests({ refreshFoundation = false } = {}) {
@@ -846,12 +864,7 @@ export class MaterialIngestion {
       .filter((profile) => (profile?.materialCount ?? 0) > 0);
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return {
-      profileCount: profiles.length,
-      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
-      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
-      results,
-    };
+    return this.buildBatchManifestImportResult(profiles, results);
   }
 
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
