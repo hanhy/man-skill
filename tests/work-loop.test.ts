@@ -103,6 +103,13 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"');
   assert.match(summary.workLoop.currentPriority.summary, /0 imported/);
+  assert.deepEqual(summary.workLoop.objectives, [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ]);
   assert.deepEqual(
     summary.workLoop.priorities.map((priority: { id: string }) => priority.id),
     ['foundation', 'ingestion', 'channels', 'providers'],
@@ -117,7 +124,45 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
+  assert.match(summary.promptPreview, /objectives: strengthen the OpenClaw-like foundation around memory, skills, soul, and voice \| improve the user-facing ingestion\/update entrance for target-person materials \| add chat channels Feishu, Telegram, WhatsApp, and Slack \| add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen \| report progress in small verified increments/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the repo defines a current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      'The current staged goal is to build ManSkill step by step with four priorities:',
+      '',
+      '1. harden the memory + soul handoff before delivery rollout',
+      '2. make intake reruns safe for partially imported profiles',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Keep this file durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
 });
 
 test('buildSummary work loop keeps foundation first when repo-core coverage is still thin', () => {

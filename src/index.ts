@@ -62,6 +62,14 @@ interface SampleTextSummary {
   present: boolean;
 }
 
+const DEFAULT_WORK_LOOP_OBJECTIVES = [
+  'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+  'improve the user-facing ingestion/update entrance for target-person materials',
+  'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+  'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+  'report progress in small verified increments',
+] as const;
+
 type QueueLike = {
   id?: string | null;
   status?: string;
@@ -92,6 +100,63 @@ type DeliverySummaryLike<TRecord extends DeliveryRecordLike> = {
 };
 
 type DeliveryCollectionKey = 'channels' | 'providers';
+
+function readFileIfPresent(filePath: string): string | null {
+  try {
+    return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractWorkLoopObjectivesFromUserDocument(document: string | null | undefined): string[] {
+  if (typeof document !== 'string' || document.trim().length === 0) {
+    return [];
+  }
+
+  const lines = document.split(/\r?\n/);
+  const startIndex = lines.findIndex((line) => /^##\s+Current product direction\s*$/i.test(line.trim()));
+  if (startIndex === -1) {
+    return [];
+  }
+
+  const objectives: string[] = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const trimmedLine = lines[index]?.trim() ?? '';
+    if (trimmedLine.length === 0) {
+      continue;
+    }
+    if (/^##\s+/.test(trimmedLine)) {
+      break;
+    }
+
+    const numberedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+    if (!numberedMatch) {
+      continue;
+    }
+
+    const objective = numberedMatch[1]?.trim();
+    if (objective) {
+      objectives.push(objective);
+    }
+  }
+
+  return objectives;
+}
+
+function loadWorkLoopObjectives(rootDir: string): string[] {
+  const userDocument = readFileIfPresent(path.join(rootDir, 'USER.md'));
+  const configuredObjectives = extractWorkLoopObjectivesFromUserDocument(userDocument);
+
+  if (configuredObjectives.length === 0) {
+    return [...DEFAULT_WORK_LOOP_OBJECTIVES];
+  }
+
+  const progressObjective = DEFAULT_WORK_LOOP_OBJECTIVES[DEFAULT_WORK_LOOP_OBJECTIVES.length - 1];
+  return configuredObjectives.includes(progressObjective)
+    ? configuredObjectives
+    : [...configuredObjectives, progressObjective];
+}
 
 function promoteRuntimeReadyStatus(status?: string | null, implementationReady?: boolean): string {
   if (status === 'planned' && implementationReady) {
@@ -1689,13 +1754,7 @@ export function buildSummary(rootDir: string) {
   if (Array.isArray(providerManifest.records)) {
     providerManifest.records.forEach((provider: unknown) => models.register(provider as any));
   }
-  const workLoopObjectives = [
-    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
-    'improve the user-facing ingestion/update entrance for target-person materials',
-    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
-    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
-    'report progress in small verified increments',
-  ];
+  const workLoopObjectives = loadWorkLoopObjectives(rootDir);
   const profiles = loader.loadProfilesIndex() as any;
   const sampleManifestRelativePath = detectSampleManifestRelativePath(rootDir);
   const sampleManifest = readSampleManifestSummary(rootDir, sampleManifestRelativePath);
