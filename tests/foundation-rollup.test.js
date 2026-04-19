@@ -2032,6 +2032,37 @@ test('buildSummary keeps skill docs with fenced template examples thin until the
   assert.match(summary.promptPreview, /thin docs: cron missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
 });
 
+test('buildSummary keeps skill docs with mismatched fence markers thin until a matching fence really closes', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    '# Cron\n\n```md\n~~~\n## What this skill is for\n- Example template only.\n\n## Suggested workflow\n- Example workflow only.\n```\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.skills.documentedCount, 0);
+  assert.equal(summary.foundation.core.skills.thinCount, 1);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, []);
+  assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
+    cron: ['what-this-skill-is-for', 'suggested-workflow'],
+  });
+  assert.match(summary.promptPreview, /thin docs: cron missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
+  assert.doesNotMatch(summary.promptPreview, /Example template only/);
+});
+
 test('buildSummary lists every missing SKILL doc in maintenance actions even when placeholder samples are truncated', () => {
   const rootDir = makeTempRepo();
 

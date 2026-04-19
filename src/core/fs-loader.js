@@ -128,10 +128,6 @@ function extractFrontmatterDescription(document) {
   return null;
 }
 
-function isMarkdownFenceDelimiter(line) {
-  return /^(```+|~~~+)/.test(line.trim());
-}
-
 function parseMarkdownHeading(line) {
   if (!isNonEmptyString(line)) {
     return null;
@@ -156,16 +152,26 @@ function parseMarkdownHeading(line) {
 
 function filterOutsideMarkdownFences(lines) {
   const visibleLines = [];
-  let insideFence = false;
+  let activeFenceMarker = null;
+  let activeFenceLength = 0;
   let insideHtmlComment = false;
 
   for (const rawLine of lines) {
-    if (isMarkdownFenceDelimiter(rawLine)) {
-      insideFence = !insideFence;
-      continue;
-    }
-
-    if (insideFence) {
+    const trimmedLine = rawLine.trim();
+    const openingFenceMatch = trimmedLine.match(/^((`{3,})|(~{3,})).*$/);
+    if (!activeFenceMarker) {
+      if (openingFenceMatch) {
+        const fence = openingFenceMatch[1];
+        activeFenceMarker = fence[0];
+        activeFenceLength = fence.length;
+        continue;
+      }
+    } else {
+      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+      if (closingFencePattern.test(trimmedLine)) {
+        activeFenceMarker = null;
+        activeFenceLength = 0;
+      }
       continue;
     }
 
