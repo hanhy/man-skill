@@ -379,6 +379,7 @@ type IngestionProfileCommand = {
   latestMaterialAt?: string | null;
   needsRefresh?: boolean;
   missingDrafts?: string[];
+  draftGapSummary?: string | null;
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
@@ -1277,6 +1278,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const intakeStatusSegment = typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
         ? `, intake ${profile.intakeStatusSummary}`
         : '';
+      const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+        ? `; gaps ${profile.draftGapSummary}`
+        : '';
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
@@ -1288,7 +1292,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');

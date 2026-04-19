@@ -49,6 +49,33 @@ function compareFoundationRefreshPriority(left, right) {
     || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
 }
 
+function summarizeDraftGap(summary: any, key: string): string | null {
+  const totalSectionCount = summary?.totalSectionCount ?? 0;
+  const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+  const readySections = Array.isArray(summary?.readySections)
+    ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const missingSections = Array.isArray(summary?.missingSections)
+    ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  if (totalSectionCount <= 0 || missingSections.length === 0) {
+    return null;
+  }
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+}
+
+function summarizeProfileDraftGaps(profile): string | null {
+  const gapSummaries = [
+    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
+}
+
 function buildProfileImportCommands(profileId: string, options: any = {}) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return {
@@ -521,6 +548,7 @@ function buildProfileCommands(profile, options: any = {}) {
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
+    draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     updateIntakeCommand,
