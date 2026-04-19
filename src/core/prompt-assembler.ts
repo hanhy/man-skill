@@ -449,6 +449,8 @@ type IngestionHelperCommands = {
   scaffoldImported?: string | null;
   scaffoldBundle?: string | null;
   scaffoldImportedBundle?: string | null;
+  repairInvalidBundle?: string | null;
+  repairImportedInvalidBundle?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
@@ -525,6 +527,8 @@ type IngestionSummary = {
   }>;
   staleRefreshCommand?: string | null;
   refreshFoundationBundleCommand?: string | null;
+  repairInvalidIntakeBundleCommand?: string | null;
+  repairImportedInvalidIntakeBundleCommand?: string | null;
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -1226,6 +1230,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.refreshAllFoundationCommand
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
+      || helperCommands.repairInvalidBundle
+      || helperCommands.repairImportedInvalidBundle
       || helperCommands.importIntakeStale
       || helperCommands.importIntakeImported
       || helperCommands.refreshAllFoundation
@@ -1284,6 +1290,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
+      pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);

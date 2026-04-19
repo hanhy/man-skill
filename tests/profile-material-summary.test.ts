@@ -1779,6 +1779,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     scaffoldImported: 'node src/index.js update intake --imported',
     scaffoldBundle: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     scaffoldImportedBundle: null,
+    repairInvalidBundle: null,
+    repairImportedInvalidBundle: null,
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
@@ -2050,10 +2052,12 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
+  assert.equal(summary.ingestion.helperCommands?.repairImportedInvalidBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(harry?.intakeReady, true);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
+  assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
 });
 
@@ -2077,8 +2081,10 @@ test('buildSummary keeps metadata-only profiles with invalid intake manifests vi
   const metadataOnly = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
 
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(summary.ingestion.helperCommands?.repairInvalidBundle, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
+  assert.match(summary.promptPreview, /repair-invalid-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
 });
 
@@ -2396,6 +2402,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleInlineCommands: [],
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshFoundationBundleCommand: null,
+    repairInvalidIntakeBundleCommand: null,
+    repairImportedInvalidIntakeBundleCommand: null,
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
       scaffoldAll: 'node src/index.js update intake --all',
@@ -2403,6 +2411,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       scaffoldImported: 'node src/index.js update intake --imported',
       scaffoldBundle: null,
       scaffoldImportedBundle: null,
+      repairInvalidBundle: null,
+      repairImportedInvalidBundle: null,
       importManifest: 'node src/index.js import manifest --file <manifest.json>',
       importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
       importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',

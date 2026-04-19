@@ -1123,13 +1123,13 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
-  assert.doesNotMatch(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
 
@@ -1160,13 +1160,109 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han)');
-  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\]/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports\/materials\.template\.json/);
+});
+
+test('buildSummary work loop bundles imported invalid intake manifest repairs when multiple imported profiles are broken', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  for (const profile of [
+    {
+      person: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      sampleFile: 'samples/harry-post.txt',
+      sampleText: 'Ship the first slice before polishing the plan.\n',
+    },
+    {
+      person: 'jane-doe',
+      displayName: 'Jane Doe',
+      summary: 'Fast feedback beats polished drift.',
+      sampleFile: 'samples/jane-post.txt',
+      sampleText: 'Turn sharp notes into an actual next step.\n',
+    },
+  ]) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, profile.sampleFile), profile.sampleText);
+    runImportCommand(rootDir, 'text', {
+      person: profile.person,
+      file: path.join(rootDir, profile.sampleFile),
+    });
+    runUpdateCommand(rootDir, 'foundation', { person: profile.person });
+    fs.writeFileSync(path.join(rootDir, 'profiles', profile.person, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair invalid intake manifests for imported profiles — starting with Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, summary.ingestion.repairImportedInvalidIntakeBundleCommand);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
+});
+
+test('buildSummary work loop bundles metadata-only invalid intake manifest repairs when multiple starter manifests are broken', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  for (const profile of [
+    {
+      person: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+    },
+    {
+      person: 'second-person',
+      displayName: 'Second Person',
+      summary: 'Another scaffold-first profile.',
+    },
+  ]) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    fs.writeFileSync(path.join(rootDir, 'profiles', profile.person, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair invalid profile-local intake manifests — starting with Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, summary.ingestion.repairInvalidIntakeBundleCommand);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'second-person' --display-name 'Second Person' --summary 'Another scaffold-first profile\.'/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/second-person/imports/materials.template.json',
+  ]);
 });
 
 test('update intake backs up invalid starter manifests before rebuilding the scaffold', () => {

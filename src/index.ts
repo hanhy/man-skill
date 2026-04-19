@@ -1064,6 +1064,11 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
         )
       : [];
     const [firstInvalidImportedIntakeProfile] = invalidImportedIntakeProfiles;
+    const bundledRepairCommand = typeof ingestionSummary?.repairImportedInvalidIntakeBundleCommand === 'string' && ingestionSummary.repairImportedInvalidIntakeBundleCommand.length > 0
+      ? ingestionSummary.repairImportedInvalidIntakeBundleCommand
+      : (typeof ingestionSummary?.helperCommands?.repairImportedInvalidBundle === 'string' && ingestionSummary.helperCommands.repairImportedInvalidBundle.length > 0
+        ? ingestionSummary.helperCommands.repairImportedInvalidBundle
+        : null);
     nextAction = invalidImportedIntakeProfiles.length > 1
       ? (firstInvalidImportedIntakeProfile?.label
         ? `repair invalid intake manifests for imported profiles — starting with ${firstInvalidImportedIntakeProfile.label}`
@@ -1071,7 +1076,9 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
       : (firstInvalidImportedIntakeProfile?.label
         ? `repair the invalid intake manifest for imported profile ${firstInvalidImportedIntakeProfile.label}`
         : 'repair the invalid intake manifest for an imported profile');
-    command = null;
+    command = invalidImportedIntakeProfiles.length > 1
+      ? (bundledRepairCommand ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
+      : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? bundledRepairCommand);
     paths = Array.from(new Set(
       invalidImportedIntakeProfiles
         .map((profile: any) => profile.intakeManifestPath)
@@ -1156,6 +1163,11 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
         : collectIntakePaths(metadataOnlyProfileNeedingScaffold);
     } else if (invalidReadyIntakeProfiles.length > 0) {
       const [firstInvalidReadyIntakeProfile] = invalidReadyIntakeProfiles;
+      const bundledRepairCommand = typeof ingestionSummary?.repairInvalidIntakeBundleCommand === 'string' && ingestionSummary.repairInvalidIntakeBundleCommand.length > 0
+        ? ingestionSummary.repairInvalidIntakeBundleCommand
+        : (typeof ingestionSummary?.helperCommands?.repairInvalidBundle === 'string' && ingestionSummary.helperCommands.repairInvalidBundle.length > 0
+          ? ingestionSummary.helperCommands.repairInvalidBundle
+          : null);
       nextAction = invalidReadyIntakeProfiles.length > 1
         ? (firstInvalidReadyIntakeProfile?.profile?.label
           ? `repair invalid profile-local intake manifests — starting with ${firstInvalidReadyIntakeProfile.profile.label}`
@@ -1163,7 +1175,9 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
         : (firstInvalidReadyIntakeProfile?.profile?.label
           ? `repair the invalid intake manifest for ${firstInvalidReadyIntakeProfile.profile.label}`
           : 'repair the invalid profile-local intake manifest');
-      command = null;
+      command = invalidReadyIntakeProfiles.length > 1
+        ? (bundledRepairCommand ?? firstInvalidReadyIntakeProfile?.profile?.updateIntakeCommand ?? null)
+        : (firstInvalidReadyIntakeProfile?.profile?.updateIntakeCommand ?? bundledRepairCommand);
       paths = Array.from(new Set(invalidReadyIntakeProfiles.map((entry: any) => entry.starterManifestPath)));
     } else if (readyIntakeProfiles.length > 1) {
       nextAction = readyIntakeProfiles[0]?.label

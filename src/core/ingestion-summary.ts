@@ -738,6 +738,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       importedIntakeBackfillProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    repairInvalidBundle: buildCommandBundle(
+      metadataInvalidIntakeManifestProfiles
+        .map((profile) => profile?.updateIntakeCommand),
+    ),
+    repairImportedInvalidBundle: buildCommandBundle(
+      importedInvalidIntakeManifestProfiles
+        .map((profile) => profile?.updateIntakeCommand),
+    ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
@@ -832,6 +840,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleInlineCommands,
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshFoundationBundleCommand: helperCommands.refreshFoundationBundle,
+    repairInvalidIntakeBundleCommand: helperCommands.repairInvalidBundle,
+    repairImportedInvalidIntakeBundleCommand: helperCommands.repairImportedInvalidBundle,
     helperCommands,
     profileCommands: orderedProfileCommands,
     allProfileCommands,
