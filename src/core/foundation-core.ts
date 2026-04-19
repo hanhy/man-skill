@@ -196,7 +196,7 @@ function buildSkillsMaintenancePaths({
   thinSkillNames: string[];
 }): string[] {
   if (skillsCount === 0) {
-    return ['skills/'];
+    return ['skills/starter/SKILL.md'];
   }
 
   return Array.from(new Set([

@@ -126,7 +126,10 @@ function quoteShellPath(value: string): string {
 
 function buildSkillsStarterCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
-  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/') {
+  if (
+    normalizedPaths.length !== 1
+    || (normalizedPaths[0] !== 'skills/' && normalizedPaths[0] !== 'skills/starter/SKILL.md')
+  ) {
     return null;
   }
 

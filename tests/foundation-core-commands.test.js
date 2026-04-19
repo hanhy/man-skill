@@ -610,9 +610,9 @@ test('buildCoreFoundationCommand scaffolds a starter skill when the skills area 
     buildCoreFoundationCommand({
       area: 'skills',
       status: 'missing',
-      paths: ['skills/'],
+      paths: ['skills/starter/SKILL.md'],
     }),
-    "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'",
+    "mkdir -p 'skills/starter' && for file in 'skills/starter/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
   );
 });
 

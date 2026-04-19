@@ -791,7 +791,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   });
 
   const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
-  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/'] });
+  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
   const scaffoldAllCommand = [memoryCommand, skillsCommand, soulCommand, voiceCommand]
@@ -806,7 +806,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     recommendedArea: 'memory',
     recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
     recommendedCommand: scaffoldAllCommand,
-    recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md'],
+    recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -830,7 +830,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         status: 'missing',
         summary: '0 registered, 0 documented, root missing @ skills/README.md',
         action: 'create skills/<name>/SKILL.md for at least one repo skill',
-        paths: ['skills/'],
+        paths: ['skills/starter/SKILL.md'],
         command: skillsCommand,
       },
       {
@@ -857,7 +857,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*skills\/starter/);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
-  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill/);
+  assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
 });
@@ -923,7 +923,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
 
   const summary = buildSummary(rootDir);
   const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
-  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/'] });
+  const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
   const scaffoldAllCommand = [memoryCommand, skillsCommand, soulCommand, voiceCommand]
@@ -933,7 +933,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority?.nextAction, 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch');
   assert.equal(summary.workLoop.currentPriority?.command, scaffoldAllCommand);
-  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
 
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /skills\/starter/);
@@ -1058,9 +1058,9 @@ test('buildSummary work loop scaffolds a starter repo skill when the skills area
 
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority?.nextAction, 'create skills/<name>/SKILL.md for at least one repo skill');
-  assert.equal(summary.workLoop.currentPriority?.command, "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'");
-  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/']);
-  assert.match(summary.promptPreview, /command: mkdir -p skills\/starter && printf %s '# Starter skill[\s\S]*' > 'skills\/starter\/SKILL\.md'/);
+  assert.equal(summary.workLoop.currentPriority?.command, "mkdir -p 'skills/starter' && for file in 'skills/starter/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done");
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/starter/SKILL.md']);
+  assert.match(summary.promptPreview, /command: mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill[\s\S]*' > \"\$file\"; done/);
 });
 
 test('buildSummary treats placeholder skill directories as thin core foundation coverage', () => {
