@@ -36,6 +36,21 @@ const VOICE_SECTIONS = [
   },
 ];
 const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const MEMORY_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
+const MEMORY_SECTIONS = [
+  {
+    heading: '## What belongs here',
+    sentinel: '- Durable repo knowledge and operator context.',
+    missingSectionAppend: '\n## What belongs here\n- Durable repo knowledge and operator context.\n',
+    existingBulletAppend: '- Durable repo knowledge and operator context.\n',
+  },
+  {
+    heading: '## Buckets',
+    sentinel: '- daily/: short-lived run notes',
+    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  },
+];
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
 const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
 const SKILLS_README_SECTIONS = [
@@ -145,25 +160,28 @@ test('buildCoreFoundationCommand daily memory scaffold expands the date at execu
   assert.equal(fs.existsSync(path.join(rootDir, 'memory', 'daily', '$(date +%F).md')), false);
 });
 
-test('buildCoreFoundationCommand seeds a starter memory README when repo memory entries exist but guidance is missing', () => {
+test('buildCoreFoundationCommand repairs thin memory README sections without clobbering the file', () => {
   const command = buildCoreFoundationCommand({
     area: 'memory',
     status: 'thin',
     paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
   });
 
   assert.equal(
     command,
-    "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
+    buildDocumentRepairCommand('memory/README.md', MEMORY_GUIDANCE_SENTINEL, MEMORY_SECTIONS),
   );
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-command-'));
   fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable memory organized by horizon.\n');
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
   execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\nKeep durable memory organized by horizon.\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
 });
 

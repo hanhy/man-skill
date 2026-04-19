@@ -18,6 +18,21 @@ function quotePaths(paths: string[]): string {
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
+const MEMORY_README_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
+const MEMORY_README_SECTIONS = [
+  {
+    heading: '## What belongs here',
+    sentinel: '- Durable repo knowledge and operator context.',
+    missingSectionAppend: '\n## What belongs here\n- Durable repo knowledge and operator context.\n',
+    existingBulletAppend: '- Durable repo knowledge and operator context.\n',
+  },
+  {
+    heading: '## Buckets',
+    sentinel: '- daily/: short-lived run notes',
+    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  },
+] as const;
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
 const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
 const SKILLS_README_SECTIONS = [
@@ -199,6 +214,15 @@ function buildMemorySeedCommand(paths: string[]): string | null {
   return commandSegments.join(' && ');
 }
 
+function buildMemoryReadmeRepairCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'memory/README.md') {
+    return null;
+  }
+
+  return buildDocumentRepairCommand('memory/README.md', MEMORY_README_GUIDANCE_SENTINEL, MEMORY_README_SECTIONS);
+}
+
 function buildDocumentRepairCommand(
   filePath: string,
   _sentinel: string,
@@ -318,7 +342,15 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   }
 
   if (area === 'memory' && (status === 'missing' || status === 'thin')) {
-    const memoryCommand = buildMemorySeedCommand(paths);
+    const memoryThinRootPaths = thinPaths.filter((value) => value === 'memory/README.md');
+    const memorySeedPaths = paths.filter((value) => value !== 'memory/README.md' || !memoryThinRootPaths.includes(value));
+    const commandSegments = [
+      buildMemoryReadmeRepairCommand(memoryThinRootPaths),
+      buildMemorySeedCommand(memorySeedPaths),
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+    const memoryCommand = commandSegments.length <= 1
+      ? (commandSegments[0] ?? null)
+      : commandSegments.join(' && ');
     if (memoryCommand) {
       return memoryCommand;
     }

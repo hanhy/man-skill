@@ -17,7 +17,10 @@ function seedReadyFoundationRepo(rootDir: string) {
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
 
-  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nRepo memory guidance.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
@@ -156,7 +159,10 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nRepo memory guidance.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
@@ -174,6 +180,25 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldThin);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair thin core foundation areas — starting with add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow');
   assert.match(summary.promptPreview, /next action: repair thin core foundation areas — starting with add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow/);
+});
+
+test('buildSummary work loop keeps foundation current when memory README is structurally thin', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable memory organized by horizon.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'add missing sections to memory/README.md: what-belongs-here, buckets');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.memory);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md']);
+  assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /next action: add missing sections to memory\/README\.md: what-belongs-here, buckets/);
+  assert.match(summary.promptPreview, /command: \{ if grep -Fqx -- '## What belongs here' 'memory\/README\.md'/);
+  assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
 test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {

@@ -36,12 +36,16 @@ function seedMinimalRepo(rootDir) {
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\nKeep durable notes here.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-19.md'), '# Daily note\n\n- Checked delivery readiness.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), '# Scratch\n\nInvestigate provider parity.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable operator workflows.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron skill\n\nUse this skill when validating recurring delivery loops.\n');
   ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
     fs.writeFileSync(path.join(rootDir, 'src', 'channels', `${channelId}.js`), `export const channelId = '${channelId}';\n`);
