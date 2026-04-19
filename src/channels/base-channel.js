@@ -32,7 +32,7 @@ export class BaseChannel {
   }
 
   missingEnvVars(environment = process.env) {
-    return this.requiredEnvVars().filter((envVar) => !environment?.[envVar]);
+    return this.requiredEnvVars().filter((envVar) => !hasConfiguredEnvValue(environment?.[envVar]));
   }
 
   isConfigured(environment = process.env) {
@@ -60,4 +60,8 @@ export class BaseChannel {
       nextStep: this.nextStep,
     };
   }
+}
+
+function hasConfiguredEnvValue(value) {
+  return typeof value === 'string' && value.trim().length > 0;
 }

@@ -28,7 +28,7 @@ export class BaseProvider {
   }
 
   missingEnvVars(environment = process.env) {
-    return this.requiredEnvVars().filter((envVar) => !environment?.[envVar]);
+    return this.requiredEnvVars().filter((envVar) => !hasConfiguredEnvValue(environment?.[envVar]));
   }
 
   isConfigured(environment = process.env) {
@@ -58,6 +58,10 @@ export class BaseProvider {
       nextStep: this.nextStep,
     };
   }
+}
+
+function hasConfiguredEnvValue(value) {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function collectProviderTextFragments(content, fragments = []) {

@@ -148,7 +148,11 @@ type DeliverySummaryOptions = {
 };
 
 function collectMissingEnvVars(envVars: string[], environment: NodeJS.ProcessEnv): string[] {
-  return envVars.filter((envVar) => !environment[envVar]);
+  return envVars.filter((envVar) => !hasConfiguredEnvValue(environment[envVar]));
+}
+
+function hasConfiguredEnvValue(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function normalizeRepoRelativePath(relativePath: string | null | undefined, rootDir?: string | null): string | null {

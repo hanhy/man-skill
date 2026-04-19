@@ -45,6 +45,8 @@ test('provider runtime helpers expose required env vars and configuration checks
 
   assert.deepEqual(openai.missingEnvVars({}), ['OPENAI_API_KEY']);
   assert.equal(openai.isConfigured({ OPENAI_API_KEY: 'test-key' }), true);
+  assert.deepEqual(openai.missingEnvVars({ OPENAI_API_KEY: '   ' }), ['OPENAI_API_KEY']);
+  assert.equal(openai.isConfigured({ OPENAI_API_KEY: '   ' }), false);
   assert.deepEqual(anthropic.missingEnvVars({}), ['ANTHROPIC_API_KEY']);
   assert.equal(anthropic.isConfigured({ ANTHROPIC_API_KEY: 'test-key' }), true);
 });

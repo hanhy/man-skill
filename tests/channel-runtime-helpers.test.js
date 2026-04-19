@@ -18,6 +18,20 @@ test('Slack channel runtime helpers cover readiness, inbound normalization, and 
     }),
     true,
   );
+  assert.deepEqual(
+    channel.missingEnvVars({
+      SLACK_BOT_TOKEN: '   ',
+      SLACK_SIGNING_SECRET: 'secret',
+    }),
+    ['SLACK_BOT_TOKEN'],
+  );
+  assert.equal(
+    channel.isConfigured({
+      SLACK_BOT_TOKEN: '   ',
+      SLACK_SIGNING_SECRET: 'secret',
+    }),
+    false,
+  );
 
   assert.deepEqual(
     channel.normalizeInboundEvent({
