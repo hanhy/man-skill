@@ -5,6 +5,7 @@ export interface SkillRecord {
   name: string;
   description: string | null;
   status: string;
+  foundationStatus?: string | null;
 }
 
 export interface SkillRegistrySummary {
@@ -30,6 +31,7 @@ export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
       ...skill,
       description: skill.description ?? null,
       status: skill.status ?? 'custom',
+      ...(skill.foundationStatus === undefined ? {} : { foundationStatus: skill.foundationStatus ?? null }),
     };
   }
 

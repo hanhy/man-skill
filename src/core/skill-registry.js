@@ -12,9 +12,10 @@ export class SkillRegistry extends BaseRegistry {
     }
 
     return {
-      description: null,
-      status: 'custom',
       ...skill,
+      description: skill.description ?? null,
+      status: skill.status ?? 'custom',
+      ...(skill.foundationStatus === undefined ? {} : { foundationStatus: skill.foundationStatus ?? null }),
     };
   }
 

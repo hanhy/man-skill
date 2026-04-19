@@ -1666,7 +1666,7 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
   };
 
   const skillRecords = Array.isArray(skills.skills)
-    ? skills.skills.filter((skill): skill is { name?: string; id?: string; status?: string; description?: string | null } => Boolean(skill))
+    ? skills.skills.filter((skill): skill is { name?: string; id?: string; status?: string; description?: string | null; foundationStatus?: string | null } => Boolean(skill))
     : [];
   const prioritizedSkillRecords = [...skillRecords].sort((left, right) => {
     const leftHasDescription = typeof left.description === 'string' && left.description.trim().length > 0;
@@ -1684,10 +1684,16 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
         ? skill.id
         : 'unknown';
     const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
+    const foundationStatus = typeof skill.foundationStatus === 'string' && skill.foundationStatus.length > 0
+      ? skill.foundationStatus
+      : null;
+    const statusLabel = foundationStatus && foundationStatus !== 'ready'
+      ? `${status}, ${foundationStatus}`
+      : status;
     const description = typeof skill.description === 'string' && skill.description.trim().length > 0
       ? `: ${truncateDescription(skill.description)}`
       : '';
-    return `${label} [${status}]${description}`;
+    return `${label} [${statusLabel}]${description}`;
   });
   const remainingSkillCount = Math.max(0, skillRecords.length - visibleSkills.length);
   const topSkills = visibleSkills.length > 0

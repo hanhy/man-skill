@@ -1772,11 +1772,16 @@ export function buildSummary(rootDir: string) {
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
+  const documentedSkillNames = new Set(skillInventory.documented ?? []);
+  const thinSkillNames = new Set(skillInventory.thin ?? []);
   const skillRecords = skillNames.map((skillName) => ({
     id: skillName,
     name: skillName,
     description: skillInventory.documentedExcerpts?.[skillName] ?? null,
     status: 'discovered',
+    foundationStatus: documentedSkillNames.has(skillName)
+      ? 'ready'
+      : (thinSkillNames.has(skillName) ? 'thin' : 'missing'),
   }));
   const channelManifest = manifestLoader.loadChannelManifestSummary();
   const providerManifest = manifestLoader.loadProviderManifestSummary();

@@ -574,6 +574,7 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
       name: 'cron',
       description: 'Keep scheduled follow-ups reliable.',
       status: 'discovered',
+      foundationStatus: 'ready',
     },
   ]);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root missing @ skills\/README\.md; docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
@@ -1391,8 +1392,18 @@ test('buildSummary treats frontmatter-only SKILL docs as thin core foundation co
   assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
     delivery: ['what-this-skill-is-for', 'suggested-workflow'],
   });
+  assert.deepEqual(summary.skills.skills, [
+    {
+      id: 'delivery',
+      name: 'delivery',
+      description: null,
+      status: 'discovered',
+      foundationStatus: 'thin',
+    },
+  ]);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
   assert.doesNotMatch(summary.promptPreview, /excerpts: delivery: Keep handoffs crisp\./);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
 });
 
 test('buildSummary keeps mixed documented and heading-only SKILL docs queued as thin core foundation coverage', () => {
@@ -1492,7 +1503,24 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/README.md', 'skills/slack/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/slack\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/README\.md, skills\/slack\/SKILL\.md/);
+  assert.deepEqual(summary.skills.skills, [
+    {
+      id: 'delivery',
+      name: 'delivery',
+      description: 'Deliver concise handoffs.',
+      status: 'discovered',
+      foundationStatus: 'ready',
+    },
+    {
+      id: 'slack',
+      name: 'slack',
+      description: null,
+      status: 'discovered',
+      foundationStatus: 'thin',
+    },
+  ]);
   assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); root missing @ skills\/README\.md; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack missing what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver concise handoffs\.; slack \[discovered, thin\]/);
 });
 
 test('buildSummary surfaces ready sections for partially structured thin skill docs', () => {

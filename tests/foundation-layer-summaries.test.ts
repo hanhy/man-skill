@@ -699,7 +699,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
   assert.match(summary.promptPreview, /Memory store:\n- short-term: 1\n- long-term: 1\n- total: 2\n- coverage: short-term yes, long-term yes/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered\]/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
   assert.match(summary.promptPreview, /coverage: 2\/4 ready; thin memory, skills/);
   assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\.; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
@@ -765,7 +765,7 @@ test('buildSummary skill preview prefers described skills before placeholders', 
 
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered\]/,
+    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered, missing\]/,
   );
 });
 
