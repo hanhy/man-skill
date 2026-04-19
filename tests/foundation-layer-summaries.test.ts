@@ -282,9 +282,13 @@ test('buildSummary foundation core marks partially structured soul and voice doc
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.foundation.core.soul.rootPath, 'SOUL.md');
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful.');
   assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'continuity']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 1);
+  assert.equal(summary.foundation.core.voice.rootPath, 'voice/README.md');
+  assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 1);
   assert.equal(summary.foundation.core.voice.totalSectionCount, 4);

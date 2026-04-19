@@ -411,8 +411,10 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.deepEqual(summary.foundation.core.soul, {
     present: true,
     path: 'SOUL.md',
+    rootPath: 'SOUL.md',
     lineCount: 2,
     excerpt: 'Build a faithful operator core.',
+    rootExcerpt: 'Build a faithful operator core.',
     structured: false,
     readySectionCount: 3,
     totalSectionCount: 3,
@@ -422,8 +424,10 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.deepEqual(summary.foundation.core.voice, {
     present: true,
     path: 'voice/README.md',
+    rootPath: 'voice/README.md',
     lineCount: 2,
     excerpt: 'Keep replies direct.',
+    rootExcerpt: 'Keep replies direct.',
     structured: false,
     readySectionCount: 4,
     totalSectionCount: 4,

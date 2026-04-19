@@ -130,8 +130,10 @@ type FoundationRollup = {
 type CoreDocumentFoundationSummary = {
   present?: boolean;
   path?: string;
+  rootPath?: string;
   lineCount?: number;
   excerpt?: string | null;
+  rootExcerpt?: string | null;
   structured?: boolean;
   readySectionCount?: number;
   totalSectionCount?: number;
@@ -1398,10 +1400,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}`
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}`
       : null,
     voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}`
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}`
       : null,
     recommendedActions.length > 0
       ? `- next actions: ${recommendedActions.join(' | ')}`

@@ -648,8 +648,10 @@ export interface CoreSkillsFoundationSummary {
 export interface CoreDocumentFoundationSummary {
   present: boolean;
   path: string;
+  rootPath: string;
   lineCount: number;
   excerpt: string | null;
+  rootExcerpt: string | null;
   structured: boolean;
   readySectionCount: number;
   totalSectionCount: number;
@@ -755,6 +757,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     : [];
 
   const lineCount = countContentLines(document);
+  const excerpt = extractExcerpt(document);
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;
@@ -762,8 +765,10 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
   return {
     present,
     path: 'SOUL.md',
+    rootPath: 'SOUL.md',
     lineCount,
-    excerpt: extractExcerpt(document),
+    excerpt,
+    rootExcerpt: excerpt,
     structured,
     readySectionCount,
     totalSectionCount: 3,
@@ -802,6 +807,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     : [];
 
   const lineCount = countContentLines(document);
+  const excerpt = extractExcerpt(document);
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;
@@ -809,8 +815,10 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
   return {
     present,
     path: 'voice/README.md',
+    rootPath: 'voice/README.md',
     lineCount,
-    excerpt: extractExcerpt(document),
+    excerpt,
+    rootExcerpt: excerpt,
     structured,
     readySectionCount,
     totalSectionCount: 4,
