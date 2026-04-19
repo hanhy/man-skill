@@ -232,8 +232,38 @@ type AgentSummary = {
   identity?: Record<string, unknown>;
 };
 
+type SoulSummary = {
+  excerpt?: string | null;
+  coreTruths?: string[];
+  boundaries?: string[];
+  vibe?: string[];
+  continuity?: string[];
+  [key: string]: unknown;
+} | null;
+
 type VoiceSummary = {
   document?: string;
+  [key: string]: unknown;
+} | null;
+
+type MemorySummary = {
+  shortTermEntries?: number;
+  longTermEntries?: number;
+  totalEntries?: number;
+  shortTermPresent?: boolean;
+  longTermPresent?: boolean;
+  [key: string]: unknown;
+} | null;
+
+type SkillRegistrySummary = {
+  skillCount?: number;
+  discoveredCount?: number;
+  customCount?: number;
+  skills?: Array<{
+    id?: string;
+    name?: string;
+    status?: string;
+  }>;
   [key: string]: unknown;
 } | null;
 
@@ -518,9 +548,12 @@ type WorkLoopSummary = {
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
+  soulProfile?: SoulSummary;
   voice: VoiceSummary;
   memory: unknown;
+  memorySummary?: MemorySummary;
   skills: unknown;
+  skillsSummary?: SkillRegistrySummary;
   channels: ChannelsSummary;
   models: ModelsSummary;
   delivery?: DeliverySummary;
@@ -1499,6 +1532,71 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   ].filter(Boolean).join('\n');
 }
 
+function buildSoulPreviewBlock(soul: SoulSummary): string {
+  if (!soul) {
+    return '- unavailable';
+  }
+
+  const excerpt = typeof soul.excerpt === 'string' && soul.excerpt.length > 0 ? soul.excerpt : 'n/a';
+  const coreTruthCount = Array.isArray(soul.coreTruths) ? soul.coreTruths.length : 0;
+  const boundaryCount = Array.isArray(soul.boundaries) ? soul.boundaries.length : 0;
+  const vibeCount = Array.isArray(soul.vibe) ? soul.vibe.length : 0;
+  const continuityCount = Array.isArray(soul.continuity) ? soul.continuity.length : 0;
+
+  return [
+    `- excerpt: ${excerpt}`,
+    `- core truths: ${coreTruthCount}`,
+    `- boundaries: ${boundaryCount}`,
+    `- vibe: ${vibeCount}`,
+    `- continuity: ${continuityCount}`,
+  ].join('\n');
+}
+
+function buildMemoryPreviewBlock(memory: MemorySummary): string {
+  if (!memory) {
+    return '- unavailable';
+  }
+
+  const shortTermEntries = memory.shortTermEntries ?? 0;
+  const longTermEntries = memory.longTermEntries ?? 0;
+  const totalEntries = memory.totalEntries ?? (shortTermEntries + longTermEntries);
+
+  return [
+    `- short-term: ${shortTermEntries}`,
+    `- long-term: ${longTermEntries}`,
+    `- total: ${totalEntries}`,
+    `- coverage: short-term ${memory.shortTermPresent ? 'yes' : 'no'}, long-term ${memory.longTermPresent ? 'yes' : 'no'}`,
+  ].join('\n');
+}
+
+function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
+  if (!skills) {
+    return '- unavailable';
+  }
+
+  const topSkills = Array.isArray(skills.skills)
+    ? skills.skills
+      .filter((skill): skill is { name?: string; id?: string; status?: string } => Boolean(skill))
+      .slice(0, 3)
+      .map((skill) => {
+        const label = typeof skill.name === 'string' && skill.name.length > 0
+          ? skill.name
+          : typeof skill.id === 'string' && skill.id.length > 0
+            ? skill.id
+            : 'unknown';
+        const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
+        return `${label} [${status}]`;
+      })
+    : [];
+
+  return [
+    `- total: ${skills.skillCount ?? 0}`,
+    `- discovered: ${skills.discoveredCount ?? 0}`,
+    `- custom: ${skills.customCount ?? 0}`,
+    `- top skills: ${topSkills.length > 0 ? topSkills.join('; ') : 'none'}`,
+  ].join('\n');
+}
+
 function formatVoicePreviewItems(label: string, values: unknown): string {
   const items = Array.isArray(values)
     ? values.filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -1528,9 +1626,12 @@ function buildVoicePreviewBlock(voice: VoiceSummary): string {
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
+  soulProfile: SoulSummary;
   voice: VoiceSummary;
   memory: unknown;
+  memorySummary: MemorySummary;
   skills: unknown;
+  skillsSummary: SkillRegistrySummary;
   channels: ChannelsSummary;
   models: ModelsSummary;
   delivery: DeliverySummary;
@@ -1543,9 +1644,12 @@ export class PromptAssembler {
   constructor({
     profile,
     soul = '',
+    soulProfile = null,
     voice,
     memory,
+    memorySummary = null,
     skills,
+    skillsSummary = null,
     channels,
     models,
     delivery = null,
@@ -1557,9 +1661,12 @@ export class PromptAssembler {
   }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
+    this.soulProfile = soulProfile;
     this.voice = voice;
     this.memory = memory;
+    this.memorySummary = memorySummary;
     this.skills = skills;
+    this.skillsSummary = skillsSummary;
     this.channels = channels;
     this.models = models;
     this.delivery = delivery;
@@ -1578,14 +1685,26 @@ export class PromptAssembler {
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
+    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
     const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
+    const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary);
+    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
 
     return [
       `Name: ${this.profile.name}`,
       `Soul summary: ${this.profile.soul}`,
       '',
+      'Soul profile:',
+      soulPreviewBlock,
+      '',
       'Voice profile:',
       voicePreviewBlock,
+      '',
+      'Memory store:',
+      memoryPreviewBlock,
+      '',
+      'Skill registry:',
+      skillsPreviewBlock,
       ingestionEntranceBlock ? '' : null,
       ingestionEntranceBlock ? 'Ingestion entrance:' : null,
       ingestionEntranceBlock,

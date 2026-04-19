@@ -1765,12 +1765,15 @@ export function buildSummary(rootDir: string) {
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
+    soulProfile: soul.summary(),
     voice: {
       ...voice.summary(),
       document: voiceDocument,
     },
     memory: memoryIndex,
+    memorySummary: memory.summary(),
     skills: skills.summary(),
+    skillsSummary: skills.summary(),
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
