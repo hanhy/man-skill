@@ -403,7 +403,10 @@ function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string 
 
 function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
   const rootSectionSummary = summarizeRootSectionSummary(skills.rootReadySections, skills.rootMissingSections);
-  return `${skills.count} registered, ${skills.documentedCount} documented${rootSectionSummary}`;
+  const missingRootSummary = !skills.hasRootDocument && isNonEmptyString(skills.rootPath)
+    ? `, root missing @ ${skills.rootPath}`
+    : '';
+  return `${skills.count} registered, ${skills.documentedCount} documented${missingRootSummary}${rootSectionSummary}`;
 }
 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
