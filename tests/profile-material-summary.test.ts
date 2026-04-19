@@ -931,6 +931,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
       priorityCount: 4,
       readyPriorityCount: 1,
       queuedPriorityCount: 3,
+      blockedPriorityCount: 0,
       currentPriority: {
         id: 'ingestion',
         label: 'Ingestion',

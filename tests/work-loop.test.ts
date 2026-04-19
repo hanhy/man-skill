@@ -35,6 +35,7 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.equal(summary.workLoop.priorityCount, 4);
   assert.equal(summary.workLoop.readyPriorityCount, 1);
   assert.equal(summary.workLoop.queuedPriorityCount, 3);
+  assert.equal(summary.workLoop.blockedPriorityCount, 0);
   assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
   assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
@@ -1030,17 +1031,21 @@ test('buildSummary work loop repairs the env template before channel credential 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
-  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
   assert.equal(summary.channels.manifest.status, 'loaded');
   assert.equal(summary.models.manifest.status, 'loaded');
+  assert.equal(summary.workLoop.priorities[2].status, 'blocked');
+  assert.equal(summary.workLoop.priorities[3].status, 'blocked');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
   assert.equal(
     summary.workLoop.currentPriority.command,
     summary.delivery.helperCommands.populateEnvTemplate,
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
-  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+  assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
   assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
@@ -1185,11 +1190,16 @@ test('buildSummary work loop drops stale implementation follow-ups during env bo
 
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.priorities[2].status, 'blocked');
+  assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
-  assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+  assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
   assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
 });
 

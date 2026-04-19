@@ -480,7 +480,7 @@ type IngestionSummary = {
 type WorkLoopPriority = {
   id?: string;
   label?: string;
-  status?: 'ready' | 'queued' | string;
+  status?: 'ready' | 'queued' | 'blocked' | string;
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
@@ -494,6 +494,7 @@ type WorkLoopSummary = {
   priorityCount?: number;
   readyPriorityCount?: number;
   queuedPriorityCount?: number;
+  blockedPriorityCount?: number;
   leadingPriority?: WorkLoopPriority | null;
   currentPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
@@ -1367,8 +1368,13 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     ? `- order: ${priorities.map((priority) => `${priority.id ?? priority.label ?? 'priority'}:${priority.status ?? 'unknown'}`).join(' | ')}`
     : null;
 
+  const prioritySummary = [`${workLoop.readyPriorityCount ?? 0} ready`, `${workLoop.queuedPriorityCount ?? 0} queued`];
+  if ((workLoop.blockedPriorityCount ?? 0) > 0) {
+    prioritySummary.push(`${workLoop.blockedPriorityCount ?? 0} blocked`);
+  }
+
   return [
-    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${workLoop.readyPriorityCount ?? 0} ready, ${workLoop.queuedPriorityCount ?? 0} queued)`,
+    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${prioritySummary.join(', ')})`,
     cadenceLine,
     showLeadingPriority && leadingPriority
       ? `- lead: ${leadingPriority.label ?? leadingPriority.id ?? 'Leading priority'} [${leadingPriority.status ?? 'unknown'}] — ${leadingPriority.summary ?? 'needs review'}`

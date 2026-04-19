@@ -1191,10 +1191,15 @@ function buildDeliveryPriority({
       : null;
   }
 
+  const deliveryBlocked = pendingCount > 0
+    && normalizedAuthBlockedCount > 0
+    && manifestReady
+    && implementationReadyCount === pendingCount;
+
   return {
     id,
     label,
-    status: pendingCount > 0 ? 'queued' : 'ready',
+    status: pendingCount === 0 ? 'ready' : (deliveryBlocked ? 'blocked' : 'queued'),
     summary: pendingCount > 0
       ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${pendingCount} present, implementations ${implementationReadyCount}/${pendingCount} ready`
       : `${pendingCount} pending, ${configuredCount} configured`,

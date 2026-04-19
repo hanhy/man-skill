@@ -1,7 +1,7 @@
 export interface WorkPriority {
   id: string;
   label: string;
-  status: 'ready' | 'queued';
+  status: 'ready' | 'queued' | 'blocked';
   summary: string;
   nextAction: string | null;
   command: string | null;
@@ -15,6 +15,7 @@ export interface WorkLoopSummary {
   priorityCount: number;
   readyPriorityCount: number;
   queuedPriorityCount: number;
+  blockedPriorityCount: number;
   leadingPriority: WorkPriority | null;
   currentPriority: WorkPriority | null;
   priorities: WorkPriority[];
@@ -39,7 +40,8 @@ export class WorkLoop {
 
   summary(): WorkLoopSummary {
     const readyPriorityCount = this.priorities.filter((priority) => priority.status === 'ready').length;
-    const queuedPriorityCount = this.priorities.filter((priority) => priority.status !== 'ready').length;
+    const queuedPriorityCount = this.priorities.filter((priority) => priority.status === 'queued').length;
+    const blockedPriorityCount = this.priorities.filter((priority) => priority.status === 'blocked').length;
     const leadingPriority = this.priorities[0] ?? null;
     const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
 
@@ -50,6 +52,7 @@ export class WorkLoop {
       priorityCount: this.priorities.length,
       readyPriorityCount,
       queuedPriorityCount,
+      blockedPriorityCount,
       leadingPriority,
       currentPriority,
       priorities: this.priorities,
