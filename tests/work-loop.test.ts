@@ -1222,7 +1222,7 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
     'QWEN_API_KEY=***',
     '',
   ].join('\n'));
-  fs.writeFileSync(path.join(rootDir, '.env'), 'OPENAI_API_KEY=already-set\n');
+  fs.writeFileSync(path.join(rootDir, '.env'), 'OPENAI_API_KEY=***\n');
 
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
@@ -1248,6 +1248,96 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
   assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+});
+
+test('buildSummary work loop uses repo-local .env credentials before env bootstrap guidance', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'export SLACK_BOT_TOKEN=repo-slack-token',
+    'export SLACK_SIGNING_SECRET=repo-signing-secret',
+    'TELEGRAM_BOT_TOKEN=repo-telegram-token',
+    'WHATSAPP_ACCESS_TOKEN=repo-whatsapp-token',
+    'WHATSAPP_PHONE_NUMBER_ID=repo-whatsapp-phone',
+    'FEISHU_APP_ID=repo-feishu-id',
+    'FEISHU_APP_SECRET=repo-feishu-secret',
+    '',
+  ].join('\n'));
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), path.join(rootDir, 'manifests', 'channels.json'));
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), path.join(rootDir, 'manifests', 'providers.json'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.configuredChannelCount, 4);
+    assert.equal(summary.delivery.authBlockedChannelCount, 0);
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.status, 'queued');
+    assert.equal(summary.workLoop.currentPriority.command, null);
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'credentials present');
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json']);
+    assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+    assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
+    assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, 0 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+    assert.match(summary.promptPreview, /next action: credentials present/);
+  } finally {
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    });
+  }
 });
 
 test('buildSummary work loop reports required env coverage from matching vars only when the template includes extras', () => {

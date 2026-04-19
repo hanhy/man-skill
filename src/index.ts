@@ -657,6 +657,51 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
+function stripWrappingQuotes(value: string) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+function readEnvFileValues(envFileAbsolutePath: string): NodeJS.ProcessEnv {
+  if (!fs.existsSync(envFileAbsolutePath)) {
+    return {};
+  }
+
+  return fs.readFileSync(envFileAbsolutePath, 'utf8')
+    .split(/\r?\n/)
+    .reduce<NodeJS.ProcessEnv>((environment, rawLine) => {
+      const line = rawLine.trim();
+      if (line.length === 0 || line.startsWith('#')) {
+        return environment;
+      }
+
+      const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (!match) {
+        return environment;
+      }
+
+      const [, envVar, rawValue] = match;
+      environment[envVar] = stripWrappingQuotes(rawValue);
+      return environment;
+    }, {});
+}
+
+function mergeDeliveryEnvironment(repoEnv: NodeJS.ProcessEnv, runtimeEnv: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const mergedEnvironment: NodeJS.ProcessEnv = { ...repoEnv };
+
+  Object.entries(runtimeEnv).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      mergedEnvironment[key] = value;
+    }
+  });
+
+  return mergedEnvironment;
+}
+
 function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
   if (!fs.existsSync(envTemplateAbsolutePath)) {
     return [];
@@ -1575,10 +1620,13 @@ export function buildSummary(rootDir: string) {
   };
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
+  const envConfigAbsolutePath = path.join(rootDir, '.env');
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
-  const envConfigPresent = fs.existsSync(path.join(rootDir, '.env'));
+  const envConfigPresent = fs.existsSync(envConfigAbsolutePath);
   const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
-  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
+  const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
+  const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
+  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, deliveryEnvironment, { rootDir });
   const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0

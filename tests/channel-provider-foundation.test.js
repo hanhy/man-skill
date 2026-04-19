@@ -303,6 +303,61 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
 });
 
+test('buildSummary treats repo-local .env values as configured delivery auth', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=repo-slack-token',
+    'SLACK_SIGNING_SECRET=repo-signing-secret',
+    'OPENAI_API_KEY=repo-openai-key',
+    '',
+  ].join('\n'));
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.OPENAI_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+    const slackQueue = summary.delivery.channelQueue.find((channel) => channel.id === 'slack');
+    const openaiQueue = summary.delivery.providerQueue.find((provider) => provider.id === 'openai');
+
+    assert.equal(summary.delivery.configuredChannelCount, 1);
+    assert.equal(summary.delivery.configuredProviderCount, 1);
+    assert.ok(slackQueue);
+    assert.equal(slackQueue.configured, true);
+    assert.deepEqual(slackQueue.missingEnvVars, []);
+    assert.equal(slackQueue.setupHint, 'credentials present');
+    assert.ok(openaiQueue);
+    assert.equal(openaiQueue.configured, true);
+    assert.deepEqual(openaiQueue.missingEnvVars, []);
+    assert.equal(openaiQueue.setupHint, 'auth configured for gpt-5');
+    assert.doesNotMatch(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN/);
+    assert.doesNotMatch(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY/);
+  } finally {
+    if (typeof originalEnv.SLACK_BOT_TOKEN === 'string') {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    } else {
+      delete process.env.SLACK_BOT_TOKEN;
+    }
+    if (typeof originalEnv.SLACK_SIGNING_SECRET === 'string') {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    } else {
+      delete process.env.SLACK_SIGNING_SECRET;
+    }
+    if (typeof originalEnv.OPENAI_API_KEY === 'string') {
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+    } else {
+      delete process.env.OPENAI_API_KEY;
+    }
+  }
+});
+
 test('default channel/provider factories expose scaffold metadata and runtime helpers', () => {
   const originalEnv = {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
