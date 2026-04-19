@@ -4,10 +4,15 @@ This directory stores the agent's durable and working memory in plain files.
 
 The point is not to store everything. The point is to preserve what helps the agent stay consistent over time.
 
-## Suggested split
-- `daily/` for dated logs or session summaries
-- `long-term/` for distilled identity facts, preferences, habits, and other stable knowledge
-- `scratch/` for temporary working notes that may later be promoted or deleted
+## What belongs here
+- Durable repo knowledge and operator context that should survive across sessions.
+- Distilled facts, preferences, conventions, and small summaries instead of raw transcript dumps.
+- Working notes that are useful now and can later be promoted, rewritten, or deleted.
+
+## Buckets
+- `daily/` for dated logs or session summaries.
+- `long-term/` for distilled identity facts, preferences, habits, and other stable knowledge.
+- `scratch/` for temporary working notes that may later be promoted or deleted.
 
 ## Design rules
 - keep long-term memory compact and high-signal
