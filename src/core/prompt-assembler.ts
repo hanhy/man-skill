@@ -494,6 +494,7 @@ type WorkLoopSummary = {
   priorityCount?: number;
   readyPriorityCount?: number;
   queuedPriorityCount?: number;
+  leadingPriority?: WorkLoopPriority | null;
   currentPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
 } | null;
@@ -1333,8 +1334,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     return null;
   }
 
+  const leadingPriority = workLoop.leadingPriority;
   const currentPriority = workLoop.currentPriority;
   const priorities = workLoop.priorities ?? [];
+  const showLeadingPriority = Boolean(
+    leadingPriority && (!currentPriority || (leadingPriority.id ?? leadingPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
     : null;
@@ -1348,6 +1353,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   return [
     `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${workLoop.readyPriorityCount ?? 0} ready, ${workLoop.queuedPriorityCount ?? 0} queued)`,
     cadenceLine,
+    showLeadingPriority && leadingPriority
+      ? `- lead: ${leadingPriority.label ?? leadingPriority.id ?? 'Leading priority'} [${leadingPriority.status ?? 'unknown'}] — ${leadingPriority.summary ?? 'needs review'}`
+      : null,
     currentPriority
       ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
       : null,

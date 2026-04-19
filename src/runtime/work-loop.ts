@@ -15,6 +15,7 @@ export interface WorkLoopSummary {
   priorityCount: number;
   readyPriorityCount: number;
   queuedPriorityCount: number;
+  leadingPriority: WorkPriority | null;
   currentPriority: WorkPriority | null;
   priorities: WorkPriority[];
 }
@@ -39,7 +40,8 @@ export class WorkLoop {
   summary(): WorkLoopSummary {
     const readyPriorityCount = this.priorities.filter((priority) => priority.status === 'ready').length;
     const queuedPriorityCount = this.priorities.filter((priority) => priority.status !== 'ready').length;
-    const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? this.priorities[0] ?? null;
+    const leadingPriority = this.priorities[0] ?? null;
+    const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
 
     return {
       intervalMinutes: this.intervalMinutes,
@@ -48,6 +50,7 @@ export class WorkLoop {
       priorityCount: this.priorities.length,
       readyPriorityCount,
       queuedPriorityCount,
+      leadingPriority,
       currentPriority,
       priorities: this.priorities,
     };
