@@ -562,12 +562,40 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     return null;
   }
 
-  const missingSections = sectionDefinitions
-    .filter((section) => !resolvedContent.includes(section.heading))
-    .map((section) => section.key);
-  const readySections = sectionDefinitions
-    .filter((section) => !missingSections.includes(section.key))
-    .map((section) => section.key);
+  const lines = filterOutsideMarkdownFences(resolvedContent.split(/\r?\n/));
+  const readySections = [];
+  const missingSections = [];
+
+  for (const section of sectionDefinitions) {
+    let inSection = false;
+    let hasContent = false;
+    for (const rawLine of lines) {
+      const trimmed = rawLine.trim();
+      if (trimmed.startsWith('## ')) {
+        if (trimmed === section.heading) {
+          inSection = true;
+          hasContent = false;
+          continue;
+        }
+
+        if (inSection) {
+          break;
+        }
+      }
+
+      if (!inSection || trimmed.length === 0 || trimmed.startsWith('#')) {
+        continue;
+      }
+
+      hasContent = true;
+    }
+
+    if (hasContent) {
+      readySections.push(section.key);
+    } else {
+      missingSections.push(section.key);
+    }
+  }
 
   return {
     readySectionCount: readySections.length,
