@@ -1300,6 +1300,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       ? `- next actions: ${recommendedActions.join(' | ')}`
       : null,
     recommendedRepairLine,
+    ...queuedAreaLines,
+    remainingQueuedAreaSummary,
     (() => {
       const helperEntries = [
         maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
@@ -1315,8 +1317,6 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    ...queuedAreaLines,
-    remainingQueuedAreaSummary,
   ].filter(Boolean).join('\n');
 }
 
