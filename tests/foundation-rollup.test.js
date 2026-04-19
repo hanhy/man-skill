@@ -760,7 +760,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
       {
         area: 'memory',
         status: 'thin',
-        summary: 'README yes, daily 0, long-term 0, scratch 0',
+        summary: 'README yes, daily 0, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
         paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
         command: memoryCommand,
@@ -842,6 +842,10 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     thinAreas: ['memory'],
     recommendedActions: ['add at least one entry under memory/long-term and memory/scratch'],
   });
+  assert.equal(
+    summary.foundation.core.maintenance.queuedAreas[0]?.summary,
+    'README yes, daily 1, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
+  );
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-16\.md; root: Keep durable notes here\.; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
@@ -1264,6 +1268,34 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: create skills\/README\.md \| add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow/);
+});
+
+test('buildSummary keeps ready skills root sections visible in maintenance summaries when skill docs are still missing', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'slack'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.area, 'skills');
+  assert.equal(
+    summary.foundation.core.maintenance.queuedAreas[0]?.summary,
+    '2 registered, 1 documented, root 2/2 sections ready (what-lives-here, layout)',
+  );
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); root: Shared repo guidance for reusable procedures\.\; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/telegram\/SKILL\.md; excerpts: telegram: Deliver concise thread updates\.\; missing docs: slack @ skills\/slack\/SKILL\.md/);
 });
 
 test('buildSummary keeps mixed documented and heading-only SKILL docs queued as thin core foundation coverage', () => {

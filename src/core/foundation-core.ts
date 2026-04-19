@@ -384,21 +384,25 @@ function collectMemorySampleEntries({
   ];
 }
 
+function summarizeRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined): string {
+  const normalizedReadySections = Array.isArray(readySections) ? readySections : [];
+  const normalizedMissingSections = Array.isArray(missingSections) ? missingSections : [];
+  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+
+  if (totalSectionCount === 0) {
+    return '';
+  }
+
+  return `, root ${normalizedReadySections.length}/${totalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
 function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
-  const rootMissingSections = Array.isArray(memory.rootMissingSections) ? memory.rootMissingSections : [];
-  const rootReadySections = Array.isArray(memory.rootReadySections) ? memory.rootReadySections : [];
-  const rootSectionSummary = rootMissingSections.length > 0
-    ? `, root ${rootReadySections.length}/${rootReadySections.length + rootMissingSections.length} sections ready${rootReadySections.length > 0 ? ` (${rootReadySections.join(', ')})` : ''}, missing ${rootMissingSections.join(', ')}`
-    : '';
+  const rootSectionSummary = summarizeRootSectionSummary(memory.rootReadySections, memory.rootMissingSections);
   return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}${rootSectionSummary}`;
 }
 
 function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
-  const rootMissingSections = Array.isArray(skills.rootMissingSections) ? skills.rootMissingSections : [];
-  const rootReadySections = Array.isArray(skills.rootReadySections) ? skills.rootReadySections : [];
-  const rootSectionSummary = rootMissingSections.length > 0
-    ? `, root ${rootReadySections.length}/${rootReadySections.length + rootMissingSections.length} sections ready${rootReadySections.length > 0 ? ` (${rootReadySections.join(', ')})` : ''}, missing ${rootMissingSections.join(', ')}`
-    : '';
+  const rootSectionSummary = summarizeRootSectionSummary(skills.rootReadySections, skills.rootMissingSections);
   return `${skills.count} registered, ${skills.documentedCount} documented${rootSectionSummary}`;
 }
 
