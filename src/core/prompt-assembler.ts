@@ -1439,11 +1439,15 @@ function formatThinSectionProgress(readySections: string[] | undefined, missingS
     : [];
   const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
 
-  if (totalSectionCount === 0 || normalizedReadySections.length === 0) {
+  if (totalSectionCount === 0) {
     return '';
   }
 
-  return `sections ${normalizedReadySections.length}/${totalSectionCount} ready (${normalizedReadySections.join(', ')})${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+  const readySummary = normalizedReadySections.length > 0
+    ? `sections ${normalizedReadySections.length}/${totalSectionCount} ready (${normalizedReadySections.join(', ')})`
+    : `sections 0/${totalSectionCount} ready`;
+
+  return `${readySummary}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
