@@ -1611,7 +1611,16 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
   const skillRecords = Array.isArray(skills.skills)
     ? skills.skills.filter((skill): skill is { name?: string; id?: string; status?: string; description?: string | null } => Boolean(skill))
     : [];
-  const visibleSkills = skillRecords.slice(0, 3).map((skill) => {
+  const prioritizedSkillRecords = [...skillRecords].sort((left, right) => {
+    const leftHasDescription = typeof left.description === 'string' && left.description.trim().length > 0;
+    const rightHasDescription = typeof right.description === 'string' && right.description.trim().length > 0;
+    if (leftHasDescription !== rightHasDescription) {
+      return leftHasDescription ? -1 : 1;
+    }
+
+    return 0;
+  });
+  const visibleSkills = prioritizedSkillRecords.slice(0, 3).map((skill) => {
     const label = typeof skill.name === 'string' && skill.name.length > 0
       ? skill.name
       : typeof skill.id === 'string' && skill.id.length > 0

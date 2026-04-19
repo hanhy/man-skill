@@ -723,6 +723,36 @@ test('buildSummary skill preview shows descriptions and summarizes hidden skills
   );
 });
 
+test('buildSummary skill preview prefers described skills before placeholders', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'alpha'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'foundation'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff.\n\n## Continuity\n- Carry lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '---\ndescription: Deliver verified slices.\n---\n\n## What this skill is for\n- Deliver verified slices.\n\n## Suggested workflow\n- Run the smallest validating loop first.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'foundation', 'SKILL.md'), '---\ndescription: Keep the OpenClaw-style foundation aligned.\n---\n\n## What this skill is for\n- Keep the OpenClaw-style foundation aligned.\n\n## Suggested workflow\n- Refresh the smallest actionable summary surface first.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.match(
+    summary.promptPreview,
+    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered\]/,
+  );
+});
+
 test('buildSummary skill preview truncates long skill descriptions to keep the block compact', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
