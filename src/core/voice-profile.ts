@@ -1,4 +1,4 @@
-import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 
 export interface VoiceProfileSummary {
   tone: string;
@@ -87,7 +87,7 @@ export class VoiceProfile {
     let currentSection: VoiceSection = null;
     let currentSectionHasContent = false;
 
-    normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
+    collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
       if (!line) {
         return;

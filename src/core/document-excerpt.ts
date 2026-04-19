@@ -118,6 +118,11 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
   return visibleLines;
 }
 
+export function collectVisibleDocumentLines(document: unknown): string[] {
+  const normalizedDocument = normalizeDocument(document);
+  return filterOutsideMarkdownFences(normalizedDocument.split(/\r?\n/));
+}
+
 export function findDocumentExcerpt(document: unknown): string | null {
   const normalizedDocument = normalizeDocument(document);
   const frontmatterDescription = extractFrontmatterDescription(normalizedDocument);

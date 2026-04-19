@@ -274,6 +274,41 @@ test('voice profile ignores html comments when finding the default tone', () => 
   });
 });
 
+test('voice profile ignores multiline html comments when parsing structured sections', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '<!--',
+    '## Tone',
+    'Muted placeholder.',
+    '## Signature moves',
+    '- Hidden placeholder should not count.',
+    '## Avoid',
+    '- Hidden placeholder should not count.',
+    '## Language hints',
+    '- Hidden placeholder should not count.',
+    '-->',
+    '',
+    'Stay direct after the hidden scaffold.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Stay direct after the hidden scaffold.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile keeps mismatched fence markers inside the fenced block when finding the default tone', () => {
   const voice = VoiceProfile.fromDocument([
     '# Voice',
@@ -377,6 +412,41 @@ test('soul profile ignores html comments when finding the default excerpt', () =
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Durable posture after the comment.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: [],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile ignores multiline html comments when parsing structured sections', () => {
+  const soul = SoulProfile.fromDocument([
+    '# Soul',
+    '',
+    '<!--',
+    '## Core truths',
+    '- Hidden placeholder should not count.',
+    '## Boundaries',
+    '- Hidden placeholder should not count.',
+    '## Continuity',
+    '- Hidden placeholder should not count.',
+    '-->',
+    '',
+    'Durable posture after the hidden scaffold.',
+    '',
+    '## Core truths',
+    '- Stay faithful to the source material.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture after the hidden scaffold.',
     coreTruths: ['Stay faithful to the source material.'],
     boundaries: [],
     vibe: [],
@@ -625,4 +695,42 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Language hints/);
   assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/3 ready \(core-truths\), missing boundaries, continuity/);
   assert.match(summary.promptPreview, /- voice: present, 1 lines, Warm and grounded\. @ voice\/README\.md, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints/);
+});
+
+test('buildSummary ignores multiline html comments when deciding whether soul and voice docs are structured', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver verified slices.\n\n## Suggested workflow\n- Run the smallest validating loop first.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n<!--\n## Core truths\n- Hidden placeholder should not count.\n## Boundaries\n- Hidden placeholder should not count.\n## Continuity\n- Hidden placeholder should not count.\n-->\n\nStay faithful after the hidden scaffold.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n<!--\n## Tone\nMuted placeholder.\n## Signature moves\n- Hidden placeholder should not count.\n## Avoid\n- Hidden placeholder should not count.\n## Language hints\n- Hidden placeholder should not count.\n-->\n\nStay direct after the hidden scaffold.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.soul.structured, false);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 3);
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful after the hidden scaffold.');
+  assert.equal(summary.foundation.core.voice.structured, false);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.equal(summary.foundation.core.voice.rootExcerpt, 'Stay direct after the hidden scaffold.');
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\. @ SOUL\.md, sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });

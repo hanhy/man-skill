@@ -1,4 +1,4 @@
-import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 
 export interface SoulProfileSummary {
   excerpt: string | null;
@@ -77,7 +77,7 @@ export class SoulProfile {
     const soul = new SoulProfile({ excerpt: findDocumentExcerpt(normalizedDocument) });
     let currentSection: SoulSection = null;
 
-    normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
+    collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
       if (!line) {
         return;

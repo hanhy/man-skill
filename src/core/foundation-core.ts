@@ -393,7 +393,7 @@ function countContentLines(document: string | null | undefined): number {
     return 0;
   }
 
-  return document
+  return stripNonVisibleMarkdownContent(document)
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('#'))
@@ -722,13 +722,14 @@ export interface CoreDocumentFoundationSummary {
   missingSections: string[];
 }
 
-function stripFencedCodeBlocks(document: string | null | undefined): string {
+function stripNonVisibleMarkdownContent(document: string | null | undefined): string {
   if (!isNonEmptyString(document)) {
     return '';
   }
 
   const lines = document.split('\n');
   let insideFence = false;
+  let insideHtmlComment = false;
   const filteredLines: string[] = [];
 
   lines.forEach((line) => {
@@ -736,9 +737,41 @@ function stripFencedCodeBlocks(document: string | null | undefined): string {
       insideFence = !insideFence;
       return;
     }
-    if (!insideFence) {
-      filteredLines.push(line);
+
+    if (insideFence) {
+      return;
     }
+
+    let visibleLine = line;
+
+    if (insideHtmlComment) {
+      const commentEnd = visibleLine.indexOf('-->');
+      if (commentEnd < 0) {
+        return;
+      }
+
+      visibleLine = visibleLine.slice(commentEnd + 3);
+      insideHtmlComment = false;
+    }
+
+    while (true) {
+      const commentStart = visibleLine.indexOf('<!--');
+      if (commentStart < 0) {
+        break;
+      }
+
+      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
+      if (commentEnd >= 0) {
+        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(0, commentStart);
+      insideHtmlComment = true;
+      break;
+    }
+
+    filteredLines.push(visibleLine);
   });
 
   return filteredLines.join('\n');
@@ -772,7 +805,7 @@ function hasStructuredHeading(document: string | null | undefined, headings: str
   }
 
   const normalizedHeadings = headings.map((heading) => heading.toLowerCase());
-  const visibleDocument = stripFencedCodeBlocks(document);
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
   return visibleDocument
     .split('\n')
     .map((line) => parseMarkdownHeading(line))
@@ -783,7 +816,7 @@ function summarizeStructuredSections(
   document: string | null | undefined,
   sections: Array<{ key: string; heading: string }>,
 ): { readySections: string[]; missingSections: string[] } {
-  const visibleDocument = stripFencedCodeBlocks(document);
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
   if (!isNonEmptyString(visibleDocument)) {
     return { readySections: [], missingSections: sections.map((section) => section.key) };
   }
