@@ -170,3 +170,76 @@ test('openai-compatible provider runtime helpers normalize structured text conte
   assert.equal(normalizeGLMChatResponse(glmResponse).text, 'GLM wants profile context before replying.');
   assert.equal(normalizeQwenChatResponse(qwenResponse).text, 'Qwen can emit structured updates too.');
 });
+
+test('openai-compatible provider runtime helpers normalize nested SDK-style text blocks', () => {
+  const openaiResponse = createArrayTextResponse({
+    id: 'chatcmpl-openai-nested',
+    model: 'gpt-5',
+    providerTextBlocks: [
+      {
+        type: 'output_text',
+        text: {
+          value: 'Ship nested text first.',
+        },
+      },
+      {
+        type: 'output_message',
+        content: [
+          { type: 'text', text: { value: 'Then tighten it with feedback.' } },
+          { type: 'image_url', image_url: { url: 'https://example.com/shot.png' } },
+        ],
+      },
+    ],
+  });
+  const kimiResponse = createArrayTextResponse({
+    id: 'chatcmpl-kimi-nested',
+    model: 'moonshot-v1-32k',
+    providerTextBlocks: [
+      { type: 'text', text: { value: 'Kimi can unpack nested SDK text.' } },
+    ],
+  });
+  const minimaxResponse = createArrayTextResponse({
+    id: 'chatcmpl-minimax-nested',
+    model: 'minimax-text-01',
+    providerTextBlocks: [
+      {
+        type: 'message',
+        content: [
+          { type: 'text', text: { value: 'Minimax nested blocks still read cleanly.' } },
+        ],
+      },
+    ],
+  });
+  const glmResponse = createArrayTextResponse({
+    id: 'chatcmpl-glm-nested',
+    model: 'glm-4-plus',
+    providerTextBlocks: [
+      {
+        type: 'output_message',
+        content: [
+          { type: 'output_text', text: { value: 'GLM keeps' } },
+          { type: 'text', text: { value: 'the full sentence.' } },
+        ],
+      },
+    ],
+  });
+  const qwenResponse = createArrayTextResponse({
+    id: 'chatcmpl-qwen-nested',
+    model: 'qwen-max',
+    providerTextBlocks: [
+      {
+        type: 'message',
+        content: [
+          { type: 'reasoning', summary: 'skip me' },
+          { type: 'text', text: { value: 'Qwen nested responses normalize too.' } },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(normalizeOpenAIChatResponse(openaiResponse).text, 'Ship nested text first. Then tighten it with feedback.');
+  assert.equal(normalizeKimiChatResponse(kimiResponse).text, 'Kimi can unpack nested SDK text.');
+  assert.equal(normalizeMinimaxChatResponse(minimaxResponse).text, 'Minimax nested blocks still read cleanly.');
+  assert.equal(normalizeGLMChatResponse(glmResponse).text, 'GLM keeps the full sentence.');
+  assert.equal(normalizeQwenChatResponse(qwenResponse).text, 'Qwen nested responses normalize too.');
+});
