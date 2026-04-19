@@ -86,6 +86,11 @@ The current structured contract is:
 
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
 
+The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
+- `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair
+- `foundation.maintenance.recommendedProfileId`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next target-profile draft refresh
+- the prompt preview mirrors those as `next repair` and `next refresh` lines, so the same OpenClaw-like foundation contract stays actionable from both JSON and operator-facing text
+
 ---
 
 ## English
