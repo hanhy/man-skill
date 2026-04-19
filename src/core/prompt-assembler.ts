@@ -716,9 +716,19 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
       : '';
     return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
   };
+  const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => {
+    const segments = [profile.status ?? 'stale'];
+    if (Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)) {
+      segments.push(`${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts`);
+    }
+    if ((profile.missingDrafts ?? []).length > 0) {
+      segments.push(`missing ${profile.missingDrafts?.join('/')}`);
+    }
+    return `${profile.label ?? profile.id} [${segments.join(', ')}]`;
+  };
   const remainingQueuedProfilePreview = remainingQueuedProfiles
     .slice(0, 2)
-    .map((profile) => `${profile.label ?? profile.id} [${profile.status}]`)
+    .map((profile) => formatCompactQueuedProfileLabel(profile))
     .join(', ');
   const hiddenQueuedProfileCount = Math.max(remainingQueuedProfiles.length - 2, 0);
   const remainingQueuedProfileSummary = remainingQueuedProfiles.length > 0
