@@ -805,7 +805,7 @@ test('CLI update intake errors advertise the full usage surface for person, stal
     }),
     (error) => {
       assert.equal(error.status, 1);
-      assert.match(error.stderr, /Error: update intake requires --person, --stale, --imported, or --all/);
+      assert.match(error.stderr, /Error: update intake requires exactly one of --person, --stale, --imported, or --all/);
       assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --imported \| --all/);
       assert.match(error.stderr, /Examples:/);
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
@@ -823,7 +823,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
   const cases = [
     {
       args: ['import', 'intake'],
-      expectedError: /Error: import intake requires --person, --stale, --imported, or --all/,
+      expectedError: /Error: import intake requires exactly one of --person, --stale, --imported, or --all/,
       expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
       expectedExamples: [
         /Examples:/,
@@ -834,7 +834,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
     },
     {
       args: ['update', 'foundation'],
-      expectedError: /Error: update foundation requires --person, --stale, or --all/,
+      expectedError: /Error: update foundation requires exactly one of --person, --stale, or --all/,
       expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
       expectedExamples: [
         /Examples:/,
@@ -858,6 +858,45 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         expectedExamples.forEach((pattern) => {
           assert.match(error.stderr, pattern);
         });
+        assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
+        return true;
+      },
+    );
+  });
+});
+
+test('CLI batch-capable intake and foundation commands reject ambiguous mode selectors with the same usage hints', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'intake', '--person', 'harry-han', '--all'],
+      expectedError: /Error: import intake requires exactly one of --person, --stale, --imported, or --all/,
+      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--person', 'harry-han', '--stale'],
+      expectedError: /Error: update intake requires exactly one of --person, --stale, --imported, or --all/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --imported \| --all/,
+    },
+    {
+      args: ['update', 'foundation', '--person', 'harry-han', '--all'],
+      expectedError: /Error: update foundation requires exactly one of --person, --stale, or --all/,
+      expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
         assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
         return true;
       },

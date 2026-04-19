@@ -1352,6 +1352,20 @@ function readOptionalStringOption(options: ParsedOptions, key: string): string |
   return value;
 }
 
+function assertExactlyOneBatchSelector(options: ParsedOptions, selectors: string[], errorMessage: string) {
+  const activeSelectors = selectors.filter((selector) => {
+    if (selector === 'person') {
+      return typeof options.person === 'string' && options.person.trim().length > 0;
+    }
+
+    return options[selector] === true;
+  });
+
+  if (activeSelectors.length !== 1) {
+    throw new Error(errorMessage);
+  }
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1416,6 +1430,7 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
 
   if (subcommand === 'intake') {
     const refreshFoundation = Boolean(options['refresh-foundation']);
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'import intake requires exactly one of --person, --stale, --imported, or --all');
 
     if (options.all) {
       return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests({ refreshFoundation }));
@@ -1430,9 +1445,6 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
     }
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
-    if (!intakePersonId) {
-      throw new Error('import intake requires --person, --stale, --imported, or --all');
-    }
 
     return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({
       personId: intakePersonId,
@@ -1520,6 +1532,8 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'intake') {
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'update intake requires exactly one of --person, --stale, --imported, or --all');
+
     if (options.all) {
       return ingestion.scaffoldAllProfileIntakes();
     }
@@ -1532,15 +1546,15 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
       return ingestion.scaffoldImportedProfileIntakes();
     }
 
-    if (!personId) {
-      throw new Error('update intake requires --person, --stale, --imported, or --all');
-    }
-
     return ingestion.scaffoldProfileIntake({
       personId,
       displayName: typeof options['display-name'] === 'string' ? options['display-name'] : undefined,
       summary: typeof options.summary === 'string' ? options.summary : undefined,
     });
+  }
+
+  if (subcommand === 'foundation') {
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'all'], 'update foundation requires exactly one of --person, --stale, or --all');
   }
 
   if (subcommand === 'foundation' && options.all) {
@@ -1561,7 +1575,7 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
 
   if (!personId) {
     throw new Error(subcommand === 'foundation'
-      ? 'update foundation requires --person, --stale, or --all'
+      ? 'update foundation requires exactly one of --person, --stale, or --all'
       : 'Missing required --person argument');
   }
 
