@@ -124,6 +124,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 
 function loadSkillInventory(rootDir) {
   const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const skillsRootDocument = readTextIfExists(path.join(rootDir, 'skills', 'README.md'));
   const documented = [];
   const undocumented = [];
   const thin = [];
@@ -150,6 +151,8 @@ function loadSkillInventory(rootDir) {
 
   return {
     names: skillNames,
+    hasRootDocument: isNonEmptyString(skillsRootDocument),
+    rootPath: 'skills/README.md',
     documented,
     undocumented,
     thin,

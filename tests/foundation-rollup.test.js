@@ -296,6 +296,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   });
   assert.deepEqual(summary.foundation.core.skills, {
     count: 2,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 2,
     undocumentedCount: 0,
     thinCount: 0,
@@ -346,7 +348,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\./);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root missing @ skills\/README\.md; docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md/);
 });
@@ -374,6 +376,8 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
 
   assert.deepEqual(summary.foundation.core.skills, {
     count: 1,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 1,
     undocumentedCount: 0,
     thinCount: 0,
@@ -393,7 +397,7 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
       status: 'discovered',
     },
   ]);
-  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
+  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root missing @ skills\/README\.md; docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /cron: name: cron/);
 });
 
@@ -769,6 +773,8 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
 
   assert.deepEqual(summary.foundation.core.skills, {
     count: 2,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 2,
     thinCount: 0,
@@ -805,7 +811,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
       {
         area: 'skills',
         status: 'thin',
-        summary: '2 registered, 0 documented',
+        summary: '2 registered, 0 documented, root missing @ skills/README.md',
         action: 'create skills/slack/SKILL.md and skills/telegram/SKILL.md',
         paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
         missingPaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
@@ -815,7 +821,7 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md and skills\/telegram\/SKILL\.md @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md; command mkdir -p 'skills\/slack' 'skills\/telegram' && for file in 'skills\/slack\/SKILL\.md' 'skills\/telegram\/SKILL\.md'; do \[ -f "\$file" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); missing docs: slack, telegram @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 0 documented \(slack, telegram\); root missing @ skills\/README\.md; missing docs: slack, telegram @ skills\/slack\/SKILL\.md, skills\/telegram\/SKILL\.md/);
 });
 
 test('buildSummary keeps mixed documented and placeholder skills thin until all skill folders carry SKILL docs', () => {
@@ -840,6 +846,8 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
 
   assert.deepEqual(summary.foundation.core.skills, {
     count: 2,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 1,
     undocumentedCount: 1,
     thinCount: 0,
@@ -876,7 +884,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
       {
         area: 'skills',
         status: 'thin',
-        summary: '2 registered, 1 documented',
+        summary: '2 registered, 1 documented, root missing @ skills/README.md',
         action: 'create skills/slack/SKILL.md',
         paths: ['skills/slack/SKILL.md'],
         missingPaths: ['skills/slack/SKILL.md'],
@@ -886,7 +894,7 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
   });
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/slack\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); docs: skills\/telegram\/SKILL\.md; excerpts: telegram: Deliver concise thread updates\.\; missing docs: slack @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(slack, telegram\); root missing @ skills\/README\.md; docs: skills\/telegram\/SKILL\.md; excerpts: telegram: Deliver concise thread updates\.\; missing docs: slack @ skills\/slack\/SKILL\.md/);
 });
 
 test('buildSummary treats heading-only SKILL docs as thin core foundation coverage', () => {
@@ -915,6 +923,8 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
 
   assert.deepEqual(summary.foundation.core.skills, {
     count: 1,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 0,
     thinCount: 1,
@@ -951,7 +961,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
       {
         area: 'skills',
         status: 'thin',
-        summary: '1 registered, 0 documented',
+        summary: '1 registered, 0 documented, root missing @ skills/README.md',
         action: 'add non-heading guidance to skills/delivery/SKILL.md',
         paths: ['skills/delivery/SKILL.md'],
         thinPaths: ['skills/delivery/SKILL.md'],
@@ -965,7 +975,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/delivery/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: add non-heading guidance to skills\/delivery\/SKILL\.md @ skills\/delivery\/SKILL\.md/);
-  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); thin docs: delivery @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery @ skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /grep -Fqx -- '- Describe when to use this skill\.' 'skills\/delivery\/SKILL\.md' \|\| printf %s '/);
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
@@ -1005,6 +1015,8 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
 
   assert.deepEqual(summary.foundation.core.skills, {
     count: 6,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 6,
     thinCount: 0,
@@ -1029,7 +1041,7 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     {
       area: 'skills',
       status: 'thin',
-      summary: '6 registered, 0 documented',
+      summary: '6 registered, 0 documented, root missing @ skills/README.md',
       action: 'create skills/alpha/SKILL.md, skills/beta/SKILL.md, skills/delta/SKILL.md, skills/epsilon/SKILL.md, skills/gamma/SKILL.md, and skills/zeta/SKILL.md',
       paths: [
         'skills/alpha/SKILL.md',
