@@ -45,6 +45,7 @@ type HighlightDraftSummary = {
   highlights?: string[];
   readySectionCount?: number;
   totalSectionCount?: number;
+  readySections?: string[];
   missingSections?: string[];
   [key: string]: unknown;
 };
@@ -555,12 +556,17 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     .map(({ key, summary }) => {
       const totalSectionCount = summary?.totalSectionCount ?? 0;
       const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
-      const missingSections = summary?.missingSections ?? [];
+      const readySections = Array.isArray(summary?.readySections)
+        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      const missingSections = Array.isArray(summary?.missingSections)
+        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
       if (totalSectionCount <= 0 || missingSections.length === 0) {
         return null;
       }
 
-      return `${key} ${readySectionCount}/${totalSectionCount} missing ${missingSections.join('/')}`;
+      return `${key} ${readySectionCount}/${totalSectionCount}${readySections.length > 0 ? ` ready (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
     })
     .filter(Boolean);
 

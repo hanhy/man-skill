@@ -563,10 +563,14 @@ function summarizeFoundationDraftSections(filePath, content = null) {
   const missingSections = sectionDefinitions
     .filter((section) => !resolvedContent.includes(section.heading))
     .map((section) => section.key);
+  const readySections = sectionDefinitions
+    .filter((section) => !missingSections.includes(section.key))
+    .map((section) => section.key);
 
   return {
-    readySectionCount: sectionDefinitions.length - missingSections.length,
+    readySectionCount: readySections.length,
     totalSectionCount: sectionDefinitions.length,
+    readySections,
     missingSections,
   };
 }

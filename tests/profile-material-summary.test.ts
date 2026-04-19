@@ -300,6 +300,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     highlights: [],
     readySectionCount: 0,
     totalSectionCount: 4,
+    readySections: [],
     missingSections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
@@ -312,6 +313,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     highlights: [],
     readySectionCount: 0,
     totalSectionCount: 3,
+    readySections: [],
     missingSections: ['core-values', 'boundaries', 'decision-rules'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
@@ -324,7 +326,108 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     highlights: [],
     readySectionCount: 0,
     totalSectionCount: 3,
+    readySections: [],
     missingSections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+  });
+});
+
+test('loadProfilesIndex reports ready sections for partially structured stale profile drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md'),
+    [
+      '# Voice draft',
+      '',
+      'Profile: harry-han',
+      'Display name: Harry Han',
+      'Summary: Not set.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)',
+      'Source materials: 1 (message:1)',
+      '',
+      '## Tone',
+      'Keep replies direct.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md'),
+    [
+      '# Soul draft',
+      '',
+      'Profile: harry-han',
+      'Display name: Harry Han',
+      'Summary: Not set.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)',
+      'Source materials: 1 (message:1)',
+      '',
+      '## Core values',
+      '- [message] Ship the first slice.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'skills', 'README.md'),
+    [
+      '# Skills draft',
+      '',
+      'Profile: harry-han',
+      'Display name: Harry Han',
+      'Summary: Not set.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)',
+      'Source materials: 1 (message:1)',
+      '',
+      '## Candidate skills',
+      '- execution heuristic',
+    ].join('\n'),
+  );
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.deepEqual(profile.foundationDraftSummaries.voice, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+    readySectionCount: 1,
+    totalSectionCount: 4,
+    readySections: ['tone'],
+    missingSections: ['signature-moves', 'avoid', 'language-hints'],
+  });
+  assert.deepEqual(profile.foundationDraftSummaries.soul, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+    readySectionCount: 1,
+    totalSectionCount: 3,
+    readySections: ['core-values'],
+    missingSections: ['boundaries', 'decision-rules'],
+  });
+  assert.deepEqual(profile.foundationDraftSummaries.skills, {
+    generated: false,
+    generatedAt: null,
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    sourceCount: 0,
+    materialTypes: {},
+    highlights: [],
+    readySectionCount: 1,
+    totalSectionCount: 3,
+    readySections: ['candidate-skills'],
+    missingSections: ['evidence', 'gaps-to-validate'],
   });
 });
 
@@ -1024,6 +1127,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
             highlights: [],
             readySectionCount: 1,
             totalSectionCount: 4,
+            readySections: ['tone'],
             missingSections: ['signature-moves', 'avoid', 'language-hints'],
           },
           soul: {
@@ -1031,6 +1135,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
             highlights: [],
             readySectionCount: 1,
             totalSectionCount: 3,
+            readySections: ['core-values'],
             missingSections: ['boundaries', 'decision-rules'],
           },
           skills: {
@@ -1038,6 +1143,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
             highlights: [],
             readySectionCount: 1,
             totalSectionCount: 3,
+            readySections: ['candidate-skills'],
             missingSections: ['evidence', 'gaps-to-validate'],
           },
         },
@@ -1048,7 +1154,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
   assert.match(prompt, /voice highlights: Tight loops beat big plans\./);
   assert.match(prompt, /soul highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: feedback-loop heuristic/);
-  assert.match(prompt, /draft gaps: voice 1\/4 missing signature-moves\/avoid\/language-hints \| soul 1\/3 missing boundaries\/decision-rules \| skills 1\/3 missing evidence\/gaps-to-validate/);
+  assert.match(prompt, /draft gaps: voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate/);
 });
 
 test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
