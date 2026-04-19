@@ -52,4 +52,5 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.match(summary.promptPreview, /- memory: .*root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /- skills: .*root sections 2\/2 ready \(what-lives-here, layout\)/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: cron \[discovered\]: Use when scheduling a reminder or recurring task via the local system cron\/launchd setup for Op…/);
 });

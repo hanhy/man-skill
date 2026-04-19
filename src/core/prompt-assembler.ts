@@ -1599,26 +1599,43 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
     return '- unavailable';
   }
 
-  const topSkills = Array.isArray(skills.skills)
-    ? skills.skills
-      .filter((skill): skill is { name?: string; id?: string; status?: string } => Boolean(skill))
-      .slice(0, 3)
-      .map((skill) => {
-        const label = typeof skill.name === 'string' && skill.name.length > 0
-          ? skill.name
-          : typeof skill.id === 'string' && skill.id.length > 0
-            ? skill.id
-            : 'unknown';
-        const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
-        return `${label} [${status}]`;
-      })
+  const truncateDescription = (value: string, maxLength = 96) => {
+    const normalized = value.trim().replace(/\s+/g, ' ');
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  };
+
+  const skillRecords = Array.isArray(skills.skills)
+    ? skills.skills.filter((skill): skill is { name?: string; id?: string; status?: string; description?: string | null } => Boolean(skill))
     : [];
+  const visibleSkills = skillRecords.slice(0, 3).map((skill) => {
+    const label = typeof skill.name === 'string' && skill.name.length > 0
+      ? skill.name
+      : typeof skill.id === 'string' && skill.id.length > 0
+        ? skill.id
+        : 'unknown';
+    const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
+    const description = typeof skill.description === 'string' && skill.description.trim().length > 0
+      ? `: ${truncateDescription(skill.description)}`
+      : '';
+    return `${label} [${status}]${description}`;
+  });
+  const remainingSkillCount = Math.max(0, skillRecords.length - visibleSkills.length);
+  const topSkills = visibleSkills.length > 0
+    ? [
+      ...visibleSkills,
+      ...(remainingSkillCount > 0 ? [`+${remainingSkillCount} more`] : []),
+    ].join('; ')
+    : 'none';
 
   return [
     `- total: ${skills.skillCount ?? 0}`,
     `- discovered: ${skills.discoveredCount ?? 0}`,
     `- custom: ${skills.customCount ?? 0}`,
-    `- top skills: ${topSkills.length > 0 ? topSkills.join('; ') : 'none'}`,
+    `- top skills: ${topSkills}`,
   ].join('\n');
 }
 
