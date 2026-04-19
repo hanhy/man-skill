@@ -965,11 +965,12 @@ export function buildCoreFoundationSummary({
       { key: 'buckets', heading: '## Buckets' },
     ])
     : { readySections: [], missingSections: [] };
+  const memoryHasStructuredRootSections = memoryRootSections.readySections.length > 0 || memoryRootSections.missingSections.length > 0;
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
     rootPath: 'memory/README.md',
     rootExcerpt: extractExcerpt(memoryIndex?.root),
-    ...(memoryRootSections.missingSections.length > 0 ? {
+    ...(memoryHasStructuredRootSections ? {
       rootMissingSections: memoryRootSections.missingSections,
       rootReadySections: memoryRootSections.readySections,
     } : {}),
@@ -991,11 +992,12 @@ export function buildCoreFoundationSummary({
       { key: 'layout', heading: '## Layout' },
     ])
     : { readySections: [], missingSections: [] };
+  const skillsHasStructuredRootSections = skillsRootSections.readySections.length > 0 || skillsRootSections.missingSections.length > 0;
   const skills = {
     hasRootDocument: isNonEmptyString(skillsRootDocument),
     rootPath: 'skills/README.md',
     rootExcerpt: extractExcerpt(skillsRootDocument),
-    ...(skillsRootSections.missingSections.length > 0 ? {
+    ...(skillsHasStructuredRootSections ? {
       rootMissingSections: skillsRootSections.missingSections,
       rootReadySections: skillsRootSections.readySections,
     } : {}),

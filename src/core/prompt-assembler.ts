@@ -1347,6 +1347,22 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
   return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
 }
 
+function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined) {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+
+  if (totalSectionCount === 0) {
+    return '';
+  }
+
+  return `; root sections ${normalizedReadySections.length}/${totalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   if (!foundationCore) {
     return null;
@@ -1389,10 +1405,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}${(memory.rootMissingSections ?? []).length > 0 ? `; root sections ${(memory.rootReadySections ?? []).length}/${(memory.rootReadySections ?? []).length + (memory.rootMissingSections ?? []).length} ready${(memory.rootReadySections ?? []).length > 0 ? ` (${(memory.rootReadySections ?? []).join(', ')})` : ''}, missing ${(memory.rootMissingSections ?? []).join(', ')}` : ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections)}`
       : null,
     skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : ''}${(skills.rootMissingSections ?? []).length > 0 ? `; root sections ${(skills.rootReadySections ?? []).length}/${(skills.rootReadySections ?? []).length + (skills.rootMissingSections ?? []).length} ready${(skills.rootReadySections ?? []).length > 0 ? ` (${(skills.rootReadySections ?? []).join(', ')})` : ''}, missing ${(skills.rootMissingSections ?? []).join(', ')}` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : ''}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
         const readySummary = readySections.length > 0

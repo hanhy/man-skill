@@ -213,6 +213,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     hasRootDocument: true,
     rootPath: 'memory/README.md',
     rootExcerpt: 'Durable repo knowledge and operator context.',
+    rootMissingSections: [],
+    rootReadySections: ['what-belongs-here', 'buckets'],
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 0,
@@ -264,7 +266,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
   assert.equal(summary.foundation.core.skills.rootExcerpt, null);
   assert.match(summary.promptPreview, /coverage: 2\/4 ready; thin memory, skills/);
-  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\./);
+  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\.; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
 });
 
 test('buildSummary marks memory as thin when memory README lacks structured sections', () => {
