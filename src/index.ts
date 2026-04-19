@@ -178,7 +178,7 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
       continue;
     }
 
-    const numberedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+    const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
     if (!numberedMatch) {
       continue;
     }

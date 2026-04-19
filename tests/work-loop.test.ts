@@ -237,6 +237,43 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: harden the OpenClaw-like soul and voice layer first \| keep metadata-only intake reruns explicit and safe \| bring Feishu online after the core chat surfaces stabilize \| validate Qwen after the primary provider adapters stay green \| report progress in small verified increments/);
 });
 
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading is nested and uses parenthesized numbering', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Planning notes',
+      '',
+      '### Current product direction',
+      '',
+      '1) keep the repo foundation guidance explicit before more rollout work',
+      '2) keep intake updates obvious for partially imported profiles',
+      '3) land WhatsApp after Slack and Telegram stay stable',
+      '4) validate GLM after the primary provider adapters stay green',
+      '',
+      '### Notes',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the repo foundation guidance explicit before more rollout work',
+    'keep intake updates obvious for partially imported profiles',
+    'land WhatsApp after Slack and Telegram stay stable',
+    'validate GLM after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the repo foundation guidance explicit before more rollout work \| keep intake updates obvious for partially imported profiles \| land WhatsApp after Slack and Telegram stay stable \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
 test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
