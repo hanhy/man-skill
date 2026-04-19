@@ -9,6 +9,8 @@ import { buildSummary } from '../src/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
+const architectureDoc = fs.readFileSync(path.join(repoRoot, 'docs', 'architecture.md'), 'utf8');
+const ingestionDoc = fs.readFileSync(path.join(repoRoot, 'docs', 'ingestion.md'), 'utf8');
 const memoryDoc = fs.readFileSync(path.join(repoRoot, 'memory', 'README.md'), 'utf8');
 const skillsDoc = fs.readFileSync(path.join(repoRoot, 'skills', 'README.md'), 'utf8');
 const soulDoc = fs.readFileSync(path.join(repoRoot, 'SOUL.md'), 'utf8');
@@ -22,6 +24,18 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /\.env\.example/);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
+});
+
+test('architecture and ingestion docs explain work-loop leader/blocker semantics and sample-manifest entrypoints', () => {
+  assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the actionable `currentPriority`/);
+  assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
+  assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
+  assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
+  assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
+  assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
+  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus `\.env\.example` path visible/);
+  assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
+  assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
