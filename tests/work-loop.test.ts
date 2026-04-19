@@ -165,6 +165,110 @@ test('buildSummary loads work-loop objectives from USER.md when the repo defines
   assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
 });
 
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses closing hashes', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction ##',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. keep Slack queued until Telegram is runtime-ready',
+      '4. stage OpenAI before the rest of the provider set',
+      '',
+      '## Notes ##',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the repo-core memory and skills docs synchronized',
+    'make imported intake backfills visible before delivery rollout',
+    'keep Slack queued until Telegram is runtime-ready',
+    'stage OpenAI before the rest of the provider set',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| keep Slack queued until Telegram is runtime-ready \| stage OpenAI before the rest of the provider set \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses setext markdown', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      'Current product direction',
+      '-------------------------',
+      '',
+      '1. harden the OpenClaw-like soul and voice layer first',
+      '2. keep metadata-only intake reruns explicit and safe',
+      '3. bring Feishu online after the core chat surfaces stabilize',
+      '4. validate Qwen after the primary provider adapters stay green',
+      '',
+      'Usage notes',
+      '-----------',
+      '',
+      'Keep this durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the OpenClaw-like soul and voice layer first',
+    'keep metadata-only intake reruns explicit and safe',
+    'bring Feishu online after the core chat surfaces stabilize',
+    'validate Qwen after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the OpenClaw-like soul and voice layer first \| keep metadata-only intake reruns explicit and safe \| bring Feishu online after the core chat surfaces stabilize \| validate Qwen after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
+test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      'Keep the staging order durable, but do not enumerate it here yet.',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: strengthen the OpenClaw-like foundation around memory, skills, soul, and voice \| improve the user-facing ingestion\/update entrance for target-person materials \| add chat channels Feishu, Telegram, WhatsApp, and Slack \| add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen \| report progress in small verified increments/);
+});
+
 test('buildSummary work loop keeps foundation first when repo-core coverage is still thin', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });

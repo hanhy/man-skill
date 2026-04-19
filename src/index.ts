@@ -109,25 +109,73 @@ function readFileIfPresent(filePath: string): string | null {
   }
 }
 
+function parseMarkdownHeadingAt(lines: string[], index: number): { level: number; text: string; lineCount: number } | null {
+  const currentLine = (lines[index] ?? '').replace(/^\uFEFF/, '');
+  const trimmedLine = currentLine.trim();
+  if (!trimmedLine) {
+    return null;
+  }
+
+  const atxMatch = trimmedLine.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+  if (atxMatch) {
+    const text = atxMatch[2]?.trim().toLowerCase();
+    return text
+      ? {
+        level: atxMatch[1].length,
+        text,
+        lineCount: 1,
+      }
+      : null;
+  }
+
+  const nextLine = (lines[index + 1] ?? '').trim();
+  const setextMatch = nextLine.match(/^(=+|-+)$/);
+  if (!setextMatch || trimmedLine.startsWith('#')) {
+    return null;
+  }
+
+  return {
+    level: setextMatch[1].startsWith('=') ? 1 : 2,
+    text: trimmedLine.toLowerCase(),
+    lineCount: 2,
+  };
+}
+
+function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCount: number } | null {
+  for (let index = 0; index < lines.length; index += 1) {
+    const heading = parseMarkdownHeadingAt(lines, index);
+    if (heading && heading.level >= 2 && heading.text === 'current product direction') {
+      return {
+        index,
+        lineCount: heading.lineCount,
+      };
+    }
+  }
+
+  return null;
+}
+
 function extractWorkLoopObjectivesFromUserDocument(document: string | null | undefined): string[] {
   if (typeof document !== 'string' || document.trim().length === 0) {
     return [];
   }
 
   const lines = document.split(/\r?\n/);
-  const startIndex = lines.findIndex((line) => /^##\s+Current product direction\s*$/i.test(line.trim()));
-  if (startIndex === -1) {
+  const heading = findWorkLoopObjectivesHeading(lines);
+  if (!heading) {
     return [];
   }
 
   const objectives: string[] = [];
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const trimmedLine = lines[index]?.trim() ?? '';
+  for (let index = heading.index + heading.lineCount; index < lines.length; index += 1) {
+    const nextHeading = parseMarkdownHeadingAt(lines, index);
+    if (nextHeading && nextHeading.level >= 2) {
+      break;
+    }
+
+    const trimmedLine = (lines[index] ?? '').replace(/^\uFEFF/, '').trim();
     if (trimmedLine.length === 0) {
       continue;
-    }
-    if (/^##\s+/.test(trimmedLine)) {
-      break;
     }
 
     const numberedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
