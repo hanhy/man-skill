@@ -794,6 +794,44 @@ test('buildSummary skill preview truncates long skill descriptions to keep the b
   assert.doesNotMatch(summary.promptPreview, /overwhelms the compact skill registry preview block in the prompt output/);
 });
 
+test('buildSummary discovers nested skill directories as leaf skills instead of collapsing them into category placeholders', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'channels', 'slack'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'providers', 'openai'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff.\n\n## Continuity\n- Carry lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n- skills/<category>/<name>/SKILL.md keeps larger registries organized.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'channels', 'slack', 'SKILL.md'),
+    '---\ndescription: Deliver concise Slack thread updates.\n---\n\n## What this skill is for\n- Deliver concise Slack thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread reply helper first.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.skills.skillCount, 2);
+  assert.match(
+    summary.promptPreview,
+    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
+  );
+  assert.equal(summary.foundation.core.skills.documentedCount, 1);
+  assert.equal(summary.foundation.core.skills.undocumentedCount, 1);
+  assert.deepEqual(summary.foundation.core.skills.samplePaths, ['skills/channels/slack/SKILL.md']);
+  assert.deepEqual(summary.foundation.core.skills.undocumentedPaths, ['skills/providers/openai/SKILL.md']);
+  assert.match(summary.promptPreview, /docs: skills\/channels\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /missing docs: providers\/openai/);
+});
+
 test('buildSummary marks memory as thin when memory README lacks structured sections', () => {
   const rootDir = makeTempRepo();
 

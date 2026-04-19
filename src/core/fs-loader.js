@@ -37,6 +37,36 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function listSkillDirectoriesIfExists(skillsRootDir, relativeDir = '') {
+  const directoryPath = relativeDir.length > 0
+    ? path.join(skillsRootDir, relativeDir)
+    : skillsRootDir;
+  if (!fs.existsSync(directoryPath)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+  const childDirectories = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  const skillNames = [];
+  const hasSkillDocument = entries.some((entry) => entry.isFile() && entry.name === 'SKILL.md');
+
+  if (relativeDir.length > 0 && (hasSkillDocument || childDirectories.length === 0)) {
+    skillNames.push(relativeDir.replaceAll(path.sep, '/'));
+  }
+
+  for (const childDirectory of childDirectories) {
+    const childRelativeDir = relativeDir.length > 0
+      ? path.join(relativeDir, childDirectory)
+      : childDirectory;
+    skillNames.push(...listSkillDirectoriesIfExists(skillsRootDir, childRelativeDir));
+  }
+
+  return Array.from(new Set(skillNames)).sort();
+}
+
 function stripWrappingQuotes(value) {
   if (!isNonEmptyString(value)) {
     return value;
@@ -326,7 +356,8 @@ function hasStructuredSkillHeading(document) {
 }
 
 function loadSkillInventory(rootDir) {
-  const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const skillsRootDir = path.join(rootDir, 'skills');
+  const skillNames = listSkillDirectoriesIfExists(skillsRootDir);
   const root = readTextIfExists(path.join(rootDir, 'skills', 'README.md'));
   const documented = [];
   const undocumented = [];
