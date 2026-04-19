@@ -43,7 +43,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /OpenClaw-like/i);
   assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
-  assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Continuity/i);
+  assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /prompt preview surfaces the exact missing sections plus a runnable repair command/i);
 
@@ -55,6 +55,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
 
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);
+  assert.match(soulDoc, /## Vibe/);
   assert.match(soulDoc, /## Continuity/);
 
   assert.match(voiceDoc, /## Tone/);
@@ -70,7 +71,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
-  assert.equal(summary.foundation.core.soul.readySectionCount, 3);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.match(summary.promptPreview, /- memory: .* @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /- skills: .* @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\)/);

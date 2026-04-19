@@ -441,9 +441,9 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     excerpt: 'Build a faithful operator core.',
     rootExcerpt: 'Build a faithful operator core.',
     structured: false,
-    readySectionCount: 3,
-    totalSectionCount: 3,
-    readySections: ['core-truths', 'boundaries', 'continuity'],
+    readySectionCount: 4,
+    totalSectionCount: 4,
+    readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
     missingSections: [],
   });
   assert.deepEqual(summary.foundation.core.voice, {
@@ -491,7 +491,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\. @ skills\/README\.md; docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
-  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md, sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });
 
@@ -1670,7 +1670,7 @@ test('buildSummary treats deeper markdown headings in skills root docs as struct
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 
@@ -1699,7 +1699,7 @@ test('buildSummary treats skills root headings with closing hashes as structured
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 
@@ -1728,17 +1728,17 @@ test('buildSummary treats soul and voice headings with closing hashes as structu
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone ##\n- Keep replies direct.\n\n## Signature moves ##\n- Lead with the operational takeaway.\n\n## Avoid ##\n- Avoid vague filler.\n\n## Language hints ##\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths ##\n- Preserve durable operator intent.\n\n## Boundaries ##\n- Do not invent source material.\n\n## Continuity ##\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths ##\n- Preserve durable operator intent.\n\n## Boundaries ##\n- Do not invent source material.\n\n## Vibe ##\n- Stay grounded and practical.\n\n## Continuity ##\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 
-  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, []);
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /soul: present, \d+ lines, .*sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /soul: present, \d+ lines, .*sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
   assert.match(summary.promptPreview, /voice: present, \d+ lines, .*sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });
 
@@ -1763,7 +1763,7 @@ test('buildSummary treats setext headings across root and profile foundation doc
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nTone\n----\n- Keep replies direct.\n\nSignature moves\n---------------\n- Lead with the operational takeaway.\n\nAvoid\n-----\n- Avoid vague filler.\n\nLanguage hints\n--------------\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nCore truths\n-----------\n- Preserve durable operator intent.\n\nBoundaries\n----------\n- Do not invent source material.\n\nContinuity\n----------\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nCore truths\n-----------\n- Preserve durable operator intent.\n\nBoundaries\n----------\n- Do not invent source material.\n\nVibe\n-----\n- Stay grounded and practical.\n\nContinuity\n----------\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 
@@ -1771,7 +1771,7 @@ test('buildSummary treats setext headings across root and profile foundation doc
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
   assert.equal(summary.foundation.core.skills.rootExcerpt, 'Shared repo guidance for reusable procedures.');
   assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['delivery: Deliver concise handoffs.']);
-  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, []);
   assert.equal(summary.foundation.core.soul.rootExcerpt, 'Preserve durable operator intent.');
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
@@ -1802,19 +1802,19 @@ test('buildSummary keeps untouched soul and voice starter templates queued as th
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), VOICE_STARTER_TEMPLATE);
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n');
 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
   assert.deepEqual(summary.foundation.core.soul.readySections, []);
-  assert.deepEqual(summary.foundation.core.soul.missingSections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.deepEqual(summary.foundation.core.voice.readySections, []);
   assert.deepEqual(summary.foundation.core.voice.missingSections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 2\/4 ready \(2 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: core-truths, boundaries, continuity @ SOUL\.md/);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity @ SOUL\.md/);
   assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: tone, signature-moves, avoid, language-hints @ voice\/README\.md/);
 });
 
@@ -1881,7 +1881,7 @@ test('buildSummary ignores soul and voice section headings that only appear insi
   assert.equal(summary.foundation.core.soul.structured, false);
   assert.equal(summary.foundation.core.soul.lineCount, 1);
   assert.equal(summary.foundation.core.soul.excerpt, 'Build a faithful operator core.');
-  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, []);
   assert.doesNotMatch(summary.promptPreview, /Example template only/);
 });
@@ -1903,7 +1903,7 @@ test('buildSummary treats deeper markdown headings in skill docs as structured g
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 
@@ -1932,7 +1932,7 @@ test('buildSummary treats skill doc headings with closing hashes as structured g
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
 
   const summary = buildSummary(rootDir);
 

@@ -739,13 +739,15 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
       profile.boundaries.length > 0 ? 'boundaries' : null,
+      profile.vibe.length > 0 ? 'vibe' : null,
       profile.continuity.length > 0 ? 'continuity' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['core-truths', 'boundaries', 'continuity'] : []);
+    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
   const missingSections = structured
     ? [
       profile.coreTruths.length > 0 ? null : 'core-truths',
       profile.boundaries.length > 0 ? null : 'boundaries',
+      profile.vibe.length > 0 ? null : 'vibe',
       profile.continuity.length > 0 ? null : 'continuity',
     ].filter((value): value is string => typeof value === 'string')
     : [];
@@ -765,7 +767,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     rootExcerpt: excerpt,
     structured,
     readySectionCount,
-    totalSectionCount: 3,
+    totalSectionCount: 4,
     readySections,
     missingSections,
   };

@@ -94,7 +94,7 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ] as const;
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
 const SOUL_SECTIONS = [
   {
@@ -108,6 +108,12 @@ const SOUL_SECTIONS = [
     sentinel: '- Capture what the agent should protect or refuse to compromise.',
     missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
     existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Vibe',
+    sentinel: '- Describe the emotional texture or posture the agent should project.',
+    missingSectionAppend: '\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n',
+    existingBulletAppend: '- Describe the emotional texture or posture the agent should project.\n',
   },
   {
     heading: '## Continuity',
@@ -336,10 +342,10 @@ function buildSoulCommand(status: string | null): string | null {
       "const lines = raw.split(/\\r?\\n/);",
       "const stripHeadingText = (value) => value.trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase();",
       "const parseHeadingAt = (sourceLines, index) => { const current = sourceLines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: stripHeadingText(atxMatch[2]), lineCount: 1, rawLines: [current] }; } const next = sourceLines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2, rawLines: [current, next] }; };",
-      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
-      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', continuity: '## Continuity' };",
-      "const sectionOrder = ['core-truths', 'boundaries', 'continuity'];",
-      "const sections = { 'core-truths': [], boundaries: [], continuity: [] };",
+      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['vibe', 'vibe'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
+      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', vibe: '## Vibe', continuity: '## Continuity' };",
+      "const sectionOrder = ['core-truths', 'boundaries', 'vibe', 'continuity'];",
+      "const sections = { 'core-truths': [], boundaries: [], vibe: [], continuity: [] };",
       "const prelude = [];",
       "const extras = [];",
       "let currentSection = null;",

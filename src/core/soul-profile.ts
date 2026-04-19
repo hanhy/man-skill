@@ -27,6 +27,7 @@ type SoulSection = 'core-truths' | 'boundaries' | 'vibe' | 'continuity' | null;
 const SOUL_STARTER_GUIDANCE_LINES = new Set([
   'Describe the durable values and goals that should survive across tasks.',
   'Capture what the agent should protect or refuse to compromise.',
+  'Describe the emotional texture or posture the agent should project.',
   'Note the principles to use when tradeoffs appear.',
 ]);
 

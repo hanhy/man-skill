@@ -35,7 +35,7 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ];
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const MEMORY_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
 const MEMORY_SECTIONS = [
   {
@@ -80,6 +80,12 @@ const SOUL_SECTIONS = [
     sentinel: '- Capture what the agent should protect or refuse to compromise.',
     missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
     existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Vibe',
+    sentinel: '- Describe the emotional texture or posture the agent should project.',
+    missingSectionAppend: '\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n',
+    existingBulletAppend: '- Describe the emotional texture or posture the agent should project.\n',
   },
   {
     heading: '## Decision rules',
@@ -407,6 +413,7 @@ test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
   assert.doesNotMatch(command ?? '', /if grep -Eq/);
   assert.match(command ?? '', /node --input-type=module -e/);
   assert.match(command ?? '', /## Core truths/);
+  assert.match(command ?? '', /## Vibe/);
   assert.match(command ?? '', /## Continuity/);
   assert.match(command ?? '', /core values/);
   assert.match(command ?? '', /decision rules/);
@@ -502,7 +509,7 @@ test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () =
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -520,7 +527,7 @@ test('buildCoreFoundationCommand preserves openclaw-style soul headings when rep
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -541,7 +548,7 @@ test('buildCoreFoundationCommand normalizes mixed soul heading dialects toward o
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -562,7 +569,7 @@ test('buildCoreFoundationCommand normalizes legacy setext soul headings toward o
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -583,7 +590,7 @@ test('buildCoreFoundationCommand normalizes closing-hash soul headings toward op
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -601,7 +608,7 @@ test('buildCoreFoundationCommand treats boundaries-only thin soul docs as opencl
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Keep claims grounded.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Keep claims grounded.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 

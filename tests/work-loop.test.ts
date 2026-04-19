@@ -485,6 +485,9 @@ test('buildSummary treats nested soul and voice structured headings as ready fou
     '### Boundaries',
     '- Do not bluff certainty.',
     '',
+    '### Vibe',
+    '- Stay grounded and practical.',
+    '',
     '### Continuity',
     '- Carry durable lessons forward.',
     '',
@@ -512,7 +515,7 @@ test('buildSummary treats nested soul and voice structured headings as ready fou
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.foundation.core.soul.readySectionCount, 3);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.deepEqual(summary.foundation.core.soul.missingSections, []);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);

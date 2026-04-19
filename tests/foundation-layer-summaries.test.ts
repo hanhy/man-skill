@@ -845,7 +845,7 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff.\n\n## Continuity\n- Carry lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff.\n\n## Vibe\n- Stay grounded.\n\n## Continuity\n- Carry lessons forward.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron\n\n## What this skill is for\n- Use scheduled follow-ups carefully.\n\n## Suggested workflow\n- Add the exact recurring command.\n');
 
@@ -897,7 +897,7 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.equal(summary.foundation.core.soul.rootPath, 'SOUL.md');
   assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful.');
   assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths']);
-  assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, ['boundaries', 'vibe', 'continuity']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 1);
   assert.equal(summary.foundation.core.voice.rootPath, 'voice/README.md');
   assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
@@ -908,19 +908,20 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
   assert.deepEqual(summary.foundation.core.overview.recommendedActions, [
-    'add missing sections to SOUL.md: boundaries, continuity',
+    'add missing sections to SOUL.md: boundaries, vibe, continuity',
     'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
   ]);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /SOUL\.md/);
   assert.doesNotMatch(summary.foundation.core.maintenance.helperCommands.soul ?? '', /if grep -Eq/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /node --input-type=module -e/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Vibe/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Continuity/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /decision rules/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /voice\/README\.md/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Avoid/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Language hints/);
-  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/3 ready \(core-truths\), missing boundaries, continuity/);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful\. @ SOUL\.md, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity/);
   assert.match(summary.promptPreview, /- voice: present, 1 lines, Warm and grounded\. @ voice\/README\.md, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints/);
 });
 
@@ -946,9 +947,9 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.foundation.core.soul.structured, false);
-  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.deepEqual(summary.foundation.core.soul.missingSections, []);
-  assert.equal(summary.foundation.core.soul.readySectionCount, 3);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful after the hidden scaffold.');
   assert.equal(summary.foundation.core.voice.structured, false);
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
@@ -958,6 +959,6 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
   assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
-  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\. @ SOUL\.md, sections 3\/3 ready \(core-truths, boundaries, continuity\)/);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
   assert.match(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });

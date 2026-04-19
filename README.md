@@ -81,7 +81,7 @@ The repo-level foundation is intentionally OpenClaw-like: `memory/`, `skills/`, 
 The current structured contract is:
 - `memory/README.md` explains `## What belongs here` and `## Buckets`
 - `skills/README.md` explains `## What lives here` and `## Layout`
-- `SOUL.md` captures `## Core truths`, `## Boundaries`, and `## Continuity`
+- `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
