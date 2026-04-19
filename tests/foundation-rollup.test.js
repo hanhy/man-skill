@@ -140,8 +140,8 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
           highlights: [],
           readySectionCount: 1,
           totalSectionCount: 3,
-          readySections: ['core-values'],
-          missingSections: ['boundaries', 'decision-rules'],
+          readySections: ['core-truths'],
+          missingSections: ['boundaries', 'continuity'],
         },
         skills: {
           generated: false,
@@ -214,7 +214,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
       'profiles/jane-doe/soul/README.md',
       'profiles/jane-doe/voice/README.md',
     ],
-    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
+    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-truths), missing boundaries/continuity | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
@@ -233,7 +233,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
-        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
+        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-truths), missing boundaries/continuity | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
         refreshCommand: 'node src/index.js update foundation --person jane-doe',
       },
     ],

@@ -250,9 +250,9 @@ const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
     { key: 'language-hints', headings: ['language hints', 'current default for manskill'] },
   ],
   soul: [
-    { key: 'core-values', headings: ['core values', 'core truths'] },
+    { key: 'core-truths', headings: ['core values', 'core truths'] },
     { key: 'boundaries', headings: ['boundaries'] },
-    { key: 'decision-rules', headings: ['decision rules', 'continuity'] },
+    { key: 'continuity', headings: ['decision rules', 'continuity'] },
   ],
   skills: [
     { key: 'candidate-skills', headings: ['candidate skills'] },

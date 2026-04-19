@@ -164,8 +164,8 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
         soul: {
           readySectionCount: 2,
           totalSectionCount: 3,
-          readySections: ['core-values', 'boundaries'],
-          missingSections: ['decision-rules'],
+          readySections: ['core-truths', 'boundaries'],
+          missingSections: ['continuity'],
         },
       },
     },
@@ -173,7 +173,7 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
 
   assert.equal(
     summary.profileCommands[0]?.draftGapSummary,
-    'memory missing | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-values, boundaries), missing decision-rules',
+    'memory missing | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-truths, boundaries), missing continuity',
   );
 });
 
@@ -352,7 +352,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     readySectionCount: 0,
     totalSectionCount: 3,
     readySections: [],
-    missingSections: ['core-values', 'boundaries', 'decision-rules'],
+    missingSections: ['core-truths', 'boundaries', 'continuity'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -451,8 +451,8 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     highlights: [],
     readySectionCount: 1,
     totalSectionCount: 3,
-    readySections: ['core-values'],
-    missingSections: ['boundaries', 'decision-rules'],
+    readySections: ['core-truths'],
+    missingSections: ['boundaries', 'continuity'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -856,7 +856,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills', 'soul', 'voice'],
             refreshReasons: ['missing drafts', 'metadata-updated'],
-            draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules',
+            draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-truths), missing boundaries/continuity',
           },
           {
             id: 'harry-han',
@@ -882,7 +882,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   }).buildSystemPrompt();
 
   assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
-  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity/);
   assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
   assert.match(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul\]/);
   assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
@@ -1259,8 +1259,8 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
             highlights: [],
             readySectionCount: 1,
             totalSectionCount: 3,
-            readySections: ['core-values'],
-            missingSections: ['boundaries', 'decision-rules'],
+            readySections: ['core-truths'],
+            missingSections: ['boundaries', 'continuity'],
           },
           skills: {
             generated: false,
@@ -1278,7 +1278,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
   assert.match(prompt, /voice highlights: Tight loops beat big plans\./);
   assert.match(prompt, /soul highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: feedback-loop heuristic/);
-  assert.match(prompt, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate/);
+  assert.match(prompt, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate/);
 });
 
 test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
@@ -1533,12 +1533,12 @@ test('loadProfilesIndex ignores heading-only and fenced template sections when e
   assert.deepEqual((profile.foundationDraftSummaries.voice as any).readySections ?? [], []);
   assert.deepEqual((profile.foundationDraftSummaries.voice as any).missingSections ?? [], ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(profile.foundationDraftSummaries.soul.generated, false);
-  assert.deepEqual((profile.foundationDraftSummaries.soul as any).readySections ?? [], ['core-values']);
-  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], ['boundaries', 'decision-rules']);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).readySections ?? [], ['core-truths']);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], ['boundaries', 'continuity']);
   assert.equal(profile.foundationDraftSummaries.skills.generated, false);
   assert.deepEqual((profile.foundationDraftSummaries.skills as any).readySections ?? [], []);
   assert.deepEqual((profile.foundationDraftSummaries.skills as any).missingSections ?? [], ['candidate-skills', 'evidence', 'gaps-to-validate']);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 0\/4 ready, missing tone\/signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 0\/4 ready, missing tone\/signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate/);
 });
 
 test('loadProfilesIndex marks foundation status stale when memory draft metadata is unreadable', () => {
@@ -1790,7 +1790,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(janeCommand.materialCount, 1);
   assert.equal(janeCommand.needsRefresh, true);
   assert.deepEqual(janeCommand.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
-  assert.equal(janeCommand.draftGapSummary, 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-values, boundaries), missing decision-rules | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate');
+  assert.equal(janeCommand.draftGapSummary, 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-truths, boundaries), missing continuity | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate');
   assert.equal(janeCommand.latestMaterialAt, summary.profiles.find((profile) => profile.id === 'jane-doe')?.latestMaterialAt ?? null);
   assert.match(janeCommand.latestMaterialAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(janeCommand.updateProfileCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'");
@@ -1894,7 +1894,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\] for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for Harry Han \(harry-han\) \(message:1, text:1\) -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 2\/3 ready \(core-values, boundaries\), missing decision-rules \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 2\/3 ready \(core-truths, boundaries\), missing continuity \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\)/);
 });
