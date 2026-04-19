@@ -274,6 +274,7 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nShared repo skill guidance.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nHow to deliver verified slices.\n');
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n');

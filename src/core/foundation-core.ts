@@ -134,11 +134,13 @@ function formatSkillMissingSectionAction(skillName: string, missingSections: str
 }
 
 function buildSkillsMaintenanceAction({
+  hasRootDocument,
   skillsCount,
   undocumentedSkillNames,
   thinSkillNames,
   thinSkillMissingSections,
 }: {
+  hasRootDocument: boolean;
   skillsCount: number;
   undocumentedSkillNames: string[];
   thinSkillNames: string[];
@@ -153,6 +155,7 @@ function buildSkillsMaintenanceAction({
     formatSkillMissingSectionAction(skillName, thinSkillMissingSections?.[skillName]),
   );
   const actions = [
+    !hasRootDocument ? 'create skills/README.md' : null,
     documentationPaths.length > 0 ? `create ${formatList(documentationPaths)}` : null,
     thinActions.length > 0 ? thinActions.join(' | ') : null,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
@@ -164,9 +167,32 @@ function buildSkillsMaintenanceAction({
   return actions.join(' | ');
 }
 
+function buildSkillsMaintenancePaths({
+  hasRootDocument,
+  skillsCount,
+  undocumentedSkillNames,
+  thinSkillNames,
+}: {
+  hasRootDocument: boolean;
+  skillsCount: number;
+  undocumentedSkillNames: string[];
+  thinSkillNames: string[];
+}): string[] {
+  if (skillsCount === 0) {
+    return ['skills/'];
+  }
+
+  return Array.from(new Set([
+    ...(!hasRootDocument ? ['skills/README.md'] : []),
+    ...buildSkillsDocumentationPaths(undocumentedSkillNames),
+    ...buildSkillsDocumentationPaths(thinSkillNames),
+  ]));
+}
+
 function collectRecommendedActions({
   memoryHasRootDocument,
   memoryEmptyBuckets,
+  skillsHasRootDocument,
   skillsCount,
   undocumentedSkillNames,
   thinSkillNames,
@@ -176,6 +202,7 @@ function collectRecommendedActions({
 }: {
   memoryHasRootDocument: boolean;
   memoryEmptyBuckets: string[];
+  skillsHasRootDocument: boolean;
   skillsCount: number;
   undocumentedSkillNames: string[];
   thinSkillNames: string[];
@@ -195,6 +222,7 @@ function collectRecommendedActions({
   }
 
   const skillsAction = buildSkillsMaintenanceAction({
+    hasRootDocument: skillsHasRootDocument,
     skillsCount,
     undocumentedSkillNames,
     thinSkillNames,
@@ -308,6 +336,7 @@ function buildCoreFoundationMaintenance({
 }): CoreFoundationMaintenanceSummary {
   const queue: CoreFoundationMaintenanceQueueItem[] = [];
   const skillsAction = buildSkillsMaintenanceAction({
+    hasRootDocument: skills.hasRootDocument,
     skillsCount: skills.count,
     undocumentedSkillNames: missingSkillNames,
     thinSkillNames,
@@ -339,10 +368,19 @@ function buildCoreFoundationMaintenance({
     },
     {
       area: 'skills',
-      status: skills.count === 0 ? 'missing' : (skills.documentedCount < skills.count ? 'thin' : 'ready'),
+      status: skills.count === 0
+        ? 'missing'
+        : ((!skills.hasRootDocument || thinSkillNames.length > 0 || skills.documentedCount < skills.count)
+          ? 'thin'
+          : 'ready'),
       summary: summarizeSkillsFoundation(skills),
       action: skillsAction,
-      paths: skills.count === 0 ? ['skills/'] : Array.from(new Set([...missingSkillPaths, ...thinSkillPaths])),
+      paths: buildSkillsMaintenancePaths({
+        hasRootDocument: skills.hasRootDocument,
+        skillsCount: skills.count,
+        undocumentedSkillNames: missingSkillNames,
+        thinSkillNames,
+      }),
       ...(missingSkillPaths.length > 0 ? { missingPaths: missingSkillPaths } : {}),
       ...(thinSkillPaths.length > 0 ? { thinPaths: thinSkillPaths } : {}),
       ...(Object.keys(thinSkillMissingSectionsByPath).length > 0 ? { thinMissingSections: thinSkillMissingSectionsByPath } : {}),
@@ -763,7 +801,7 @@ export function buildCoreFoundationSummary({
 
   if (skills.count === 0) {
     missingAreas.push('skills');
-  } else if (skills.documentedCount === 0 || skills.documentedCount < skills.count) {
+  } else if (!skills.hasRootDocument || skills.documentedCount < skills.count || thinSkillNames.length > 0) {
     thinAreas.push('skills');
   }
 
@@ -788,6 +826,7 @@ export function buildCoreFoundationSummary({
     recommendedActions: collectRecommendedActions({
       memoryHasRootDocument: memory.hasRootDocument,
       memoryEmptyBuckets: memory.emptyBuckets,
+      skillsHasRootDocument: skills.hasRootDocument,
       skillsCount: skills.count,
       undocumentedSkillNames: missingSkillNames,
       thinSkillNames,

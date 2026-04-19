@@ -18,6 +18,7 @@ function quotePaths(paths: string[]): string {
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
 const SKILL_SECTIONS = [
@@ -101,6 +102,15 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
   }
 
   return `mkdir -p skills/starter && printf %s ${shellSingleQuote(SKILL_STARTER_TEMPLATE)} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
+}
+
+function buildSkillsRootReadmeCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/README.md') {
+    return null;
+  }
+
+  return `mkdir -p ${shellSingleQuote('skills')} && printf %s ${shellSingleQuote(SKILLS_README_TEMPLATE)} > ${shellSingleQuote('skills/README.md')}`;
 }
 
 function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
@@ -234,24 +244,41 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   const missingPaths = normalizeRelativePaths(record.missingPaths).map((value) => value.split(path.sep).join('/'));
   const thinPaths = normalizeRelativePaths(record.thinPaths).map((value) => value.split(path.sep).join('/'));
 
-  if (area === 'skills' && (missingPaths.length > 0 || thinPaths.length > 0)) {
-    const createCommand = buildSkillDocumentationSeedCommand(missingPaths);
-    const appendCommand = buildSkillGuidanceAppendCommand(thinPaths);
-    if (createCommand && appendCommand) {
-      return `(${createCommand}) && (${appendCommand})`;
+  if (area === 'skills') {
+    const rootReadmePaths = paths.filter((value) => value === 'skills/README.md');
+    const skillPaths = paths.filter((value) => value.endsWith('/SKILL.md'));
+    const normalizedMissingSkillPaths = missingPaths.filter((value) => value.endsWith('/SKILL.md'));
+    const normalizedThinSkillPaths = thinPaths.filter((value) => value.endsWith('/SKILL.md'));
+    const rootReadmeCommand = buildSkillsRootReadmeCommand(rootReadmePaths);
+
+    if (normalizedMissingSkillPaths.length > 0 || normalizedThinSkillPaths.length > 0 || rootReadmeCommand) {
+      const createCommand = buildSkillDocumentationSeedCommand(normalizedMissingSkillPaths);
+      const appendCommand = buildSkillGuidanceAppendCommand(normalizedThinSkillPaths);
+      const commandSegments = [rootReadmeCommand, createCommand, appendCommand]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      if (commandSegments.length === 1) {
+        return commandSegments[0];
+      }
+
+      if (commandSegments.length > 1) {
+        return commandSegments.map((command) => `(${command})`).join(' && ');
+      }
     }
 
-    return createCommand ?? appendCommand;
-  }
+    if (rootReadmeCommand && skillPaths.length === 0) {
+      return rootReadmeCommand;
+    }
 
-  if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
-    return buildSkillDocumentationSeedCommand(paths);
-  }
+    if (skillPaths.length > 0 && skillPaths.length === paths.length) {
+      return buildSkillDocumentationSeedCommand(skillPaths);
+    }
 
-  if (area === 'skills' && status === 'missing') {
-    const skillsStarterCommand = buildSkillsStarterCommand(paths);
-    if (skillsStarterCommand) {
-      return skillsStarterCommand;
+    if (status === 'missing') {
+      const skillsStarterCommand = buildSkillsStarterCommand(paths);
+      if (skillsStarterCommand) {
+        return skillsStarterCommand;
+      }
     }
   }
 

@@ -36,6 +36,7 @@ const VOICE_SECTIONS = [
   },
 ];
 const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
 const SOUL_SECTIONS = [
   {
@@ -262,6 +263,28 @@ test('buildCoreFoundationCommand scaffolds a starter skill when the skills area 
       paths: ['skills/'],
     }),
     "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'",
+  );
+});
+
+test('buildCoreFoundationCommand seeds a skills README when repo skill docs exist but shared guidance is missing', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+  });
+
+  assert.equal(
+    command,
+    `mkdir -p 'skills' && printf %s '${SKILLS_README_TEMPLATE}' > 'skills/README.md'`,
+  );
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-skills-readme-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    SKILLS_README_TEMPLATE,
   );
 });
 
