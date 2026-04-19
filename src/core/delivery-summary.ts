@@ -129,6 +129,7 @@ export type DeliverySummary = {
   helperCommands: {
     bootstrapEnv: string | null;
     populateEnvTemplate: string | null;
+    populateDeliveryEnv: string | null;
     populateChannelEnv: string | null;
     populateProviderEnv: string | null;
     scaffoldChannelManifest: string | null;
@@ -445,6 +446,10 @@ export function buildDeliverySummary(
     helperCommands: {
       bootstrapEnv: null,
       populateEnvTemplate: null,
+      populateDeliveryEnv: buildPopulateEnvCommand([
+        ...channelQueue.flatMap((channel) => channel.missingEnvVars),
+        ...providerQueue.flatMap((provider) => provider.missingEnvVars),
+      ]),
       populateChannelEnv: buildPopulateEnvCommand(channelQueue.flatMap((channel) => channel.missingEnvVars)),
       populateProviderEnv: buildPopulateEnvCommand(providerQueue.flatMap((provider) => provider.missingEnvVars)),
       scaffoldChannelManifest: firstChannelMissingManifest

@@ -397,6 +397,7 @@ type DeliverySummary = {
   helperCommands?: {
     bootstrapEnv?: string | null;
     populateEnvTemplate?: string | null;
+    populateDeliveryEnv?: string | null;
     populateChannelEnv?: string | null;
     populateProviderEnv?: string | null;
     scaffoldChannelManifest?: string | null;
@@ -920,9 +921,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     .filter((channel) => channel?.id)
     .map((channel) => [channel.id, channel]));
   const helperCommands = delivery?.helperCommands ?? {};
+  const showPopulateDeliveryEnv = Boolean(
+    helperCommands.populateDeliveryEnv
+      && helperCommands.populateDeliveryEnv !== helperCommands.populateChannelEnv
+      && helperCommands.populateDeliveryEnv !== helperCommands.populateProviderEnv,
+  );
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
     helperCommands.populateEnvTemplate ? `template env ${helperCommands.populateEnvTemplate}` : null,
+    showPopulateDeliveryEnv ? `delivery env ${helperCommands.populateDeliveryEnv}` : null,
     helperCommands.populateChannelEnv ? `channel env ${helperCommands.populateChannelEnv}` : null,
     helperCommands.populateProviderEnv ? `provider env ${helperCommands.populateProviderEnv}` : null,
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
