@@ -1864,7 +1864,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(20000),
+    promptPreview: prompt.buildPreview(40000),
   };
 }
 

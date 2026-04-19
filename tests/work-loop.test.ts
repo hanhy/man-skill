@@ -197,7 +197,7 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add missing sections to memory\/README\.md: what-belongs-here, buckets/);
-  assert.match(summary.promptPreview, /command: \{ if grep -Fqx -- '## What belongs here' 'memory\/README\.md'/);
+  assert.match(summary.promptPreview, /command: node -e 'const fs = require\('/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 

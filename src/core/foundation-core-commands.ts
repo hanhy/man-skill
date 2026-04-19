@@ -243,6 +243,14 @@ function buildMemoryReadmeRepairCommand(paths: string[]): string | null {
   return buildDocumentRepairCommand('memory/README.md', MEMORY_README_GUIDANCE_SENTINEL, MEMORY_README_SECTIONS);
 }
 
+function stripMarkdownHeadingMarkup(heading: string): string {
+  return heading
+    .trim()
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/\s+#+\s*$/, '')
+    .trim();
+}
+
 function buildDocumentRepairCommand(
   filePath: string,
   _sentinel: string,
@@ -253,27 +261,23 @@ function buildDocumentRepairCommand(
     existingBulletAppend: string;
   }>,
 ): string {
-  const file = shellSingleQuote(filePath);
-  const buildSectionHasContentCommand = (heading: string) => [
-    'awk',
-    `-v heading=${shellSingleQuote(heading)}`,
-    shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
-    file,
+  const normalizedSections = sections.map((section) => ({
+    headingText: stripMarkdownHeadingMarkup(section.heading),
+    headingLevel: (section.heading.match(/^#{1,6}/)?.[0].length ?? 2),
+    missingSectionAppend: section.missingSectionAppend,
+    existingBulletAppend: section.existingBulletAppend,
+  }));
+  const script = [
+    "const fs = require('node:fs');",
+    `const file = ${JSON.stringify(filePath)};`,
+    `const sections = ${JSON.stringify(normalizedSections)};`,
+    "const parseHeading = (line) => { const trimmed = line.trim(); const match = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (!match) return null; return { level: match[1].length, text: match[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase() }; };",
+    "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
+    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; for (let index = 0; index < lines.length; index += 1) { const parsed = parseHeading(lines[index]); if (!parsed || parsed.text !== target) continue; if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; } } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } let endIndex = lines.length; for (let index = headingIndex + 1; index < lines.length; index += 1) { const parsed = parseHeading(lines[index]); if (parsed && parsed.level <= headingLevel) { endIndex = index; break; } } const hasContent = lines.slice(headingIndex + 1, endIndex).some((line) => line.trim().length > 0); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(headingIndex + 1, 0, ...insertLines); }",
+    "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
   ].join(' ');
-  const buildInsertIntoExistingSectionCommand = (heading: string, bullet: string) => {
-    const normalizedBullet = bullet.replace(/\n+$/, '');
-    const escapePerlReplacement = (value: string) => value
-      .replace(/\\/g, '\\\\')
-      .replace(/\$/g, '\\$')
-      .replace(/~/g, '\\~');
-    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
-    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
-  };
-  const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
-  );
 
-  return `{ ${sectionCommands.join('; ')}; }`;
+  return `node -e ${shellSingleQuote(script)}`;
 }
 
 function buildVoiceCommand(status: string | null): string | null {

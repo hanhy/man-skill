@@ -983,7 +983,7 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
 
   assert.equal(soulSummary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(soulSummary.workLoop.currentPriority?.nextAction, 'add non-heading guidance to SOUL.md');
-  assert.match(soulSummary.workLoop.currentPriority?.command ?? '', /perl -0pi -e/);
+  assert.match(soulSummary.workLoop.currentPriority?.command ?? '', /node -e/);
   assert.deepEqual(soulSummary.workLoop.currentPriority?.paths, ['SOUL.md']);
   assert.match(soulSummary.promptPreview, /next action: add non-heading guidance to SOUL\.md/);
 });
@@ -1329,7 +1329,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/README\.md, skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
-  assert.match(summary.promptPreview, /if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'; then awk -v heading='## What this skill is for'/);
+  assert.match(summary.promptPreview, /node -e 'const fs = require\('/);
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: create skills\/README\.md \| add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow/);
@@ -1620,7 +1620,7 @@ test('buildSummary treats partially structured skills root guidance as thin core
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md/);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(delivery\); root: Shared repo guidance for reusable procedures\.\; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\./);
-  assert.match(summary.promptPreview, /if grep -Fqx -- '## Layout' 'skills\/README\.md'; then awk -v heading='## Layout'/);
+  assert.match(summary.promptPreview, /node -e 'const fs = require\('/);
 });
 
 test('buildSummary treats deeper markdown headings in skills root docs as structured sections', () => {
