@@ -1,0 +1,28 @@
+{
+  "personId": "harry-han",
+  "displayName": "Harry Han",
+  "summary": "Direct operator with a bias for momentum and fast feedback loops.",
+  "entries": [],
+  "entryTemplates": {
+    "text": {
+      "type": "text",
+      "file": "sample.txt",
+      "notes": "long-form writing sample"
+    },
+    "message": {
+      "type": "message",
+      "text": "<paste a representative short message>",
+      "notes": "chat sample"
+    },
+    "talk": {
+      "type": "talk",
+      "text": "<paste a transcript snippet>",
+      "notes": "voice memo transcript"
+    },
+    "screenshot": {
+      "type": "screenshot",
+      "file": "<relative-path-to-image.png>",
+      "notes": "chat screenshot"
+    }
+  }
+}

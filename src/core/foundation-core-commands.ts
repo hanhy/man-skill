@@ -18,12 +18,56 @@ function quotePaths(paths: string[]): string {
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
+const MEMORY_README_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
+const MEMORY_README_SECTIONS = [
+  {
+    heading: '## What belongs here',
+    sentinel: '- Durable repo knowledge and operator context.',
+    missingSectionAppend: '\n## What belongs here\n- Durable repo knowledge and operator context.\n',
+    existingBulletAppend: '- Durable repo knowledge and operator context.\n',
+  },
+  {
+    heading: '## Buckets',
+    sentinel: '- daily/: short-lived run notes',
+    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  },
+] as const;
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
+const SKILLS_README_SECTIONS = [
+  {
+    heading: '## What lives here',
+    sentinel: '- Reusable operator procedures and behavior modules.',
+    missingSectionAppend: '\n## What lives here\n- Reusable operator procedures and behavior modules.\n',
+    existingBulletAppend: '- Reusable operator procedures and behavior modules.\n',
+  },
+  {
+    heading: '## Layout',
+    sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  },
+] as const;
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
 const SKILL_GUIDANCE_SENTINEL = '- Describe when to use this skill.';
-const SKILL_GUIDANCE_APPEND_TEMPLATE = '\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
-const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const SKILL_SECTIONS = [
+  {
+    heading: '## What this skill is for',
+    sentinel: '- Describe when to use this skill.',
+    missingSectionAppend: '\n## What this skill is for\n- Describe when to use this skill.\n',
+    existingBulletAppend: '- Describe when to use this skill.\n',
+  },
+  {
+    heading: '## Suggested workflow',
+    sentinel: '- Add the steps here.',
+    missingSectionAppend: '\n## Suggested workflow\n- Add the steps here.\n',
+    existingBulletAppend: '- Add the steps here.\n',
+  },
+] as const;
+const VOICE_STARTER_TEMPLATE = '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n';
 const VOICE_GUIDANCE_SENTINEL = '- Describe the target cadence, directness, and emotional texture here.';
-const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n';
+const VOICE_GUIDANCE_APPEND_TEMPLATE = '\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n';
 const VOICE_SECTIONS = [
   {
     heading: '## Tone',
@@ -42,6 +86,12 @@ const VOICE_SECTIONS = [
     sentinel: '- List wording, hedges, or habits that break the voice.',
     missingSectionAppend: '\n## Avoid\n- List wording, hedges, or habits that break the voice.\n',
     existingBulletAppend: '- List wording, hedges, or habits that break the voice.\n',
+  },
+  {
+    heading: '## Language hints',
+    sentinel: '- Note bilingual, dialect, or code-switching habits worth preserving.',
+    missingSectionAppend: '\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+    existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ] as const;
 const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
@@ -67,6 +117,26 @@ const SOUL_SECTIONS = [
     existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
   },
 ] as const;
+const SOUL_OPENCLAW_SECTIONS = [
+  {
+    heading: '## Core truths',
+    sentinel: '- Describe the durable values and goals that should survive across tasks.',
+    missingSectionAppend: '\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n',
+    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
+  },
+  {
+    heading: '## Boundaries',
+    sentinel: '- Capture what the agent should protect or refuse to compromise.',
+    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
+    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Continuity',
+    sentinel: '- Note the principles to use when tradeoffs appear.',
+    missingSectionAppend: '\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
+  },
+] as const;
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -82,6 +152,24 @@ function buildSkillsStarterCommand(paths: string[]): string | null {
   }
 
   return `mkdir -p skills/starter && printf %s ${shellSingleQuote(SKILL_STARTER_TEMPLATE)} > ${shellSingleQuote('skills/starter/SKILL.md')}`;
+}
+
+function buildSkillsRootReadmeCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/README.md') {
+    return null;
+  }
+
+  return `mkdir -p ${shellSingleQuote('skills')} && printf %s ${shellSingleQuote(SKILLS_README_TEMPLATE)} > ${shellSingleQuote('skills/README.md')}`;
+}
+
+function buildSkillsRootReadmeRepairCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/README.md') {
+    return null;
+  }
+
+  return buildDocumentRepairCommand('skills/README.md', SKILLS_README_GUIDANCE_SENTINEL, SKILLS_README_SECTIONS);
 }
 
 function buildSkillDocumentationSeedCommand(paths: string[]): string | null {
@@ -104,12 +192,11 @@ function buildSkillGuidanceAppendCommand(paths: string[]): string | null {
   }
 
   if (normalizedPaths.length === 1) {
-    const filePath = shellSingleQuote(normalizedPaths[0]);
-    return `grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} ${filePath} || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> ${filePath}`;
+    return buildDocumentRepairCommand(normalizedPaths[0], SKILL_GUIDANCE_SENTINEL, SKILL_SECTIONS);
   }
 
-  const fileList = normalizedPaths.map(shellSingleQuote).join(' ');
-  return `for file in ${fileList}; do grep -Fqx -- ${shellSingleQuote(SKILL_GUIDANCE_SENTINEL)} "$file" || printf %s ${shellSingleQuote(SKILL_GUIDANCE_APPEND_TEMPLATE)} >> "$file"; done`;
+  const repairCommands = normalizedPaths.map((filePath) => `(${buildDocumentRepairCommand(filePath, SKILL_GUIDANCE_SENTINEL, SKILL_SECTIONS)})`);
+  return repairCommands.join(' && ');
 }
 
 function buildMemorySeedCommand(paths: string[]): string | null {
@@ -147,9 +234,18 @@ function buildMemorySeedCommand(paths: string[]): string | null {
   return commandSegments.join(' && ');
 }
 
+function buildMemoryReadmeRepairCommand(paths: string[]): string | null {
+  const normalizedPaths = Array.from(new Set(paths));
+  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'memory/README.md') {
+    return null;
+  }
+
+  return buildDocumentRepairCommand('memory/README.md', MEMORY_README_GUIDANCE_SENTINEL, MEMORY_README_SECTIONS);
+}
+
 function buildDocumentRepairCommand(
   filePath: string,
-  sentinel: string,
+  _sentinel: string,
   sections: ReadonlyArray<{
     heading: string;
     sentinel: string;
@@ -158,11 +254,26 @@ function buildDocumentRepairCommand(
   }>,
 ): string {
   const file = shellSingleQuote(filePath);
+  const buildSectionHasContentCommand = (heading: string) => [
+    'awk',
+    `-v heading=${shellSingleQuote(heading)}`,
+    shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
+    file,
+  ].join(' ');
+  const buildInsertIntoExistingSectionCommand = (heading: string, bullet: string) => {
+    const normalizedBullet = bullet.replace(/\n+$/, '');
+    const escapePerlReplacement = (value: string) => value
+      .replace(/\\/g, '\\\\')
+      .replace(/\$/g, '\\$')
+      .replace(/~/g, '\\~');
+    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
+    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
+  };
   const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then grep -Fqx -- ${shellSingleQuote(section.sentinel)} ${file} || printf %s ${shellSingleQuote(section.existingBulletAppend)} >> ${file}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
+    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
   );
 
-  return `grep -Fqx -- ${shellSingleQuote(sentinel)} ${file} || { ${sectionCommands.join('; ')}; }`;
+  return `{ ${sectionCommands.join('; ')}; }`;
 }
 
 function buildVoiceCommand(status: string | null): string | null {
@@ -183,7 +294,53 @@ function buildSoulCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    return buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
+    const defaultRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
+    const openclawRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_OPENCLAW_SECTIONS);
+    const normalizeToOpenclaw = [
+      "import fs from 'node:fs';",
+      "const file = 'SOUL.md';",
+      "const raw = fs.readFileSync(file, 'utf8');",
+      "const lines = raw.split(/\\r?\\n/);",
+      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
+      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', continuity: '## Continuity' };",
+      "const sectionOrder = ['core-truths', 'boundaries', 'continuity'];",
+      "const seen = new Set();",
+      "const sections = { 'core-truths': [], boundaries: [], continuity: [] };",
+      "const prelude = [];",
+      "const extras = [];",
+      "let currentSection = null;",
+      "let currentExtra = null;",
+      "for (const line of lines) {",
+      "  const trimmed = line.trim();",
+      "  if (/^## /.test(trimmed)) {",
+      "    const key = aliasMap.get(trimmed.slice(3).trim().toLowerCase()) ?? null;",
+      "    if (key) { currentSection = key; currentExtra = null; seen.add(key); continue; }",
+      "    currentSection = null; currentExtra = [line]; extras.push(currentExtra); continue;",
+      "  }",
+      "  if (currentExtra) { currentExtra.push(line); continue; }",
+      "  if (currentSection) { sections[currentSection].push(line); continue; }",
+      "  prelude.push(line);",
+      "}",
+      "const trimBlankEdges = (values) => { while (values.length > 0 && values[0].trim() === '') values.shift(); while (values.length > 0 && values[values.length - 1].trim() === '') values.pop(); return values; };",
+      "const output = trimBlankEdges([...prelude]);",
+      "for (const key of sectionOrder) {",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(sectionHeadings[key]);",
+      "  const body = trimBlankEdges([...sections[key]]);",
+      "  output.push(...body);",
+      "}",
+      "for (const extra of extras) {",
+      "  const body = trimBlankEdges([...extra]);",
+      "  if (body.length === 0) continue;",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(...body);",
+      "}",
+      "const normalized = `${output.join('\\n').replace(/\\n+$/, '')}\\n`;",
+      "fs.writeFileSync(file, normalized);",
+    ].join(' ');
+    const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
+    const openclawDetected = "grep -Eq '^## (Core truths|Continuity)$' 'SOUL.md' || { grep -Fqx -- '## Boundaries' 'SOUL.md' && ! grep -Eq '^## (Core values|Decision rules)$' 'SOUL.md'; }";
+    return `if ${openclawDetected}; then ${normalizeCommand} && ${openclawRepair}; else ${defaultRepair}; fi`;
   }
 
   return null;
@@ -201,24 +358,44 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   const missingPaths = normalizeRelativePaths(record.missingPaths).map((value) => value.split(path.sep).join('/'));
   const thinPaths = normalizeRelativePaths(record.thinPaths).map((value) => value.split(path.sep).join('/'));
 
-  if (area === 'skills' && (missingPaths.length > 0 || thinPaths.length > 0)) {
-    const createCommand = buildSkillDocumentationSeedCommand(missingPaths);
-    const appendCommand = buildSkillGuidanceAppendCommand(thinPaths);
-    if (createCommand && appendCommand) {
-      return `(${createCommand}) && (${appendCommand})`;
+  if (area === 'skills') {
+    const rootReadmePaths = paths.filter((value) => value === 'skills/README.md');
+    const rootThinPaths = thinPaths.filter((value) => value === 'skills/README.md');
+    const skillPaths = paths.filter((value) => value.endsWith('/SKILL.md'));
+    const normalizedMissingSkillPaths = missingPaths.filter((value) => value.endsWith('/SKILL.md'));
+    const normalizedThinSkillPaths = thinPaths.filter((value) => value.endsWith('/SKILL.md'));
+    const rootReadmeCommand = rootThinPaths.length > 0
+      ? buildSkillsRootReadmeRepairCommand(rootThinPaths)
+      : buildSkillsRootReadmeCommand(rootReadmePaths);
+
+    if (normalizedMissingSkillPaths.length > 0 || normalizedThinSkillPaths.length > 0 || rootReadmeCommand) {
+      const createCommand = buildSkillDocumentationSeedCommand(normalizedMissingSkillPaths);
+      const appendCommand = buildSkillGuidanceAppendCommand(normalizedThinSkillPaths);
+      const commandSegments = [rootReadmeCommand, createCommand, appendCommand]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      if (commandSegments.length === 1) {
+        return commandSegments[0];
+      }
+
+      if (commandSegments.length > 1) {
+        return commandSegments.map((command) => `(${command})`).join(' && ');
+      }
     }
 
-    return createCommand ?? appendCommand;
-  }
+    if (rootReadmeCommand && skillPaths.length === 0) {
+      return rootReadmeCommand;
+    }
 
-  if (area === 'skills' && paths.length > 0 && paths.every((value) => value.endsWith('/SKILL.md'))) {
-    return buildSkillDocumentationSeedCommand(paths);
-  }
+    if (skillPaths.length > 0 && skillPaths.length === paths.length) {
+      return buildSkillDocumentationSeedCommand(skillPaths);
+    }
 
-  if (area === 'skills' && status === 'missing') {
-    const skillsStarterCommand = buildSkillsStarterCommand(paths);
-    if (skillsStarterCommand) {
-      return skillsStarterCommand;
+    if (status === 'missing') {
+      const skillsStarterCommand = buildSkillsStarterCommand(paths);
+      if (skillsStarterCommand) {
+        return skillsStarterCommand;
+      }
     }
   }
 
@@ -231,7 +408,15 @@ export function buildCoreFoundationCommand(queuedArea: unknown): string | null {
   }
 
   if (area === 'memory' && (status === 'missing' || status === 'thin')) {
-    const memoryCommand = buildMemorySeedCommand(paths);
+    const memoryThinRootPaths = thinPaths.filter((value) => value === 'memory/README.md');
+    const memorySeedPaths = paths.filter((value) => value !== 'memory/README.md' || !memoryThinRootPaths.includes(value));
+    const commandSegments = [
+      buildMemoryReadmeRepairCommand(memoryThinRootPaths),
+      buildMemorySeedCommand(memorySeedPaths),
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+    const memoryCommand = commandSegments.length <= 1
+      ? (commandSegments[0] ?? null)
+      : commandSegments.join(' && ');
     if (memoryCommand) {
       return memoryCommand;
     }

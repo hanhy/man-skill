@@ -138,6 +138,115 @@ function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, gen
   ];
 }
 
+function buildVoiceDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  voiceSamples,
+}) {
+  const toneLine = buildExcerpt(
+    profileDocument?.summary ?? voiceSamples[0]?.excerpt ?? 'Preserve the strongest cadence present in the imported materials.',
+  ) ?? 'Preserve the strongest cadence present in the imported materials.';
+  const signatureLines = voiceSamples.length > 0
+    ? voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`)
+    : ['- Add representative phrasing from imported materials here.'];
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Voice draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Tone',
+    toneLine,
+    '',
+    '## Signature moves',
+    ...signatureLines,
+    '',
+    '## Avoid',
+    'Avoid padding, hedging, or over-explaining beyond what the imported materials support.',
+    '',
+    '## Language hints',
+    'Preserve bilingual, dialect, or code-switching patterns when they appear in the imported materials.',
+  ];
+}
+
+function buildSoulDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  soulSignals,
+}) {
+  const coreValueLines = soulSignals.length > 0
+    ? soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`)
+    : ['No durable value signals have been extracted yet.'];
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Soul draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Core values',
+    ...coreValueLines,
+    '',
+    '## Boundaries',
+    'Stay within the evidence from imported materials before promoting a behavior into a durable identity rule.',
+    '',
+    '## Decision rules',
+    'Prefer the strongest repeated values and tradeoff language from imported materials when evolving this profile.',
+  ];
+}
+
+function buildSkillsDraftLines({
+  normalizedPersonId,
+  profileDocument,
+  generatedAt,
+  latestMaterialRecord,
+  materialCount,
+  materialTypes,
+  skillSignals,
+}) {
+  const candidateSkillLines = skillSignals.length > 0
+    ? skillSignals.map((signal) => `- ${signal.note}`)
+    : ['No explicit procedural skill notes have been captured yet.'];
+  const evidenceLines = skillSignals.flatMap((signal) => (signal.excerpt ? [`- sample: ${signal.excerpt}`] : []));
+
+  return [
+    ...buildDraftHeaderLines({
+      title: 'Skills draft',
+      normalizedPersonId,
+      profileDocument,
+      generatedAt,
+      latestMaterialRecord,
+      materialCount,
+      materialTypes,
+    }),
+    '## Candidate skills',
+    ...candidateSkillLines,
+    '',
+    '## Evidence',
+    ...(evidenceLines.length > 0 ? evidenceLines : ['No concrete material excerpts are attached to the current procedural notes yet.']),
+    '',
+    '## Gaps to validate',
+    'Promote repeated procedures into reusable skills only after they appear consistently across imported materials.',
+  ];
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
@@ -178,6 +287,21 @@ function buildProfileDocument({ existingProfile = null, normalizedId, personId, 
     displayName: normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId,
     summary: normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary,
   };
+}
+
+function shouldRewriteProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
+  if (!existingProfile) {
+    return true;
+  }
+
+  const normalizedDisplayName = normalizeText(displayName);
+  const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
+  const nextDisplayName = normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId;
+  const nextSummary = normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary;
+
+  return existingProfile.id !== normalizedId
+    || existingProfile.displayName !== nextDisplayName
+    || (existingProfile.summary ?? null) !== nextSummary;
 }
 
 function buildManifestImportCommand(manifestPath) {
@@ -229,8 +353,13 @@ function buildUpdateProfileCommand({ personId, displayName, summary, refreshFoun
   return commandParts.join(' ');
 }
 
-function buildImportIntakeCommand(personId) {
-  return `node src/index.js import intake --person ${shellQuote(personId)} --refresh-foundation`;
+function buildImportIntakeCommand(personId, { refreshFoundation = false } = {}) {
+  const commandParts = ['node src/index.js import intake', '--person', shellQuote(personId)];
+  if (refreshFoundation) {
+    commandParts.push('--refresh-foundation');
+  }
+
+  return commandParts.join(' ');
 }
 
 function buildIntakePaths(personId) {
@@ -343,6 +472,7 @@ function buildIntakeReadme({
   importManifestCommand,
   importCommands,
   updateIntakeCommand,
+  importIntakeWithoutRefreshCommand,
   importIntakeCommand,
   updateProfileCommand,
   updateProfileAndRefreshCommand,
@@ -366,7 +496,8 @@ function buildIntakeReadme({
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
-    `- import via the profile-local intake shortcut: ${importIntakeCommand}`,
+    `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`,
+    `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
@@ -397,7 +528,8 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
   const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
-  const importIntakeCommand = buildImportIntakeCommand(personId);
+  const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(personId);
+  const importIntakeCommand = buildImportIntakeCommand(personId, { refreshFoundation: true });
 
   return {
     personId,
@@ -412,8 +544,10 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     refreshFoundationCommand,
+    importIntakeWithoutRefreshCommand,
     helperCommands: {
       scaffold: scaffoldCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: importCommand,
       updateProfile: updateProfileCommand,
@@ -444,7 +578,13 @@ export class MaterialIngestion {
     const profilePath = path.join(profileDir, 'profile.json');
 
     const existingProfile = readJsonIfExists(profilePath);
-    if (!existingProfile || Object.keys(profileUpdates).length > 0) {
+    if (shouldRewriteProfileDocument({
+      existingProfile,
+      normalizedId,
+      personId,
+      displayName: profileUpdates.displayName,
+      summary: profileUpdates.summary,
+    })) {
       const profileDocument = buildProfileDocument({
         existingProfile,
         normalizedId,
@@ -519,7 +659,8 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
     });
-    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId);
+    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
+    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
@@ -533,6 +674,7 @@ export class MaterialIngestion {
         importManifestCommand,
         importCommands,
         updateIntakeCommand,
+        importIntakeWithoutRefreshCommand,
         importIntakeCommand,
         updateProfileCommand,
         updateProfileAndRefreshCommand,
@@ -549,6 +691,7 @@ export class MaterialIngestion {
         ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
         : null,
       importManifestCommand,
+      importIntakeWithoutRefreshCommand,
       importIntakeCommand,
       updateIntakeCommand,
       importCommands,
@@ -557,6 +700,7 @@ export class MaterialIngestion {
       updateProfileAndRefreshCommand,
       helperCommands: {
         scaffold: updateIntakeCommand,
+        importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
         importIntake: importIntakeCommand,
         importManifest: importManifestCommand,
         updateProfile: updateProfileCommand,
@@ -634,7 +778,23 @@ export class MaterialIngestion {
     };
   }
 
-  importProfileIntakeManifest({ personId }) {
+  scaffoldImportedProfileIntakes() {
+    const profiles = new FileSystemLoader(this.rootDir)
+      .loadProfilesIndex()
+      .filter((profile) => (profile?.materialCount ?? 0) > 0 && !profile?.intake?.ready)
+      .sort((left, right) => (left?.id ?? '').localeCompare(right?.id ?? ''));
+
+    return {
+      profileCount: profiles.length,
+      results: profiles.map((profile) => this.scaffoldProfileIntake({
+        personId: profile.id,
+        displayName: profile?.profile?.displayName,
+        summary: profile?.profile?.summary,
+      })),
+    };
+  }
+
+  importProfileIntakeManifest({ personId, refreshFoundation = false }) {
     const normalizedPersonId = slugifyPersonId(personId ?? '');
     if (!normalizedPersonId) {
       throw new Error('personId is required for intake import');
@@ -653,32 +813,58 @@ export class MaterialIngestion {
 
     return this.importManifest({
       manifestFile: profile.intake.starterManifestPath,
-      refreshFoundation: true,
+      refreshFoundation,
     });
   }
 
-  importAllProfileIntakeManifests() {
-    const profiles = this.listProfilesWithReadyIntake();
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+  buildBatchManifestImportResult(profiles, results) {
+    const profileIds = [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort();
+    const profileSummaries = profileIds.map((personId) => results
+      .flatMap((result) => result?.profileSummaries ?? [])
+      .find((entry) => entry?.personId === personId))
+      .filter(Boolean);
+    const foundationRefreshResults = profileIds.map((personId) => results
+      .flatMap((result) => result?.foundationRefresh?.results ?? [])
+      .find((entry) => entry?.personId === personId))
+      .filter(Boolean);
 
     return {
       profileCount: profiles.length,
       entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
-      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
+      profileIds,
+      ...(profileSummaries.length > 0 ? { profileSummaries } : {}),
+      ...(foundationRefreshResults.length > 0
+        ? {
+            foundationRefresh: {
+              profileCount: foundationRefreshResults.length,
+              results: foundationRefreshResults,
+            },
+          }
+        : {}),
       results,
     };
   }
 
-  importStaleProfileIntakeManifests() {
-    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
-    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id }));
+  importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
+    const profiles = this.listProfilesWithReadyIntake();
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return {
-      profileCount: profiles.length,
-      entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
-      profileIds: [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort(),
-      results,
-    };
+    return this.buildBatchManifestImportResult(profiles, results);
+  }
+
+  importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
+
+    return this.buildBatchManifestImportResult(profiles, results);
+  }
+
+  importImportedProfileIntakeManifests({ refreshFoundation = false } = {}) {
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: true })
+      .filter((profile) => (profile?.materialCount ?? 0) > 0);
+    const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
+
+    return this.buildBatchManifestImportResult(profiles, results);
   }
 
   writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
@@ -714,13 +900,15 @@ export class MaterialIngestion {
 
     const normalized = this.ensureProfile(personId);
     const content = fs.readFileSync(sourceFile, 'utf8');
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'text',
       content,
       notes,
       sourceFile: path.relative(this.rootDir, sourceFile),
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importMessage({ personId, text, notes = null }) {
@@ -729,12 +917,14 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'message',
       content: text,
       notes,
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importTalkSnippet({ personId, text, notes = null }) {
@@ -743,12 +933,14 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'talk',
       content: text,
       notes,
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importScreenshotSource({ personId, sourceFile, notes = null }) {
@@ -761,7 +953,7 @@ export class MaterialIngestion {
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
     fs.copyFileSync(sourceFile, targetPath);
 
-    return this.writeMaterialRecord({
+    const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'screenshot',
       notes,
@@ -769,6 +961,8 @@ export class MaterialIngestion {
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
     });
+    this.scaffoldProfileIntake({ personId: normalized.personId });
+    return result;
   }
 
   importManifest({ manifestFile, refreshFoundation = false }) {
@@ -1073,64 +1267,42 @@ export class MaterialIngestion {
 
     fs.writeFileSync(
       voiceDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Voice draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Representative voice excerpts:',
-        ...voiceSamples.map((sample) => `- [${sample.type}] ${sample.excerpt}`),
-      ].join('\n'),
+      buildVoiceDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        voiceSamples,
+      }).join('\n'),
     );
 
     fs.writeFileSync(
       soulDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Soul draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Candidate soul signals:',
-        ...soulSignals.map((signal) => `- [${signal.type}] ${signal.excerpt}`),
-      ].join('\n'),
+      buildSoulDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        soulSignals,
+      }).join('\n'),
     );
 
     fs.writeFileSync(
       skillsDraftPath,
-      [
-        ...buildDraftHeaderLines({
-          title: 'Skills draft',
-          normalizedPersonId: normalized.personId,
-          profileDocument,
-          generatedAt,
-          latestMaterialRecord,
-          materialCount: materialRecords.length,
-          materialTypes,
-        }),
-        'Candidate procedural skills:',
-        ...skillSignals.flatMap((signal) => {
-          const lines = [];
-          if (signal.note) {
-            lines.push(`- ${signal.note}`);
-          }
-          if (signal.excerpt) {
-            lines.push(`  - sample: ${signal.excerpt}`);
-          }
-          return lines;
-        }),
-      ].join('\n'),
+      buildSkillsDraftLines({
+        normalizedPersonId: normalized.personId,
+        profileDocument,
+        generatedAt,
+        latestMaterialRecord,
+        materialCount: materialRecords.length,
+        materialTypes,
+        skillSignals,
+      }).join('\n'),
     );
-
     const updateProfileCommand = buildUpdateProfileCommand({
       personId: normalized.personId,
       displayName: profileDocument?.displayName,
@@ -1148,12 +1320,14 @@ export class MaterialIngestion {
       displayName: profileDocument?.displayName,
       summary: profileDocument?.summary,
     });
-    const importIntakeCommand = buildImportIntakeCommand(normalized.personId);
+    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(normalized.personId);
+    const importIntakeCommand = buildImportIntakeCommand(normalized.personId, { refreshFoundation: true });
     const helperCommands = {
       refreshFoundation: refreshFoundationCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       updateIntake: updateIntakeCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
     };
 
@@ -1168,6 +1342,7 @@ export class MaterialIngestion {
       updateProfileCommand,
       updateProfileAndRefreshCommand,
       updateIntakeCommand,
+      importIntakeWithoutRefreshCommand,
       importIntakeCommand,
       helperCommands,
     };

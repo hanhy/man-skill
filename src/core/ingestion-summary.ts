@@ -49,6 +49,58 @@ function compareFoundationRefreshPriority(left, right) {
     || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
 }
 
+function summarizeDraftGap(summary: any, key: string): string | null {
+  const totalSectionCount = summary?.totalSectionCount ?? 0;
+  const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+  const readySections = Array.isArray(summary?.readySections)
+    ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const missingSections = Array.isArray(summary?.missingSections)
+    ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  if (totalSectionCount <= 0 || missingSections.length === 0) {
+    return null;
+  }
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+}
+
+function summarizeMemoryDraftGap(profile): string | null {
+  const missingDrafts = Array.isArray(profile?.foundationDraftStatus?.missingDrafts)
+    ? profile.foundationDraftStatus.missingDrafts
+    : [];
+  if (!missingDrafts.includes('memory')) {
+    return null;
+  }
+
+  const candidateCount = Number(profile?.foundationReadiness?.memory?.candidateCount ?? 0);
+  const summaryPreview = [
+    ...(profile?.foundationDraftSummaries?.memory?.latestSummaries ?? []),
+    ...(profile?.foundationReadiness?.memory?.sampleSummaries ?? []),
+  ].filter((value, index, values) => typeof value === 'string' && value.trim().length > 0 && values.indexOf(value) === index);
+
+  if (candidateCount > 0) {
+    const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
+    return summaryPreview.length > 0
+      ? `memory missing, ${candidateLabel} (${summaryPreview[0]})`
+      : `memory missing, ${candidateLabel}`;
+  }
+
+  return 'memory missing';
+}
+
+function summarizeProfileDraftGaps(profile): string | null {
+  const gapSummaries = [
+    summarizeMemoryDraftGap(profile),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
+}
+
 function buildProfileImportCommands(profileId: string, options: any = {}) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return {
@@ -488,6 +540,7 @@ function buildProfileCommands(profile, options: any = {}) {
     ? intake.starterManifestPath
     : null;
   const intakeManifestRunnable = intakeManifest.status !== 'invalid';
+  const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
   const intakeImportManifestCommand = intakeManifestPath && intakeManifestRunnable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
@@ -507,7 +560,10 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
-  const importIntakeCommand = intakeManifestRunnable
+  const importIntakeWithoutRefreshCommand = intakeManifestRunnable
+    ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
+    : null;
+  const importIntakeCommand = (imported ? importedIntakeCommandsAvailable : intakeManifestRunnable)
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
 
@@ -520,9 +576,11 @@ function buildProfileCommands(profile, options: any = {}) {
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
+    draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     updateIntakeCommand,
+    importIntakeWithoutRefreshCommand,
     importIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
@@ -532,13 +590,14 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestError: intakeManifest.error,
     intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
-    importManifestCommand: imported ? null : intakeImportManifestCommand,
+    importManifestCommand: imported && !importedIntakeCommandsAvailable ? null : intakeImportManifestCommand,
     refreshFoundationCommand,
     importCommands,
     helperCommands: {
       scaffold: updateIntakeCommand,
+      importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
-      importManifest: imported ? null : intakeImportManifestCommand,
+      importManifest: imported && !importedIntakeCommandsAvailable ? null : intakeImportManifestCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,
@@ -639,28 +698,47 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       sampleTextPersonId: sampleText.personId,
     }))
     .filter(Boolean);
+  const importedIntakeBackfillProfiles = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
+  const importedInvalidIntakeManifestProfiles = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const importedProfilesWithReadyIntake = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
+  const metadataInvalidIntakeManifestProfiles = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
   const orderedProfileCommands = allProfileCommands
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;
-      return !imported || profile?.needsRefresh || profile?.missingDrafts?.length > 0;
+      return !imported
+        || profile?.needsRefresh
+        || profile?.missingDrafts?.length > 0
+        || profile?.intakeReady === false
+        || profile?.intakeManifestStatus === 'invalid';
     });
 
   const findSampleFileCommand = (type) => sampleFileCommands.find((entry) => entry?.type === type)?.command ?? null;
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
   const bootstrapProfileCommand = 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"';
+  const importedIntakeScaffoldCommand = 'node src/index.js update intake --imported';
   const helperCommands = {
     bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
     scaffoldStale: 'node src/index.js update intake --stale',
+    scaffoldImported: importedIntakeScaffoldCommand,
     scaffoldBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === false)
+        .map((profile) => profile?.updateIntakeCommand),
+    ),
+    scaffoldImportedBundle: buildCommandBundle(
+      importedIntakeBackfillProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
     importIntakeStale: 'node src/index.js import intake --stale --refresh-foundation',
+    importIntakeImported: 'node src/index.js import intake --imported --refresh-foundation',
     importIntakeBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === true)
@@ -700,6 +778,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     readyProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    importedIntakeReadyProfileCount: importedProfilesWithReadyIntake.length,
+    importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
+    importedInvalidIntakeManifestProfileCount: importedInvalidIntakeManifestProfiles.length,
+    invalidMetadataOnlyIntakeManifestProfileCount: metadataInvalidIntakeManifestProfiles.length,
     intakeReadyProfileCount,
     intakePartialProfileCount,
     intakeMissingProfileCount,
@@ -707,10 +789,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeStaleProfileCount,
     intakeImportAllCommand: 'node src/index.js import intake --all --refresh-foundation',
     intakeImportStaleCommand: 'node src/index.js import intake --stale --refresh-foundation',
+    intakeImportImportedCommand: 'node src/index.js import intake --imported --refresh-foundation',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand,
     intakeAllCommand: 'node src/index.js update intake --all',
     intakeStaleCommand: 'node src/index.js update intake --stale',
+    intakeImportedCommand: importedIntakeScaffoldCommand,
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',

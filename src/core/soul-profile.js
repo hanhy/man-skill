@@ -1,3 +1,20 @@
+function mapSoulHeadingToSection(heading) {
+  switch (heading) {
+    case 'core truths':
+    case 'core values':
+      return 'core-truths';
+    case 'boundaries':
+      return 'boundaries';
+    case 'vibe':
+      return 'vibe';
+    case 'continuity':
+    case 'decision rules':
+      return 'continuity';
+    default:
+      return null;
+  }
+}
+
 function cleanSoulLine(value) {
   return value
     .trim()
@@ -41,24 +58,7 @@ export class SoulProfile {
 
       if (line.startsWith('## ')) {
         const heading = line.slice(3).trim().toLowerCase();
-        if (heading === 'core truths') {
-          currentSection = 'core-truths';
-          return;
-        }
-        if (heading === 'boundaries') {
-          currentSection = 'boundaries';
-          return;
-        }
-        if (heading === 'vibe') {
-          currentSection = 'vibe';
-          return;
-        }
-        if (heading === 'continuity') {
-          currentSection = 'continuity';
-          return;
-        }
-
-        currentSection = null;
+        currentSection = mapSoulHeadingToSection(heading);
         return;
       }
 

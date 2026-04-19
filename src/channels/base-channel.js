@@ -27,6 +27,23 @@ export class BaseChannel {
     this.nextStep = nextStep;
   }
 
+  requiredEnvVars() {
+    return Array.isArray(this.auth?.envVars) ? [...this.auth.envVars] : [];
+  }
+
+  missingEnvVars(environment = process.env) {
+    return this.requiredEnvVars().filter((envVar) => !environment?.[envVar]);
+  }
+
+  isConfigured(environment = process.env) {
+    const envVars = this.requiredEnvVars();
+    return envVars.length > 0 && this.missingEnvVars(environment).length === 0;
+  }
+
+  supportsCapability(capability) {
+    return typeof capability === 'string' && this.capabilities.includes(capability);
+  }
+
   summary() {
     return {
       id: this.id,

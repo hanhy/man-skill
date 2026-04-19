@@ -49,12 +49,14 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(result.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
     refreshFoundation: 'node src/index.js update foundation --person harry-han',
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
     importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   });
 
@@ -87,17 +89,31 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
   assert.match(voiceDraft, /Display name: Harry Han/);
   assert.match(voiceDraft, /Summary: Direct operator with a bias for momentum\./);
-  assert.match(voiceDraft, /Representative voice excerpts/);
-  assert.match(voiceDraft, /Ship the thin slice first\./);
-  assert.match(voiceDraft, /Cut the scope, keep the momentum/);
+  assert.match(voiceDraft, /## Tone/);
+  assert.match(voiceDraft, /Direct operator with a bias for momentum\./);
+  assert.match(voiceDraft, /## Signature moves/);
+  assert.match(voiceDraft, /- \[message\] Ship the thin slice first\./);
+  assert.match(voiceDraft, /- \[talk\] Cut the scope, keep the momentum/);
+  assert.match(voiceDraft, /## Avoid/);
+  assert.match(voiceDraft, /padding, hedging, or over-explaining/i);
+  assert.match(voiceDraft, /## Language hints/);
+  assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
-  assert.match(soulDraft, /Candidate soul signals/);
-  assert.match(soulDraft, /Harry prefers blunt execution over long debate\./);
+  assert.match(soulDraft, /## Core values/);
+  assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
+  assert.match(soulDraft, /## Boundaries/);
+  assert.match(soulDraft, /Stay within the evidence from imported materials/i);
+  assert.match(soulDraft, /## Decision rules/);
+  assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
-  assert.match(skillsDraft, /Candidate procedural skills/);
-  assert.match(skillsDraft, /product execution heuristic/);
+  assert.match(skillsDraft, /## Candidate skills/);
+  assert.match(skillsDraft, /- product execution heuristic/);
+  assert.match(skillsDraft, /## Evidence/);
+  assert.match(skillsDraft, /- sample: Cut the scope, keep the momentum, and fix the rough edges tomorrow\./);
+  assert.match(skillsDraft, /## Gaps to validate/);
+  assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
 });
 
 test('CLI update foundation command writes derived profile drafts', () => {
@@ -122,12 +138,14 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
+  assert.equal(result.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
     refreshFoundation: 'node src/index.js update foundation --person harry-han',
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+    importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
     importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   });
   assert.match(result.voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
@@ -196,7 +214,80 @@ test('CLI update intake --all reruns intake scaffolding for every metadata-only 
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
 });
 
-test('CLI import intake --person loads a profile-local starter manifest and refreshes foundation drafts', () => {
+test('CLI update intake --imported backfills imported profiles with missing intake landing zones', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Imported Missing',
+    displayName: 'Imported Missing',
+    summary: 'Imported already but still missing the intake landing zone.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Missing',
+    text: 'This profile already has imported material.',
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports'), { recursive: true, force: true });
+  const importedMissingProfilePath = path.join(rootDir, 'profiles', 'imported-missing', 'profile.json');
+  const importedMissingProfileBefore = JSON.parse(fs.readFileSync(importedMissingProfilePath, 'utf8'));
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Still metadata-only, so --imported should skip it.',
+  });
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Ready',
+    displayName: 'Imported Ready',
+    summary: 'Imported profile with an intact intake scaffold.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Ready',
+    text: 'Already imported and already scaffolded.',
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--imported'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+  const importedMissingProfileAfter = JSON.parse(fs.readFileSync(importedMissingProfilePath, 'utf8'));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['imported-missing']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-missing', 'imports', 'materials.template.json')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json')), false);
+  assert.equal(importedMissingProfileAfter.updatedAt, importedMissingProfileBefore.updatedAt);
+});
+
+test('CLI update intake refreshes foundation drafts for imported profiles when --refresh-foundation is passed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, but the intake backfill should also refresh drafts.',
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'imported-already', 'imports'), { recursive: true, force: true });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--imported', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.results[0].personId, 'imported-already');
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['imported-already']);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-already', 'voice', 'README.md')), true);
+});
+
+test('CLI import intake --person loads a profile-local starter manifest without refreshing foundation drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -239,6 +330,53 @@ test('CLI import intake --person loads a profile-local starter manifest and refr
   assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
   assert.equal(result.entryCount, 2);
   assert.deepEqual(result.profileIds, ['metadata-only']);
+  assert.equal(result.foundationRefresh ?? null, null);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), false);
+});
+
+test('CLI import intake --person refreshes foundation drafts when --refresh-foundation is passed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'),
+    'Metadata Only prefers tight feedback loops.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+        {
+          type: 'message',
+          text: 'Ship the narrow slice first.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Metadata Only', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['metadata-only']);
   assert.equal(result.foundationRefresh.profileCount, 1);
   assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/metadata-only\/memory\/long-term\/foundation\.json$/);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
@@ -267,7 +405,7 @@ test('CLI import intake --person reruns a ready profile-local starter manifest f
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -334,7 +472,7 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--all', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -344,16 +482,80 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
   assert.equal(result.profileCount, 3);
   assert.equal(result.entryCount, 3);
   assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready', 'imported-already']);
-  assert.deepEqual(result.results.map((entry) => entry.manifestFile), [
-    'profiles/alpha-ready/imports/materials.template.json',
-    'profiles/beta-ready/imports/materials.template.json',
-    'profiles/imported-already/imports/materials.template.json',
-  ]);
-  assert.deepEqual(result.results.map((entry) => entry.profileIds), [['alpha-ready'], ['beta-ready'], ['imported-already']]);
-  assert.deepEqual(result.results.flatMap((entry) => entry.profileIds), ['alpha-ready', 'beta-ready', 'imported-already']);
+  assert.equal(result.results.length, 3);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['alpha-ready', 'beta-ready', 'imported-already']);
+  assert.equal(result.profileSummaries[0].label, 'Alpha Ready (alpha-ready)');
+  assert.equal(result.profileSummaries[0].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[0].missingDrafts, []);
+  assert.equal(result.profileSummaries[1].label, 'Beta Ready (beta-ready)');
+  assert.equal(result.profileSummaries[1].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[1].missingDrafts, []);
+  assert.equal(result.profileSummaries[2].label, 'Imported Already (imported-already)');
+  assert.equal(result.profileSummaries[2].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[2].materialTypes, { text: 1 });
+  assert.equal(result.foundationRefresh.profileCount, 3);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['alpha-ready', 'beta-ready', 'imported-already']);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/alpha-ready\/voice\/README\.md$/);
+  assert.match(result.foundationRefresh.results[2].voiceDraftPath, /profiles\/imported-already\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-already', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'gamma-missing', 'voice', 'README.md')), false);
 });
 
-test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests', () => {
+test('CLI import intake --imported reruns only ready already-imported profile-local starter manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Ready',
+    displayName: 'Imported Ready',
+    summary: 'Already imported and ready for local manifest reruns.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Ready',
+    text: 'Existing imported material.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'sample.txt'), 'Imported rerun sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Ready',
+    displayName: 'Metadata Ready',
+    summary: 'Ready intake manifest but still metadata-only.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-ready', 'imports', 'sample.txt'), 'Metadata-only sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Metadata Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['imported-ready']);
+  assert.equal(result.results.length, 1);
+  assert.equal(result.results[0].manifestFile, 'profiles/imported-ready/imports/materials.template.json');
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-ready', 'voice', 'README.md')), false);
+});
+
+test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests without refreshing foundation drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -413,6 +615,9 @@ test('CLI import intake --stale loads only ready metadata-only profile-local sta
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/materials.template.json',
   ]);
+  assert.equal(result.foundationRefresh ?? null, null);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), false);
   assert.equal(result.results.some((entry) => entry.profileIds.includes('imported-already')), false);
 });
 
@@ -585,10 +790,12 @@ test('CLI --help prints a concise usage guide instead of the repo summary JSON',
   assert.match(output, /^Usage: node src\/index\.js /);
   assert.match(output, /Commands:/);
   assert.match(output, /node src\/index\.js import sample/);
-  assert.match(output, /import intake --stale\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
-  assert.match(output, /import intake --all\s+Import every ready profile-local intake manifest, including already-imported profiles/);
-  assert.match(output, /update intake --stale\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
-  assert.match(output, /update intake --all\s+Rebuild intake scaffolds for every metadata-only profile/);
+  assert.match(output, /import intake --stale \[--refresh-foundation\]\s+Import ready intake manifests for metadata-only profiles that still need first imports/);
+  assert.match(output, /import intake --imported \[--refresh-foundation\]\s+Import ready intake manifests only for already-imported profiles/);
+  assert.match(output, /import intake --all \[--refresh-foundation\]\s+Import every ready profile-local intake manifest, including already-imported profiles/);
+  assert.match(output, /update intake --stale \[--refresh-foundation\]\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
+  assert.match(output, /update intake --imported \[--refresh-foundation\]\s+Backfill intake scaffolds only for already-imported profiles missing imports\/ assets/);
+  assert.match(output, /update intake --all \[--refresh-foundation\]\s+Rebuild intake scaffolds for every metadata-only profile/);
   assert.doesNotMatch(output, /"profile": \{/);
 });
 
@@ -611,7 +818,7 @@ test('CLI command errors print a concise usage hint without a stack trace', () =
   );
 });
 
-test('CLI update intake errors advertise the full usage surface for person, stale, and all modes', () => {
+test('CLI update intake errors advertise the full usage surface for person, stale, imported, and all modes', () => {
   const rootDir = makeTempRepo();
 
   assert.throws(
@@ -622,11 +829,12 @@ test('CLI update intake errors advertise the full usage surface for person, stal
     }),
     (error) => {
       assert.equal(error.status, 1);
-      assert.match(error.stderr, /Error: update intake requires --person, --stale, or --all/);
-      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \| --stale \| --all/);
+      assert.match(error.stderr, /Error: update intake requires exactly one of --person, --stale, --imported, or --all/);
+      assert.match(error.stderr, /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/);
       assert.match(error.stderr, /Examples:/);
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
       assert.match(error.stderr, /node src\/index\.js update intake --stale/);
+      assert.match(error.stderr, /node src\/index\.js update intake --imported --refresh-foundation/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
@@ -639,17 +847,18 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
   const cases = [
     {
       args: ['import', 'intake'],
-      expectedError: /Error: import intake requires --person, --stale, or --all/,
-      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \| --stale \| --all/,
+      expectedError: /Error: import intake requires exactly one of --person, --stale, --imported, or --all/,
+      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
       expectedExamples: [
         /Examples:/,
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
         /node src\/index\.js import intake --stale --refresh-foundation/,
+        /node src\/index\.js import intake --imported --refresh-foundation/,
       ],
     },
     {
       args: ['update', 'foundation'],
-      expectedError: /Error: update foundation requires --person, --stale, or --all/,
+      expectedError: /Error: update foundation requires exactly one of --person, --stale, or --all/,
       expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
       expectedExamples: [
         /Examples:/,
@@ -673,6 +882,45 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         expectedExamples.forEach((pattern) => {
           assert.match(error.stderr, pattern);
         });
+        assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
+        return true;
+      },
+    );
+  });
+});
+
+test('CLI batch-capable intake and foundation commands reject ambiguous mode selectors with the same usage hints', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'intake', '--person', 'harry-han', '--all'],
+      expectedError: /Error: import intake requires exactly one of --person, --stale, --imported, or --all/,
+      expectedUsage: /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--person', 'harry-han', '--stale'],
+      expectedError: /Error: update intake requires exactly one of --person, --stale, --imported, or --all/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'foundation', '--person', 'harry-han', '--all'],
+      expectedError: /Error: update foundation requires exactly one of --person, --stale, or --all/,
+      expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
         assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
         return true;
       },
@@ -849,7 +1097,7 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
 });
 
-test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts', () => {
+test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts that miss structured sections', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -857,11 +1105,22 @@ test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts'
     personId: 'Repair Person',
     text: 'Ship the first slice.',
   });
+  ingestion.importTalkSnippet({
+    personId: 'Repair Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
   ingestion.refreshFoundationDrafts({ personId: 'Repair Person' });
 
   const voiceDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'voice', 'README.md');
-  const malformedVoiceDraft = '# Voice draft\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
-  fs.writeFileSync(voiceDraftPath, malformedVoiceDraft);
+  const soulDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'repair-person', 'skills', 'README.md');
+  const legacyVoiceDraft = '# Voice draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 1 (message:1)\n\nRepresentative voice excerpts:\n- [message] Ship the first slice.\n';
+  const legacySoulDraft = '# Soul draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 2 (message:1, talk:1)\n\nCandidate soul signals:\n- [talk] Keep the feedback loop short.\n';
+  const legacySkillsDraft = '# Skills draft\n\nProfile: repair-person\nDisplay name: Repair Person\nSummary: Not set.\nGenerated at: 2026-04-16T00:00:00.000Z\nLatest material: 2026-04-16T00:00:00.000Z (legacy-message)\nSource materials: 2 (message:1, talk:1)\n\nCandidate procedural skills:\n- execution heuristic\n  - sample: Keep the feedback loop short.\n';
+  fs.writeFileSync(voiceDraftPath, legacyVoiceDraft);
+  fs.writeFileSync(soulDraftPath, legacySoulDraft);
+  fs.writeFileSync(skillsDraftPath, legacySkillsDraft);
 
   const result = ingestion.refreshStaleFoundationDrafts();
 
@@ -869,10 +1128,21 @@ test('refreshStaleFoundationDrafts repairs malformed markdown foundation drafts'
   assert.deepEqual(result.results.map((entry) => entry.personId), ['repair-person']);
 
   const repairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
-  assert.notEqual(repairedVoiceDraft, malformedVoiceDraft);
-  assert.match(repairedVoiceDraft, /Generated at: /);
-  assert.match(repairedVoiceDraft, /Latest material: .*\(.+\)/);
-  assert.match(repairedVoiceDraft, /Source materials: 1 \(message:1\)/);
+  assert.notEqual(repairedVoiceDraft, legacyVoiceDraft);
+  assert.match(repairedVoiceDraft, /## Tone/);
+  assert.match(repairedVoiceDraft, /## Signature moves/);
+
+  const repairedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.notEqual(repairedSoulDraft, legacySoulDraft);
+  assert.match(repairedSoulDraft, /## Core values/);
+  assert.match(repairedSoulDraft, /## Boundaries/);
+  assert.match(repairedSoulDraft, /## Decision rules/);
+
+  const repairedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.notEqual(repairedSkillsDraft, legacySkillsDraft);
+  assert.match(repairedSkillsDraft, /## Candidate skills/);
+  assert.match(repairedSkillsDraft, /## Evidence/);
+  assert.match(repairedSkillsDraft, /## Gaps to validate/);
 });
 
 test('refreshStaleFoundationDrafts still catches same-timestamp stale materials via latest material metadata', () => {
@@ -1187,12 +1457,14 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(result.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
     scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
     importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
     importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -1246,6 +1518,8 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(intakeReadme, /and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
@@ -1516,8 +1790,10 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",

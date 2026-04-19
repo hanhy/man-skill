@@ -1,3 +1,5 @@
+import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+
 export interface VoiceProfileSummary {
   tone: string;
   style: string;
@@ -18,25 +20,38 @@ export interface VoiceProfileOptions {
   languageHints?: string[];
 }
 
-type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | null;
-
-function normalizeDocument(document: unknown) {
-  return typeof document === 'string' ? document : '';
-}
+type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'voice-should-capture' | 'voice-should-not-capture' | 'current-default' | null;
 
 function cleanVoiceLine(value: string) {
   return value
     .trim()
-    .replace(/^[-*]\s+/, '')
+    .replace(/^(?:[-*]|\d+\.)\s+/, '')
     .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
     .trim();
 }
 
-function findExcerpt(document: unknown) {
-  return normalizeDocument(document)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
+function looksLikeLanguageHint(value: string) {
+  const normalized = value.toLowerCase();
+  return normalized.includes('language')
+    || normalized.includes('bilingual')
+    || normalized.includes('multilingual')
+    || normalized.includes('中文')
+    || normalized.includes('english');
+}
+
+function pushUnique(target: string[], value: string) {
+  if (!target.includes(value)) {
+    target.push(value);
+  }
+}
+
+function isListSection(section: VoiceSection) {
+  return section === 'signature-moves'
+    || section === 'avoid'
+    || section === 'language-hints'
+    || section === 'voice-should-capture'
+    || section === 'voice-should-not-capture'
+    || section === 'current-default';
 }
 
 export class VoiceProfile {
@@ -56,12 +71,13 @@ export class VoiceProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const excerpt = findExcerpt(normalizedDocument);
+    const excerpt = findDocumentExcerpt(normalizedDocument);
     const voice = new VoiceProfile({
       tone: excerpt ?? 'clear',
       style: excerpt ? 'documented' : 'adaptive',
     });
     let currentSection: VoiceSection = null;
+    let currentSectionHasContent = false;
 
     normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
       const line = rawLine.trim();
@@ -73,26 +89,54 @@ export class VoiceProfile {
         const heading = line.slice(3).trim().toLowerCase();
         if (heading === 'tone') {
           currentSection = 'tone';
+          currentSectionHasContent = false;
           return;
         }
         if (heading === 'signature moves') {
           currentSection = 'signature-moves';
+          currentSectionHasContent = false;
           return;
         }
         if (heading === 'avoid') {
           currentSection = 'avoid';
+          currentSectionHasContent = false;
           return;
         }
         if (heading === 'language hints') {
           currentSection = 'language-hints';
+          currentSectionHasContent = false;
+          return;
+        }
+        if (heading === 'voice should capture') {
+          currentSection = 'voice-should-capture';
+          currentSectionHasContent = false;
+          return;
+        }
+        if (heading === 'voice should not capture') {
+          currentSection = 'voice-should-not-capture';
+          currentSectionHasContent = false;
+          return;
+        }
+        if (heading === 'current default for manskill') {
+          currentSection = 'current-default';
+          currentSectionHasContent = false;
           return;
         }
 
         currentSection = null;
+        currentSectionHasContent = false;
         return;
       }
 
       if (line.startsWith('#')) {
+        currentSection = null;
+        currentSectionHasContent = false;
+        return;
+      }
+
+      if (isListSection(currentSection) && !/^(?:[-*]|\d+\.)\s+/.test(line) && currentSectionHasContent) {
+        currentSection = null;
+        currentSectionHasContent = false;
         return;
       }
 
@@ -104,12 +148,29 @@ export class VoiceProfile {
       if (currentSection === 'tone') {
         voice.tone = cleaned;
         voice.style = 'documented';
+        currentSectionHasContent = true;
       } else if (currentSection === 'signature-moves') {
-        voice.signatures.push(cleaned);
+        pushUnique(voice.signatures, cleaned);
+        currentSectionHasContent = true;
       } else if (currentSection === 'avoid') {
-        voice.constraints.push(cleaned);
+        pushUnique(voice.constraints, cleaned);
+        currentSectionHasContent = true;
       } else if (currentSection === 'language-hints') {
-        voice.languageHints.push(cleaned);
+        pushUnique(voice.languageHints, cleaned);
+        currentSectionHasContent = true;
+      } else if (currentSection === 'voice-should-capture') {
+        pushUnique(voice.signatures, cleaned);
+        currentSectionHasContent = true;
+      } else if (currentSection === 'voice-should-not-capture') {
+        pushUnique(voice.constraints, cleaned);
+        currentSectionHasContent = true;
+      } else if (currentSection === 'current-default') {
+        if (looksLikeLanguageHint(cleaned)) {
+          pushUnique(voice.languageHints, cleaned);
+        } else {
+          pushUnique(voice.signatures, cleaned);
+        }
+        currentSectionHasContent = true;
       }
     });
 

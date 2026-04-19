@@ -1,3 +1,5 @@
+import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+
 export interface SoulProfileSummary {
   excerpt: string | null;
   coreTruths: string[];
@@ -22,23 +24,29 @@ export interface SoulProfileOptions {
 
 type SoulSection = 'core-truths' | 'boundaries' | 'vibe' | 'continuity' | null;
 
+function mapSoulHeadingToSection(heading: string): SoulSection {
+  switch (heading) {
+    case 'core truths':
+    case 'core values':
+      return 'core-truths';
+    case 'boundaries':
+      return 'boundaries';
+    case 'vibe':
+      return 'vibe';
+    case 'continuity':
+    case 'decision rules':
+      return 'continuity';
+    default:
+      return null;
+  }
+}
+
 function cleanSoulLine(value: string) {
   return value
     .trim()
-    .replace(/^[-*]\s+/, '')
+    .replace(/^(?:[-*]|\d+\.)\s+/, '')
     .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
     .trim();
-}
-
-function normalizeDocument(document: unknown) {
-  return typeof document === 'string' ? document : '';
-}
-
-function findExcerpt(document: unknown) {
-  return normalizeDocument(document)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
 }
 
 export class SoulProfile {
@@ -58,7 +66,7 @@ export class SoulProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const soul = new SoulProfile({ excerpt: findExcerpt(normalizedDocument) });
+    const soul = new SoulProfile({ excerpt: findDocumentExcerpt(normalizedDocument) });
     let currentSection: SoulSection = null;
 
     normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
@@ -69,24 +77,7 @@ export class SoulProfile {
 
       if (line.startsWith('## ')) {
         const heading = line.slice(3).trim().toLowerCase();
-        if (heading === 'core truths') {
-          currentSection = 'core-truths';
-          return;
-        }
-        if (heading === 'boundaries') {
-          currentSection = 'boundaries';
-          return;
-        }
-        if (heading === 'vibe') {
-          currentSection = 'vibe';
-          return;
-        }
-        if (heading === 'continuity') {
-          currentSection = 'continuity';
-          return;
-        }
-
-        currentSection = null;
+        currentSection = mapSoulHeadingToSection(heading);
         return;
       }
 

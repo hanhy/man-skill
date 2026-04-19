@@ -47,6 +47,7 @@ type ModelsSummary = {
 
 type DeliveryQueueHelperCommands = {
   bootstrapEnv: string | null;
+  populateEnv: string | null;
   scaffoldManifest: string | null;
   scaffoldImplementation: string | null;
 };
@@ -63,6 +64,8 @@ export type DeliveryChannelQueueItem = {
   outboundMode: string | null;
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationReady: boolean;
+  implementationStatus: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
@@ -85,6 +88,8 @@ export type DeliveryProviderQueueItem = {
   modalities: string[];
   implementationPath: string | null;
   implementationPresent: boolean;
+  implementationReady: boolean;
+  implementationStatus: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath: string | null;
   configured: boolean;
   missingEnvVars: string[];
@@ -105,6 +110,10 @@ export type DeliverySummary = {
   authBlockedProviderCount: number;
   readyChannelScaffoldCount: number;
   readyProviderScaffoldCount: number;
+  readyChannelImplementationCount: number;
+  readyProviderImplementationCount: number;
+  scaffoldOnlyChannelCount: number;
+  scaffoldOnlyProviderCount: number;
   missingChannelScaffoldCount: number;
   missingProviderScaffoldCount: number;
   missingChannelEnvVars: string[];
@@ -119,6 +128,9 @@ export type DeliverySummary = {
   envTemplateMissingRequiredVars: string[];
   helperCommands: {
     bootstrapEnv: string | null;
+    populateEnvTemplate: string | null;
+    populateChannelEnv: string | null;
+    populateProviderEnv: string | null;
     scaffoldChannelManifest: string | null;
     scaffoldProviderManifest: string | null;
     scaffoldChannelImplementation: string | null;
@@ -167,6 +179,45 @@ function isImplementationPresent(implementationPath: string | null | undefined, 
   return isRepoRelativePathPresent(implementationPath, rootDir);
 }
 
+function detectImplementationStatus(implementationPath: string | null | undefined, rootDir?: string | null): {
+  present: boolean;
+  ready: boolean;
+  status: 'missing' | 'scaffold' | 'ready';
+} {
+  const normalizedPath = normalizeRepoRelativePath(implementationPath, rootDir);
+  if (!normalizedPath || !rootDir) {
+    return { present: false, ready: false, status: 'missing' };
+  }
+
+  const resolvedPath = path.resolve(rootDir, normalizedPath);
+  if (!fs.existsSync(resolvedPath)) {
+    return { present: false, ready: false, status: 'missing' };
+  }
+
+  try {
+    if (!fs.statSync(resolvedPath).isFile()) {
+      return { present: false, ready: false, status: 'missing' };
+    }
+
+    const content = fs.readFileSync(resolvedPath, 'utf8');
+    const normalizedContent = content.replace(/\r\n/g, '\n').trim();
+    const isFactoryOnlyScaffold = /^import\s+\{\s*Base(?:Channel|Provider)\s*\}\s+from\s+['"][^'"]+['"];\s*export\s+const\s+\w+Scaffold\s*=\s*\{[\s\S]*?\};\s*export\s+function\s+create\w+\s*\(\s*overrides\s*=\s*\{\s*\}\s*\)\s*\{\s*return\s+new\s+Base(?:Channel|Provider)\s*\(\s*\{\s*\.\.\.\w+Scaffold\s*,\s*\.\.\.overrides\s*\}\s*\);\s*\}\s*$/u.test(normalizedContent);
+    const hasRuntimeSurface = /\b(?:export\s+default\s+)?(?:async\s+)?function\b|\bclass\b|=>|module\.exports|exports\./u.test(content);
+    const isScaffoldOnly = isFactoryOnlyScaffold || (!hasRuntimeSurface && (
+      /Scaffold\s*=\s*\{/u.test(content)
+      || /export\s+const\s+(?:channelId|providerId)\s*=\s*/u.test(content)
+    ));
+
+    return {
+      present: true,
+      ready: !isScaffoldOnly,
+      status: isScaffoldOnly ? 'scaffold' : 'ready',
+    };
+  } catch {
+    return { present: false, ready: false, status: 'missing' };
+  }
+}
+
 function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
@@ -196,6 +247,19 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   }
 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
+}
+
+export function buildPopulateEnvCommand(envVars: string[], envFilePath = '.env'): string | null {
+  const normalizedEnvVars = Array.from(new Set(
+    envVars.filter((envVar): envVar is string => typeof envVar === 'string' && envVar.length > 0),
+  ));
+  if (normalizedEnvVars.length === 0) {
+    return null;
+  }
+
+  const quotedEnvVars = normalizedEnvVars.map((envVar) => shellSingleQuote(envVar)).join(' ');
+  const quotedEnvFilePath = shellSingleQuote(envFilePath);
+  return `touch ${quotedEnvFilePath} && for key in ${quotedEnvVars}; do grep -q "^\${key}=" ${quotedEnvFilePath} || printf '%s=\\n' "$key" >> ${quotedEnvFilePath}; done`;
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
@@ -258,7 +322,7 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(channelManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(channelManifestPath, rootDir);
-      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
+      const implementationState = detectImplementationStatus(implementationPath, rootDir);
       return {
         id: channel.id ?? null,
         name: channel.name ?? channel.id ?? null,
@@ -270,7 +334,9 @@ export function buildDeliverySummary(
         inboundPath: typeof channel.inboundPath === 'string' && channel.inboundPath.trim().length > 0 ? channel.inboundPath.trim() : null,
         outboundMode: typeof channel.outboundMode === 'string' && channel.outboundMode.trim().length > 0 ? channel.outboundMode.trim() : null,
         implementationPath,
-        implementationPresent,
+        implementationPresent: implementationState.present,
+        implementationReady: implementationState.ready,
+        implementationStatus: implementationState.status,
         implementationScaffoldPath,
         configured: authEnvVars.length > 0 && missingEnvVars.length === 0,
         missingEnvVars,
@@ -278,11 +344,14 @@ export function buildDeliverySummary(
         manifestPresent,
         manifestScaffoldPath,
         setupHint: buildChannelSetupHint(channel, environment),
-        nextStep: typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null,
+        nextStep: implementationState.ready
+          ? null
+          : (typeof channel.nextStep === 'string' && channel.nextStep.trim().length > 0 ? channel.nextStep.trim() : null),
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          populateEnv: buildPopulateEnvCommand(missingEnvVars),
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
-          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+          scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
     });
@@ -294,7 +363,7 @@ export function buildDeliverySummary(
       const manifestPresent = isRepoRelativePathPresent(providerManifestPath, rootDir);
       const implementationScaffoldPath = normalizeRepoRelativePath(implementationPath, rootDir);
       const manifestScaffoldPath = normalizeRepoRelativePath(providerManifestPath, rootDir);
-      const implementationPresent = isImplementationPresent(implementationPath, rootDir);
+      const implementationState = detectImplementationStatus(implementationPath, rootDir);
       return {
         id: provider.id ?? null,
         name: provider.name ?? provider.id ?? null,
@@ -305,7 +374,9 @@ export function buildDeliverySummary(
         features: (provider.features ?? []).filter(Boolean),
         modalities: (provider.modalities ?? []).filter(Boolean),
         implementationPath,
-        implementationPresent,
+        implementationPresent: implementationState.present,
+        implementationReady: implementationState.ready,
+        implementationStatus: implementationState.status,
         implementationScaffoldPath,
         configured: Boolean(provider.authEnvVar) && missingEnvVars.length === 0,
         missingEnvVars,
@@ -313,11 +384,14 @@ export function buildDeliverySummary(
         manifestPresent,
         manifestScaffoldPath,
         setupHint: buildProviderSetupHint(provider, environment),
-        nextStep: typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null,
+        nextStep: implementationState.ready
+          ? null
+          : (typeof provider.nextStep === 'string' && provider.nextStep.trim().length > 0 ? provider.nextStep.trim() : null),
         helperCommands: {
           bootstrapEnv: missingEnvVars.length > 0 ? envTemplateCommand : null,
+          populateEnv: buildPopulateEnvCommand(missingEnvVars),
           scaffoldManifest: manifestPresent === false ? buildRelativeFileTouchCommand(manifestScaffoldPath) : null,
-          scaffoldImplementation: implementationPresent === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
+          scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
     });
@@ -352,6 +426,10 @@ export function buildDeliverySummary(
     authBlockedProviderCount: providerQueue.filter((provider) => provider.missingEnvVars.length > 0).length,
     readyChannelScaffoldCount: channelScaffoldCoverage.filter(Boolean).length,
     readyProviderScaffoldCount: providerScaffoldCoverage.filter(Boolean).length,
+    readyChannelImplementationCount: channelQueue.filter((channel) => channel.implementationReady).length,
+    readyProviderImplementationCount: providerQueue.filter((provider) => provider.implementationReady).length,
+    scaffoldOnlyChannelCount: channelQueue.filter((channel) => channel.implementationStatus === 'scaffold').length,
+    scaffoldOnlyProviderCount: providerQueue.filter((provider) => provider.implementationStatus === 'scaffold').length,
     missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,
     missingProviderScaffoldCount: providerScaffoldCoverage.filter((present) => !present).length,
     missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
@@ -366,6 +444,9 @@ export function buildDeliverySummary(
     envTemplateMissingRequiredVars: [],
     helperCommands: {
       bootstrapEnv: null,
+      populateEnvTemplate: null,
+      populateChannelEnv: buildPopulateEnvCommand(channelQueue.flatMap((channel) => channel.missingEnvVars)),
+      populateProviderEnv: buildPopulateEnvCommand(providerQueue.flatMap((provider) => provider.missingEnvVars)),
       scaffoldChannelManifest: firstChannelMissingManifest
         ? buildRelativeFileTouchCommand(firstChannelMissingManifest.manifestScaffoldPath)
         : null,

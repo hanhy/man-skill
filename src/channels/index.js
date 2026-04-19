@@ -1,6 +1,13 @@
-import { BaseChannel } from './base-channel.js';
-import { DEFAULT_CHANNEL_SCAFFOLDS } from './scaffolds.js';
+import { createSlackChannel } from './slack.js';
+import { createTelegramChannel } from './telegram.js';
+import { createWhatsAppChannel } from './whatsapp.js';
+import { createFeishuChannel } from './feishu.js';
 
 export function createDefaultChannels() {
-  return DEFAULT_CHANNEL_SCAFFOLDS.map((channel) => new BaseChannel({ ...channel }));
+  return [
+    createSlackChannel(),
+    createTelegramChannel(),
+    createWhatsAppChannel(),
+    createFeishuChannel(),
+  ];
 }

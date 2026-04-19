@@ -43,6 +43,10 @@ type HighlightDraftSummary = {
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   highlights?: string[];
+  readySectionCount?: number;
+  totalSectionCount?: number;
+  readySections?: string[];
+  missingSections?: string[];
   [key: string]: unknown;
 };
 
@@ -93,6 +97,7 @@ type MaintenanceQueueItem = {
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
+  draftGapSummary?: string | null;
   refreshCommand?: string | null;
 };
 
@@ -101,9 +106,17 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  missingDraftCounts?: Record<string, number>;
+  refreshReasonCounts?: Record<string, number>;
   refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
   refreshBundleCommand?: string | null;
+  recommendedProfileId?: string | null;
+  recommendedLabel?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
+  recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
     refreshStale?: string | null;
@@ -123,8 +136,15 @@ type FoundationRollup = {
 type CoreDocumentFoundationSummary = {
   present?: boolean;
   path?: string;
+  rootPath?: string;
   lineCount?: number;
   excerpt?: string | null;
+  rootExcerpt?: string | null;
+  structured?: boolean;
+  readySectionCount?: number;
+  totalSectionCount?: number;
+  readySections?: string[];
+  missingSections?: string[];
 };
 
 type FoundationCoreOverview = {
@@ -141,6 +161,10 @@ type FoundationCoreMaintenanceQueueItem = {
   summary?: string;
   action?: string | null;
   paths?: string[];
+  thinMissingSections?: Record<string, string[]>;
+  thinReadySections?: Record<string, string[]>;
+  rootThinMissingSections?: string[];
+  rootThinReadySections?: string[];
   command?: string | null;
 };
 
@@ -149,6 +173,10 @@ type FoundationCoreMaintenance = {
   readyAreaCount?: number;
   missingAreaCount?: number;
   thinAreaCount?: number;
+  recommendedArea?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
   helperCommands?: {
     scaffoldAll?: string | null;
     scaffoldMissing?: string | null;
@@ -166,6 +194,8 @@ type FoundationCore = {
     hasRootDocument?: boolean;
     rootPath?: string;
     rootExcerpt?: string | null;
+    rootMissingSections?: string[];
+    rootReadySections?: string[];
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -177,9 +207,12 @@ type FoundationCore = {
     sampleEntries?: string[];
   };
   skills?: {
-    count?: number;
     hasRootDocument?: boolean;
     rootPath?: string;
+    rootExcerpt?: string | null;
+    rootMissingSections?: string[];
+    rootReadySections?: string[];
+    count?: number;
     documentedCount?: number;
     undocumentedCount?: number;
     thinCount?: number;
@@ -190,6 +223,8 @@ type FoundationCore = {
     undocumentedPaths?: string[];
     thinSample?: string[];
     thinPaths?: string[];
+    thinMissingSections?: Record<string, string[]>;
+    thinReadySections?: Record<string, string[]>;
   };
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
@@ -203,8 +238,38 @@ type AgentSummary = {
   identity?: Record<string, unknown>;
 };
 
+type SoulSummary = {
+  excerpt?: string | null;
+  coreTruths?: string[];
+  boundaries?: string[];
+  vibe?: string[];
+  continuity?: string[];
+  [key: string]: unknown;
+} | null;
+
 type VoiceSummary = {
   document?: string;
+  [key: string]: unknown;
+} | null;
+
+type MemorySummary = {
+  shortTermEntries?: number;
+  longTermEntries?: number;
+  totalEntries?: number;
+  shortTermPresent?: boolean;
+  longTermPresent?: boolean;
+  [key: string]: unknown;
+} | null;
+
+type SkillRegistrySummary = {
+  skillCount?: number;
+  discoveredCount?: number;
+  customCount?: number;
+  skills?: Array<{
+    id?: string;
+    name?: string;
+    status?: string;
+  }>;
   [key: string]: unknown;
 } | null;
 
@@ -288,6 +353,8 @@ type DeliveryQueueItem = {
   modalities?: string[];
   implementationPath?: string | null;
   implementationPresent?: boolean;
+  implementationReady?: boolean;
+  implementationStatus?: 'missing' | 'scaffold' | 'ready';
   configured?: boolean;
   missingEnvVars?: string[];
   manifestPath?: string;
@@ -296,6 +363,7 @@ type DeliveryQueueItem = {
   nextStep?: string | null;
   helperCommands?: {
     bootstrapEnv?: string | null;
+    populateEnv?: string | null;
     scaffoldManifest?: string | null;
     scaffoldImplementation?: string | null;
   };
@@ -310,6 +378,10 @@ type DeliverySummary = {
   authBlockedProviderCount?: number;
   readyChannelScaffoldCount?: number;
   readyProviderScaffoldCount?: number;
+  readyChannelImplementationCount?: number;
+  readyProviderImplementationCount?: number;
+  scaffoldOnlyChannelCount?: number;
+  scaffoldOnlyProviderCount?: number;
   missingChannelScaffoldCount?: number;
   missingProviderScaffoldCount?: number;
   missingChannelEnvVars?: string[];
@@ -324,6 +396,9 @@ type DeliverySummary = {
   envTemplateMissingRequiredVars?: string[];
   helperCommands?: {
     bootstrapEnv?: string | null;
+    populateEnvTemplate?: string | null;
+    populateChannelEnv?: string | null;
+    populateProviderEnv?: string | null;
     scaffoldChannelManifest?: string | null;
     scaffoldProviderManifest?: string | null;
     scaffoldChannelImplementation?: string | null;
@@ -344,9 +419,11 @@ type IngestionProfileCommand = {
   latestMaterialAt?: string | null;
   needsRefresh?: boolean;
   missingDrafts?: string[];
+  draftGapSummary?: string | null;
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
@@ -368,11 +445,14 @@ type IngestionHelperCommands = {
   bootstrap?: string | null;
   scaffoldAll?: string | null;
   scaffoldStale?: string | null;
+  scaffoldImported?: string | null;
   scaffoldBundle?: string | null;
+  scaffoldImportedBundle?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
+  importIntakeImported?: string | null;
   importIntakeBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
@@ -395,12 +475,18 @@ type IngestionSummary = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  importedIntakeReadyProfileCount?: number;
+  importedIntakeBackfillProfileCount?: number;
+  importedInvalidIntakeManifestProfileCount?: number;
+  invalidMetadataOnlyIntakeManifestProfileCount?: number;
   intakeReadyProfileCount?: number;
   intakePartialProfileCount?: number;
   intakeMissingProfileCount?: number;
   intakeScaffoldProfileCount?: number;
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
+  intakeImportedCommand?: string | null;
+  intakeImportImportedCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
@@ -447,7 +533,7 @@ type IngestionSummary = {
 type WorkLoopPriority = {
   id?: string;
   label?: string;
-  status?: 'ready' | 'queued' | string;
+  status?: 'ready' | 'queued' | 'blocked' | string;
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
@@ -461,6 +547,8 @@ type WorkLoopSummary = {
   priorityCount?: number;
   readyPriorityCount?: number;
   queuedPriorityCount?: number;
+  blockedPriorityCount?: number;
+  leadingPriority?: WorkLoopPriority | null;
   currentPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
 } | null;
@@ -468,9 +556,12 @@ type WorkLoopSummary = {
 export interface PromptAssemblerOptions {
   profile: AgentSummary;
   soul?: string;
+  soulProfile?: SoulSummary;
   voice: VoiceSummary;
   memory: unknown;
+  memorySummary?: MemorySummary;
   skills: unknown;
+  skillsSummary?: SkillRegistrySummary;
   channels: ChannelsSummary;
   models: ModelsSummary;
   delivery?: DeliverySummary;
@@ -503,6 +594,61 @@ function formatDraftStatus(status: FoundationDraftStatus = {}) {
 
 function cleanHighlight(value: string) {
   return value.replace(/^[-\s]*/, '').trim();
+}
+
+function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
+    ? profile.foundationDraftStatus.missingDrafts
+    : [];
+  const draftKinds = [
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+  ];
+
+  const memoryGapSummary = (() => {
+    if (!missingDrafts.includes('memory')) {
+      return null;
+    }
+
+    const candidateCount = Number(profile.foundationReadiness?.memory?.candidateCount ?? 0);
+    const memoryHighlights = [
+      ...(profile.foundationDraftSummaries?.memory?.latestSummaries ?? []),
+      ...(profile.foundationReadiness?.memory?.sampleSummaries ?? []),
+    ].filter((value, index, values) => typeof value === 'string' && value.trim().length > 0 && values.indexOf(value) === index);
+
+    if (candidateCount > 0) {
+      const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
+      return memoryHighlights.length > 0
+        ? `memory missing, ${candidateLabel} (${memoryHighlights[0]})`
+        : `memory missing, ${candidateLabel}`;
+    }
+
+    return 'memory missing';
+  })();
+
+  const gapSummaries = [
+    memoryGapSummary,
+    ...draftKinds
+      .map(({ key, summary }) => {
+        const totalSectionCount = summary?.totalSectionCount ?? 0;
+        const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
+        const readySections = Array.isArray(summary?.readySections)
+          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        const missingSections = Array.isArray(summary?.missingSections)
+          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        if (totalSectionCount <= 0 || missingSections.length === 0) {
+          return null;
+        }
+
+        return `${key} ${readySectionCount}/${totalSectionCount}${readySections.length > 0 ? ` ready (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+      })
+      .filter(Boolean),
+  ].filter(Boolean);
+
+  return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
 }
 
 function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
@@ -564,6 +710,11 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
     lines.push(`  skills signals: ${skillSignals.join(' | ')}`);
   }
 
+  const draftGaps = summarizeDraftGaps(profile);
+  if (draftGaps) {
+    lines.push(`  draft gaps: ${draftGaps}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -598,6 +749,22 @@ function formatFoundationHighlights(highlights: string[] = []) {
   return highlights.length > 0 ? highlights.join(' | ') : 'none yet';
 }
 
+function formatCountMap(counts: Record<string, number> | null | undefined) {
+  if (!counts || typeof counts !== 'object') {
+    return null;
+  }
+
+  const entries = Object.entries(counts)
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return entries.map(([key, count]) => `${key} ${count}`).join(', ');
+}
+
 function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = null) {
   const maintenance = foundationRollup?.maintenance;
   if (!maintenance || (maintenance.profileCount ?? 0) === 0) {
@@ -605,25 +772,61 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   }
 
   const queuedProfiles = maintenance.queuedProfiles ?? [];
+  const visibleQueuedProfiles = queuedProfiles.slice(0, 2);
+  const remainingQueuedProfiles = queuedProfiles.slice(2);
   const helperLine = [
     maintenance.helperCommands?.refreshAll ? `refresh-all ${maintenance.helperCommands.refreshAll}` : null,
     maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
     maintenance.helperCommands?.refreshBundle ? `refresh-bundle ${maintenance.helperCommands.refreshBundle}` : null,
   ].filter(Boolean).join(' | ');
+  const recommendedPaths = Array.isArray(maintenance.recommendedPaths)
+    ? maintenance.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    : null;
+  const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
+  const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
+  const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
+    const reasonSuffix = (profile.refreshReasons ?? []).length > 0
+      ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
+      : '';
+    const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
+      ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
+      : '';
+    const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+      ? `, gaps ${profile.draftGapSummary}`
+      : '';
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
+  };
+  const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => {
+    const segments = [profile.status ?? 'stale'];
+    if (Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)) {
+      segments.push(`${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts`);
+    }
+    if ((profile.missingDrafts ?? []).length > 0) {
+      segments.push(`missing ${profile.missingDrafts?.join('/')}`);
+    }
+    return `${profile.label ?? profile.id} [${segments.join(', ')}]`;
+  };
+  const remainingQueuedProfilePreview = remainingQueuedProfiles
+    .slice(0, 2)
+    .map((profile) => formatCompactQueuedProfileLabel(profile))
+    .join(', ');
+  const hiddenQueuedProfileCount = Math.max(remainingQueuedProfiles.length - 2, 0);
+  const remainingQueuedProfileSummary = remainingQueuedProfiles.length > 0
+    ? `- +${remainingQueuedProfiles.length} more queued profile${remainingQueuedProfiles.length === 1 ? '' : 's'}: ${remainingQueuedProfilePreview}${hiddenQueuedProfileCount > 0 ? `, +${hiddenQueuedProfileCount} more hidden` : ''}`
+    : null;
 
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    missingDraftSummary ? `- missing drafts: ${missingDraftSummary}` : null,
+    refreshReasonSummary ? `- refresh reasons: ${refreshReasonSummary}` : null,
     helperLine ? `- helpers: ${helperLine}` : null,
     maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
-    ...queuedProfiles.map((profile) => {
-      const reasonSuffix = (profile.refreshReasons ?? []).length > 0
-        ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
-        : '';
-      const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
-        ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
-        : '';
-      return `- ${profile.label ?? profile.id}: ${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}`;
-    }),
+    nextRefreshLine,
+    ...visibleQueuedProfiles.map((profile) => `- ${profile.label ?? profile.id}: ${formatQueuedProfileLine(profile)}`),
+    remainingQueuedProfileSummary,
   ].filter(Boolean).join('\n');
 }
 
@@ -650,9 +853,12 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
+  const skillsCandidateCount = skills?.candidateCount ?? 0;
+  const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
+
   return [
     memory
-      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.candidateProfileCount ?? 0} candidate profiles, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
       ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${voice.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(voice.highlights)}`
@@ -661,7 +867,7 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
       ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${soul.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
-      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skills.candidateCount} candidates, highlights: ${formatFoundationHighlights(skills.highlights)}`
+      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
 }
@@ -716,6 +922,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const helperCommands = delivery?.helperCommands ?? {};
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
+    helperCommands.populateEnvTemplate ? `template env ${helperCommands.populateEnvTemplate}` : null,
+    helperCommands.populateChannelEnv ? `channel env ${helperCommands.populateChannelEnv}` : null,
+    helperCommands.populateProviderEnv ? `provider env ${helperCommands.populateProviderEnv}` : null,
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
     helperCommands.scaffoldProviderManifest ? `providers ${helperCommands.scaffoldProviderManifest}` : null,
     helperCommands.scaffoldChannelImplementation ? `channel impl ${helperCommands.scaffoldChannelImplementation}` : null,
@@ -743,6 +952,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       outboundMode: channel.outboundMode ?? null,
       implementationPath: channel.implementationPath ?? null,
       implementationPresent: false,
+      implementationReady: false,
+      implementationStatus: 'missing',
       manifestPath: channels?.manifest?.path ?? 'manifests/channels.json',
       manifestPresent: channels?.manifest?.status === 'loaded',
       setupHint: (channel.auth?.envVars ?? []).length > 0
@@ -768,6 +979,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       modalities: provider.modalities ?? [],
       implementationPath: provider.implementationPath ?? null,
       implementationPresent: false,
+      implementationReady: false,
+      implementationStatus: 'missing',
       manifestPath: models?.manifest?.path ?? 'manifests/providers.json',
       manifestPresent: models?.manifest?.status === 'loaded',
       setupHint: provider.authEnvVar && provider.defaultModel
@@ -789,25 +1002,42 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const activeProviderCount = models?.activeCount ?? providerRecords.filter((provider) => provider.status === 'active').length;
   const plannedProviderCount = models?.plannedCount ?? providerRecords.filter((provider) => provider.status === 'planned').length;
   const candidateProviderCount = models?.candidateCount ?? providerRecords.filter((provider) => provider.status === 'candidate').length;
+  const formatCompactDeliveryQueueLabel = (item: DeliveryQueueItem, fallbackLabel: string) => {
+    const implementationTag = item?.implementationStatus === 'scaffold'
+      ? 'scaffold-only'
+      : (item?.implementationStatus === 'ready' ? 'runtime-ready' : null);
+    const statusTags = [
+      item?.status ?? null,
+      item?.configured ? 'configured' : null,
+      implementationTag,
+    ].filter(Boolean);
+    return `${item?.name ?? item?.id ?? fallbackLabel}${statusTags.length > 0 ? ` [${statusTags.join(', ')}]` : ''}`;
+  };
+  const formatCompactDeliveryRecordLabel = (item: ChannelSummaryRecord | ModelSummaryRecord, queue: DeliveryQueueItem[], fallbackLabel: string) => {
+    const queueMatch = queue.find((queueItem) => queueItem?.id && item?.id && queueItem.id === item.id);
+    return queueMatch
+      ? formatCompactDeliveryQueueLabel(queueMatch, fallbackLabel)
+      : `${item?.name ?? item?.id ?? fallbackLabel} [${item?.status ?? 'unknown'}]`;
+  };
   const visibleChannelRecords = channelRecords.slice(0, 2);
   const remainingChannelRecords = channelRecords.slice(2);
   const remainingChannelRecordsSummary = remainingChannelRecords.length > 0
-    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => `${channel.name ?? channel.id ?? 'unknown-channel'} [${channel.status ?? 'unknown'}]`).join(', ')}`
+    ? `- +${remainingChannelRecords.length} more channel${remainingChannelRecords.length === 1 ? '' : 's'}: ${remainingChannelRecords.map((channel) => formatCompactDeliveryRecordLabel(channel, enrichedChannelQueue, 'unknown-channel')).join(', ')}`
     : null;
   const visibleProviderRecords = providerRecords.slice(0, 2);
   const remainingProviderRecords = providerRecords.slice(2);
   const remainingProviderRecordsSummary = remainingProviderRecords.length > 0
-    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => `${provider.name ?? provider.id ?? 'unknown-provider'} [${provider.status ?? 'unknown'}]`).join(', ')}`
+    ? `- +${remainingProviderRecords.length} more provider${remainingProviderRecords.length === 1 ? '' : 's'}: ${remainingProviderRecords.map((provider) => formatCompactDeliveryRecordLabel(provider, providerQueue, 'unknown-provider')).join(', ')}`
     : null;
   const visibleChannelQueue = enrichedChannelQueue.slice(0, 1);
   const remainingChannelQueue = enrichedChannelQueue.slice(1);
   const remainingChannelQueueSummary = remainingChannelQueue.length > 0
-    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => channel.name ?? channel.id ?? 'unknown-channel').join(', ')}`
+    ? `- +${remainingChannelQueue.length} more queued channel${remainingChannelQueue.length === 1 ? '' : 's'}: ${remainingChannelQueue.map((channel) => formatCompactDeliveryQueueLabel(channel, 'unknown-channel')).join(', ')}`
     : null;
   const visibleProviderQueue = providerQueue.slice(0, 1);
   const remainingProviderQueue = providerQueue.slice(1);
   const remainingProviderQueueSummary = remainingProviderQueue.length > 0
-    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => provider.name ?? provider.id ?? 'unknown-provider').join(', ')}`
+    ? `- +${remainingProviderQueue.length} more queued provider${remainingProviderQueue.length === 1 ? '' : 's'}: ${remainingProviderQueue.map((provider) => formatCompactDeliveryQueueLabel(provider, 'unknown-provider')).join(', ')}`
     : null;
   const formatDeliveryQueueSummary = (queue: DeliveryQueueItem[], {
     pendingCount,
@@ -828,8 +1058,9 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       : undefined;
     const manifestReady = queue.every((item) => item?.manifestPresent === true);
     const implementationPresentCount = queue.filter((item) => item?.implementationPresent === true).length;
+    const implementationReadyCount = queue.filter((item) => item?.implementationReady === true).length;
 
-    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${queuePendingCount} present via ${manifestPath}`;
+    return `${queuePendingCount} pending${typeof queueAuthBlockedCount === 'number' ? ` (${queueAuthBlockedCount} auth-blocked)` : ''}, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${queuePendingCount} present, implementations ${implementationReadyCount}/${queuePendingCount} ready via ${manifestPath}`;
   };
   const channelQueueSummary = formatDeliveryQueueSummary(enrichedChannelQueue, {
     pendingCount: delivery?.pendingChannelCount,
@@ -844,6 +1075,8 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
   const envTemplateVarCount = (delivery?.envTemplateVarNames ?? []).length;
   const missingTemplateVars = (delivery?.envTemplateMissingRequiredVars ?? []).filter(Boolean);
   const requiredEnvVars = (delivery?.requiredEnvVars ?? []).filter(Boolean);
+  const missingChannelEnvVars = (delivery?.missingChannelEnvVars ?? []).filter(Boolean);
+  const missingProviderEnvVars = (delivery?.missingProviderEnvVars ?? []).filter(Boolean);
   const coveredRequiredEnvVarCount = requiredEnvVars.filter((envVar, index, values) => values.indexOf(envVar) === index && (delivery?.envTemplateVarNames ?? []).includes(envVar)).length;
   const requiredEnvVarCount = requiredEnvVars.length;
   const envTemplateCoverageSuffix = requiredEnvVarCount > 0
@@ -867,11 +1100,20 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     (delivery?.readyChannelScaffoldCount !== undefined || delivery?.readyProviderScaffoldCount !== undefined)
       ? `- code scaffolds: ${delivery?.readyChannelScaffoldCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderScaffoldCount ?? 0}/${providerRecords.length} providers present`
       : null,
+    (delivery?.readyChannelImplementationCount !== undefined || delivery?.readyProviderImplementationCount !== undefined)
+      ? `- runtime implementations: ${delivery?.readyChannelImplementationCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderImplementationCount ?? 0}/${providerRecords.length} providers ready`
+      : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
       ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
       : null,
+    missingChannelEnvVars.length > 0
+      ? `- channel env backlog: ${missingChannelEnvVars.join(', ')}`
+      : null,
+    missingProviderEnvVars.length > 0
+      ? `- provider env backlog: ${missingProviderEnvVars.join(', ')}`
+      : null,
     ...visibleChannelRecords.map((channel) =>
-      `- ${channel.name ?? channel.id} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
+      `- ${formatCompactDeliveryRecordLabel(channel, enrichedChannelQueue, 'unknown-channel')} via ${formatChannelFlow(channel)} [${formatChannelAuth(channel.auth)}]`,
     ),
     remainingChannelRecordsSummary,
     channelQueueSummary
@@ -887,10 +1129,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
         : '';
       const helperLine = [
         channel.helperCommands?.bootstrapEnv ? `env ${channel.helperCommands.bootstrapEnv}` : null,
+        channel.helperCommands?.populateEnv ? `populate ${channel.helperCommands.populateEnv}` : null,
         channel.helperCommands?.scaffoldManifest ? `manifest ${channel.helperCommands.scaffoldManifest}` : null,
         channel.helperCommands?.scaffoldImplementation ? `impl ${channel.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}]: ${channel.setupHint ?? 'define channel credentials'}${channel.nextStep ? `; next: ${channel.nextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const implementationTag = channel.implementationStatus === 'scaffold'
+        ? ', scaffold-only'
+        : (channel.implementationStatus === 'ready' ? ', runtime-ready' : '');
+      const actionableNextStep = channel.implementationStatus === 'ready' ? null : channel.nextStep;
+      return `- ${channel.name ?? channel.id} [${channel.status ?? 'unknown'}${channel.configured ? ', configured' : ''}${implementationTag}]: ${channel.setupHint ?? 'define channel credentials'}${actionableNextStep ? `; next: ${actionableNextStep}` : ''}${flow}${authDetails ? ` [${authDetails}]` : ''}${channel.implementationPath ? ` @ ${channel.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingChannelQueueSummary,
     providerManifestSummary,
@@ -899,7 +1146,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       : null,
     ...visibleProviderRecords.map((provider) => {
       const modalities = (provider.modalities ?? []).join(', ');
-      return `- ${provider.name ?? provider.id} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
+      return `- ${formatCompactDeliveryRecordLabel(provider, providerQueue, 'unknown-provider')} default ${provider.defaultModel ?? 'unspecified'} [${provider.authEnvVar ?? 'no auth env'}] {${modalities}}`;
     }),
     remainingProviderRecordsSummary,
     providerQueueSummary
@@ -912,13 +1159,45 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ].filter(Boolean).join('; ');
       const helperLine = [
         provider.helperCommands?.bootstrapEnv ? `env ${provider.helperCommands.bootstrapEnv}` : null,
+        provider.helperCommands?.populateEnv ? `populate ${provider.helperCommands.populateEnv}` : null,
         provider.helperCommands?.scaffoldManifest ? `manifest ${provider.helperCommands.scaffoldManifest}` : null,
         provider.helperCommands?.scaffoldImplementation ? `impl ${provider.helperCommands.scaffoldImplementation}` : null,
       ].filter(Boolean).join(' | ');
-      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}]: ${provider.setupHint ?? 'choose auth and default model'}${provider.nextStep ? `; next: ${provider.nextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
+      const implementationTag = provider.implementationStatus === 'scaffold'
+        ? ', scaffold-only'
+        : (provider.implementationStatus === 'ready' ? ', runtime-ready' : '');
+      const actionableNextStep = provider.implementationStatus === 'ready' ? null : provider.nextStep;
+      return `- ${provider.name ?? provider.id} [${provider.status ?? 'unknown'}${provider.configured ? ', configured' : ''}${implementationTag}]: ${provider.setupHint ?? 'choose auth and default model'}${actionableNextStep ? `; next: ${actionableNextStep}` : ''}${(provider.modalities ?? []).length > 0 ? ` {${(provider.modalities ?? []).join(', ')}}` : ''}${providerDetails ? ` [${providerDetails}]` : ''}${provider.implementationPath ? ` @ ${provider.implementationPath}` : ''}${helperLine ? ` | helpers: ${helperLine}` : ''}`;
     }),
     remainingProviderQueueSummary,
   ].filter(Boolean).join('\n');
+}
+
+function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | undefined): string | null {
+  const intakeStatusSummary = typeof profile?.intakeStatusSummary === 'string'
+    ? profile.intakeStatusSummary.trim()
+    : '';
+
+  if (intakeStatusSummary && intakeStatusSummary !== 'ready') {
+    const [statusPrefix] = intakeStatusSummary.split(' — ');
+    return statusPrefix?.trim() || intakeStatusSummary;
+  }
+
+  const materialCount = typeof profile?.materialCount === 'number' ? profile.materialCount : 0;
+  if (profile?.intakeReady === true && materialCount === 0) {
+    return 'ready';
+  }
+
+  return null;
+}
+
+function formatIngestionProfileLabel(profile: IngestionProfileCommand | null | undefined): string {
+  const baseLabel = profile?.label ?? profile?.personId ?? 'unknown-profile';
+  const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+
+  return compactIntakeStatus
+    ? `${baseLabel} [intake ${compactIntakeStatus}]`
+    : baseLabel;
 }
 
 function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
@@ -941,6 +1220,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
       || helperCommands.importIntakeStale
+      || helperCommands.importIntakeImported
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || helperCommands.refreshFoundationBundle
@@ -951,19 +1231,33 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     return null;
   }
 
-  const profileCommandRecords = (ingestion.allProfileCommands?.length ?? 0) > 0
-    ? (ingestion.allProfileCommands ?? [])
-    : (ingestion.profileCommands ?? []);
+  const profileCommandRecords = (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0 && (ingestion.profileCommands?.length ?? 0) > 0
+    ? (ingestion.profileCommands ?? [])
+    : ((ingestion.allProfileCommands?.length ?? 0) > 0
+      ? (ingestion.allProfileCommands ?? [])
+      : (ingestion.profileCommands ?? []));
   const visibleProfileCommands = profileCommandRecords.slice(0, 2);
   const remainingProfileCommands = profileCommandRecords.slice(2);
   const remainingProfileSummary = remainingProfileCommands.length > 0
-    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => profile?.label ?? profile?.personId ?? 'unknown-profile').join(', ')}`
+    ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
 
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
-    `- intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    `- metadata-only intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    (ingestion.importedProfileCount ?? 0) > 0
+      ? `- imported intake: ${ingestion.importedIntakeReadyProfileCount ?? 0} ready, ${ingestion.importedIntakeBackfillProfileCount ?? 0} backfill${(ingestion.importedIntakeBackfillProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.importedInvalidIntakeManifestProfileCount ?? 0} invalid manifest${(ingestion.importedInvalidIntakeManifestProfileCount ?? 0) === 1 ? '' : 's'}`
+      : null,
+    (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0
+      ? `- intake backfill: ${ingestion.importedIntakeBackfillProfileCount} imported profile${ingestion.importedIntakeBackfillProfileCount === 1 ? '' : 's'} queued`
+      : null,
+    (ingestion.importedInvalidIntakeManifestProfileCount ?? 0) > 0
+      ? `- invalid intake manifests: ${ingestion.importedInvalidIntakeManifestProfileCount} imported profile${ingestion.importedInvalidIntakeManifestProfileCount === 1 ? '' : 's'} queued`
+      : null,
+    (ingestion.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
+      ? `- invalid intake manifests: ${ingestion.invalidMetadataOnlyIntakeManifestProfileCount} metadata-only profile${ingestion.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'} queued`
+      : null,
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
@@ -980,11 +1274,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
 
       pushHelperEntry(helperCommands.scaffoldAll ? `scaffold-all ${helperCommands.scaffoldAll}` : null);
       pushHelperEntry(helperCommands.scaffoldStale ? `scaffold-stale ${helperCommands.scaffoldStale}` : null);
+      pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
+      pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
@@ -1063,13 +1360,16 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
-      const intakeStatusSegment = (profile.materialCount ?? 0) <= 0 && typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
+      const intakeStatusSegment = typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
         ? `, intake ${profile.intakeStatusSummary}`
         : '';
-      const scaffoldSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === false && profile.updateIntakeCommand
+      const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+        ? `; gaps ${profile.draftGapSummary}`
+        : '';
+      const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
-      const intakeShortcutSegment = (profile.materialCount ?? 0) <= 0 && profile.intakeReady === true && profile.importIntakeCommand
+      const intakeShortcutSegment = profile.intakeReady === true && profile.importIntakeCommand
         ? ` | shortcut ${profile.importIntakeCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
@@ -1077,10 +1377,41 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
+}
+
+function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
+  if (!memory || typeof memory.readyBucketCount !== 'number' || typeof memory.totalBucketCount !== 'number') {
+    return null;
+  }
+
+  const populatedBuckets = Array.isArray(memory.populatedBuckets)
+    ? memory.populatedBuckets.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const emptyBuckets = Array.isArray(memory.emptyBuckets)
+    ? memory.emptyBuckets.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
+}
+
+function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined) {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+
+  if (totalSectionCount === 0) {
+    return '';
+  }
+
+  return `; root sections ${normalizedReadySections.length}/${totalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
@@ -1108,7 +1439,15 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   });
   const remainingQueuedAreas = queuedAreas.slice(2);
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
-    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]`).join(', ')}`
+    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => {
+      const summary = typeof area.summary === 'string' && area.summary.length > 0
+        ? ` (${area.summary})`
+        : '';
+      return `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]${summary}`;
+    }).join(', ')}`
+    : null;
+  const recommendedRepairLine = maintenance?.recommendedAction
+    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}`
     : null;
 
   return [
@@ -1116,6 +1455,34 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
+    memory
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections)}`
+      : null,
+    skills
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+        const readySections = skills.thinReadySections?.[skillName] ?? [];
+        const missingSections = skills.thinMissingSections?.[skillName] ?? [];
+        const readySummary = readySections.length > 0
+          ? ` sections ${readySections.length}/${readySections.length + missingSections.length} ready (${readySections.join(', ')})`
+          : '';
+        const missingSummary = missingSections.length > 0
+          ? `${readySections.length > 0 ? ', ' : ' '}missing ${missingSections.join(', ')}`
+          : '';
+        return `${skillName}${readySummary}${missingSummary}`;
+      }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
+      : null,
+    soul
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}`
+      : null,
+    voice
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}`
+      : null,
+    recommendedActions.length > 0
+      ? `- next actions: ${recommendedActions.join(' | ')}`
+      : null,
+    recommendedRepairLine,
+    ...queuedAreaLines,
+    remainingQueuedAreaSummary,
     (() => {
       const helperEntries = [
         maintenance?.helperCommands?.scaffoldAll ? `scaffold-all ${maintenance.helperCommands.scaffoldAll}` : null,
@@ -1131,23 +1498,6 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    ...queuedAreaLines,
-    remainingQueuedAreaSummary,
-    memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${(memory.emptyBuckets ?? []).length > 0 ? `; empty buckets: ${memory.emptyBuckets?.join(', ')}` : ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}`
-      : null,
-    skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.count && skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
-      : null,
-    soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${soul.excerpt ? `, ${soul.excerpt}` : ''}${soul.path ? ` @ ${soul.path}` : ''}`
-      : null,
-    voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${voice.excerpt ? `, ${voice.excerpt}` : ''}${voice.path ? ` @ ${voice.path}` : ''}`
-      : null,
-    recommendedActions.length > 0
-      ? `- next actions: ${recommendedActions.join(' | ')}`
-      : null,
   ].filter(Boolean).join('\n');
 }
 
@@ -1156,8 +1506,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     return null;
   }
 
+  const leadingPriority = workLoop.leadingPriority;
   const currentPriority = workLoop.currentPriority;
   const priorities = workLoop.priorities ?? [];
+  const showLeadingPriority = Boolean(
+    leadingPriority && (!currentPriority || (leadingPriority.id ?? leadingPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
     : null;
@@ -1168,9 +1522,17 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     ? `- order: ${priorities.map((priority) => `${priority.id ?? priority.label ?? 'priority'}:${priority.status ?? 'unknown'}`).join(' | ')}`
     : null;
 
+  const prioritySummary = [`${workLoop.readyPriorityCount ?? 0} ready`, `${workLoop.queuedPriorityCount ?? 0} queued`];
+  if ((workLoop.blockedPriorityCount ?? 0) > 0) {
+    prioritySummary.push(`${workLoop.blockedPriorityCount ?? 0} blocked`);
+  }
+
   return [
-    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${workLoop.readyPriorityCount ?? 0} ready, ${workLoop.queuedPriorityCount ?? 0} queued)`,
+    `- priorities: ${workLoop.priorityCount ?? priorities.length} total (${prioritySummary.join(', ')})`,
     cadenceLine,
+    showLeadingPriority && leadingPriority
+      ? `- lead: ${leadingPriority.label ?? leadingPriority.id ?? 'Leading priority'} [${leadingPriority.status ?? 'unknown'}] — ${leadingPriority.summary ?? 'needs review'}`
+      : null,
     currentPriority
       ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
       : null,
@@ -1188,12 +1550,106 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   ].filter(Boolean).join('\n');
 }
 
+function buildSoulPreviewBlock(soul: SoulSummary): string {
+  if (!soul) {
+    return '- unavailable';
+  }
+
+  const excerpt = typeof soul.excerpt === 'string' && soul.excerpt.length > 0 ? soul.excerpt : 'n/a';
+  const coreTruthCount = Array.isArray(soul.coreTruths) ? soul.coreTruths.length : 0;
+  const boundaryCount = Array.isArray(soul.boundaries) ? soul.boundaries.length : 0;
+  const vibeCount = Array.isArray(soul.vibe) ? soul.vibe.length : 0;
+  const continuityCount = Array.isArray(soul.continuity) ? soul.continuity.length : 0;
+
+  return [
+    `- excerpt: ${excerpt}`,
+    `- core truths: ${coreTruthCount}`,
+    `- boundaries: ${boundaryCount}`,
+    `- vibe: ${vibeCount}`,
+    `- continuity: ${continuityCount}`,
+  ].join('\n');
+}
+
+function buildMemoryPreviewBlock(memory: MemorySummary): string {
+  if (!memory) {
+    return '- unavailable';
+  }
+
+  const shortTermEntries = memory.shortTermEntries ?? 0;
+  const longTermEntries = memory.longTermEntries ?? 0;
+  const totalEntries = memory.totalEntries ?? (shortTermEntries + longTermEntries);
+
+  return [
+    `- short-term: ${shortTermEntries}`,
+    `- long-term: ${longTermEntries}`,
+    `- total: ${totalEntries}`,
+    `- coverage: short-term ${memory.shortTermPresent ? 'yes' : 'no'}, long-term ${memory.longTermPresent ? 'yes' : 'no'}`,
+  ].join('\n');
+}
+
+function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
+  if (!skills) {
+    return '- unavailable';
+  }
+
+  const topSkills = Array.isArray(skills.skills)
+    ? skills.skills
+      .filter((skill): skill is { name?: string; id?: string; status?: string } => Boolean(skill))
+      .slice(0, 3)
+      .map((skill) => {
+        const label = typeof skill.name === 'string' && skill.name.length > 0
+          ? skill.name
+          : typeof skill.id === 'string' && skill.id.length > 0
+            ? skill.id
+            : 'unknown';
+        const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
+        return `${label} [${status}]`;
+      })
+    : [];
+
+  return [
+    `- total: ${skills.skillCount ?? 0}`,
+    `- discovered: ${skills.discoveredCount ?? 0}`,
+    `- custom: ${skills.customCount ?? 0}`,
+    `- top skills: ${topSkills.length > 0 ? topSkills.join('; ') : 'none'}`,
+  ].join('\n');
+}
+
+function formatVoicePreviewItems(label: string, values: unknown): string {
+  const items = Array.isArray(values)
+    ? values.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  return items.length > 0
+    ? `- ${label}: ${items.length} (${items.join('; ')})`
+    : `- ${label}: 0`;
+}
+
+function buildVoicePreviewBlock(voice: VoiceSummary): string {
+  if (!voice) {
+    return '- unavailable';
+  }
+
+  const tone = typeof voice.tone === 'string' && voice.tone.length > 0 ? voice.tone : 'n/a';
+  const style = typeof voice.style === 'string' && voice.style.length > 0 ? voice.style : 'unknown';
+
+  return [
+    `- tone: ${tone}`,
+    `- style: ${style}`,
+    formatVoicePreviewItems('constraints', voice.constraints),
+    formatVoicePreviewItems('signatures', voice.signatures),
+    formatVoicePreviewItems('language hints', voice.languageHints),
+  ].join('\n');
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
+  soulProfile: SoulSummary;
   voice: VoiceSummary;
   memory: unknown;
+  memorySummary: MemorySummary;
   skills: unknown;
+  skillsSummary: SkillRegistrySummary;
   channels: ChannelsSummary;
   models: ModelsSummary;
   delivery: DeliverySummary;
@@ -1206,9 +1662,12 @@ export class PromptAssembler {
   constructor({
     profile,
     soul = '',
+    soulProfile = null,
     voice,
     memory,
+    memorySummary = null,
     skills,
+    skillsSummary = null,
     channels,
     models,
     delivery = null,
@@ -1220,9 +1679,12 @@ export class PromptAssembler {
   }: PromptAssemblerOptions) {
     this.profile = profile;
     this.soul = soul;
+    this.soulProfile = soulProfile;
     this.voice = voice;
     this.memory = memory;
+    this.memorySummary = memorySummary;
     this.skills = skills;
+    this.skillsSummary = skillsSummary;
     this.channels = channels;
     this.models = models;
     this.delivery = delivery;
@@ -1241,34 +1703,38 @@ export class PromptAssembler {
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
-    const voicePreview = this.voice
-      ? {
-          tone: this.voice.tone,
-          style: this.voice.style,
-          constraints: this.voice.constraints,
-          signatures: this.voice.signatures,
-          languageHints: this.voice.languageHints,
-        }
-      : null;
+    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
+    const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
+    const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary);
+    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
 
     return [
       `Name: ${this.profile.name}`,
       `Soul summary: ${this.profile.soul}`,
       '',
+      'Soul profile:',
+      soulPreviewBlock,
+      '',
       'Voice profile:',
-      JSON.stringify(voicePreview, null, 2),
+      voicePreviewBlock,
+      '',
+      'Memory store:',
+      memoryPreviewBlock,
+      '',
+      'Skill registry:',
+      skillsPreviewBlock,
       ingestionEntranceBlock ? '' : null,
       ingestionEntranceBlock ? 'Ingestion entrance:' : null,
       ingestionEntranceBlock,
       workLoopBlock ? '' : null,
       workLoopBlock ? 'Work loop:' : null,
       workLoopBlock,
-      deliveryFoundationBlock ? '' : null,
-      deliveryFoundationBlock ? 'Delivery foundation:' : null,
-      deliveryFoundationBlock,
       coreFoundationBlock ? '' : null,
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      deliveryFoundationBlock ? '' : null,
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       foundationMaintenanceBlock ? '' : null,
       foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
       foundationMaintenanceBlock,
@@ -1319,11 +1785,11 @@ export class PromptAssembler {
       workLoopBlock ? 'Work loop:' : null,
       workLoopBlock,
       '',
-      deliveryFoundationBlock ? 'Delivery foundation:' : null,
-      deliveryFoundationBlock,
-      '',
       coreFoundationBlock ? 'Core foundation:' : null,
       coreFoundationBlock,
+      '',
+      deliveryFoundationBlock ? 'Delivery foundation:' : null,
+      deliveryFoundationBlock,
       '',
       foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
       foundationMaintenanceBlock,

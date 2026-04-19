@@ -136,8 +136,10 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
@@ -160,8 +162,10 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       updateProfileCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'jane-doe'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'jane-doe'",
         importIntake: "node src/index.js import intake --person 'jane-doe' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
@@ -283,8 +287,10 @@ test('importManifest supports a single-target shorthand profile and inherits per
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -500,8 +506,10 @@ test('importManifest profile summaries keep current manifest counts while surfac
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
@@ -556,8 +564,10 @@ test('importManifest can refresh foundation drafts before returning profile summ
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -612,6 +622,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   });
   assert.deepEqual(result.helperCommands, {
     scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+    importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
     importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
     importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -803,6 +814,60 @@ test('scaffoldAllProfileIntakes reruns intake scaffolding for every metadata-onl
   assert.deepEqual(result.results.map((entry) => entry.personId), ['alpha-missing', 'beta-ready']);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-missing', 'imports', 'materials.template.json')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'imports', 'materials.template.json')), true);
+});
+
+test('importAllProfileIntakeManifests aggregates profileSummaries and top-level foundationRefresh like importManifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Alpha Ready',
+    displayName: 'Alpha Ready',
+    summary: 'Ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Already',
+    displayName: 'Imported Already',
+    summary: 'Ready intake manifest with existing materials.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Already',
+    text: 'Already imported, so the local intake manifest should rerun cleanly.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'sample.txt'), 'Alpha sample.\n');
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-already', 'imports', 'sample.txt'), 'Imported again.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'alpha-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Alpha Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-already', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Already',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importAllProfileIntakeManifests({ refreshFoundation: true });
+
+  assert.equal(result.profileCount, 2);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'imported-already']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['alpha-ready', 'imported-already']);
+  assert.equal(result.profileSummaries[0].label, 'Alpha Ready (alpha-ready)');
+  assert.equal(result.profileSummaries[0].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[0].missingDrafts, []);
+  assert.equal(result.profileSummaries[1].label, 'Imported Already (imported-already)');
+  assert.equal(result.profileSummaries[1].materialCount, 1);
+  assert.deepEqual(result.profileSummaries[1].materialTypes, { text: 1 });
+  assert.equal(result.foundationRefresh.profileCount, 2);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['alpha-ready', 'imported-already']);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/alpha-ready\/voice\/README\.md$/);
+  assert.match(result.foundationRefresh.results[1].voiceDraftPath, /profiles\/imported-already\/voice\/README\.md$/);
 });
 
 test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {

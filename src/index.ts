@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary } from './core/delivery-summary.ts';
+import { buildDeliverySummary, buildPopulateEnvCommand } from './core/delivery-summary.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
@@ -63,17 +63,70 @@ interface SampleTextSummary {
 }
 
 type QueueLike = {
+  id?: string | null;
   status?: string;
   setupHint?: string | null;
   nextStep?: string | null;
   implementationPath?: string | null;
   implementationPresent?: boolean;
+  implementationReady?: boolean;
+  implementationStatus?: 'missing' | 'scaffold' | 'ready';
   implementationScaffoldPath?: string | null;
   manifestPath?: string | null;
   manifestPresent?: boolean;
   manifestScaffoldPath?: string | null;
   missingEnvVars?: string[];
 };
+
+type DeliveryRecordLike = {
+  id?: string | null;
+  status?: string;
+};
+
+type DeliverySummaryLike<TRecord extends DeliveryRecordLike> = {
+  activeCount?: number;
+  plannedCount?: number;
+  candidateCount?: number;
+  channels?: TRecord[];
+  providers?: TRecord[];
+};
+
+type DeliveryCollectionKey = 'channels' | 'providers';
+
+function promoteRuntimeReadyStatus(status?: string | null, implementationReady?: boolean): string {
+  if (status === 'planned' && implementationReady) {
+    return 'candidate';
+  }
+
+  return status ?? 'unknown';
+}
+
+function applyRuntimeReadyStatuses<
+  TRecord extends DeliveryRecordLike,
+  TSummary extends DeliverySummaryLike<TRecord>,
+>(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
+  const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
+  const promotedStatuses = new Map(
+    queue
+      .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
+      .map((item) => [item.id, promoteRuntimeReadyStatus(item.status, item.implementationReady)]),
+  );
+  const promotedRecords = records.map((record) => ({
+    ...record,
+    status: promotedStatuses.get(record.id ?? '') ?? record.status ?? 'unknown',
+  }));
+  const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
+  const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
+  const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;
+
+  return {
+    ...summary,
+    [collectionKey]: promotedRecords,
+    activeCount,
+    plannedCount,
+    candidateCount,
+  };
+}
 
 type ProfileSummaryLike = {
   id?: string;
@@ -478,11 +531,37 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreMaintenance = coreFoundation?.maintenance ?? {};
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
+  const recommendedProfileId = typeof maintenance?.recommendedProfileId === 'string' && maintenance.recommendedProfileId.length > 0
+    ? maintenance.recommendedProfileId
+    : null;
+  const recommendedProfile = recommendedProfileId
+    ? (Array.isArray(maintenance.queuedProfiles)
+      ? maintenance.queuedProfiles.find((profile: any) => profile?.id === recommendedProfileId) ?? queuedProfile
+      : queuedProfile)
+    : queuedProfile;
   const queuedAreas = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas : [];
   const queuedArea = queuedAreas[0] ?? null;
   const queuedAreaCommand = queuedArea?.command ?? buildCoreFoundationCommand(queuedArea);
-  const queuedProfileSummary = queuedProfile?.id
-    ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
+  const recommendedCoreAction = typeof coreMaintenance?.recommendedAction === 'string' && coreMaintenance.recommendedAction.length > 0
+    ? coreMaintenance.recommendedAction
+    : null;
+  const recommendedCoreCommand = typeof coreMaintenance?.recommendedCommand === 'string' && coreMaintenance.recommendedCommand.length > 0
+    ? coreMaintenance.recommendedCommand
+    : null;
+  const recommendedCorePaths = Array.isArray(coreMaintenance?.recommendedPaths)
+    ? coreMaintenance.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const recommendedProfileAction = typeof maintenance?.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
+    ? maintenance.recommendedAction
+    : null;
+  const recommendedProfileCommand = typeof maintenance?.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0
+    ? maintenance.recommendedCommand
+    : null;
+  const recommendedProfilePaths = Array.isArray(maintenance?.recommendedPaths)
+    ? maintenance.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const queuedProfileSummary = recommendedProfile?.id
+    ? profiles.find((profile) => profile?.id === recommendedProfile.id) ?? null
     : null;
   const refreshProfileCount = maintenance.refreshProfileCount ?? 0;
   const incompleteProfileCount = maintenance.incompleteProfileCount ?? 0;
@@ -495,10 +574,10 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const useBulkRefreshCommand = refreshProfileCount > 1
     && (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
       || typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0);
-  const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
-    ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+  const queuedProfileReasons = Array.isArray(recommendedProfile?.refreshReasons)
+    ? recommendedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const queuedProfileLabel = queuedProfile?.label ?? queuedProfile?.id ?? null;
+  const queuedProfileLabel = recommendedProfile?.label ?? recommendedProfile?.id ?? null;
   const bulkRefreshLabel = queuedProfileLabel
     ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
     : 'refresh stale or incomplete target profiles';
@@ -576,25 +655,27 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
     : '';
   const hasQueuedCoreFoundation = queuedAreas.length > 0;
-  const coreNextAction = useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null);
-  const coreCommand = useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand;
-  const corePaths = useBulkCoreScaffoldCommand
-    ? bulkCoreScaffoldPaths
-    : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []);
-  const profileNextAction = queuedProfile?.refreshCommand
-    ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
+  const coreNextAction = recommendedCoreAction ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null));
+  const coreCommand = recommendedCoreCommand ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand);
+  const corePaths = recommendedCorePaths.length > 0
+    ? recommendedCorePaths
+    : (useBulkCoreScaffoldCommand
+      ? bulkCoreScaffoldPaths
+      : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
+  const profileNextAction = recommendedProfile?.refreshCommand
+    ? (useBulkRefreshCommand ? bulkRefreshLabel : (recommendedProfileAction ?? buildFoundationRefreshLabel(recommendedProfile, queuedProfileLabel)))
     : null;
-  const profileCommand = queuedProfile?.refreshCommand
+  const profileCommand = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand
       ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
         ? maintenance.refreshBundleCommand
         : maintenance.staleRefreshCommand)
-      : queuedProfile.refreshCommand)
+      : (recommendedProfileCommand ?? recommendedProfile.refreshCommand))
     : null;
-  const profilePaths = queuedProfile?.refreshCommand
+  const profilePaths = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand
       ? bulkRefreshPaths
-      : buildFoundationDraftPaths(queuedProfileSummary))
+      : (recommendedProfilePaths.length > 0 ? recommendedProfilePaths : buildFoundationDraftPaths(queuedProfileSummary)))
     : [];
 
   return {
@@ -644,6 +725,51 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
+function stripWrappingQuotes(value: string) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
+function readEnvFileValues(envFileAbsolutePath: string): NodeJS.ProcessEnv {
+  if (!fs.existsSync(envFileAbsolutePath)) {
+    return {};
+  }
+
+  return fs.readFileSync(envFileAbsolutePath, 'utf8')
+    .split(/\r?\n/)
+    .reduce<NodeJS.ProcessEnv>((environment, rawLine) => {
+      const line = rawLine.trim();
+      if (line.length === 0 || line.startsWith('#')) {
+        return environment;
+      }
+
+      const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (!match) {
+        return environment;
+      }
+
+      const [, envVar, rawValue] = match;
+      environment[envVar] = stripWrappingQuotes(rawValue);
+      return environment;
+    }, {});
+}
+
+function mergeDeliveryEnvironment(repoEnv: NodeJS.ProcessEnv, runtimeEnv: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const mergedEnvironment: NodeJS.ProcessEnv = { ...repoEnv };
+
+  Object.entries(runtimeEnv).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      mergedEnvironment[key] = value;
+    }
+  });
+
+  return mergedEnvironment;
+}
+
 function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
   if (!fs.existsSync(envTemplateAbsolutePath)) {
     return [];
@@ -665,7 +791,14 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
-  const status: WorkPriority['status'] = importedProfileCount > 0 && metadataOnlyProfileCount === 0 && refreshProfileCount === 0 && incompleteProfileCount === 0
+  const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
+  const importedInvalidIntakeManifestProfileCount = ingestionSummary?.importedInvalidIntakeManifestProfileCount ?? 0;
+  const status: WorkPriority['status'] = importedProfileCount > 0
+    && metadataOnlyProfileCount === 0
+    && refreshProfileCount === 0
+    && incompleteProfileCount === 0
+    && importedIntakeBackfillProfileCount === 0
+    && importedInvalidIntakeManifestProfileCount === 0
     ? 'ready'
     : 'queued';
 
@@ -774,6 +907,62 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
         .filter((profile): profile is ProfileSummaryLike => Boolean(profile?.id))
       : [];
     paths = collectFoundationDraftPaths(refreshProfiles);
+  } else if (importedIntakeBackfillProfileCount > 0) {
+    const importedProfileCommands = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands.filter((profile: any) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand)
+      : [];
+    const firstImportedBackfillProfile = importedProfileCommands[0] ?? null;
+    const bundledImportedScaffoldCommand = typeof ingestionSummary?.helperCommands?.scaffoldImportedBundle === 'string' && ingestionSummary.helperCommands.scaffoldImportedBundle.length > 0
+      ? ingestionSummary.helperCommands.scaffoldImportedBundle
+      : null;
+    const collectIntakePaths = (profile: any) => {
+      const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
+        ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      if (missingIntakePaths.length > 0) {
+        return missingIntakePaths;
+      }
+
+      return Array.isArray(profile?.intakePaths)
+        ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+    };
+
+    nextAction = firstImportedBackfillProfile?.label
+      ? (importedIntakeBackfillProfileCount > 1
+        ? `backfill intake landing zones for imported profiles — starting with ${firstImportedBackfillProfile.label}`
+        : `backfill the intake landing zone for imported profiles — starting with ${firstImportedBackfillProfile.label}`)
+      : 'backfill intake landing zones for imported profiles';
+    command = importedIntakeBackfillProfileCount > 1
+      ? (bundledImportedScaffoldCommand ?? firstImportedBackfillProfile?.updateIntakeCommand ?? null)
+      : (firstImportedBackfillProfile?.updateIntakeCommand ?? bundledImportedScaffoldCommand);
+    paths = importedIntakeBackfillProfileCount > 1
+      ? importedProfileCommands.flatMap((profile: any) => collectIntakePaths(profile))
+      : collectIntakePaths(firstImportedBackfillProfile);
+  } else if (importedInvalidIntakeManifestProfileCount > 0) {
+    const invalidImportedIntakeProfiles = Array.isArray(ingestionSummary?.allProfileCommands)
+      ? ingestionSummary.allProfileCommands.filter((profile: any) =>
+          (profile?.materialCount ?? 0) > 0
+          && profile?.intakeReady === true
+          && profile?.intakeManifestStatus === 'invalid'
+          && typeof profile?.intakeManifestPath === 'string'
+          && profile.intakeManifestPath.length > 0,
+        )
+      : [];
+    const [firstInvalidImportedIntakeProfile] = invalidImportedIntakeProfiles;
+    nextAction = invalidImportedIntakeProfiles.length > 1
+      ? (firstInvalidImportedIntakeProfile?.label
+        ? `repair invalid intake manifests for imported profiles — starting with ${firstInvalidImportedIntakeProfile.label}`
+        : 'repair invalid intake manifests for imported profiles')
+      : (firstInvalidImportedIntakeProfile?.label
+        ? `repair the invalid intake manifest for imported profile ${firstInvalidImportedIntakeProfile.label}`
+        : 'repair the invalid intake manifest for an imported profile');
+    command = null;
+    paths = Array.from(new Set(
+      invalidImportedIntakeProfiles
+        .map((profile: any) => profile.intakeManifestPath)
+        .filter((value: unknown): value is string => typeof value === 'string' && value.length > 0),
+    ));
   } else if (metadataOnlyProfileCount > 0) {
     const metadataProfileCommands = Array.isArray(ingestionSummary?.metadataProfileCommands)
       ? ingestionSummary.metadataProfileCommands
@@ -932,11 +1121,21 @@ function buildIngestionPriority(ingestionSummary: any, rootDir: string, profiles
     }
   }
 
+  const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
+    ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
+    : '';
+  const invalidMetadataOnlyIntakeSummary = (ingestionSummary?.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
+    ? `, ${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount} invalid metadata-only intake manifest${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'}`
+    : '';
+  const invalidImportedIntakeSummary = importedInvalidIntakeManifestProfileCount > 0
+    ? `, ${importedInvalidIntakeManifestProfileCount} invalid imported intake manifest${importedInvalidIntakeManifestProfileCount === 1 ? '' : 's'}`
+    : '';
+
   return {
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction,
     command,
     paths,
@@ -970,7 +1169,9 @@ function buildDeliveryPriority({
   queue,
   envTemplatePath = null,
   envTemplateCommand = null,
+  envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
+  envConfigPresent = false,
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
@@ -981,11 +1182,20 @@ function buildDeliveryPriority({
   queue: QueueLike[];
   envTemplatePath?: string | null;
   envTemplateCommand?: string | null;
+  envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
+  envConfigPresent?: boolean;
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
-  const bundledImplementationPaths = Array.isArray(queue)
+  const firstMissingImplementationItem = Array.isArray(queue)
+    ? queue.find((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0) ?? null
+    : null;
+  const firstScaffoldOnlyImplementationItem = Array.isArray(queue)
+    ? queue.find((item) => item?.implementationPresent === true && item?.implementationReady === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0) ?? null
+    : null;
+  const implementationActionItem = firstMissingImplementationItem ?? firstScaffoldOnlyImplementationItem ?? null;
+  const missingImplementationPaths = Array.isArray(queue)
     ? queue
       .filter((item) => item?.implementationPresent === false)
       .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
@@ -993,8 +1203,22 @@ function buildDeliveryPriority({
         : null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const scaffoldOnlyImplementationPaths = Array.isArray(queue)
+    ? queue
+      .filter((item) => item?.implementationPresent === true && item?.implementationReady === false)
+      .map((item) => typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0
+        ? item.implementationScaffoldPath
+        : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const bundledImplementationPaths = missingImplementationPaths.length > 0 ? missingImplementationPaths : scaffoldOnlyImplementationPaths;
   const manifestMissing = Boolean(firstQueued?.manifestScaffoldPath) && firstQueued?.manifestPresent === false;
-  const implementationMissing = Boolean(firstQueued?.implementationScaffoldPath) && firstQueued?.implementationPresent === false;
+  const implementationMissing = Boolean(implementationActionItem?.implementationScaffoldPath) && implementationActionItem?.implementationPresent === false;
+  const implementationNeedsWork = Boolean(implementationActionItem?.implementationScaffoldPath)
+    && (implementationActionItem?.implementationPresent === false || implementationActionItem?.implementationReady === false);
+  const implementationScaffoldOnly = Boolean(implementationActionItem?.implementationScaffoldPath)
+    && implementationActionItem?.implementationPresent === true
+    && implementationActionItem?.implementationReady === false;
   const firstQueuedMissingEnvVars = Array.isArray((firstQueued as { missingEnvVars?: unknown })?.missingEnvVars)
     ? (firstQueued as { missingEnvVars: unknown[] }).missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1003,10 +1227,13 @@ function buildDeliveryPriority({
     : [];
   const templateCoversLeaderCredentials = firstQueuedMissingEnvVars.length > 0
     && firstQueuedMissingEnvVars.every((envVar) => normalizedEnvTemplateVarNames.includes(envVar));
-  const needsCredentialBootstrap = templateCoversLeaderCredentials && pendingCount > configuredCount;
-  const bundledImplementationCount = Array.isArray(queue)
-    ? queue.filter((item) => item?.implementationPresent === false && typeof item?.implementationScaffoldPath === 'string' && item.implementationScaffoldPath.length > 0).length
-    : 0;
+  const needsCredentialBootstrap = !envConfigPresent && templateCoversLeaderCredentials && pendingCount > configuredCount;
+  const needsEnvTemplateRepair = !envConfigPresent
+    && !needsCredentialBootstrap
+    && firstQueuedMissingEnvVars.length > 0
+    && typeof envTemplatePopulateCommand === 'string'
+    && envTemplatePopulateCommand.length > 0;
+  const bundledImplementationCount = bundledImplementationPaths.length;
   const normalizedAuthBlockedCount = typeof authBlockedCount === 'number'
     ? authBlockedCount
     : Array.isArray(queue)
@@ -1015,51 +1242,79 @@ function buildDeliveryPriority({
   const implementationPresentCount = Array.isArray(queue)
     ? queue.filter((item) => item?.implementationPresent === true).length
     : 0;
+  const implementationReadyCount = Array.isArray(queue)
+    ? queue.filter((item) => item?.implementationReady === true).length
+    : 0;
   const manifestReady = Array.isArray(queue) && queue.length > 0
     ? queue.every((item) => item?.manifestPresent === true)
     : false;
-  const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand) && !manifestMissing && implementationMissing && bundledImplementationCount > 1 && typeof implementationBundleCommand === 'string' && implementationBundleCommand.length > 0;
-  const includeEnvTemplatePath = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0;
+  const shouldUseImplementationBundle = !(needsCredentialBootstrap && envTemplateCommand)
+    && !needsEnvTemplateRepair
+    && !manifestMissing
+    && implementationMissing
+    && bundledImplementationCount > 1
+    && typeof implementationBundleCommand === 'string'
+    && implementationBundleCommand.length > 0;
+  const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
+  const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
+    || needsEnvTemplateRepair;
   const paths = includeEnvTemplatePath
     ? [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index)
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
-      ...(shouldUseImplementationBundle ? bundledImplementationPaths : []),
-      ...(!shouldUseImplementationBundle
-        && typeof firstQueued?.implementationScaffoldPath === 'string'
-        && firstQueued.implementationScaffoldPath.length > 0
-        ? [firstQueued.implementationScaffoldPath]
+      ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
+      ...(!(shouldUseImplementationBundle || bundledImplementationBacklog)
+        && typeof implementationActionItem?.implementationScaffoldPath === 'string'
+        && implementationActionItem.implementationScaffoldPath.length > 0
+        ? [implementationActionItem.implementationScaffoldPath]
         : []),
     ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
 
+  const actionableNextStep = firstQueued?.implementationReady === true
+    ? null
+    : (firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null);
   const followUpParts = [
     firstQueued?.setupHint,
-    firstQueued?.nextStep ? `next: ${firstQueued.nextStep}` : null,
+    actionableNextStep,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   let nextAction = firstQueued ? followUpParts.join('; ') : null;
   let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
 
-  if (!command && manifestMissing) {
+  if (!command && needsEnvTemplateRepair) {
+    nextAction = [`update .env.example with missing delivery credentials`, ...followUpParts].filter(Boolean).join('; ');
+    command = envTemplatePopulateCommand;
+  } else if (!command && manifestMissing) {
     const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
     nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
     command = buildRelativeFileTouchCommand(manifestPath);
-  } else if (!command && implementationMissing) {
-    const implementationPath = typeof firstQueued?.implementationScaffoldPath === 'string' ? firstQueued.implementationScaffoldPath : null;
-    nextAction = shouldUseImplementationBundle
-      ? [`create pending ${id === 'channels' ? 'channel' : 'provider'} implementations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
-      : [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ');
-    command = shouldUseImplementationBundle
-      ? implementationBundleCommand
-      : buildRelativeFileTouchCommand(implementationPath);
+  } else if (!command && implementationNeedsWork) {
+    const implementationPath = typeof implementationActionItem?.implementationScaffoldPath === 'string' ? implementationActionItem.implementationScaffoldPath : null;
+    nextAction = implementationMissing
+      ? (shouldUseImplementationBundle
+        ? [`create pending ${id === 'channels' ? 'channel' : 'provider'} implementations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
+        : [`create ${implementationPath}`, ...followUpParts].filter(Boolean).join('; '))
+      : (bundledImplementationBacklog
+        ? [`implement pending ${id === 'channels' ? 'channel' : 'provider'} integrations — starting with ${implementationPath}`, ...followUpParts].filter(Boolean).join('; ')
+        : [`implement ${implementationPath}`, ...followUpParts].filter(Boolean).join('; '));
+    command = implementationMissing
+      ? (shouldUseImplementationBundle
+        ? implementationBundleCommand
+        : buildRelativeFileTouchCommand(implementationPath))
+      : null;
   }
+
+  const deliveryBlocked = pendingCount > 0
+    && normalizedAuthBlockedCount > 0
+    && manifestReady
+    && implementationReadyCount === pendingCount;
 
   return {
     id,
     label,
-    status: pendingCount > 0 ? 'queued' : 'ready',
+    status: pendingCount === 0 ? 'ready' : (deliveryBlocked ? 'blocked' : 'queued'),
     summary: pendingCount > 0
-      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, impl ${implementationPresentCount}/${pendingCount} present`
+      ? `${pendingCount} pending, ${configuredCount} configured, ${normalizedAuthBlockedCount} auth-blocked, manifest ${manifestReady ? 'ready' : 'missing'}, scaffolds ${implementationPresentCount}/${pendingCount} present, implementations ${implementationReadyCount}/${pendingCount} ready`
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
@@ -1114,6 +1369,20 @@ function readOptionalStringOption(options: ParsedOptions, key: string): string |
   return value;
 }
 
+function assertExactlyOneBatchSelector(options: ParsedOptions, selectors: string[], errorMessage: string) {
+  const activeSelectors = selectors.filter((selector) => {
+    if (selector === 'person') {
+      return typeof options.person === 'string' && options.person.trim().length > 0;
+    }
+
+    return options[selector] === true;
+  });
+
+  if (activeSelectors.length !== 1) {
+    throw new Error(errorMessage);
+  }
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1135,6 +1404,16 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
 
   const relativizeManifestImportBatchResult = (result: any) => ({
     ...result,
+    ...(result?.foundationRefresh && typeof result.foundationRefresh === 'object'
+      ? {
+          foundationRefresh: {
+            ...result.foundationRefresh,
+            results: Array.isArray((result.foundationRefresh as { results?: DraftRefreshResult[] }).results)
+              ? (result.foundationRefresh as { results: DraftRefreshResult[] }).results.map((entry) => relativizeDraftPaths(rootDir, entry))
+              : [],
+          },
+        }
+      : {}),
     results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
   });
 
@@ -1167,20 +1446,27 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'intake') {
+    const refreshFoundation = Boolean(options['refresh-foundation']);
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'import intake requires exactly one of --person, --stale, --imported, or --all');
+
     if (options.all) {
-      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests());
+      return relativizeManifestImportBatchResult(ingestion.importAllProfileIntakeManifests({ refreshFoundation }));
     }
 
     if (options.stale) {
-      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests());
+      return relativizeManifestImportBatchResult(ingestion.importStaleProfileIntakeManifests({ refreshFoundation }));
+    }
+
+    if (options.imported) {
+      return relativizeManifestImportBatchResult(ingestion.importImportedProfileIntakeManifests({ refreshFoundation }));
     }
 
     const intakePersonId = typeof options.person === 'string' ? options.person : undefined;
-    if (!intakePersonId) {
-      throw new Error('import intake requires --person, --stale, or --all');
-    }
 
-    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({ personId: intakePersonId }));
+    return relativizeManifestImportResult(ingestion.importProfileIntakeManifest({
+      personId: intakePersonId,
+      refreshFoundation,
+    }));
   }
 
   const personId = typeof options.person === 'string' ? options.person : undefined;
@@ -1239,9 +1525,42 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   throw new Error(`Unsupported import type: ${subcommand}`);
 }
 
-export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions): any {
+export function runUpdateCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
-  const personId = typeof options.person === 'string' ? options.person : undefined;
+  const personId = readOptionalStringOption(options, 'person');
+  const refreshFoundation = Boolean(options['refresh-foundation']);
+
+  const maybeAttachFoundationRefresh = (result: any) => {
+    if (!refreshFoundation) {
+      return result;
+    }
+
+    const resultEntries = Array.isArray(result?.results)
+      ? result.results.filter((entry: any) => entry && typeof entry.personId === 'string')
+      : (result && typeof result.personId === 'string' ? [result] : []);
+    const eligiblePersonIds = [...new Set(resultEntries
+      .map((entry: any) => entry.personId)
+      .filter((candidate: string) => typeof candidate === 'string' && candidate.length > 0)
+      .filter((candidate: string) => ingestion.loadMaterialRecords(candidate).length > 0))];
+
+    if (eligiblePersonIds.length === 0) {
+      return {
+        ...result,
+        foundationRefresh: {
+          profileCount: 0,
+          results: [],
+        },
+      };
+    }
+
+    return {
+      ...result,
+      foundationRefresh: {
+        profileCount: eligiblePersonIds.length,
+        results: eligiblePersonIds.map((candidate: string) => relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId: candidate }))),
+      },
+    };
+  };
 
   if (subcommand === 'profile') {
     if (!personId) {
@@ -1263,23 +1582,29 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   }
 
   if (subcommand === 'intake') {
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'update intake requires exactly one of --person, --stale, --imported, or --all');
+
     if (options.all) {
-      return ingestion.scaffoldAllProfileIntakes();
+      return maybeAttachFoundationRefresh(ingestion.scaffoldAllProfileIntakes());
     }
 
     if (options.stale) {
-      return ingestion.scaffoldStaleProfileIntakes();
+      return maybeAttachFoundationRefresh(ingestion.scaffoldStaleProfileIntakes());
     }
 
-    if (!personId) {
-      throw new Error('update intake requires --person, --stale, or --all');
+    if (options.imported) {
+      return maybeAttachFoundationRefresh(ingestion.scaffoldImportedProfileIntakes());
     }
 
-    return ingestion.scaffoldProfileIntake({
+    return maybeAttachFoundationRefresh(ingestion.scaffoldProfileIntake({
       personId,
       displayName: typeof options['display-name'] === 'string' ? options['display-name'] : undefined,
       summary: typeof options.summary === 'string' ? options.summary : undefined,
-    });
+    }));
+  }
+
+  if (subcommand === 'foundation') {
+    assertExactlyOneBatchSelector(options, ['person', 'stale', 'all'], 'update foundation requires exactly one of --person, --stale, or --all');
   }
 
   if (subcommand === 'foundation' && options.all) {
@@ -1300,7 +1625,7 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
 
   if (!personId) {
     throw new Error(subcommand === 'foundation'
-      ? 'update foundation requires --person, --stale, or --all'
+      ? 'update foundation requires exactly one of --person, --stale, or --all'
       : 'Missing required --person argument');
   }
 
@@ -1390,7 +1715,7 @@ export function buildSummary(rootDir: string) {
     skillNames,
     skillInventory,
   });
-  const channelsSummary = {
+  const rawChannelsSummary = {
     ...channels.summary(),
     manifest: {
       path: channelManifest.path,
@@ -1399,7 +1724,7 @@ export function buildSummary(rootDir: string) {
       error: channelManifest.error,
     },
   };
-  const modelsSummary = {
+  const rawModelsSummary = {
     ...models.summary(),
     manifest: {
       path: providerManifest.path,
@@ -1410,12 +1735,45 @@ export function buildSummary(rootDir: string) {
   };
   const envTemplateRelativePath = '.env.example';
   const envTemplateAbsolutePath = path.join(rootDir, envTemplateRelativePath);
+  const envConfigAbsolutePath = path.join(rootDir, '.env');
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
-  const envConfigPresent = fs.existsSync(path.join(rootDir, '.env'));
+  const envConfigPresent = fs.existsSync(envConfigAbsolutePath);
   const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
-  const baseDeliverySummary = buildDeliverySummary(channelsSummary, modelsSummary, process.env, { rootDir });
+  const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
+  const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
+  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
+  const promotedChannelQueue = baseDeliverySummary.channelQueue.map((channel) => ({
+    ...channel,
+    status: promoteRuntimeReadyStatus(channel.status, channel.implementationReady),
+  }));
+  const promotedProviderQueue = baseDeliverySummary.providerQueue.map((provider) => ({
+    ...provider,
+    status: promoteRuntimeReadyStatus(provider.status, provider.implementationReady),
+  }));
+  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
+  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
   const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
+  const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
+    ? buildPopulateEnvCommand(envTemplateMissingRequiredVars, '.env.example')
+    : null;
+  const sanitizeDeliveryQueueBootstrap = <T extends { missingEnvVars?: string[]; helperCommands?: Record<string, unknown> }>(queue: T[] = []): T[] => {
+    const canBootstrapEnv = envTemplatePresent && !envConfigPresent && envTemplateMissingRequiredVars.length === 0 && Boolean(completeEnvBootstrapCommand);
+
+    return queue.map((item) => {
+      const missingEnvVars = Array.isArray(item?.missingEnvVars)
+        ? item.missingEnvVars.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+
+      return {
+        ...item,
+        helperCommands: {
+          ...item.helperCommands,
+          bootstrapEnv: canBootstrapEnv && missingEnvVars.length > 0 ? completeEnvBootstrapCommand : null,
+        },
+      };
+    });
+  };
   const deliverySummary = {
     ...baseDeliverySummary,
     envTemplatePath: envTemplateRelativePath,
@@ -1423,9 +1781,12 @@ export function buildSummary(rootDir: string) {
     envTemplateCommand: completeEnvBootstrapCommand,
     envTemplateVarNames,
     envTemplateMissingRequiredVars,
+    channelQueue: sanitizeDeliveryQueueBootstrap(promotedChannelQueue),
+    providerQueue: sanitizeDeliveryQueueBootstrap(promotedProviderQueue),
     helperCommands: {
       ...baseDeliverySummary.helperCommands,
       bootstrapEnv: envTemplatePresent && envTemplateMissingRequiredVars.length === 0 ? completeEnvBootstrapCommand : null,
+      populateEnvTemplate: populateEnvTemplateCommand,
     },
   };
   const workLoop = new WorkLoop({
@@ -1443,7 +1804,9 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPresent,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1455,7 +1818,9 @@ export function buildSummary(rootDir: string) {
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
+        envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPresent,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],
@@ -1464,12 +1829,15 @@ export function buildSummary(rootDir: string) {
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
+    soulProfile: soul.summary(),
     voice: {
       ...voice.summary(),
       document: voiceDocument,
     },
     memory: memoryIndex,
+    memorySummary: memory.summary(),
     skills: skills.summary(),
+    skillsSummary: skills.summary(),
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
@@ -1496,7 +1864,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(12500),
+    promptPreview: prompt.buildPreview(20000),
   };
 }
 
@@ -1508,18 +1876,20 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js                                  Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
-    '  node src/index.js import intake --person <person-id> Import a ready profile-local intake manifest and refresh drafts',
-    '  node src/index.js import intake --stale             Import ready intake manifests for metadata-only profiles that still need first imports',
-    '  node src/index.js import intake --all               Import every ready profile-local intake manifest, including already-imported profiles',
+    '  node src/index.js import intake --person <person-id> [--refresh-foundation] Import a ready profile-local intake manifest',
+    '  node src/index.js import intake --stale [--refresh-foundation]             Import ready intake manifests for metadata-only profiles that still need first imports',
+    '  node src/index.js import intake --imported [--refresh-foundation]          Import ready intake manifests only for already-imported profiles',
+    '  node src/index.js import intake --all [--refresh-foundation]               Import every ready profile-local intake manifest, including already-imported profiles',
     '  node src/index.js import manifest --file <manifest.json> [--refresh-foundation]',
     '  node src/index.js import text --person <person-id> --file <sample.txt> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
-    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>]',
-    '  node src/index.js update intake --stale             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
-    '  node src/index.js update intake --all               Rebuild intake scaffolds for every metadata-only profile',
+    '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update intake --stale [--refresh-foundation]             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
+    '  node src/index.js update intake --imported [--refresh-foundation]          Backfill intake scaffolds only for already-imported profiles missing imports/ assets',
+    '  node src/index.js update intake --all [--refresh-foundation]               Rebuild intake scaffolds for every metadata-only profile',
     '  node src/index.js update foundation --person <person-id>',
     '  node src/index.js update foundation --stale',
     '  node src/index.js update foundation --all',
@@ -1553,10 +1923,11 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'import' && subcommand === 'intake') {
     return formatUsageHint(
-      'Usage: node src/index.js import intake --person <person-id> | --stale | --all',
+      'Usage: node src/index.js import intake --person <person-id> [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         'node src/index.js import intake --stale --refresh-foundation',
+        'node src/index.js import intake --imported --refresh-foundation',
       ],
     );
   }
@@ -1583,10 +1954,11 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 
   if (command === 'update' && subcommand === 'intake') {
     return formatUsageHint(
-      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] | --stale | --all',
+      'Usage: node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         'node src/index.js update intake --stale',
+        'node src/index.js update intake --imported --refresh-foundation',
       ],
     );
   }
