@@ -31,17 +31,24 @@ function parseFeishuMessageContent(rawContent) {
   }
 }
 
-function pickFirstFeishuText(post) {
+function extractFeishuPostText(post) {
   const languages = post && typeof post === 'object' ? Object.values(post) : [];
   for (const language of languages) {
     const contentRows = Array.isArray(language?.content) ? language.content : [];
-    for (const row of contentRows) {
-      const textBlock = Array.isArray(row)
-        ? row.find((item) => item && typeof item === 'object' && typeof item.text === 'string' && item.text.length > 0)
-        : null;
-      if (textBlock?.text) {
-        return textBlock.text;
-      }
+    const text = contentRows
+      .map((row) => Array.isArray(row)
+        ? row
+            .filter((item) => item && typeof item === 'object' && typeof item.text === 'string' && item.text.length > 0)
+            .map((item) => item.text.trim())
+            .filter((item) => item.length > 0)
+            .join(' ')
+        : '')
+      .filter((rowText) => rowText.length > 0)
+      .join(' ')
+      .trim();
+
+    if (text.length > 0) {
+      return text;
     }
   }
 
@@ -73,7 +80,7 @@ export function normalizeFeishuInboundEvent(payload = {}) {
     messageType: typeof message?.message_type === 'string' && message.message_type.length > 0 ? message.message_type : null,
     text: typeof content?.text === 'string' && content.text.length > 0
       ? content.text
-      : pickFirstFeishuText(content?.post),
+      : extractFeishuPostText(content?.post),
     threadId: typeof message?.thread_id === 'string' && message.thread_id.length > 0 ? message.thread_id : null,
     timestamp,
   };
