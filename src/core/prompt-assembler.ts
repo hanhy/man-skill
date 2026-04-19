@@ -1384,8 +1384,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
-      const intakeShortcutSegment = profile.intakeReady === true && profile.importIntakeCommand
-        ? ` | shortcut ${profile.importIntakeCommand}`
+      const intakeShortcutCommand = profile.importIntakeCommand ?? profile.importIntakeWithoutRefreshCommand ?? null;
+      const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
+        ? ` | shortcut ${intakeShortcutCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
