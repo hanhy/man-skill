@@ -1499,6 +1499,32 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   ].filter(Boolean).join('\n');
 }
 
+function formatVoicePreviewItems(label: string, values: unknown): string {
+  const items = Array.isArray(values)
+    ? values.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  return items.length > 0
+    ? `- ${label}: ${items.length} (${items.join('; ')})`
+    : `- ${label}: 0`;
+}
+
+function buildVoicePreviewBlock(voice: VoiceSummary): string {
+  if (!voice) {
+    return '- unavailable';
+  }
+
+  const tone = typeof voice.tone === 'string' && voice.tone.length > 0 ? voice.tone : 'n/a';
+  const style = typeof voice.style === 'string' && voice.style.length > 0 ? voice.style : 'unknown';
+
+  return [
+    `- tone: ${tone}`,
+    `- style: ${style}`,
+    formatVoicePreviewItems('constraints', voice.constraints),
+    formatVoicePreviewItems('signatures', voice.signatures),
+    formatVoicePreviewItems('language hints', voice.languageHints),
+  ].join('\n');
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
@@ -1552,22 +1578,14 @@ export class PromptAssembler {
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
-    const voicePreview = this.voice
-      ? {
-          tone: this.voice.tone,
-          style: this.voice.style,
-          constraints: this.voice.constraints,
-          signatures: this.voice.signatures,
-          languageHints: this.voice.languageHints,
-        }
-      : null;
+    const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
 
     return [
       `Name: ${this.profile.name}`,
       `Soul summary: ${this.profile.soul}`,
       '',
       'Voice profile:',
-      JSON.stringify(voicePreview, null, 2),
+      voicePreviewBlock,
       ingestionEntranceBlock ? '' : null,
       ingestionEntranceBlock ? 'Ingestion entrance:' : null,
       ingestionEntranceBlock,
