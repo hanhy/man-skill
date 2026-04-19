@@ -342,14 +342,16 @@ test('buildCoreFoundationCommand keeps nested subheadings from triggering thin s
 });
 
 test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
-  assert.equal(
-    buildCoreFoundationCommand({
-      area: 'voice',
-      status: 'thin',
-      paths: ['voice/README.md'],
-    }),
-    buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS),
-  );
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  assert.match(command ?? '', /node --input-type=module -e/);
+  assert.match(command ?? '', /voice should capture/);
+  assert.match(command ?? '', /current default for manskill/);
+  assert.match(command ?? '', /node -e/);
 });
 
 test('buildCoreFoundationCommand scaffolds missing soul guidance with starter content', () => {
@@ -427,6 +429,41 @@ test('buildCoreFoundationCommand repairs thin voice docs that are only missing l
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
     '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent while normalizing legacy headings', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  assert.doesNotMatch(command ?? '', /if grep -Eq/);
+  assert.match(command ?? '', /node --input-type=module -e/);
+  assert.match(command ?? '', /voice should capture/);
+  assert.match(command ?? '', /current default for manskill/);
+});
+
+test('buildCoreFoundationCommand normalizes legacy voice headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-legacy-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for ManSkill\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Lead with the operating takeaway.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Default to English with occasional 中文 examples.\n',
   );
 });
 

@@ -266,7 +266,55 @@ function buildVoiceCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    return buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS);
+    const normalizeToOpenclaw = [
+      "import fs from 'node:fs';",
+      "const file = 'voice/README.md';",
+      "const raw = fs.readFileSync(file, 'utf8');",
+      "const lines = raw.split(/\\r?\\n/);",
+      "const stripHeadingText = (value) => value.trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase();",
+      "const parseHeadingAt = (sourceLines, index) => { const current = sourceLines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: stripHeadingText(atxMatch[2]), lineCount: 1, rawLines: [current] }; } const next = sourceLines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2, rawLines: [current, next] }; };",
+      "const looksLikeLanguageHint = (value) => { const normalized = value.trim().toLowerCase(); return normalized.includes('language') || normalized.includes('bilingual') || normalized.includes('multilingual') || normalized.includes('中文') || normalized.includes('english'); };",
+      "const aliasMap = new Map([['tone', 'tone'], ['signature moves', 'signature-moves'], ['voice should capture', 'signature-moves'], ['avoid', 'avoid'], ['voice should not capture', 'avoid'], ['language hints', 'language-hints'], ['current default for manskill', 'current-default']]);",
+      "const sectionHeadings = { tone: '## Tone', 'signature-moves': '## Signature moves', avoid: '## Avoid', 'language-hints': '## Language hints' };",
+      "const sectionOrder = ['tone', 'signature-moves', 'avoid', 'language-hints'];",
+      "const sections = { tone: [], 'signature-moves': [], avoid: [], 'language-hints': [] };",
+      "const prelude = [];",
+      "const extras = [];",
+      "let currentSection = null;",
+      "let currentExtra = null;",
+      "for (let index = 0; index < lines.length;) {",
+      "  const parsed = parseHeadingAt(lines, index);",
+      "  if (parsed) {",
+      "    const key = aliasMap.get(parsed.text) ?? null;",
+      "    if (key) { currentSection = key; currentExtra = null; index += parsed.lineCount; continue; }",
+      "    currentSection = null; currentExtra = [...parsed.rawLines]; extras.push(currentExtra); index += parsed.lineCount; continue;",
+      "  }",
+      "  const line = lines[index] ?? '';",
+      "  if (currentExtra) { currentExtra.push(line); index += 1; continue; }",
+      "  if (currentSection === 'current-default') { if (line.trim().length === 0) { index += 1; continue; } (looksLikeLanguageHint(line) ? sections['language-hints'] : sections['signature-moves']).push(line); index += 1; continue; }",
+      "  if (currentSection) { sections[currentSection].push(line); index += 1; continue; }",
+      "  prelude.push(line);",
+      "  index += 1;",
+      "}",
+      "const trimBlankEdges = (values) => { while (values.length > 0 && values[0].trim() === '') values.shift(); while (values.length > 0 && values[values.length - 1].trim() === '') values.pop(); return values; };",
+      "const output = trimBlankEdges([...prelude]);",
+      "for (const key of sectionOrder) {",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(sectionHeadings[key]);",
+      "  const body = trimBlankEdges([...sections[key]]).filter((line) => key === 'tone' || line.trim().length > 0);",
+      "  output.push(...body);",
+      "}",
+      "for (const extra of extras) {",
+      "  const body = trimBlankEdges([...extra]);",
+      "  if (body.length === 0) continue;",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(...body);",
+      "}",
+      "const normalized = `${output.join('\\n').replace(/\\n+$/, '')}\\n`;",
+      "fs.writeFileSync(file, normalized);",
+    ].join(' ');
+    const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
+    return `${normalizeCommand} && ${buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS)}`;
   }
 
   return null;
