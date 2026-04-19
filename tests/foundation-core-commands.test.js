@@ -112,9 +112,9 @@ function buildDocumentRepairCommand(filePath, _sentinel, sections) {
     "const fs = require('node:fs');",
     `const file = ${JSON.stringify(filePath)};`,
     `const sections = ${JSON.stringify(normalizedSections)};`,
-    "const parseHeading = (line) => { const trimmed = line.trim(); const match = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (!match) return null; return { level: match[1].length, text: match[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase() }; };",
+    "const parseHeadingAt = (lines, index) => { const current = lines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: atxMatch[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase(), lineCount: 1 }; } const next = lines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2 }; };",
     "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
-    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; for (let index = 0; index < lines.length; index += 1) { const parsed = parseHeading(lines[index]); if (!parsed || parsed.text !== target) continue; if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; } } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } let endIndex = lines.length; for (let index = headingIndex + 1; index < lines.length; index += 1) { const parsed = parseHeading(lines[index]); if (parsed && parsed.level <= headingLevel) { endIndex = index; break; } } const hasContent = lines.slice(headingIndex + 1, endIndex).some((line) => line.trim().length > 0); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(headingIndex + 1, 0, ...insertLines); }",
+    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = lines.slice(contentStartIndex, endIndex).some((line) => line.trim().length > 0); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
     "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
   ].join(' ');
 
@@ -219,6 +219,54 @@ test('buildCoreFoundationCommand repairs deeper thin skills root headings withou
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
     '# Skills\n\n### What lives here ###\n- Reusable operator procedures and behavior modules.\n\n### Layout ###\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-setext-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n---------------\n\nLayout\n------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\nWhat lives here\n---------------\n- Reusable operator procedures and behavior modules.\n\nLayout\n------\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root level-one setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-setext-h1-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n===============\n\nLayout\n======\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\nWhat lives here\n===============\n- Reusable operator procedures and behavior modules.\n\nLayout\n======\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
