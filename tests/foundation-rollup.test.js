@@ -1819,6 +1819,44 @@ test('buildSummary ignores skills root section headings that only appear inside 
   assert.doesNotMatch(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md/);
 });
 
+test('buildSummary ignores soul and voice section headings that only appear inside fenced code blocks with fence-like lines', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable operator workflows.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\nKeep replies direct.\n\n```md\n## Tone\n- Example template only.\n```tsx\n## Signature moves\n- Example template only.\n## Avoid\n- Example template only.\n## Language hints\n- Example template only.\n```\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\nBuild a faithful operator core.\n\n```md\n## Core truths\n- Example template only.\n```tsx\n## Boundaries\n- Example template only.\n## Continuity\n- Example template only.\n```\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.voice.structured, false);
+  assert.equal(summary.foundation.core.voice.lineCount, 1);
+  assert.equal(summary.foundation.core.voice.excerpt, 'Keep replies direct.');
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.foundation.core.soul.structured, false);
+  assert.equal(summary.foundation.core.soul.lineCount, 1);
+  assert.equal(summary.foundation.core.soul.excerpt, 'Build a faithful operator core.');
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.doesNotMatch(summary.promptPreview, /Example template only/);
+});
+
 test('buildSummary treats deeper markdown headings in skill docs as structured guidance', () => {
   const rootDir = makeTempRepo();
 

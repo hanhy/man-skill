@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt } from './document-excerpt.ts';
 import { SoulProfile } from './soul-profile.ts';
 import { VoiceProfile } from './voice-profile.ts';
 
@@ -19,106 +20,6 @@ function buildFoundationScaffoldBundle(commands: Array<string | null | undefined
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
-function stripWrappingQuotes(value: string): string {
-  const trimmed = value.trim();
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed;
-}
-
-function extractFrontmatterDescription(document: string): string | null {
-  if (!document.startsWith('---')) {
-    return null;
-  }
-
-  const lines = document.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-  if (closingIndex < 0) {
-    return null;
-  }
-
-  const frontmatterLines = lines.slice(1, closingIndex + 1);
-  for (let index = 0; index < frontmatterLines.length; index += 1) {
-    const line = frontmatterLines[index];
-    const match = line.match(/^description\s*:\s*(.*)$/i);
-    if (!match) {
-      continue;
-    }
-
-    const rawValue = match[1].trim();
-    if (/^[>|][0-9+-]*$/.test(rawValue)) {
-      const blockLines: string[] = [];
-      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
-        const nestedLine = frontmatterLines[nestedIndex];
-        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
-          break;
-        }
-
-        blockLines.push(nestedLine.trim());
-      }
-
-      const description = blockLines.join('\n').trim();
-      return isNonEmptyString(description) ? description : null;
-    }
-
-    const description = stripWrappingQuotes(rawValue);
-    return isNonEmptyString(description) ? description : null;
-  }
-
-  return null;
-}
-
-function filterOutsideMarkdownFences(lines: string[]): string[] {
-  const visibleLines: string[] = [];
-  let insideFence = false;
-  let insideHtmlComment = false;
-
-  for (const rawLine of lines) {
-    if (/^(```+|~~~+)/.test(rawLine.trim())) {
-      insideFence = !insideFence;
-      continue;
-    }
-
-    if (insideFence) {
-      continue;
-    }
-
-    let visibleLine = rawLine;
-
-    if (insideHtmlComment) {
-      const commentEnd = visibleLine.indexOf('-->');
-      if (commentEnd < 0) {
-        continue;
-      }
-
-      visibleLine = visibleLine.slice(commentEnd + 3);
-      insideHtmlComment = false;
-    }
-
-    while (true) {
-      const commentStart = visibleLine.indexOf('<!--');
-      if (commentStart < 0) {
-        break;
-      }
-
-      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
-      if (commentEnd >= 0) {
-        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
-        continue;
-      }
-
-      visibleLine = visibleLine.slice(0, commentStart);
-      insideHtmlComment = true;
-      break;
-    }
-
-    visibleLines.push(visibleLine);
-  }
-
-  return visibleLines;
-}
 
 function buildExcerpt(candidate: string | null | undefined, maxLength = 160): string | null {
   if (!isNonEmptyString(candidate)) {
@@ -134,27 +35,7 @@ function buildExcerpt(candidate: string | null | undefined, maxLength = 160): st
 }
 
 function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
-  if (!isNonEmptyString(document)) {
-    return null;
-  }
-
-  const frontmatterDescription = extractFrontmatterDescription(document);
-  if (isNonEmptyString(frontmatterDescription)) {
-    return buildExcerpt(frontmatterDescription, maxLength);
-  }
-
-  const lines = document.split(/\r?\n/);
-  const bodyLines = document.startsWith('---')
-    ? (() => {
-        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
-      })()
-    : lines;
-  const candidate = normalizeSetextHeadingLines(filterOutsideMarkdownFences(bodyLines))
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
-
-  return buildExcerpt(candidate, maxLength);
+  return buildExcerpt(findDocumentExcerpt(document), maxLength);
 }
 
 function formatList(values: string[]): string {
@@ -748,59 +629,22 @@ function normalizeSetextHeadingLines(lines: string[]): string[] {
   return normalizedLines;
 }
 
-function stripNonVisibleMarkdownContent(document: string | null | undefined): string {
-  if (!isNonEmptyString(document)) {
-    return '';
+function stripFrontmatter(document: string | null | undefined): string {
+  if (!isNonEmptyString(document) || !document.startsWith('---')) {
+    return document ?? '';
   }
 
-  const lines = document.split('\n');
-  let insideFence = false;
-  let insideHtmlComment = false;
-  const filteredLines: string[] = [];
+  const lines = document.split(/\r?\n/);
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  if (closingIndex < 0) {
+    return document;
+  }
 
-  lines.forEach((line) => {
-    if (/^(```+|~~~+)/.test(line.trim())) {
-      insideFence = !insideFence;
-      return;
-    }
+  return lines.slice(closingIndex + 2).join('\n');
+}
 
-    if (insideFence) {
-      return;
-    }
-
-    let visibleLine = line;
-
-    if (insideHtmlComment) {
-      const commentEnd = visibleLine.indexOf('-->');
-      if (commentEnd < 0) {
-        return;
-      }
-
-      visibleLine = visibleLine.slice(commentEnd + 3);
-      insideHtmlComment = false;
-    }
-
-    while (true) {
-      const commentStart = visibleLine.indexOf('<!--');
-      if (commentStart < 0) {
-        break;
-      }
-
-      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
-      if (commentEnd >= 0) {
-        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
-        continue;
-      }
-
-      visibleLine = visibleLine.slice(0, commentStart);
-      insideHtmlComment = true;
-      break;
-    }
-
-    filteredLines.push(visibleLine);
-  });
-
-  return normalizeSetextHeadingLines(filteredLines).join('\n');
+function stripNonVisibleMarkdownContent(document: string | null | undefined): string {
+  return normalizeSetextHeadingLines(collectVisibleDocumentLines(stripFrontmatter(document))).join('\n');
 }
 
 function parseMarkdownHeading(line: string | null | undefined): { level: number; text: string } | null {
