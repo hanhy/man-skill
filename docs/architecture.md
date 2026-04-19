@@ -84,6 +84,7 @@ The project aims to keep personal-agent construction simple:
 - render a compact foundation-rollup block in `PromptAssembler` that summarizes generated vs stale foundation state plus memory candidate-profile coverage and top memory / voice / soul / skills highlights across the repo
 - render a separate `Foundation maintenance:` block in `PromptAssembler` so queued stale/incomplete profiles are visible by name before the aggregate rollup
 - attach refresh commands to `foundation.maintenance` (`update foundation --stale` plus per-profile `--person <id>`) so the maintenance view is actionable, not just descriptive
+- expose a canonical next-refresh target on `foundation.maintenance` (`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedDraftGapSummary`) so prompt assembly and the work loop can reuse one stable per-profile refresh recommendation instead of recomputing it from the queue order
 - support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`
 - support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
 - support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`, with optional `--refresh-foundation` when those metadata edits should immediately regenerate identity-bearing drafts
