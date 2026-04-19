@@ -561,7 +561,9 @@ test('buildSummary foundation core marks partially structured soul and voice doc
     'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
   ]);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /SOUL\.md/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Boundaries/);
+  assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Continuity/);
   assert.match(summary.foundation.core.maintenance.helperCommands.soul ?? '', /## Decision rules/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /voice\/README\.md/);
   assert.match(summary.foundation.core.maintenance.helperCommands.voice ?? '', /## Signature moves/);

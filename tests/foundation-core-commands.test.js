@@ -231,14 +231,17 @@ test('buildCoreFoundationCommand scaffolds missing voice guidance with richer st
 });
 
 test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
-  assert.equal(
-    buildCoreFoundationCommand({
-      area: 'soul',
-      status: 'thin',
-      paths: ['SOUL.md'],
-    }),
-    buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS),
-  );
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  assert.match(command ?? '', /grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
+  assert.match(command ?? '', /## Core truths/);
+  assert.match(command ?? '', /## Continuity/);
+  assert.match(command ?? '', /## Core values/);
+  assert.match(command ?? '', /## Decision rules/);
 });
 
 test('buildCoreFoundationCommand repairs heading-only thin voice scaffolds', () => {
@@ -297,6 +300,63 @@ test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () =
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
     '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand preserves openclaw-style soul headings when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-openclaw-soul-command-'));
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand normalizes mixed soul heading dialects toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-mixed-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Decision rules\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand treats boundaries-only thin soul docs as openclaw-style scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-boundaries-soul-command-'));
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Boundaries\n- Keep claims grounded.\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Keep claims grounded.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 

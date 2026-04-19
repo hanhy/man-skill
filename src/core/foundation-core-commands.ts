@@ -117,6 +117,26 @@ const SOUL_SECTIONS = [
     existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
   },
 ] as const;
+const SOUL_OPENCLAW_SECTIONS = [
+  {
+    heading: '## Core truths',
+    sentinel: '- Describe the durable values and goals that should survive across tasks.',
+    missingSectionAppend: '\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n',
+    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
+  },
+  {
+    heading: '## Boundaries',
+    sentinel: '- Capture what the agent should protect or refuse to compromise.',
+    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
+    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Continuity',
+    sentinel: '- Note the principles to use when tradeoffs appear.',
+    missingSectionAppend: '\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
+  },
+] as const;
 
 function quoteShellPath(value: string): string {
   // Keep the hardcoded daily seed template expandable at runtime while quoting static paths.
@@ -274,7 +294,53 @@ function buildSoulCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    return buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
+    const defaultRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
+    const openclawRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_OPENCLAW_SECTIONS);
+    const normalizeToOpenclaw = [
+      "import fs from 'node:fs';",
+      "const file = 'SOUL.md';",
+      "const raw = fs.readFileSync(file, 'utf8');",
+      "const lines = raw.split(/\\r?\\n/);",
+      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
+      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', continuity: '## Continuity' };",
+      "const sectionOrder = ['core-truths', 'boundaries', 'continuity'];",
+      "const seen = new Set();",
+      "const sections = { 'core-truths': [], boundaries: [], continuity: [] };",
+      "const prelude = [];",
+      "const extras = [];",
+      "let currentSection = null;",
+      "let currentExtra = null;",
+      "for (const line of lines) {",
+      "  const trimmed = line.trim();",
+      "  if (/^## /.test(trimmed)) {",
+      "    const key = aliasMap.get(trimmed.slice(3).trim().toLowerCase()) ?? null;",
+      "    if (key) { currentSection = key; currentExtra = null; seen.add(key); continue; }",
+      "    currentSection = null; currentExtra = [line]; extras.push(currentExtra); continue;",
+      "  }",
+      "  if (currentExtra) { currentExtra.push(line); continue; }",
+      "  if (currentSection) { sections[currentSection].push(line); continue; }",
+      "  prelude.push(line);",
+      "}",
+      "const trimBlankEdges = (values) => { while (values.length > 0 && values[0].trim() === '') values.shift(); while (values.length > 0 && values[values.length - 1].trim() === '') values.pop(); return values; };",
+      "const output = trimBlankEdges([...prelude]);",
+      "for (const key of sectionOrder) {",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(sectionHeadings[key]);",
+      "  const body = trimBlankEdges([...sections[key]]);",
+      "  output.push(...body);",
+      "}",
+      "for (const extra of extras) {",
+      "  const body = trimBlankEdges([...extra]);",
+      "  if (body.length === 0) continue;",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(...body);",
+      "}",
+      "const normalized = `${output.join('\\n').replace(/\\n+$/, '')}\\n`;",
+      "fs.writeFileSync(file, normalized);",
+    ].join(' ');
+    const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
+    const openclawDetected = "grep -Eq '^## (Core truths|Continuity)$' 'SOUL.md' || { grep -Fqx -- '## Boundaries' 'SOUL.md' && ! grep -Eq '^## (Core values|Decision rules)$' 'SOUL.md'; }";
+    return `if ${openclawDetected}; then ${normalizeCommand} && ${openclawRepair}; else ${defaultRepair}; fi`;
   }
 
   return null;
