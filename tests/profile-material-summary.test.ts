@@ -607,6 +607,50 @@ test('loadProfilesIndex marks valid markdown drafts as stale when their target-p
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights, ['- [message] Ship the first slice.']);
 });
 
+test('PromptAssembler singularizes foundation rollup candidate and stale-profile wording when counts are one', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationRollup: {
+      memory: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        repoStaleProfileCount: 1,
+        totalEntries: 1,
+        highlights: ['Keep loops short.'],
+      },
+      voice: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        highlights: ['Warm and grounded.'],
+      },
+      soul: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        highlights: ['Protect the operator loop.'],
+      },
+      skills: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateCount: 1,
+        highlights: ['execution heuristic'],
+      },
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /memory: 0\/1 generated, 1 candidate profile, 1 repo-stale profile, 1 entries, highlights: Keep loops short\./);
+  assert.match(prompt, /voice: 0\/1 generated, 1 candidate profile, highlights: Warm and grounded\./);
+  assert.match(prompt, /soul: 0\/1 generated, 1 candidate profile, highlights: Protect the operator loop\./);
+  assert.match(prompt, /skills: 0\/1 generated, 1 candidate, highlights: execution heuristic/);
+});
+
 test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
@@ -713,7 +757,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   }).buildSystemPrompt();
 
   assert.match(prompt, /Foundation rollup:/);
-  assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profiles, 3 entries/);
+  assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 3 entries/);
   assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
   assert.match(prompt, /skills: 0\/2 generated, 1 candidate, highlights: execution heuristic/);
   assert.match(prompt, /Profiles:/);

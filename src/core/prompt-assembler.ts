@@ -859,22 +859,26 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   }
 
   const skillsCandidateCount = skills?.candidateCount ?? 0;
-  const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
+  const skillsCandidateLabel = formatCountLabel(skillsCandidateCount, 'candidate');
 
   return [
     memory
-      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.candidateProfileCount ?? 0} candidate profiles, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
-      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${voice.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
       : null,
     soul
-      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${soul.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
       ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
+}
+
+function formatCountLabel(count: number, singularLabel: string) {
+  return `${count} ${singularLabel}${count === 1 ? '' : 's'}`;
 }
 
 function formatChannelAuth(auth: ChannelAuth | null | undefined) {
