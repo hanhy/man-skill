@@ -184,9 +184,66 @@ test('WhatsApp channel runtime helpers cover readiness, interactive inbound repl
       senderId: '15550001',
       profileName: 'Harry',
       text: 'Ship it',
+      interactiveReplyType: 'button_reply',
+      interactiveReplyId: 'btn-1',
+      interactiveReplyTitle: 'Ship it',
+      interactiveReplyDescription: null,
       messageId: 'wamid-1',
       contextMessageId: 'wamid-parent',
       timestamp: 1710000200,
+    },
+  );
+
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: 'phone-1' },
+                contacts: [
+                  {
+                    wa_id: '15550001',
+                    profile: { name: 'Harry' },
+                  },
+                ],
+                messages: [
+                  {
+                    from: '15550001',
+                    id: 'wamid-2',
+                    timestamp: '1710000201',
+                    type: 'interactive',
+                    interactive: {
+                      list_reply: {
+                        id: 'list-1',
+                        title: 'Review later',
+                        description: 'Send it to the review queue',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    {
+      platform: 'whatsapp',
+      eventType: 'interactive',
+      phoneNumberId: 'phone-1',
+      senderId: '15550001',
+      profileName: 'Harry',
+      text: 'Review later',
+      interactiveReplyType: 'list_reply',
+      interactiveReplyId: 'list-1',
+      interactiveReplyTitle: 'Review later',
+      interactiveReplyDescription: 'Send it to the review queue',
+      messageId: 'wamid-2',
+      contextMessageId: null,
+      timestamp: 1710000201,
     },
   );
 
