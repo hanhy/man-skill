@@ -15,6 +15,7 @@ const memoryDoc = fs.readFileSync(path.join(repoRoot, 'memory', 'README.md'), 'u
 const skillsDoc = fs.readFileSync(path.join(repoRoot, 'skills', 'README.md'), 'utf8');
 const soulDoc = fs.readFileSync(path.join(repoRoot, 'SOUL.md'), 'utf8');
 const voiceDoc = fs.readFileSync(path.join(repoRoot, 'voice', 'README.md'), 'utf8');
+const userDoc = fs.readFileSync(path.join(repoRoot, 'USER.md'), 'utf8');
 
 test('README documents the default delivery foundation targets and repo manifests', () => {
   assert.match(readme, /Delivery foundation/i);
@@ -36,6 +37,23 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus `\.env\.example` path visible/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
+});
+
+test('checked-in USER current product direction stays aligned with the default work-loop objectives', () => {
+  assert.match(userDoc, /## Current product direction/);
+  assert.match(userDoc, /1\. strengthen the OpenClaw-like foundation around memory, skills, soul, and voice/);
+  assert.match(userDoc, /2\. improve the user-facing ingestion\/update entrance for target-person materials/);
+  assert.match(userDoc, /3\. add chat channels Feishu, Telegram, WhatsApp, and Slack/);
+  assert.match(userDoc, /4\. add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen/);
+
+  const summary = buildSummary(repoRoot);
+  assert.deepEqual(summary.workLoop.objectives, [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ]);
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
