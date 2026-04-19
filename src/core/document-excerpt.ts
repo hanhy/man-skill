@@ -58,6 +58,37 @@ export function extractFrontmatterDescription(document: unknown): string | null 
   return null;
 }
 
+function filterOutsideMarkdownFences(lines: string[]): string[] {
+  const visibleLines: string[] = [];
+  let activeFenceMarker: '`' | '~' | null = null;
+  let activeFenceLength = 0;
+
+  for (const rawLine of lines) {
+    const trimmedLine = rawLine.trim();
+    const openingFenceMatch = trimmedLine.match(/^((`{3,})|(~{3,})).*$/);
+    if (!activeFenceMarker) {
+      if (openingFenceMatch) {
+        const fence = openingFenceMatch[1];
+        activeFenceMarker = fence[0] as '`' | '~';
+        activeFenceLength = fence.length;
+        continue;
+      }
+
+      visibleLines.push(rawLine);
+      continue;
+    }
+
+    const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+    if (closingFencePattern.test(trimmedLine)) {
+      activeFenceMarker = null;
+      activeFenceLength = 0;
+      continue;
+    }
+  }
+
+  return visibleLines;
+}
+
 export function findDocumentExcerpt(document: unknown): string | null {
   const normalizedDocument = normalizeDocument(document);
   const frontmatterDescription = extractFrontmatterDescription(normalizedDocument);
@@ -73,7 +104,7 @@ export function findDocumentExcerpt(document: unknown): string | null {
       })()
     : lines;
 
-  return bodyLines
+  return filterOutsideMarkdownFences(bodyLines)
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
 }

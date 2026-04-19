@@ -220,6 +220,122 @@ Description: Preserve terse bilingual delivery.
   });
 });
 
+test('voice profile ignores fenced code blocks when finding the default tone', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '```tsx',
+    "const tone = 'placeholder';",
+    '```',
+    '',
+    'Stay direct after the example.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Stay direct after the example.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile keeps mismatched fence markers inside the fenced block when finding the default tone', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '```tsx',
+    '~~~',
+    'const tone = `still code`;',
+    '```',
+    '',
+    'Use the first prose line after the real closing fence.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Use the first prose line after the real closing fence.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile keeps same-marker fence-like code lines inside the fenced block when finding the default tone', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '```md',
+    '```tsx',
+    'const tone = "still code";',
+    '```',
+    '',
+    'Use the prose line after the real closing fence.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Use the prose line after the real closing fence.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile ignores fenced code blocks when finding the default excerpt', () => {
+  const soul = SoulProfile.fromDocument([
+    '# Soul',
+    '',
+    '```md',
+    'placeholder excerpt',
+    '```',
+    '',
+    'Durable posture after the example.',
+    '',
+    '## Core truths',
+    '- Stay faithful to the source material.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture after the example.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: [],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
 
