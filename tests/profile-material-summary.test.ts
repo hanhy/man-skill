@@ -1798,7 +1798,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 1 missing/);
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 ready, 0 partial, 1 missing/);
+  assert.match(summary.promptPreview, /imported intake: 2 ready, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
@@ -1830,6 +1831,8 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 1);
+  assert.match(summary.promptPreview, /imported intake: 1 ready, 0 backfills, 0 invalid manifests/);
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
 });
@@ -1852,6 +1855,7 @@ test('buildSummary surfaces imported profiles that still need intake backfill af
   const summary = buildSummary(rootDir);
   const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 1);
   assert.equal(summary.ingestion.helperCommands?.scaffoldImported, 'node src/index.js update intake --imported');
   assert.equal(summary.ingestion.helperCommands?.importIntakeImported, 'node src/index.js import intake --imported --refresh-foundation');
@@ -1894,6 +1898,7 @@ test('buildSummary labels imported intake backfill bundles separately from the g
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedIntakeBackfillProfileCount, 2);
   assert.equal(summary.ingestion.helperCommands?.scaffoldImported, 'node src/index.js update intake --imported');
   assert.equal(summary.ingestion.helperCommands?.importIntakeImported, 'node src/index.js import intake --imported --refresh-foundation');
@@ -1930,6 +1935,7 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   const summary = buildSummary(rootDir);
   const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
@@ -2183,6 +2189,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     readyProfileCount: 0,
     refreshProfileCount: 0,
     incompleteProfileCount: 0,
+    importedIntakeReadyProfileCount: 0,
     importedIntakeBackfillProfileCount: 0,
     importedInvalidIntakeManifestProfileCount: 0,
     invalidMetadataOnlyIntakeManifestProfileCount: 0,

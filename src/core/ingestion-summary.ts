@@ -697,6 +697,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
   const importedInvalidIntakeManifestProfiles = allProfileCommands
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const importedProfilesWithReadyIntake = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
   const metadataInvalidIntakeManifestProfiles = metadataProfileCommands
     .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
   const orderedProfileCommands = allProfileCommands
@@ -771,6 +773,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     readyProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    importedIntakeReadyProfileCount: importedProfilesWithReadyIntake.length,
     importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
     importedInvalidIntakeManifestProfileCount: importedInvalidIntakeManifestProfiles.length,
     invalidMetadataOnlyIntakeManifestProfileCount: metadataInvalidIntakeManifestProfiles.length,
