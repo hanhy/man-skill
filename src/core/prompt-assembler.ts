@@ -1405,7 +1405,7 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
   return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
 }
 
-function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined) {
+function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined): string {
   const normalizedReadySections = Array.isArray(readySections)
     ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1419,6 +1419,54 @@ function formatRootSectionSummary(readySections: string[] | undefined, missingSe
   }
 
   return `; root sections ${normalizedReadySections.length}/${totalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
+function formatThinSectionProgress(readySections: string[] | undefined, missingSections: string[] | undefined): string {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+
+  if (totalSectionCount === 0 || normalizedReadySections.length === 0) {
+    return '';
+  }
+
+  return `sections ${normalizedReadySections.length}/${totalSectionCount} ready (${normalizedReadySections.join(', ')})${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
+function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
+  const contextParts: string[] = [];
+  const rootSummary = formatThinSectionProgress(area.rootThinReadySections, area.rootThinMissingSections);
+  if (rootSummary) {
+    contextParts.push(`root ${rootSummary}`);
+  }
+
+  const thinSectionPaths = new Set<string>([
+    ...Object.keys(area.thinReadySections ?? {}),
+    ...Object.keys(area.thinMissingSections ?? {}),
+  ]);
+  const thinPathSummaries = Array.from(thinSectionPaths)
+    .sort((left, right) => left.localeCompare(right))
+    .map((thinPath) => {
+      const summary = formatThinSectionProgress(area.thinReadySections?.[thinPath], area.thinMissingSections?.[thinPath]);
+      if (!summary) {
+        return null;
+      }
+
+      const labelMatch = thinPath.match(/^skills\/([^/]+)\/SKILL\.md$/);
+      const label = labelMatch?.[1] ?? thinPath;
+      return `${label} ${summary}`;
+    })
+    .filter((value): value is string => Boolean(value));
+
+  if (thinPathSummaries.length > 0) {
+    contextParts.push(`thin docs ${thinPathSummaries.join('; ')}`);
+  }
+
+  return contextParts.length > 0 ? `; context ${contextParts.join(' | ')}` : '';
 }
 
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
@@ -1442,7 +1490,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const queuedAreas = maintenance?.queuedAreas ?? [];
   const queuedAreaLines = queuedAreas.slice(0, 2).map((area) => {
     const command = area.command ?? buildCoreFoundationCommand(area);
-    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
+    const sectionContext = formatQueuedAreaSectionContext(area);
+    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${sectionContext}${command ? `; command ${command}` : ''}`;
   });
   const remainingQueuedAreas = queuedAreas.slice(2);
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0

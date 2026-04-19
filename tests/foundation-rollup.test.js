@@ -1528,6 +1528,7 @@ test('buildSummary surfaces ready sections for partially structured thin skill d
   assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
     'skills/slack/SKILL.md': ['what-this-skill-is-for'],
   });
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/slack\/SKILL\.md: suggested-workflow @ skills\/README\.md, skills\/slack\/SKILL\.md; context thin docs slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow; command /);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(slack\); root missing @ skills\/README\.md; thin docs: slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/slack\/SKILL\.md/);
 });
 
@@ -1618,7 +1619,7 @@ test('buildSummary treats partially structured skills root guidance as thin core
   assert.equal(summary.workLoop.currentPriority?.command, skillsCommand);
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/README.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
-  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout; command /);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(delivery\); root: Shared repo guidance for reusable procedures\.\; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\./);
   assert.match(summary.promptPreview, /node -e 'const fs = require\('/);
 });
