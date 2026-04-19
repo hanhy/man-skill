@@ -525,6 +525,43 @@ test('buildCoreFoundationCommand combines missing and thin skill doc repairs wit
   );
 });
 
+test('buildCoreFoundationCommand combines skills root guidance scaffolds with missing and thin skill docs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md', 'skills/slack/SKILL.md', 'skills/delivery/SKILL.md'],
+    missingPaths: ['skills/slack/SKILL.md'],
+    thinPaths: ['skills/README.md', 'skills/delivery/SKILL.md'],
+  });
+
+  assert.match(command ?? '', /^\(\{ if grep -Fqx -- '## What lives here' 'skills\/README\.md'/);
+  assert.match(command ?? '', /mkdir -p 'skills\/slack'/);
+  assert.match(command ?? '', /skills\/delivery\/SKILL\.md/);
+  assert.match(command ?? '', /&& \(mkdir -p 'skills\/slack'/);
+  assert.match(command ?? '', /&& \(\{ if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'/);
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skills-root-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nShared repo skill guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\nShared repo skill guidance.\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),
+    '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
 test('buildCoreFoundationCommand preserves shell quoting for skill docs with spaces and apostrophes', () => {
   const command = buildCoreFoundationCommand({
     area: 'skills',
