@@ -25,7 +25,7 @@ type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'v
 function cleanVoiceLine(value: string) {
   return value
     .trim()
-    .replace(/^[-*]\s+/, '')
+    .replace(/^(?:[-*]|\d+\.)\s+/, '')
     .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
     .trim();
 }

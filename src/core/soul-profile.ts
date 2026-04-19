@@ -44,7 +44,7 @@ function mapSoulHeadingToSection(heading: string): SoulSection {
 function cleanSoulLine(value: string) {
   return value
     .trim()
-    .replace(/^[-*]\s+/, '')
+    .replace(/^(?:[-*]|\d+\.)\s+/, '')
     .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
     .trim();
 }
