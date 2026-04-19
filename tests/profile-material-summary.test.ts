@@ -592,6 +592,77 @@ test('PromptAssembler includes aggregated foundation maintenance counts in the s
   assert.match(prompt, /- refresh reasons: metadata-updated 1, missing-draft 1, new-material 1/);
 });
 
+test('PromptAssembler keeps foundation maintenance previews compact when many queued profiles need refresh', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    profiles: [],
+    foundationRollup: {
+      maintenance: {
+        profileCount: 3,
+        readyProfileCount: 0,
+        refreshProfileCount: 3,
+        incompleteProfileCount: 3,
+        missingDraftCounts: {
+          memory: 3,
+          skills: 3,
+          soul: 2,
+          voice: 1,
+        },
+        refreshReasonCounts: {
+          'metadata-updated': 2,
+          'missing-draft': 3,
+          'new-material': 1,
+        },
+        staleRefreshCommand: 'node src/index.js update foundation --stale',
+        helperCommands: {
+          refreshStale: 'node src/index.js update foundation --stale',
+          refreshBundle: "(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person sam-lane)",
+        },
+        queuedProfiles: [
+          {
+            id: 'jane-doe',
+            label: 'Jane Doe (jane-doe)',
+            status: 'needs-refresh',
+            generatedDraftCount: 0,
+            expectedDraftCount: 4,
+            missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+            refreshReasons: ['missing drafts', 'metadata-updated'],
+          },
+          {
+            id: 'harry-han',
+            label: 'Harry Han (harry-han)',
+            status: 'needs-refresh',
+            generatedDraftCount: 2,
+            expectedDraftCount: 4,
+            missingDrafts: ['memory', 'skills'],
+            refreshReasons: ['missing drafts', 'new materials'],
+          },
+          {
+            id: 'sam-lane',
+            label: 'Sam Lane (sam-lane)',
+            status: 'needs-refresh',
+            generatedDraftCount: 1,
+            expectedDraftCount: 4,
+            missingDrafts: ['memory', 'skills', 'soul'],
+            refreshReasons: ['missing drafts', 'metadata-updated'],
+          },
+        ],
+      },
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
+  assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
+  assert.match(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
+  assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
+  assert.doesNotMatch(prompt, /- Sam Lane \(sam-lane\): needs-refresh, 1\/4 drafts generated/);
+});
+
 test('PromptAssembler includes delivery foundation snapshots in the system prompt', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
