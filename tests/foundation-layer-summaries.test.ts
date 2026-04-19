@@ -248,6 +248,32 @@ test('voice profile ignores fenced code blocks when finding the default tone', (
   });
 });
 
+test('voice profile ignores html comments when finding the default tone', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '<!-- hidden guidance should not become the tone -->',
+    '',
+    'Stay direct after the comment.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Stay direct after the comment.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile keeps mismatched fence markers inside the fenced block when finding the default tone', () => {
   const voice = VoiceProfile.fromDocument([
     '# Voice',
@@ -323,6 +349,34 @@ test('soul profile ignores fenced code blocks when finding the default excerpt',
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Durable posture after the example.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: [],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile ignores html comments when finding the default excerpt', () => {
+  const soul = SoulProfile.fromDocument([
+    '# Soul',
+    '',
+    '<!-- hidden posture should not become the excerpt -->',
+    '',
+    'Durable posture after the comment.',
+    '',
+    '## Core truths',
+    '- Stay faithful to the source material.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture after the comment.',
     coreTruths: ['Stay faithful to the source material.'],
     boundaries: [],
     vibe: [],

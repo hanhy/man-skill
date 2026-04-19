@@ -62,6 +62,7 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
   const visibleLines: string[] = [];
   let activeFenceMarker: '`' | '~' | null = null;
   let activeFenceLength = 0;
+  let insideHtmlComment = false;
 
   for (const rawLine of lines) {
     const trimmedLine = rawLine.trim();
@@ -73,17 +74,45 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
         activeFenceLength = fence.length;
         continue;
       }
-
-      visibleLines.push(rawLine);
+    } else {
+      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+      if (closingFencePattern.test(trimmedLine)) {
+        activeFenceMarker = null;
+        activeFenceLength = 0;
+      }
       continue;
     }
 
-    const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
-    if (closingFencePattern.test(trimmedLine)) {
-      activeFenceMarker = null;
-      activeFenceLength = 0;
-      continue;
+    let visibleLine = rawLine;
+
+    if (insideHtmlComment) {
+      const commentEnd = visibleLine.indexOf('-->');
+      if (commentEnd < 0) {
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(commentEnd + 3);
+      insideHtmlComment = false;
     }
+
+    while (true) {
+      const commentStart = visibleLine.indexOf('<!--');
+      if (commentStart < 0) {
+        break;
+      }
+
+      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
+      if (commentEnd >= 0) {
+        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(0, commentStart);
+      insideHtmlComment = true;
+      break;
+    }
+
+    visibleLines.push(visibleLine);
   }
 
   return visibleLines;
