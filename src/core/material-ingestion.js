@@ -201,13 +201,13 @@ function buildSoulDraftLines({
       materialCount,
       materialTypes,
     }),
-    '## Core values',
+    '## Core truths',
     ...coreValueLines,
     '',
     '## Boundaries',
     'Stay within the evidence from imported materials before promoting a behavior into a durable identity rule.',
     '',
-    '## Decision rules',
+    '## Continuity',
     'Prefer the strongest repeated values and tradeoff language from imported materials when evolving this profile.',
   ];
 }

@@ -854,7 +854,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /queue: 0 ready, 2 thin, 2 missing/);
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*skills\/starter/);
-  assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
+  assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/; command mkdir -p skills\/starter && printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
@@ -936,7 +936,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
 
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /skills\/starter/);
-  assert.match(summary.promptPreview, /grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
+  assert.match(summary.promptPreview, /node --input-type=module -e/);
   assert.match(summary.promptPreview, /voice\/README\.md/);
 });
 

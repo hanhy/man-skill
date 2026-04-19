@@ -94,30 +94,9 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ] as const;
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
-const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
 const SOUL_SECTIONS = [
-  {
-    heading: '## Core values',
-    sentinel: '- Describe the durable values and goals that should survive across tasks.',
-    missingSectionAppend: '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n',
-    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
-  },
-  {
-    heading: '## Boundaries',
-    sentinel: '- Capture what the agent should protect or refuse to compromise.',
-    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
-    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
-  },
-  {
-    heading: '## Decision rules',
-    sentinel: '- Note the principles to use when tradeoffs appear.',
-    missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
-    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
-  },
-] as const;
-const SOUL_OPENCLAW_SECTIONS = [
   {
     heading: '## Core truths',
     sentinel: '- Describe the durable values and goals that should survive across tasks.',
@@ -298,8 +277,6 @@ function buildSoulCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    const defaultRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
-    const openclawRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_OPENCLAW_SECTIONS);
     const normalizeToOpenclaw = [
       "import fs from 'node:fs';",
       "const file = 'SOUL.md';",
@@ -308,7 +285,6 @@ function buildSoulCommand(status: string | null): string | null {
       "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
       "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', continuity: '## Continuity' };",
       "const sectionOrder = ['core-truths', 'boundaries', 'continuity'];",
-      "const seen = new Set();",
       "const sections = { 'core-truths': [], boundaries: [], continuity: [] };",
       "const prelude = [];",
       "const extras = [];",
@@ -318,7 +294,7 @@ function buildSoulCommand(status: string | null): string | null {
       "  const trimmed = line.trim();",
       "  if (/^## /.test(trimmed)) {",
       "    const key = aliasMap.get(trimmed.slice(3).trim().toLowerCase()) ?? null;",
-      "    if (key) { currentSection = key; currentExtra = null; seen.add(key); continue; }",
+      "    if (key) { currentSection = key; currentExtra = null; continue; }",
       "    currentSection = null; currentExtra = [line]; extras.push(currentExtra); continue;",
       "  }",
       "  if (currentExtra) { currentExtra.push(line); continue; }",
@@ -343,8 +319,7 @@ function buildSoulCommand(status: string | null): string | null {
       "fs.writeFileSync(file, normalized);",
     ].join(' ');
     const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
-    const openclawDetected = "grep -Eq '^## (Core truths|Continuity)$' 'SOUL.md' || { grep -Fqx -- '## Boundaries' 'SOUL.md' && ! grep -Eq '^## (Core values|Decision rules)$' 'SOUL.md'; }";
-    return `if ${openclawDetected}; then ${normalizeCommand} && ${openclawRepair}; else ${defaultRepair}; fi`;
+    return `${normalizeCommand} && ${buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS)}`;
   }
 
   return null;

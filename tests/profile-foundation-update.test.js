@@ -100,11 +100,11 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
-  assert.match(soulDraft, /## Core values/);
+  assert.match(soulDraft, /## Core truths/);
   assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
   assert.match(soulDraft, /## Boundaries/);
   assert.match(soulDraft, /Stay within the evidence from imported materials/i);
-  assert.match(soulDraft, /## Decision rules/);
+  assert.match(soulDraft, /## Continuity/);
   assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
@@ -1134,9 +1134,9 @@ test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts tha
 
   const repairedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
   assert.notEqual(repairedSoulDraft, legacySoulDraft);
-  assert.match(repairedSoulDraft, /## Core values/);
+  assert.match(repairedSoulDraft, /## Core truths/);
   assert.match(repairedSoulDraft, /## Boundaries/);
-  assert.match(repairedSoulDraft, /## Decision rules/);
+  assert.match(repairedSoulDraft, /## Continuity/);
 
   const repairedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
   assert.notEqual(repairedSkillsDraft, legacySkillsDraft);

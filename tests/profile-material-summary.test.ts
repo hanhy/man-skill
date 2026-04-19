@@ -500,6 +500,22 @@ test('loadProfilesIndex accepts deeper markdown headings in structured foundatio
   assert.equal(profile.foundationDraftSummaries.soul.generated, true);
 });
 
+test('refreshFoundationDrafts writes profile soul drafts with openclaw-style headings', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const soulDraft = fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md'), 'utf8');
+
+  assert.match(soulDraft, /## Core truths/);
+  assert.match(soulDraft, /## Boundaries/);
+  assert.match(soulDraft, /## Continuity/);
+  assert.doesNotMatch(soulDraft, /## Core values/);
+  assert.doesNotMatch(soulDraft, /## Decision rules/);
+});
+
 test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice headings as valid structured drafts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

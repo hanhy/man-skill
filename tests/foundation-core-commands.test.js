@@ -35,7 +35,7 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ];
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const MEMORY_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
 const MEMORY_SECTIONS = [
   {
@@ -308,11 +308,12 @@ test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
     paths: ['SOUL.md'],
   });
 
-  assert.match(command ?? '', /grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
+  assert.doesNotMatch(command ?? '', /if grep -Eq/);
+  assert.match(command ?? '', /node --input-type=module -e/);
   assert.match(command ?? '', /## Core truths/);
   assert.match(command ?? '', /## Continuity/);
-  assert.match(command ?? '', /## Core values/);
-  assert.match(command ?? '', /## Decision rules/);
+  assert.match(command ?? '', /core values/);
+  assert.match(command ?? '', /decision rules/);
 });
 
 test('buildCoreFoundationCommand repairs heading-only thin voice scaffolds', () => {
@@ -364,13 +365,13 @@ test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () =
   });
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-command-'));
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n');
 
   execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
