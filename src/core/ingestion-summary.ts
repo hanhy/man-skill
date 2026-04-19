@@ -544,11 +544,15 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeImportManifestCommand = intakeManifestPath && intakeManifestRunnable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
+  const preferredIntakeManifestCommand = intakeManifest.status === 'loaded'
+    ? intakeImportManifestCommand
+    : null;
   const defaultImportCommand = imported
     ? null
     : intakeManifest.status === 'invalid'
       ? null
-      : (runnableTextImportCommand
+      : (preferredIntakeManifestCommand
+        ?? runnableTextImportCommand
         ?? runnableScreenshotImportCommand
         ?? runnableMessageImportCommand
         ?? runnableTalkImportCommand
