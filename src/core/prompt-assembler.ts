@@ -1278,7 +1278,12 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   });
   const remainingQueuedAreas = queuedAreas.slice(2);
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
-    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]`).join(', ')}`
+    ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => {
+      const summary = typeof area.summary === 'string' && area.summary.length > 0
+        ? ` (${area.summary})`
+        : '';
+      return `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]${summary}`;
+    }).join(', ')}`
     : null;
   const recommendedRepairLine = maintenance?.recommendedAction
     ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}`
