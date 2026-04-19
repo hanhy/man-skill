@@ -209,6 +209,22 @@ test('voice profile strips numbered list markers inside structured sections', ()
   });
 });
 
+test('voice profile parses setext headings inside structured sections', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nTone\n----\nWarm and grounded.\n\nSignature moves\n---------------\n- Use crisp examples.\n- Close with a concrete next step.\n\nAvoid\n-----\n- Never pad the answer.\n\nLanguage hints\n--------------\n- Preserve bilingual phrasing when the source material switches languages.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples.', 'Close with a concrete next step.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 2,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile uses frontmatter description as the default tone instead of YAML metadata lines', () => {
   const voice = VoiceProfile.fromDocument(`---
 name: ManSkill voice
@@ -542,6 +558,24 @@ Description: Keep the operating posture grounded.
 
 test('soul profile strips numbered list markers inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\n1. Stay faithful to the source material.\n2. Prefer verified slices over big rewrites.\n\n## Boundaries\n1. Do not bluff certainty.\n\n## Vibe\n1. Grounded and direct.\n\n## Continuity\n1. Carry durable lessons forward.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture.',
+    coreTruths: ['Stay faithful to the source material.', 'Prefer verified slices over big rewrites.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile parses setext headings inside structured sections', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\nCore truths\n-----------\n- Stay faithful to the source material.\n- Prefer verified slices over big rewrites.\n\nBoundaries\n----------\n- Do not bluff certainty.\n\nVibe\n-----\n- Grounded and direct.\n\nContinuity\n----------\n- Carry durable lessons forward.\n`);
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Durable posture.',

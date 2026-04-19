@@ -174,6 +174,32 @@ function filterOutsideMarkdownFences(lines) {
   return visibleLines;
 }
 
+function normalizeSetextHeadingLines(lines) {
+  const normalizedLines = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const currentLine = lines[index] ?? '';
+    const nextLine = lines[index + 1] ?? '';
+    const trimmedCurrentLine = currentLine.trim();
+    const setextMatch = nextLine.trim().match(/^(=+|-+)$/);
+
+    if (
+      setextMatch
+      && trimmedCurrentLine.length > 0
+      && !trimmedCurrentLine.startsWith('#')
+    ) {
+      const level = setextMatch[1].startsWith('=') ? '#' : '##';
+      normalizedLines.push(`${level} ${trimmedCurrentLine}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(currentLine);
+  }
+
+  return normalizedLines;
+}
+
 function extractDocumentBodyLines(document) {
   if (!isNonEmptyString(document)) {
     return [];
@@ -198,7 +224,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
     return buildExcerpt(frontmatterDescription, maxLength);
   }
 
-  const candidate = filterOutsideMarkdownFences(extractDocumentBodyLines(document))
+  const candidate = normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
@@ -206,7 +232,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 }
 
 function hasMeaningfulDocumentBody(document) {
-  return filterOutsideMarkdownFences(extractDocumentBodyLines(document))
+  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
     .map((line) => line.trim())
     .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 }
@@ -244,7 +270,7 @@ function collectSkillSectionState(document) {
     };
   }
 
-  const lines = filterOutsideMarkdownFences(document.split(/\r?\n/));
+  const lines = normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)));
   const ready = [];
   const missing = [];
 
@@ -294,7 +320,7 @@ function hasStructuredSkillHeading(document) {
     return false;
   }
 
-  return filterOutsideMarkdownFences(document.split(/\r?\n/))
+  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)))
     .map((line) => parseMarkdownHeading(line))
     .some((heading) => heading && heading.level >= 2 && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(heading.text)));
 }
@@ -370,7 +396,7 @@ function buildExcerpt(value, maxLength = 160) {
     return null;
   }
 
-  const normalized = value.replace(/\s+/g, ' ').trim();
+  const normalized = value.replace(/^[-*]\s*/, '').replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxLength) {
     return normalized;
   }

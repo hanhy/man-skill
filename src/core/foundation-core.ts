@@ -150,7 +150,7 @@ function extractExcerpt(document: string | null | undefined, maxLength = 160): s
         return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
       })()
     : lines;
-  const candidate = filterOutsideMarkdownFences(bodyLines)
+  const candidate = normalizeSetextHeadingLines(filterOutsideMarkdownFences(bodyLines))
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
@@ -722,6 +722,32 @@ export interface CoreDocumentFoundationSummary {
   missingSections: string[];
 }
 
+function normalizeSetextHeadingLines(lines: string[]): string[] {
+  const normalizedLines: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const currentLine = lines[index] ?? '';
+    const nextLine = lines[index + 1] ?? '';
+    const trimmedCurrentLine = currentLine.trim();
+    const setextMatch = nextLine.trim().match(/^(=+|-+)$/);
+
+    if (
+      setextMatch
+      && trimmedCurrentLine.length > 0
+      && !trimmedCurrentLine.startsWith('#')
+    ) {
+      const level = setextMatch[1].startsWith('=') ? '#' : '##';
+      normalizedLines.push(`${level} ${trimmedCurrentLine}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(currentLine);
+  }
+
+  return normalizedLines;
+}
+
 function stripNonVisibleMarkdownContent(document: string | null | undefined): string {
   if (!isNonEmptyString(document)) {
     return '';
@@ -774,7 +800,7 @@ function stripNonVisibleMarkdownContent(document: string | null | undefined): st
     filteredLines.push(visibleLine);
   });
 
-  return filteredLines.join('\n');
+  return normalizeSetextHeadingLines(filteredLines).join('\n');
 }
 
 function parseMarkdownHeading(line: string | null | undefined): { level: number; text: string } | null {

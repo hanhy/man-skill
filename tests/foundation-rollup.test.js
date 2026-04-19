@@ -1713,6 +1713,48 @@ test('buildSummary treats soul and voice headings with closing hashes as structu
   assert.match(summary.promptPreview, /voice: present, \d+ lines, .*sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });
 
+test('buildSummary treats setext headings across root and profile foundation docs as structured sections', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n---------------\n- Shared repo guidance for reusable procedures.\n\nLayout\n------\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\nWhat this skill is for\n----------------------\n- Deliver concise handoffs.\n\nSuggested workflow\n------------------\n- Re-run the narrowest verification first.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nTone\n----\n- Keep replies direct.\n\nSignature moves\n---------------\n- Lead with the operational takeaway.\n\nAvoid\n-----\n- Avoid vague filler.\n\nLanguage hints\n--------------\n- Prefer plain English unless source material clearly code-switches.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nCore truths\n-----------\n- Preserve durable operator intent.\n\nBoundaries\n----------\n- Do not invent source material.\n\nContinuity\n----------\n- Prefer verified repo state over assumptions.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
+  assert.equal(summary.foundation.core.skills.rootExcerpt, 'Shared repo guidance for reusable procedures.');
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['delivery: Deliver concise handoffs.']);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Preserve durable operator intent.');
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.foundation.core.skills.documentedCount, 1);
+  assert.equal(summary.foundation.core.skills.thinCount, 0);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
+  assert.doesNotMatch(summary.promptPreview, /root missing @ skills\/README\.md/);
+  assert.doesNotMatch(summary.promptPreview, /thin docs: delivery/);
+});
+
 test('buildSummary keeps untouched soul and voice starter templates queued as thin core foundation coverage', () => {
   const rootDir = makeTempRepo();
 
@@ -1800,7 +1842,7 @@ test('buildSummary treats deeper markdown headings in skill docs as structured g
 
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.thinCount, 0);
-  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: - Keep scheduled follow-ups reliable.']);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: Keep scheduled follow-ups reliable.']);
   assert.equal(summary.foundation.core.skills.thinMissingSections, undefined);
   assert.equal(summary.foundation.core.skills.thinReadySections, undefined);
   assert.doesNotMatch(summary.promptPreview, /thin docs: cron/);
@@ -1829,7 +1871,7 @@ test('buildSummary treats skill doc headings with closing hashes as structured g
 
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.thinCount, 0);
-  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: - Keep scheduled follow-ups reliable.']);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['cron: Keep scheduled follow-ups reliable.']);
   assert.equal(summary.foundation.core.skills.thinMissingSections, undefined);
   assert.equal(summary.foundation.core.skills.thinReadySections, undefined);
   assert.doesNotMatch(summary.promptPreview, /thin docs: cron/);
