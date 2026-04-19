@@ -19,26 +19,110 @@ function buildFoundationScaffoldBundle(commands: Array<string | null | undefined
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
-function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
-  if (!isNonEmptyString(document)) {
+function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function extractFrontmatterDescription(document: string): string | null {
+  if (!document.startsWith('---')) {
     return null;
   }
 
-  const candidate = document
-    .split('\n')
-    .map((line) => line.trim())
-    .find((line) => line && !line.startsWith('#'));
-
-  if (!candidate) {
+  const lines = document.split(/\r?\n/);
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  if (closingIndex < 0) {
     return null;
   }
 
-  const normalized = candidate.replace(/^[-*]\s*/, '').trim();
+  const frontmatterLines = lines.slice(1, closingIndex + 1);
+  for (let index = 0; index < frontmatterLines.length; index += 1) {
+    const line = frontmatterLines[index];
+    const match = line.match(/^description\s*:\s*(.*)$/i);
+    if (!match) {
+      continue;
+    }
+
+    const rawValue = match[1].trim();
+    if (/^[>|][0-9+-]*$/.test(rawValue)) {
+      const blockLines: string[] = [];
+      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
+        const nestedLine = frontmatterLines[nestedIndex];
+        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
+          break;
+        }
+
+        blockLines.push(nestedLine.trim());
+      }
+
+      const description = blockLines.join('\n').trim();
+      return isNonEmptyString(description) ? description : null;
+    }
+
+    const description = stripWrappingQuotes(rawValue);
+    return isNonEmptyString(description) ? description : null;
+  }
+
+  return null;
+}
+
+function filterOutsideMarkdownFences(lines: string[]): string[] {
+  const visibleLines: string[] = [];
+  let insideFence = false;
+
+  for (const rawLine of lines) {
+    if (/^(```+|~~~+)/.test(rawLine.trim())) {
+      insideFence = !insideFence;
+      continue;
+    }
+
+    if (!insideFence) {
+      visibleLines.push(rawLine);
+    }
+  }
+
+  return visibleLines;
+}
+
+function buildExcerpt(candidate: string | null | undefined, maxLength = 160): string | null {
+  if (!isNonEmptyString(candidate)) {
+    return null;
+  }
+
+  const normalized = candidate.replace(/^[-*]\s*/, '').replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxLength) {
     return normalized;
   }
 
   return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
+  if (!isNonEmptyString(document)) {
+    return null;
+  }
+
+  const frontmatterDescription = extractFrontmatterDescription(document);
+  if (isNonEmptyString(frontmatterDescription)) {
+    return buildExcerpt(frontmatterDescription, maxLength);
+  }
+
+  const lines = document.split(/\r?\n/);
+  const bodyLines = document.startsWith('---')
+    ? (() => {
+        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+      })()
+    : lines;
+  const candidate = filterOutsideMarkdownFences(bodyLines)
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
+
+  return buildExcerpt(candidate, maxLength);
 }
 
 function formatList(values: string[]): string {
