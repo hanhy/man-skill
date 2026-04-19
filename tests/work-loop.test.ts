@@ -274,6 +274,53 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: keep the repo foundation guidance explicit before more rollout work \| keep intake updates obvious for partially imported profiles \| land WhatsApp after Slack and Telegram stay stable \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
 });
 
+test('buildSummary ignores commented and fenced placeholder objectives in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '<!--',
+      '1. placeholder foundation objective that should stay hidden',
+      '2. placeholder ingestion objective that should stay hidden',
+      '-->',
+      '',
+      '```md',
+      '1. placeholder channel objective from a fenced example',
+      '2. placeholder provider objective from a fenced example',
+      '```',
+      '',
+      '1. keep the visible foundation queue honest',
+      '2. keep intake reruns explicit for imported profiles',
+      '3. ship Slack after the visible delivery helpers are solid',
+      '4. validate OpenAI after the visible provider scaffolds stay green',
+      '',
+      '## Usage notes',
+      '',
+      'Only the visible numbered list should count.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the visible foundation queue honest',
+    'keep intake reruns explicit for imported profiles',
+    'ship Slack after the visible delivery helpers are solid',
+    'validate OpenAI after the visible provider scaffolds stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the visible foundation queue honest \| keep intake reruns explicit for imported profiles \| ship Slack after the visible delivery helpers are solid \| validate OpenAI after the visible provider scaffolds stay green \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /placeholder foundation objective/);
+  assert.doesNotMatch(summary.promptPreview, /placeholder channel objective/);
+});
+
 test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

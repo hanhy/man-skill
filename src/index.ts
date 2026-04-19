@@ -14,6 +14,7 @@ import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { buildDeliverySummary, buildPopulateEnvCommand } from './core/delivery-summary.ts';
+import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
@@ -160,7 +161,7 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
     return [];
   }
 
-  const lines = document.split(/\r?\n/);
+  const lines = collectVisibleDocumentLines(document);
   const heading = findWorkLoopObjectivesHeading(lines);
   if (!heading) {
     return [];
