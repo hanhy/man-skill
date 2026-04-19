@@ -2053,7 +2053,9 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   assert.equal(summary.workLoop.currentPriority.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han) — reasons profile metadata drift + draft metadata drift');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.maintenance.recommendedCommand);
   assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person harry-han');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, summary.foundation.maintenance.recommendedPaths);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/memory/long-term/foundation.json',
     'profiles/harry-han/skills/README.md',

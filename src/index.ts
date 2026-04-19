@@ -531,6 +531,14 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreMaintenance = coreFoundation?.maintenance ?? {};
   const coreOverview = coreFoundation?.overview ?? {};
   const queuedProfile = Array.isArray(maintenance.queuedProfiles) ? maintenance.queuedProfiles[0] : null;
+  const recommendedProfileId = typeof maintenance?.recommendedProfileId === 'string' && maintenance.recommendedProfileId.length > 0
+    ? maintenance.recommendedProfileId
+    : null;
+  const recommendedProfile = recommendedProfileId
+    ? (Array.isArray(maintenance.queuedProfiles)
+      ? maintenance.queuedProfiles.find((profile: any) => profile?.id === recommendedProfileId) ?? queuedProfile
+      : queuedProfile)
+    : queuedProfile;
   const queuedAreas = Array.isArray(coreMaintenance.queuedAreas) ? coreMaintenance.queuedAreas : [];
   const queuedArea = queuedAreas[0] ?? null;
   const queuedAreaCommand = queuedArea?.command ?? buildCoreFoundationCommand(queuedArea);
@@ -543,8 +551,17 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const recommendedCorePaths = Array.isArray(coreMaintenance?.recommendedPaths)
     ? coreMaintenance.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const queuedProfileSummary = queuedProfile?.id
-    ? profiles.find((profile) => profile?.id === queuedProfile.id) ?? null
+  const recommendedProfileAction = typeof maintenance?.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
+    ? maintenance.recommendedAction
+    : null;
+  const recommendedProfileCommand = typeof maintenance?.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0
+    ? maintenance.recommendedCommand
+    : null;
+  const recommendedProfilePaths = Array.isArray(maintenance?.recommendedPaths)
+    ? maintenance.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const queuedProfileSummary = recommendedProfile?.id
+    ? profiles.find((profile) => profile?.id === recommendedProfile.id) ?? null
     : null;
   const refreshProfileCount = maintenance.refreshProfileCount ?? 0;
   const incompleteProfileCount = maintenance.incompleteProfileCount ?? 0;
@@ -557,10 +574,10 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const useBulkRefreshCommand = refreshProfileCount > 1
     && (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
       || typeof maintenance?.staleRefreshCommand === 'string' && maintenance.staleRefreshCommand.length > 0);
-  const queuedProfileReasons = Array.isArray(queuedProfile?.refreshReasons)
-    ? queuedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+  const queuedProfileReasons = Array.isArray(recommendedProfile?.refreshReasons)
+    ? recommendedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const queuedProfileLabel = queuedProfile?.label ?? queuedProfile?.id ?? null;
+  const queuedProfileLabel = recommendedProfile?.label ?? recommendedProfile?.id ?? null;
   const bulkRefreshLabel = queuedProfileLabel
     ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
     : 'refresh stale or incomplete target profiles';
@@ -645,20 +662,20 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     : (useBulkCoreScaffoldCommand
       ? bulkCoreScaffoldPaths
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
-  const profileNextAction = queuedProfile?.refreshCommand
-    ? (useBulkRefreshCommand ? bulkRefreshLabel : buildFoundationRefreshLabel(queuedProfile, queuedProfileLabel))
+  const profileNextAction = recommendedProfile?.refreshCommand
+    ? (useBulkRefreshCommand ? bulkRefreshLabel : (recommendedProfileAction ?? buildFoundationRefreshLabel(recommendedProfile, queuedProfileLabel)))
     : null;
-  const profileCommand = queuedProfile?.refreshCommand
+  const profileCommand = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand
       ? (typeof maintenance?.refreshBundleCommand === 'string' && maintenance.refreshBundleCommand.length > 0
         ? maintenance.refreshBundleCommand
         : maintenance.staleRefreshCommand)
-      : queuedProfile.refreshCommand)
+      : (recommendedProfileCommand ?? recommendedProfile.refreshCommand))
     : null;
-  const profilePaths = queuedProfile?.refreshCommand
+  const profilePaths = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand
       ? bulkRefreshPaths
-      : buildFoundationDraftPaths(queuedProfileSummary))
+      : (recommendedProfilePaths.length > 0 ? recommendedProfilePaths : buildFoundationDraftPaths(queuedProfileSummary)))
     : [];
 
   return {

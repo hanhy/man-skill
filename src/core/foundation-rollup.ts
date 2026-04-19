@@ -80,6 +80,19 @@ function buildCommandBundle(commands: Array<string | null | undefined> = []): st
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
+  if (typeof profileId !== 'string' || profileId.length === 0) {
+    return [];
+  }
+
+  return [
+    `profiles/${profileId}/memory/long-term/foundation.json`,
+    `profiles/${profileId}/skills/README.md`,
+    `profiles/${profileId}/soul/README.md`,
+    `profiles/${profileId}/voice/README.md`,
+  ];
+}
+
 function summarizeDraftGap(summary: any, key: string): string | null {
   const totalSectionCount = summary?.totalSectionCount ?? 0;
   const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
@@ -164,6 +177,8 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')
         || (left.label ?? '').localeCompare(right.label ?? '');
     });
+  const recommendedProfile = queuedProfiles[0] ?? null;
+  const recommendedPaths = buildFoundationDraftPaths(recommendedProfile?.id ?? null);
 
   return {
     profileCount: profiles.length,
@@ -178,6 +193,14 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     refreshAllCommand: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
     staleRefreshCommand: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,
     refreshBundleCommand: buildCommandBundle(queuedProfiles.map((profile) => profile.refreshCommand)),
+    recommendedProfileId: recommendedProfile?.id ?? null,
+    recommendedLabel: recommendedProfile?.label ?? recommendedProfile?.id ?? null,
+    recommendedAction: recommendedProfile
+      ? `refresh ${recommendedProfile.label ?? recommendedProfile.id}${(recommendedProfile.refreshReasons ?? []).length > 0 ? ` — reasons ${(recommendedProfile.refreshReasons ?? []).join(' + ')}` : ''}`
+      : null,
+    recommendedCommand: recommendedProfile?.refreshCommand ?? null,
+    recommendedPaths,
+    recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
       refreshStale: queuedProfiles.length > 0 ? 'node src/index.js update foundation --stale' : null,

@@ -924,6 +924,8 @@ export interface BuildCoreFoundationSummaryOptions {
   skillInventory?: {
     root?: string | null;
     names?: string[];
+    hasRootDocument?: boolean;
+    rootPath?: string;
     documented?: string[];
     undocumented?: string[];
     thin?: string[];

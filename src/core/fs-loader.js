@@ -275,6 +275,8 @@ function loadSkillInventory(rootDir) {
   return {
     root,
     names: skillNames,
+    hasRootDocument: isNonEmptyString(root),
+    rootPath: 'skills/README.md',
     documented,
     undocumented,
     thin,

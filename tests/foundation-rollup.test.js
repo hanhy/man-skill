@@ -204,6 +204,17 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedProfileId: 'jane-doe',
+    recommendedLabel: 'jane-doe',
+    recommendedAction: 'refresh jane-doe — reasons missing drafts',
+    recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedPaths: [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
@@ -295,6 +306,17 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedProfileId: 'jane-doe',
+    recommendedLabel: 'Jane Doe (jane-doe)',
+    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + new materials',
+    recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedPaths: [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
@@ -322,6 +344,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh node src\/index\.js update foundation --person jane-doe/);
   assert.match(summary.promptPreview, /Ingestion entrance:[\s\S]*drafts: 1 ready, 1 queued for refresh, 1 incomplete[\s\S]*refresh-bundle node src\/index\.js update foundation --person jane-doe/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .* \| refresh node src\/index\.js update foundation --person jane-doe/);
 });
@@ -1032,6 +1055,8 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     rootPath: 'skills/README.md',
     rootExcerpt: null,
     count: 2,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 2,
     thinCount: 0,
@@ -1115,6 +1140,8 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     rootPath: 'skills/README.md',
     rootExcerpt: null,
     count: 2,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 1,
     undocumentedCount: 1,
     thinCount: 0,
@@ -1197,6 +1224,8 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     rootPath: 'skills/README.md',
     rootExcerpt: null,
     count: 1,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 0,
     thinCount: 1,
@@ -1689,6 +1718,8 @@ test('buildSummary lists every missing SKILL doc in maintenance actions even whe
     rootPath: 'skills/README.md',
     rootExcerpt: null,
     count: 6,
+    hasRootDocument: false,
+    rootPath: 'skills/README.md',
     documentedCount: 0,
     undocumentedCount: 6,
     thinCount: 0,

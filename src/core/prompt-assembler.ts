@@ -111,6 +111,12 @@ type FoundationMaintenance = {
   refreshAllCommand?: string | null;
   staleRefreshCommand?: string | null;
   refreshBundleCommand?: string | null;
+  recommendedProfileId?: string | null;
+  recommendedLabel?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
+  recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
     refreshStale?: string | null;
@@ -772,6 +778,12 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     maintenance.helperCommands?.refreshStale ? `refresh-stale ${maintenance.helperCommands.refreshStale}` : null,
     maintenance.helperCommands?.refreshBundle ? `refresh-bundle ${maintenance.helperCommands.refreshBundle}` : null,
   ].filter(Boolean).join(' | ');
+  const recommendedPaths = Array.isArray(maintenance.recommendedPaths)
+    ? maintenance.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    : null;
   const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
   const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
@@ -811,6 +823,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     refreshReasonSummary ? `- refresh reasons: ${refreshReasonSummary}` : null,
     helperLine ? `- helpers: ${helperLine}` : null,
     maintenance.staleRefreshCommand ? `- refresh command: ${maintenance.staleRefreshCommand}` : null,
+    nextRefreshLine,
     ...visibleQueuedProfiles.map((profile) => `- ${profile.label ?? profile.id}: ${formatQueuedProfileLine(profile)}`),
     remainingQueuedProfileSummary,
   ].filter(Boolean).join('\n');
