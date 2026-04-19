@@ -2062,6 +2062,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
         "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         'node src/index.js import intake --stale --refresh-foundation',
         'node src/index.js import intake --imported --refresh-foundation',
+        'node src/index.js import intake --all --refresh-foundation',
       ],
     );
   }
@@ -2093,6 +2094,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
         "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         'node src/index.js update intake --stale',
         'node src/index.js update intake --imported --refresh-foundation',
+        'node src/index.js update intake --all --refresh-foundation',
       ],
     );
   }
@@ -2103,6 +2105,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
       [
         "node src/index.js update foundation --person 'harry-han'",
         'node src/index.js update foundation --stale',
+        'node src/index.js update foundation --all',
       ],
     );
   }

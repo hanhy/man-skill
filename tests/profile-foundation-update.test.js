@@ -886,6 +886,7 @@ test('CLI update intake errors advertise the full usage surface for person, stal
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
       assert.match(error.stderr, /node src\/index\.js update intake --stale/);
       assert.match(error.stderr, /node src\/index\.js update intake --imported --refresh-foundation/);
+      assert.match(error.stderr, /node src\/index\.js update intake --all --refresh-foundation/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
@@ -905,6 +906,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
         /node src\/index\.js import intake --stale --refresh-foundation/,
         /node src\/index\.js import intake --imported --refresh-foundation/,
+        /node src\/index\.js import intake --all --refresh-foundation/,
       ],
     },
     {
@@ -915,6 +917,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         /Examples:/,
         /node src\/index\.js update foundation --person 'harry-han'/,
         /node src\/index\.js update foundation --stale/,
+        /node src\/index\.js update foundation --all/,
       ],
     },
   ];
