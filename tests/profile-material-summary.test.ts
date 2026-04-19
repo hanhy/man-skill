@@ -300,6 +300,33 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
+test('loadProfilesIndex marks memory foundation drafts stale when the stored personId drifts from the profile id', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['profile metadata drift']);
+  assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+});
+
 test('loadProfilesIndex marks legacy markdown foundation drafts without structured sections as stale and ungenerated', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

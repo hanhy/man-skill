@@ -116,6 +116,36 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
 });
 
+test('refreshFoundationDrafts rewrites a memory foundation draft when its stored personId drifts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const result = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(repairedDraft.personId, 'harry-han');
+  assert.equal(repairedDraft.displayName, 'Harry Han');
+  assert.equal(repairedDraft.summary, 'Direct operator with a bias for momentum.');
+});
+
 test('CLI update foundation command writes derived profile drafts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1095,6 +1125,35 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
     fs.readFileSync(path.join(rootDir, 'profiles', 'fresh-person', 'memory', 'long-term', 'foundation.json'), 'utf8'),
   );
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when memory draft personId metadata drifts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Memory Drift',
+    displayName: 'Memory Drift',
+    summary: 'Needs the stored profile id repaired.',
+  });
+  ingestion.importMessage({
+    personId: 'Memory Drift',
+    text: 'Ship the first slice.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Memory Drift' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'memory-drift', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['memory-drift']);
+  assert.equal(result.results[0].generatedAt >= initial.generatedAt, true);
+  assert.equal(repairedDraft.personId, 'memory-drift');
 });
 
 test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts that miss structured sections', () => {

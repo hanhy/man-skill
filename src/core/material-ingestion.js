@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   FileSystemLoader,
   hasFoundationDraftProfileMetadataMismatch,
+  hasFoundationMemoryDraftProfileMetadataMismatch,
   hasValidFoundationMarkdownDraft,
   parseDraftMetadata,
 } from './fs-loader.js';
@@ -1397,11 +1398,7 @@ export class MaterialIngestion {
           return true;
         }
 
-        if ((memoryDraft.displayName ?? profileId) !== (profileDocument?.displayName ?? profileId)) {
-          return true;
-        }
-
-        if ((memoryDraft.summary ?? null) !== (profileDocument?.summary ?? null)) {
+        if (hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft, profileId, profileDocument)) {
           return true;
         }
 

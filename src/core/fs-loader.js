@@ -732,6 +732,20 @@ export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, 
     || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
 }
 
+export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = null, profileId, profileDocument = null) {
+  if (!memoryDraft) {
+    return false;
+  }
+
+  const expectedProfileId = profileId;
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+
+  return (memoryDraft.personId ?? profileId) !== expectedProfileId
+    || (memoryDraft.displayName ?? profileId) !== expectedDisplayName
+    || (memoryDraft.summary ?? null) !== expectedSummary;
+}
+
 function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
@@ -764,13 +778,7 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
   }
 
   const generatedAt = memoryDraft?.generatedAt ?? null;
-  const expectedDisplayName = profileDocument?.displayName ?? profileId;
-  const expectedSummary = profileDocument?.summary ?? null;
-  const hasProfileMetadataMismatch = Boolean(memoryDraft)
-    && (
-      (memoryDraft.displayName ?? profileId) !== expectedDisplayName
-      || (memoryDraft.summary ?? null) !== expectedSummary
-    );
+  const hasProfileMetadataMismatch = hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft, profileId, profileDocument);
   const hasMarkdownMetadataMismatch = [voiceMetadata, soulMetadata, skillsMetadata]
     .some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
