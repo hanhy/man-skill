@@ -62,6 +62,7 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
   const visibleLines: string[] = [];
   let activeFenceMarker: '`' | '~' | null = null;
   let activeFenceLength = 0;
+  let insideHtmlComment = false;
 
   for (const rawLine of lines) {
     const trimmedLine = rawLine.trim();
@@ -73,20 +74,104 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
         activeFenceLength = fence.length;
         continue;
       }
-
-      visibleLines.push(rawLine);
+    } else {
+      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+      if (closingFencePattern.test(trimmedLine)) {
+        activeFenceMarker = null;
+        activeFenceLength = 0;
+      }
       continue;
     }
 
-    const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
-    if (closingFencePattern.test(trimmedLine)) {
-      activeFenceMarker = null;
-      activeFenceLength = 0;
-      continue;
+    let visibleLine = rawLine;
+
+    if (insideHtmlComment) {
+      const commentEnd = visibleLine.indexOf('-->');
+      if (commentEnd < 0) {
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(commentEnd + 3);
+      insideHtmlComment = false;
     }
+
+    while (true) {
+      const commentStart = visibleLine.indexOf('<!--');
+      if (commentStart < 0) {
+        break;
+      }
+
+      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
+      if (commentEnd >= 0) {
+        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(0, commentStart);
+      insideHtmlComment = true;
+      break;
+    }
+
+    visibleLines.push(visibleLine);
   }
 
   return visibleLines;
+}
+
+function normalizeSetextHeadings(lines: string[]): string[] {
+  const normalizedLines: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const currentLine = lines[index] ?? '';
+    const nextLine = lines[index + 1] ?? '';
+    const trimmedCurrentLine = currentLine.trim();
+    const setextMatch = nextLine.trim().match(/^(=+|-+)$/);
+
+    if (
+      setextMatch
+      && trimmedCurrentLine.length > 0
+      && !trimmedCurrentLine.startsWith('#')
+    ) {
+      const level = setextMatch[1].startsWith('=') ? '#' : '##';
+      normalizedLines.push(`${level} ${trimmedCurrentLine}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(currentLine);
+  }
+
+  return normalizedLines;
+}
+
+function stripLeadingBlockquotePrefix(line: string): string {
+  return line.replace(/^\s*(?:>\s*)+/, '');
+}
+
+function normalizeAdmonitionLine(line: string): string {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^\[!([A-Z][A-Z0-9-]*)\](?:\s+(.*))?$/);
+  if (!match) {
+    return line;
+  }
+
+  const trailingContent = match[2]?.trim() ?? '';
+  return trailingContent.length > 0 ? trailingContent : '';
+}
+
+function isMeaningfulExcerptLine(line: string): boolean {
+  return line.length > 0 && !line.startsWith('#') && line !== '---';
+}
+
+export function collectVisibleDocumentLines(document: unknown): string[] {
+  const normalizedDocument = normalizeDocument(document);
+  return normalizeSetextHeadings(
+    filterOutsideMarkdownFences(
+      normalizedDocument
+        .split(/\r?\n/)
+        .map((line) => stripLeadingBlockquotePrefix(line)),
+    ),
+  );
 }
 
 export function findDocumentExcerpt(document: unknown): string | null {
@@ -97,14 +182,14 @@ export function findDocumentExcerpt(document: unknown): string | null {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const bodyLines = normalizedDocument.startsWith('---')
+  const body = normalizedDocument.startsWith('---')
     ? (() => {
         const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+        return closingIndex >= 0 ? lines.slice(closingIndex + 2).join('\n') : normalizedDocument;
       })()
-    : lines;
+    : normalizedDocument;
 
-  return filterOutsideMarkdownFences(bodyLines)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
+  return collectVisibleDocumentLines(body)
+    .map((line) => normalizeAdmonitionLine(line.trim()))
+    .find((line) => isMeaningfulExcerptLine(line)) ?? null;
 }

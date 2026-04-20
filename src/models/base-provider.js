@@ -1,3 +1,20 @@
+export function normalizeProviderToolArguments(argumentsValue) {
+  if (typeof argumentsValue === 'string') {
+    return argumentsValue.length > 0 ? argumentsValue : '{}';
+  }
+
+  if (argumentsValue && typeof argumentsValue === 'object') {
+    try {
+      const serialized = JSON.stringify(argumentsValue);
+      return typeof serialized === 'string' && serialized.length > 0 ? serialized : '{}';
+    } catch {
+      return '{}';
+    }
+  }
+
+  return '{}';
+}
+
 export class BaseProvider {
   constructor({
     id,
@@ -28,7 +45,7 @@ export class BaseProvider {
   }
 
   missingEnvVars(environment = process.env) {
-    return this.requiredEnvVars().filter((envVar) => !environment?.[envVar]);
+    return this.requiredEnvVars().filter((envVar) => !hasConfiguredEnvValue(environment?.[envVar]));
   }
 
   isConfigured(environment = process.env) {
@@ -60,33 +77,61 @@ export class BaseProvider {
   }
 }
 
+function hasConfiguredEnvValue(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function collectProviderTextFragments(content, fragments = []) {
+  if (typeof content === 'string') {
+    const trimmed = content.trim();
+    if (trimmed.length > 0) {
+      fragments.push(trimmed);
+    }
+    return fragments;
+  }
+
+  if (Array.isArray(content)) {
+    content.forEach((part) => collectProviderTextFragments(part, fragments));
+    return fragments;
+  }
+
+  if (!content || typeof content !== 'object') {
+    return fragments;
+  }
+
+  if (typeof content.text === 'string') {
+    const trimmed = content.text.trim();
+    if (trimmed.length > 0) {
+      fragments.push(trimmed);
+    }
+  } else if (content.text && typeof content.text === 'object') {
+    collectProviderTextFragments(content.text.value, fragments);
+    collectProviderTextFragments(content.text.content, fragments);
+  }
+
+  if (typeof content.content === 'string') {
+    const trimmed = content.content.trim();
+    if (trimmed.length > 0) {
+      fragments.push(trimmed);
+    }
+  } else if (Array.isArray(content.content)) {
+    content.content.forEach((part) => collectProviderTextFragments(part, fragments));
+  }
+
+  if (typeof content.value === 'string') {
+    const trimmed = content.value.trim();
+    if (trimmed.length > 0) {
+      fragments.push(trimmed);
+    }
+  }
+
+  return fragments;
+}
+
 export function extractProviderTextContent(content) {
-  if (typeof content === 'string' && content.length > 0) {
-    return content;
-  }
-
-  if (!Array.isArray(content)) {
-    return null;
-  }
-
-  const text = content
-    .map((part) => {
-      if (!part || typeof part !== 'object') {
-        return null;
-      }
-
-      if (typeof part.text === 'string' && part.text.trim().length > 0) {
-        return part.text.trim();
-      }
-
-      if (typeof part.content === 'string' && part.content.trim().length > 0) {
-        return part.content.trim();
-      }
-
-      return null;
-    })
-    .filter(Boolean)
+  const text = collectProviderTextFragments(content)
     .join(' ')
+    .replace(/\s+/g, ' ')
     .trim();
 
   return text.length > 0 ? text : null;

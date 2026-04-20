@@ -37,6 +37,36 @@ function listDirectoriesIfExists(dirPath) {
     .sort();
 }
 
+function listSkillDirectoriesIfExists(skillsRootDir, relativeDir = '') {
+  const directoryPath = relativeDir.length > 0
+    ? path.join(skillsRootDir, relativeDir)
+    : skillsRootDir;
+  if (!fs.existsSync(directoryPath)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+  const childDirectories = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  const skillNames = [];
+  const hasSkillDocument = entries.some((entry) => entry.isFile() && entry.name === 'SKILL.md');
+
+  if (relativeDir.length > 0 && (hasSkillDocument || childDirectories.length === 0)) {
+    skillNames.push(relativeDir.replaceAll(path.sep, '/'));
+  }
+
+  for (const childDirectory of childDirectories) {
+    const childRelativeDir = relativeDir.length > 0
+      ? path.join(relativeDir, childDirectory)
+      : childDirectory;
+    skillNames.push(...listSkillDirectoriesIfExists(skillsRootDir, childRelativeDir));
+  }
+
+  return Array.from(new Set(skillNames)).sort();
+}
+
 function stripWrappingQuotes(value) {
   if (!isNonEmptyString(value)) {
     return value;
@@ -98,26 +128,112 @@ function extractFrontmatterDescription(document) {
   return null;
 }
 
-function isMarkdownFenceDelimiter(line) {
-  return /^(```+|~~~+)/.test(line.trim());
+function parseMarkdownHeading(line) {
+  if (!isNonEmptyString(line)) {
+    return null;
+  }
+
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  const normalizedText = match[2]
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+
+  return {
+    level: match[1].length,
+    text: normalizedText,
+  };
 }
 
 function filterOutsideMarkdownFences(lines) {
   const visibleLines = [];
-  let insideFence = false;
+  let activeFenceMarker = null;
+  let activeFenceLength = 0;
+  let insideHtmlComment = false;
 
   for (const rawLine of lines) {
-    if (isMarkdownFenceDelimiter(rawLine)) {
-      insideFence = !insideFence;
+    const trimmedLine = rawLine.trim();
+    const openingFenceMatch = trimmedLine.match(/^((`{3,})|(~{3,})).*$/);
+    if (!activeFenceMarker) {
+      if (openingFenceMatch) {
+        const fence = openingFenceMatch[1];
+        activeFenceMarker = fence[0];
+        activeFenceLength = fence.length;
+        continue;
+      }
+    } else {
+      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+      if (closingFencePattern.test(trimmedLine)) {
+        activeFenceMarker = null;
+        activeFenceLength = 0;
+      }
       continue;
     }
 
-    if (!insideFence) {
-      visibleLines.push(rawLine);
+    let visibleLine = rawLine;
+
+    if (insideHtmlComment) {
+      const commentEnd = visibleLine.indexOf('-->');
+      if (commentEnd < 0) {
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(commentEnd + 3);
+      insideHtmlComment = false;
     }
+
+    while (true) {
+      const commentStart = visibleLine.indexOf('<!--');
+      if (commentStart < 0) {
+        break;
+      }
+
+      const commentEnd = visibleLine.indexOf('-->', commentStart + 4);
+      if (commentEnd >= 0) {
+        visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`;
+        continue;
+      }
+
+      visibleLine = visibleLine.slice(0, commentStart);
+      insideHtmlComment = true;
+      break;
+    }
+
+    visibleLines.push(visibleLine);
   }
 
   return visibleLines;
+}
+
+function normalizeSetextHeadingLines(lines) {
+  const normalizedLines = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const currentLine = lines[index] ?? '';
+    const nextLine = lines[index + 1] ?? '';
+    const trimmedCurrentLine = currentLine.trim();
+    const setextMatch = nextLine.trim().match(/^(=+|-+)$/);
+
+    if (
+      setextMatch
+      && trimmedCurrentLine.length > 0
+      && !trimmedCurrentLine.startsWith('#')
+    ) {
+      const level = setextMatch[1].startsWith('=') ? '#' : '##';
+      normalizedLines.push(`${level} ${trimmedCurrentLine}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(currentLine);
+  }
+
+  return normalizedLines;
 }
 
 function extractDocumentBodyLines(document) {
@@ -144,7 +260,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
     return buildExcerpt(frontmatterDescription, maxLength);
   }
 
-  const candidate = filterOutsideMarkdownFences(extractDocumentBodyLines(document))
+  const candidate = normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 
@@ -152,7 +268,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 }
 
 function hasMeaningfulDocumentBody(document) {
-  return filterOutsideMarkdownFences(extractDocumentBodyLines(document))
+  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
     .map((line) => line.trim())
     .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 }
@@ -170,9 +286,10 @@ const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
     { key: 'language-hints', headings: ['language hints', 'current default for manskill'] },
   ],
   soul: [
-    { key: 'core-values', headings: ['core values', 'core truths'] },
+    { key: 'core-truths', headings: ['core values', 'core truths'] },
     { key: 'boundaries', headings: ['boundaries'] },
-    { key: 'decision-rules', headings: ['decision rules', 'continuity'] },
+    { key: 'vibe', headings: ['vibe'] },
+    { key: 'continuity', headings: ['decision rules', 'continuity'] },
   ],
   skills: [
     { key: 'candidate-skills', headings: ['candidate skills'] },
@@ -190,24 +307,26 @@ function collectSkillSectionState(document) {
     };
   }
 
-  const lines = filterOutsideMarkdownFences(document.split(/\r?\n/));
+  const lines = normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)));
   const ready = [];
   const missing = [];
 
   for (const section of SKILL_SECTION_DEFINITIONS) {
     let inSection = false;
     let hasContent = false;
+    let sectionHeadingLevel = null;
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
-      if (trimmed.startsWith('## ')) {
-        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
-        if (section.headings.includes(normalizedHeading)) {
+      const heading = parseMarkdownHeading(trimmed);
+      if (heading) {
+        if (heading.level >= 2 && section.headings.includes(heading.text)) {
           inSection = true;
           hasContent = false;
+          sectionHeadingLevel = heading.level;
           continue;
         }
 
-        if (inSection) {
+        if (inSection && sectionHeadingLevel !== null && heading.level <= sectionHeadingLevel) {
           break;
         }
       }
@@ -238,13 +357,14 @@ function hasStructuredSkillHeading(document) {
     return false;
   }
 
-  return filterOutsideMarkdownFences(document.split(/\r?\n/))
-    .map((line) => line.trim().toLowerCase())
-    .some((line) => line.startsWith('## ') && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(line.slice(3).trim())));
+  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)))
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading && heading.level >= 2 && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(heading.text)));
 }
 
 function loadSkillInventory(rootDir) {
-  const skillNames = listDirectoriesIfExists(path.join(rootDir, 'skills'));
+  const skillsRootDir = path.join(rootDir, 'skills');
+  const skillNames = listSkillDirectoriesIfExists(skillsRootDir);
   const root = readTextIfExists(path.join(rootDir, 'skills', 'README.md'));
   const documented = [];
   const undocumented = [];
@@ -314,7 +434,7 @@ function buildExcerpt(value, maxLength = 160) {
     return null;
   }
 
-  const normalized = value.replace(/\s+/g, ' ').trim();
+  const normalized = value.replace(/^[-*]\s*/, '').replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxLength) {
     return normalized;
   }
@@ -578,17 +698,19 @@ function summarizeFoundationDraftSections(filePath, content = null) {
   for (const section of sectionDefinitions) {
     let inSection = false;
     let hasContent = false;
+    let sectionHeadingLevel = null;
     for (const rawLine of lines) {
       const trimmed = rawLine.trim();
-      if (trimmed.startsWith('## ')) {
-        const normalizedHeading = trimmed.slice(3).trim().toLowerCase();
-        if (section.headings.includes(normalizedHeading)) {
+      const heading = parseMarkdownHeading(trimmed);
+      if (heading) {
+        if (heading.level >= 2 && section.headings.includes(heading.text)) {
           inSection = true;
           hasContent = false;
+          sectionHeadingLevel = heading.level;
           continue;
         }
 
-        if (inSection) {
+        if (inSection && sectionHeadingLevel !== null && heading.level <= sectionHeadingLevel) {
           break;
         }
       }
@@ -648,7 +770,21 @@ export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, 
     || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
 }
 
-function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
+export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = null, profileId, profileDocument = null) {
+  if (!memoryDraft) {
+    return false;
+  }
+
+  const expectedProfileId = profileId;
+  const expectedDisplayName = profileDocument?.displayName ?? profileId;
+  const expectedSummary = profileDocument?.summary ?? null;
+
+  return (memoryDraft.personId ?? profileId) !== expectedProfileId
+    || (memoryDraft.displayName ?? profileId) !== expectedDisplayName
+    || (memoryDraft.summary ?? null) !== expectedSummary;
+}
+
+export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -680,13 +816,7 @@ function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, 
   }
 
   const generatedAt = memoryDraft?.generatedAt ?? null;
-  const expectedDisplayName = profileDocument?.displayName ?? profileId;
-  const expectedSummary = profileDocument?.summary ?? null;
-  const hasProfileMetadataMismatch = Boolean(memoryDraft)
-    && (
-      (memoryDraft.displayName ?? profileId) !== expectedDisplayName
-      || (memoryDraft.summary ?? null) !== expectedSummary
-    );
+  const hasProfileMetadataMismatch = hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft, profileId, profileDocument);
   const hasMarkdownMetadataMismatch = [voiceMetadata, soulMetadata, skillsMetadata]
     .some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId

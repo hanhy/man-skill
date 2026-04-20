@@ -2,9 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   FileSystemLoader,
-  hasFoundationDraftProfileMetadataMismatch,
-  hasValidFoundationMarkdownDraft,
-  parseDraftMetadata,
+  loadFoundationDraftStatus,
 } from './fs-loader.js';
 
 function readJsonIfExists(filePath) {
@@ -201,13 +199,16 @@ function buildSoulDraftLines({
       materialCount,
       materialTypes,
     }),
-    '## Core values',
+    '## Core truths',
     ...coreValueLines,
     '',
     '## Boundaries',
     'Stay within the evidence from imported materials before promoting a behavior into a durable identity rule.',
     '',
-    '## Decision rules',
+    '## Vibe',
+    'Keep the posture grounded, practical, and close to the emotional texture that repeats across imported materials.',
+    '',
+    '## Continuity',
     'Prefer the strongest repeated values and tradeoff language from imported materials when evolving this profile.',
   ];
 }
@@ -496,8 +497,12 @@ function buildIntakeReadme({
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
-    `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`,
-    `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`,
+    importIntakeWithoutRefreshCommand
+      ? `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`
+      : null,
+    importIntakeCommand
+      ? `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`
+      : null,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
@@ -512,7 +517,7 @@ function buildIntakeReadme({
     managedCustomNotes,
     INTAKE_CUSTOM_NOTES_END,
     '',
-  ].join('\n');
+  ].filter((line) => line !== null).join('\n');
 }
 
 function buildProfileLabel({ personId, displayName }) {
@@ -659,8 +664,15 @@ export class MaterialIngestion {
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
     });
-    const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
-    const importIntakeCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
+    const existingMaterialCount = this.loadMaterialRecords(profileUpdate.personId).length;
+    const intakeShortcutCommandsAvailable = existingMaterialCount === 0
+      || (Array.isArray(starterManifest.entries) && starterManifest.entries.length > 0);
+    const importIntakeWithoutRefreshCommand = intakeShortcutCommandsAvailable
+      ? buildImportIntakeCommand(profileUpdate.personId)
+      : null;
+    const importIntakeCommand = intakeShortcutCommandsAvailable
+      ? buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true })
+      : null;
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
@@ -1370,46 +1382,17 @@ export class MaterialIngestion {
 
         const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
         const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+        const latestMaterialId = latestMaterialRecord?.id ?? null;
         const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
+        const foundationDraftStatus = loadFoundationDraftStatus(
+          this.rootDir,
+          profileId,
+          latestMaterialAt,
+          latestMaterialId,
+          profileDocument,
+        );
 
-        const memoryDraftPath = this.resolve('profiles', profileId, 'memory', 'long-term', 'foundation.json');
-        const voiceDraftPath = this.resolve('profiles', profileId, 'voice', 'README.md');
-        const soulDraftPath = this.resolve('profiles', profileId, 'soul', 'README.md');
-        const skillsDraftPath = this.resolve('profiles', profileId, 'skills', 'README.md');
-
-        if (!fs.existsSync(memoryDraftPath) || !fs.existsSync(voiceDraftPath) || !fs.existsSync(soulDraftPath) || !fs.existsSync(skillsDraftPath)) {
-          return true;
-        }
-
-        if (!hasValidFoundationMarkdownDraft(voiceDraftPath) || !hasValidFoundationMarkdownDraft(soulDraftPath) || !hasValidFoundationMarkdownDraft(skillsDraftPath)) {
-          return true;
-        }
-
-        const voiceMetadata = parseDraftMetadata(voiceDraftPath);
-        const soulMetadata = parseDraftMetadata(soulDraftPath);
-        const skillsMetadata = parseDraftMetadata(skillsDraftPath);
-        if ([voiceMetadata, soulMetadata, skillsMetadata].some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument))) {
-          return true;
-        }
-
-        const memoryDraft = readJsonIfExists(memoryDraftPath);
-        if (!memoryDraft?.generatedAt) {
-          return true;
-        }
-
-        if ((memoryDraft.displayName ?? profileId) !== (profileDocument?.displayName ?? profileId)) {
-          return true;
-        }
-
-        if ((memoryDraft.summary ?? null) !== (profileDocument?.summary ?? null)) {
-          return true;
-        }
-
-        if (memoryDraft.latestMaterialId && latestMaterialRecord?.id) {
-          return memoryDraft.latestMaterialId !== latestMaterialRecord.id;
-        }
-
-        return Boolean(latestMaterialAt) && latestMaterialAt > memoryDraft.generatedAt;
+        return foundationDraftStatus.needsRefresh;
       });
 
     return {

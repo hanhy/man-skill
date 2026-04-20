@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt } from './document-excerpt.ts';
 import { SoulProfile } from './soul-profile.ts';
 import { VoiceProfile } from './voice-profile.ts';
 
@@ -19,74 +20,6 @@ function buildFoundationScaffoldBundle(commands: Array<string | null | undefined
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
-function stripWrappingQuotes(value: string): string {
-  const trimmed = value.trim();
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed;
-}
-
-function extractFrontmatterDescription(document: string): string | null {
-  if (!document.startsWith('---')) {
-    return null;
-  }
-
-  const lines = document.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-  if (closingIndex < 0) {
-    return null;
-  }
-
-  const frontmatterLines = lines.slice(1, closingIndex + 1);
-  for (let index = 0; index < frontmatterLines.length; index += 1) {
-    const line = frontmatterLines[index];
-    const match = line.match(/^description\s*:\s*(.*)$/i);
-    if (!match) {
-      continue;
-    }
-
-    const rawValue = match[1].trim();
-    if (/^[>|][0-9+-]*$/.test(rawValue)) {
-      const blockLines: string[] = [];
-      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
-        const nestedLine = frontmatterLines[nestedIndex];
-        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
-          break;
-        }
-
-        blockLines.push(nestedLine.trim());
-      }
-
-      const description = blockLines.join('\n').trim();
-      return isNonEmptyString(description) ? description : null;
-    }
-
-    const description = stripWrappingQuotes(rawValue);
-    return isNonEmptyString(description) ? description : null;
-  }
-
-  return null;
-}
-
-function filterOutsideMarkdownFences(lines: string[]): string[] {
-  const visibleLines: string[] = [];
-  let insideFence = false;
-
-  for (const rawLine of lines) {
-    if (/^(```+|~~~+)/.test(rawLine.trim())) {
-      insideFence = !insideFence;
-      continue;
-    }
-
-    if (!insideFence) {
-      visibleLines.push(rawLine);
-    }
-  }
-
-  return visibleLines;
-}
 
 function buildExcerpt(candidate: string | null | undefined, maxLength = 160): string | null {
   if (!isNonEmptyString(candidate)) {
@@ -102,27 +35,7 @@ function buildExcerpt(candidate: string | null | undefined, maxLength = 160): st
 }
 
 function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
-  if (!isNonEmptyString(document)) {
-    return null;
-  }
-
-  const frontmatterDescription = extractFrontmatterDescription(document);
-  if (isNonEmptyString(frontmatterDescription)) {
-    return buildExcerpt(frontmatterDescription, maxLength);
-  }
-
-  const lines = document.split(/\r?\n/);
-  const bodyLines = document.startsWith('---')
-    ? (() => {
-        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
-      })()
-    : lines;
-  const candidate = filterOutsideMarkdownFences(bodyLines)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
-
-  return buildExcerpt(candidate, maxLength);
+  return buildExcerpt(findDocumentExcerpt(document), maxLength);
 }
 
 function formatList(values: string[]): string {
@@ -283,7 +196,7 @@ function buildSkillsMaintenancePaths({
   thinSkillNames: string[];
 }): string[] {
   if (skillsCount === 0) {
-    return ['skills/'];
+    return ['skills/starter/SKILL.md'];
   }
 
   return Array.from(new Set([
@@ -361,7 +274,7 @@ function countContentLines(document: string | null | undefined): number {
     return 0;
   }
 
-  return document
+  return stripNonVisibleMarkdownContent(document)
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('#'))
@@ -690,26 +603,70 @@ export interface CoreDocumentFoundationSummary {
   missingSections: string[];
 }
 
-function stripFencedCodeBlocks(document: string | null | undefined): string {
-  if (!isNonEmptyString(document)) {
-    return '';
+function normalizeSetextHeadingLines(lines: string[]): string[] {
+  const normalizedLines: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const currentLine = lines[index] ?? '';
+    const nextLine = lines[index + 1] ?? '';
+    const trimmedCurrentLine = currentLine.trim();
+    const setextMatch = nextLine.trim().match(/^(=+|-+)$/);
+
+    if (
+      setextMatch
+      && trimmedCurrentLine.length > 0
+      && !trimmedCurrentLine.startsWith('#')
+    ) {
+      const level = setextMatch[1].startsWith('=') ? '#' : '##';
+      normalizedLines.push(`${level} ${trimmedCurrentLine}`);
+      index += 1;
+      continue;
+    }
+
+    normalizedLines.push(currentLine);
   }
 
-  const lines = document.split('\n');
-  let insideFence = false;
-  const filteredLines: string[] = [];
+  return normalizedLines;
+}
 
-  lines.forEach((line) => {
-    if (/^(```+|~~~+)/.test(line.trim())) {
-      insideFence = !insideFence;
-      return;
-    }
-    if (!insideFence) {
-      filteredLines.push(line);
-    }
-  });
+function stripFrontmatter(document: string | null | undefined): string {
+  if (!isNonEmptyString(document) || !document.startsWith('---')) {
+    return document ?? '';
+  }
 
-  return filteredLines.join('\n');
+  const lines = document.split(/\r?\n/);
+  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  if (closingIndex < 0) {
+    return document;
+  }
+
+  return lines.slice(closingIndex + 2).join('\n');
+}
+
+function stripNonVisibleMarkdownContent(document: string | null | undefined): string {
+  return normalizeSetextHeadingLines(collectVisibleDocumentLines(stripFrontmatter(document))).join('\n');
+}
+
+function parseMarkdownHeading(line: string | null | undefined): { level: number; text: string } | null {
+  if (!isNonEmptyString(line)) {
+    return null;
+  }
+
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  const normalizedText = match[2]
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+
+  return {
+    level: match[1].length,
+    text: normalizedText,
+  };
 }
 
 function hasStructuredHeading(document: string | null | undefined, headings: string[]): boolean {
@@ -718,18 +675,18 @@ function hasStructuredHeading(document: string | null | undefined, headings: str
   }
 
   const normalizedHeadings = headings.map((heading) => heading.toLowerCase());
-  const visibleDocument = stripFencedCodeBlocks(document);
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
   return visibleDocument
     .split('\n')
-    .map((line) => line.trim().toLowerCase())
-    .some((line) => line.startsWith('## ') && normalizedHeadings.includes(line.slice(3).trim()));
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading !== null && heading.level >= 2 && normalizedHeadings.includes(heading.text));
 }
 
 function summarizeStructuredSections(
   document: string | null | undefined,
   sections: Array<{ key: string; heading: string }>,
 ): { readySections: string[]; missingSections: string[] } {
-  const visibleDocument = stripFencedCodeBlocks(document);
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
   if (!isNonEmptyString(visibleDocument)) {
     return { readySections: [], missingSections: sections.map((section) => section.key) };
   }
@@ -739,20 +696,26 @@ function summarizeStructuredSections(
   const missingSections: string[] = [];
 
   sections.forEach((section) => {
-    const heading = section.heading.trim().toLowerCase();
-    const headingIndex = lines.findIndex((line) => line.trim().toLowerCase() === heading);
+    const headingText = section.heading.trim().replace(/^##\s+/, '').toLowerCase();
+    const headingIndex = lines.findIndex((line) => {
+      const parsed = parseMarkdownHeading(line);
+      return parsed !== null && parsed.level >= 2 && parsed.text === headingText;
+    });
     if (headingIndex === -1) {
       missingSections.push(section.key);
       return;
     }
 
+    const sectionHeading = parseMarkdownHeading(lines[headingIndex]);
+    const sectionHeadingLevel = sectionHeading?.level ?? 2;
     let hasContent = false;
     for (let index = headingIndex + 1; index < lines.length; index += 1) {
       const normalizedLine = lines[index]?.trim() ?? '';
-      if (normalizedLine.startsWith('## ')) {
+      const parsedHeading = parseMarkdownHeading(normalizedLine);
+      if (parsedHeading !== null && parsedHeading.level <= sectionHeadingLevel) {
         break;
       }
-      if (normalizedLine.length > 0) {
+      if (normalizedLine.length > 0 && !normalizedLine.startsWith('#')) {
         hasContent = true;
         break;
       }
@@ -776,19 +739,21 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
       profile.boundaries.length > 0 ? 'boundaries' : null,
+      profile.vibe.length > 0 ? 'vibe' : null,
       profile.continuity.length > 0 ? 'continuity' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['core-truths', 'boundaries', 'continuity'] : []);
+    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
   const missingSections = structured
     ? [
       profile.coreTruths.length > 0 ? null : 'core-truths',
       profile.boundaries.length > 0 ? null : 'boundaries',
+      profile.vibe.length > 0 ? null : 'vibe',
       profile.continuity.length > 0 ? null : 'continuity',
     ].filter((value): value is string => typeof value === 'string')
     : [];
 
   const lineCount = countContentLines(document);
-  const excerpt = extractExcerpt(document);
+  const excerpt = profile.excerpt;
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;
@@ -802,7 +767,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     rootExcerpt: excerpt,
     structured,
     readySectionCount,
-    totalSectionCount: 3,
+    totalSectionCount: 4,
     readySections,
     missingSections,
   };
@@ -822,7 +787,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
   ]);
   const readySections = structured
     ? [
-      isNonEmptyString(profile.tone) ? 'tone' : null,
+      profile.hasToneGuidance ? 'tone' : null,
       profile.signatures.length > 0 ? 'signature-moves' : null,
       profile.constraints.length > 0 ? 'avoid' : null,
       profile.languageHints.length > 0 ? 'language-hints' : null,
@@ -830,7 +795,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
   const missingSections = structured
     ? [
-      isNonEmptyString(profile.tone) ? null : 'tone',
+      profile.hasToneGuidance ? null : 'tone',
       profile.signatures.length > 0 ? null : 'signature-moves',
       profile.constraints.length > 0 ? null : 'avoid',
       profile.languageHints.length > 0 ? null : 'language-hints',
@@ -838,7 +803,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     : [];
 
   const lineCount = countContentLines(document);
-  const excerpt = extractExcerpt(document);
+  const excerpt = profile.style === 'documented' ? profile.tone : null;
   const readySectionCount = !present || lineCount === 0
     ? 0
     : readySections.length;
@@ -994,8 +959,7 @@ export function buildCoreFoundationSummary({
     sampleEntries: collectMemorySampleEntries({ daily, longTerm, scratch }),
   };
   const skillsRootDocument = skillInventory?.root;
-  const hasStructuredSkillsRoot = hasStructuredHeading(skillsRootDocument, ['what lives here', 'layout']);
-  const skillsRootSections = hasStructuredSkillsRoot
+  const skillsRootSections = isNonEmptyString(skillsRootDocument)
     ? summarizeStructuredSections(skillsRootDocument, [
       { key: 'what-lives-here', heading: '## What lives here' },
       { key: 'layout', heading: '## Layout' },

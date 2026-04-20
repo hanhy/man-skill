@@ -1,4 +1,4 @@
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, extractProviderTextContent } from './base-provider.js';
 
 export const anthropicProviderScaffold = {
   id: 'anthropic',
@@ -24,10 +24,13 @@ function normalizeAnthropicToolCalls(content = []) {
 }
 
 function normalizeAnthropicText(content = []) {
-  return content
-    .filter((block) => block && typeof block === 'object' && block.type === 'text' && typeof block.text === 'string' && block.text.length > 0)
-    .map((block) => block.text)
-    .join('\n') || null;
+  const text = extractProviderTextContent(
+    content
+      .filter((block) => block && typeof block === 'object' && block.type === 'text')
+      .map((block) => ({ text: block.text })),
+  );
+
+  return typeof text === 'string' && text.length > 0 ? text : null;
 }
 
 export function buildAnthropicMessagesRequest({

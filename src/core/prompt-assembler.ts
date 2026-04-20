@@ -397,6 +397,7 @@ type DeliverySummary = {
   helperCommands?: {
     bootstrapEnv?: string | null;
     populateEnvTemplate?: string | null;
+    populateDeliveryEnv?: string | null;
     populateChannelEnv?: string | null;
     populateProviderEnv?: string | null;
     scaffoldChannelManifest?: string | null;
@@ -448,6 +449,8 @@ type IngestionHelperCommands = {
   scaffoldImported?: string | null;
   scaffoldBundle?: string | null;
   scaffoldImportedBundle?: string | null;
+  repairInvalidBundle?: string | null;
+  repairImportedInvalidBundle?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
@@ -524,6 +527,13 @@ type IngestionSummary = {
   }>;
   staleRefreshCommand?: string | null;
   refreshFoundationBundleCommand?: string | null;
+  repairInvalidIntakeBundleCommand?: string | null;
+  repairImportedInvalidIntakeBundleCommand?: string | null;
+  recommendedProfileId?: string | null;
+  recommendedLabel?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -589,7 +599,11 @@ function formatDraftStatus(status: FoundationDraftStatus = {}) {
   const freshness = status.needsRefresh ? 'stale' : 'fresh';
   const completeness = status.complete ? 'complete' : `missing ${(status.missingDrafts ?? []).join('/') || 'drafts'}`;
   const generatedAt = status.generatedAt ? `, generated ${status.generatedAt}` : '';
-  return `${freshness}, ${completeness}${generatedAt}`;
+  const refreshReasons = Array.isArray(status.refreshReasons)
+    ? status.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const reasonsSuffix = refreshReasons.length > 0 ? `, reasons ${refreshReasons.join(' + ')}` : '';
+  return `${freshness}, ${completeness}${generatedAt}${reasonsSuffix}`;
 }
 
 function cleanHighlight(value: string) {
@@ -782,8 +796,11 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const recommendedPaths = Array.isArray(maintenance.recommendedPaths)
     ? maintenance.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const recommendedDraftGapSummary = typeof maintenance.recommendedDraftGapSummary === 'string' && maintenance.recommendedDraftGapSummary.length > 0
+    ? maintenance.recommendedDraftGapSummary
+    : null;
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
-    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
   const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
   const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
@@ -854,22 +871,26 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   }
 
   const skillsCandidateCount = skills?.candidateCount ?? 0;
-  const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
+  const skillsCandidateLabel = formatCountLabel(skillsCandidateCount, 'candidate');
 
   return [
     memory
-      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${memory.candidateProfileCount ?? 0} candidate profiles, ${memory.repoStaleProfileCount} repo-stale profiles, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
-      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${voice.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
       : null,
     soul
-      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${soul.candidateProfileCount} candidate profiles, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
       ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
+}
+
+function formatCountLabel(count: number, singularLabel: string) {
+  return `${count} ${singularLabel}${count === 1 ? '' : 's'}`;
 }
 
 function formatChannelAuth(auth: ChannelAuth | null | undefined) {
@@ -920,9 +941,15 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
     .filter((channel) => channel?.id)
     .map((channel) => [channel.id, channel]));
   const helperCommands = delivery?.helperCommands ?? {};
+  const showPopulateDeliveryEnv = Boolean(
+    helperCommands.populateDeliveryEnv
+      && helperCommands.populateDeliveryEnv !== helperCommands.populateChannelEnv
+      && helperCommands.populateDeliveryEnv !== helperCommands.populateProviderEnv,
+  );
   const helperLine = [
     helperCommands.bootstrapEnv ? `env ${helperCommands.bootstrapEnv}` : null,
     helperCommands.populateEnvTemplate ? `template env ${helperCommands.populateEnvTemplate}` : null,
+    showPopulateDeliveryEnv ? `delivery env ${helperCommands.populateDeliveryEnv}` : null,
     helperCommands.populateChannelEnv ? `channel env ${helperCommands.populateChannelEnv}` : null,
     helperCommands.populateProviderEnv ? `provider env ${helperCommands.populateProviderEnv}` : null,
     helperCommands.scaffoldChannelManifest ? `channels ${helperCommands.scaffoldChannelManifest}` : null,
@@ -1219,6 +1246,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.refreshAllFoundationCommand
       || ingestion?.staleRefreshCommand
       || helperCommands.scaffoldStale
+      || helperCommands.repairInvalidBundle
+      || helperCommands.repairImportedInvalidBundle
       || helperCommands.importIntakeStale
       || helperCommands.importIntakeImported
       || helperCommands.refreshAllFoundation
@@ -1241,6 +1270,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const remainingProfileSummary = remainingProfileCommands.length > 0
     ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
+  const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
+    ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    : null;
 
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
@@ -1261,6 +1296,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
+    nextIntakeLine,
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
@@ -1277,6 +1313,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
+      pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
@@ -1369,8 +1407,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
-      const intakeShortcutSegment = profile.intakeReady === true && profile.importIntakeCommand
-        ? ` | shortcut ${profile.importIntakeCommand}`
+      const intakeShortcutCommand = profile.importIntakeCommand ?? profile.importIntakeWithoutRefreshCommand ?? null;
+      const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
+        ? ` | shortcut ${intakeShortcutCommand}`
         : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
@@ -1398,7 +1437,7 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
   return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
 }
 
-function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined) {
+function formatRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined): string {
   const normalizedReadySections = Array.isArray(readySections)
     ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1412,6 +1451,58 @@ function formatRootSectionSummary(readySections: string[] | undefined, missingSe
   }
 
   return `; root sections ${normalizedReadySections.length}/${totalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
+function formatThinSectionProgress(readySections: string[] | undefined, missingSections: string[] | undefined): string {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+
+  if (totalSectionCount === 0) {
+    return '';
+  }
+
+  const readySummary = normalizedReadySections.length > 0
+    ? `sections ${normalizedReadySections.length}/${totalSectionCount} ready (${normalizedReadySections.join(', ')})`
+    : `sections 0/${totalSectionCount} ready`;
+
+  return `${readySummary}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
+function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
+  const contextParts: string[] = [];
+  const rootSummary = formatThinSectionProgress(area.rootThinReadySections, area.rootThinMissingSections);
+  if (rootSummary) {
+    contextParts.push(`root ${rootSummary}`);
+  }
+
+  const thinSectionPaths = new Set<string>([
+    ...Object.keys(area.thinReadySections ?? {}),
+    ...Object.keys(area.thinMissingSections ?? {}),
+  ]);
+  const thinPathSummaries = Array.from(thinSectionPaths)
+    .sort((left, right) => left.localeCompare(right))
+    .map((thinPath) => {
+      const summary = formatThinSectionProgress(area.thinReadySections?.[thinPath], area.thinMissingSections?.[thinPath]);
+      if (!summary) {
+        return null;
+      }
+
+      const labelMatch = thinPath.match(/^skills\/([^/]+)\/SKILL\.md$/);
+      const label = labelMatch?.[1] ?? thinPath;
+      return `${label} ${summary}`;
+    })
+    .filter((value): value is string => Boolean(value));
+
+  if (thinPathSummaries.length > 0) {
+    contextParts.push(`thin docs ${thinPathSummaries.join('; ')}`);
+  }
+
+  return contextParts.length > 0 ? `; context ${contextParts.join(' | ')}` : '';
 }
 
 function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
@@ -1435,7 +1526,8 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const queuedAreas = maintenance?.queuedAreas ?? [];
   const queuedAreaLines = queuedAreas.slice(0, 2).map((area) => {
     const command = area.command ?? buildCoreFoundationCommand(area);
-    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${command ? `; command ${command}` : ''}`;
+    const sectionContext = formatQueuedAreaSectionContext(area);
+    return `- ${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]: ${area.action ?? area.summary ?? 'needs review'}${(area.paths ?? []).length > 0 ? ` @ ${(area.paths ?? []).join(', ')}` : ''}${sectionContext}${command ? `; command ${command}` : ''}`;
   });
   const remainingQueuedAreas = queuedAreas.slice(2);
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
@@ -1456,10 +1548,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
     memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections)}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections)}`
       : null,
     skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
         const readySummary = readySections.length > 0
@@ -1592,26 +1684,58 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
     return '- unavailable';
   }
 
-  const topSkills = Array.isArray(skills.skills)
-    ? skills.skills
-      .filter((skill): skill is { name?: string; id?: string; status?: string } => Boolean(skill))
-      .slice(0, 3)
-      .map((skill) => {
-        const label = typeof skill.name === 'string' && skill.name.length > 0
-          ? skill.name
-          : typeof skill.id === 'string' && skill.id.length > 0
-            ? skill.id
-            : 'unknown';
-        const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
-        return `${label} [${status}]`;
-      })
+  const truncateDescription = (value: string, maxLength = 96) => {
+    const normalized = value.trim().replace(/\s+/g, ' ');
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  };
+
+  const skillRecords = Array.isArray(skills.skills)
+    ? skills.skills.filter((skill): skill is { name?: string; id?: string; status?: string; description?: string | null; foundationStatus?: string | null } => Boolean(skill))
     : [];
+  const prioritizedSkillRecords = [...skillRecords].sort((left, right) => {
+    const leftHasDescription = typeof left.description === 'string' && left.description.trim().length > 0;
+    const rightHasDescription = typeof right.description === 'string' && right.description.trim().length > 0;
+    if (leftHasDescription !== rightHasDescription) {
+      return leftHasDescription ? -1 : 1;
+    }
+
+    return 0;
+  });
+  const visibleSkills = prioritizedSkillRecords.slice(0, 3).map((skill) => {
+    const label = typeof skill.name === 'string' && skill.name.length > 0
+      ? skill.name
+      : typeof skill.id === 'string' && skill.id.length > 0
+        ? skill.id
+        : 'unknown';
+    const status = typeof skill.status === 'string' && skill.status.length > 0 ? skill.status : 'unknown';
+    const foundationStatus = typeof skill.foundationStatus === 'string' && skill.foundationStatus.length > 0
+      ? skill.foundationStatus
+      : null;
+    const statusLabel = foundationStatus && foundationStatus !== 'ready'
+      ? `${status}, ${foundationStatus}`
+      : status;
+    const description = typeof skill.description === 'string' && skill.description.trim().length > 0
+      ? `: ${truncateDescription(skill.description)}`
+      : '';
+    return `${label} [${statusLabel}]${description}`;
+  });
+  const remainingSkillCount = Math.max(0, skillRecords.length - visibleSkills.length);
+  const topSkills = visibleSkills.length > 0
+    ? [
+      ...visibleSkills,
+      ...(remainingSkillCount > 0 ? [`+${remainingSkillCount} more`] : []),
+    ].join('; ')
+    : 'none';
 
   return [
     `- total: ${skills.skillCount ?? 0}`,
     `- discovered: ${skills.discoveredCount ?? 0}`,
     `- custom: ${skills.customCount ?? 0}`,
-    `- top skills: ${topSkills.length > 0 ? topSkills.join('; ') : 'none'}`,
+    `- top skills: ${topSkills}`,
   ].join('\n');
 }
 

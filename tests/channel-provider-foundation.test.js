@@ -282,6 +282,7 @@ test('buildSummary exposes capability metadata for default model providers', () 
   const summary = buildSummary(rootDir);
   const openai = summary.models.providers.find((provider) => provider.id === 'openai');
   const anthropic = summary.models.providers.find((provider) => provider.id === 'anthropic');
+  const kimi = summary.models.providers.find((provider) => provider.id === 'kimi');
 
   assert.equal(summary.models.activeCount, 0);
   assert.equal(summary.models.plannedCount, 6);
@@ -305,6 +306,12 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
   assert.equal(anthropic.implementationPath, 'src/models/anthropic.js');
   assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
+  assert.equal(kimi.defaultModel, 'moonshot-v1-32k');
+  assert.equal(kimi.authEnvVar, 'KIMI_API_KEY');
+  assert.deepEqual(kimi.features, ['chat', 'tools', 'long-context']);
+  assert.deepEqual(kimi.modalities, ['chat', 'tools', 'long-context']);
+  assert.equal(kimi.implementationPath, 'src/models/kimi.js');
+  assert.equal(kimi.nextStep, 'implement moonshot-compatible client setup and model selection');
 });
 
 test('buildSummary treats repo-local .env values as configured delivery auth', () => {
@@ -343,6 +350,63 @@ test('buildSummary treats repo-local .env values as configured delivery auth', (
     assert.equal(openaiQueue.setupHint, 'auth configured for gpt-5');
     assert.doesNotMatch(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN/);
     assert.doesNotMatch(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY/);
+  } finally {
+    if (typeof originalEnv.SLACK_BOT_TOKEN === 'string') {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    } else {
+      delete process.env.SLACK_BOT_TOKEN;
+    }
+    if (typeof originalEnv.SLACK_SIGNING_SECRET === 'string') {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    } else {
+      delete process.env.SLACK_SIGNING_SECRET;
+    }
+    if (typeof originalEnv.OPENAI_API_KEY === 'string') {
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+    } else {
+      delete process.env.OPENAI_API_KEY;
+    }
+  }
+});
+
+test('buildSummary treats whitespace-only repo-local .env values as missing delivery auth', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=   ',
+    'SLACK_SIGNING_SECRET=   ',
+    'OPENAI_API_KEY=   ',
+    '',
+  ].join('\n'));
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.OPENAI_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+    const slackQueue = summary.delivery.channelQueue.find((channel) => channel.id === 'slack');
+    const openaiQueue = summary.delivery.providerQueue.find((provider) => provider.id === 'openai');
+
+    assert.equal(summary.delivery.configuredChannelCount, 0);
+    assert.equal(summary.delivery.configuredProviderCount, 0);
+    assert.equal(summary.delivery.authBlockedChannelCount, 4);
+    assert.equal(summary.delivery.authBlockedProviderCount, 6);
+    assert.ok(slackQueue);
+    assert.equal(slackQueue.configured, false);
+    assert.deepEqual(slackQueue.missingEnvVars, ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET']);
+    assert.equal(slackQueue.setupHint, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
+    assert.ok(openaiQueue);
+    assert.equal(openaiQueue.configured, false);
+    assert.deepEqual(openaiQueue.missingEnvVars, ['OPENAI_API_KEY']);
+    assert.equal(openaiQueue.setupHint, 'set OPENAI_API_KEY for gpt-5');
+    assert.match(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET/);
+    assert.match(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY/);
   } finally {
     if (typeof originalEnv.SLACK_BOT_TOKEN === 'string') {
       process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
@@ -513,6 +577,10 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         senderId: '15551234567',
         profileName: 'Harry',
         text: 'hello from whatsapp',
+        interactiveReplyType: null,
+        interactiveReplyId: null,
+        interactiveReplyTitle: null,
+        interactiveReplyDescription: null,
         messageId: 'wamid.HBgNOD',
         contextMessageId: 'wamid.previous',
         timestamp: 1710000200,
@@ -729,18 +797,23 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     assert.equal(typeof kimi.buildChatRequest, 'function');
     assert.equal(typeof kimi.normalizeChatResponse, 'function');
     assert.equal(kimi.isConfigured(), true);
+    assert.equal(kimi.supportsFeature('tools'), true);
     assert.deepEqual(kimi.summary(), kimiProviderScaffold);
     assert.deepEqual(
       kimi.buildChatRequest({
         messages: [{ role: 'user', content: 'hello from kimi' }],
         temperature: 0.3,
         maxOutputTokens: 300,
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         metadata: { profile: 'harry-han' },
       }),
       buildKimiChatRequest({
         messages: [{ role: 'user', content: 'hello from kimi' }],
         temperature: 0.3,
         maxOutputTokens: 300,
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         metadata: { profile: 'harry-han' },
       }),
     );
@@ -1225,6 +1298,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
       populateEnvTemplate: null,
+      populateDeliveryEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       populateChannelEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
@@ -1295,7 +1369,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
-    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| channel env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
     assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
@@ -1406,6 +1480,7 @@ test('buildSummary exposes delivery helper commands for first missing implementa
   assert.deepEqual(summary.delivery.helperCommands, {
     bootstrapEnv: 'cp .env.example .env',
     populateEnvTemplate: null,
+    populateDeliveryEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     populateChannelEnv: null,
     populateProviderEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     scaffoldChannelManifest: null,

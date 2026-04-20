@@ -24,8 +24,14 @@ function seedReadyFoundationRepo(rootDir: string) {
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nShared repo skill guidance.\n');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron\n\nUse cron carefully.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    '# Cron\n\n## What this skill is for\n- Use cron carefully.\n\n## Suggested workflow\n- Add the exact recurring command.\n',
+  );
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nStable voice guidance.\n');
 }
@@ -103,6 +109,13 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"');
   assert.match(summary.workLoop.currentPriority.summary, /0 imported/);
+  assert.deepEqual(summary.workLoop.objectives, [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ]);
   assert.deepEqual(
     summary.workLoop.priorities.map((priority: { id: string }) => priority.id),
     ['foundation', 'ingestion', 'channels', 'providers'],
@@ -117,7 +130,268 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
+  assert.match(summary.promptPreview, /objectives: strengthen the OpenClaw-like foundation around memory, skills, soul, and voice \| improve the user-facing ingestion\/update entrance for target-person materials \| add chat channels Feishu, Telegram, WhatsApp, and Slack \| add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen \| report progress in small verified increments/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the repo defines a current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      'The current staged goal is to build ManSkill step by step with four priorities:',
+      '',
+      '1. harden the memory + soul handoff before delivery rollout',
+      '2. make intake reruns safe for partially imported profiles',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Keep this file durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses closing hashes', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction ##',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. keep Slack queued until Telegram is runtime-ready',
+      '4. stage OpenAI before the rest of the provider set',
+      '',
+      '## Notes ##',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the repo-core memory and skills docs synchronized',
+    'make imported intake backfills visible before delivery rollout',
+    'keep Slack queued until Telegram is runtime-ready',
+    'stage OpenAI before the rest of the provider set',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| keep Slack queued until Telegram is runtime-ready \| stage OpenAI before the rest of the provider set \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses setext markdown', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      'Current product direction',
+      '-------------------------',
+      '',
+      '1. harden the OpenClaw-like soul and voice layer first',
+      '2. keep metadata-only intake reruns explicit and safe',
+      '3. bring Feishu online after the core chat surfaces stabilize',
+      '4. validate Qwen after the primary provider adapters stay green',
+      '',
+      'Usage notes',
+      '-----------',
+      '',
+      'Keep this durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the OpenClaw-like soul and voice layer first',
+    'keep metadata-only intake reruns explicit and safe',
+    'bring Feishu online after the core chat surfaces stabilize',
+    'validate Qwen after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the OpenClaw-like soul and voice layer first \| keep metadata-only intake reruns explicit and safe \| bring Feishu online after the core chat surfaces stabilize \| validate Qwen after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading is level-one ATX markdown', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '# Current product direction',
+      '',
+      '1. keep the memory + skills foundation explicit before more rollout work',
+      '2. keep metadata-only intake refreshes obvious for imported profiles',
+      '3. stage Slack after Telegram stays runtime-ready',
+      '4. validate OpenAI before widening provider coverage',
+      '',
+      '# Usage notes',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the memory + skills foundation explicit before more rollout work',
+    'keep metadata-only intake refreshes obvious for imported profiles',
+    'stage Slack after Telegram stays runtime-ready',
+    'validate OpenAI before widening provider coverage',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the memory \+ skills foundation explicit before more rollout work \| keep metadata-only intake refreshes obvious for imported profiles \| stage Slack after Telegram stays runtime-ready \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction heading is nested and uses parenthesized numbering', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Planning notes',
+      '',
+      '### Current product direction',
+      '',
+      '1) keep the repo foundation guidance explicit before more rollout work',
+      '2) keep intake updates obvious for partially imported profiles',
+      '3) land WhatsApp after Slack and Telegram stay stable',
+      '4) validate GLM after the primary provider adapters stay green',
+      '',
+      '### Notes',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the repo foundation guidance explicit before more rollout work',
+    'keep intake updates obvious for partially imported profiles',
+    'land WhatsApp after Slack and Telegram stay stable',
+    'validate GLM after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the repo foundation guidance explicit before more rollout work \| keep intake updates obvious for partially imported profiles \| land WhatsApp after Slack and Telegram stay stable \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
+test('buildSummary ignores commented and fenced placeholder objectives in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '<!--',
+      '1. placeholder foundation objective that should stay hidden',
+      '2. placeholder ingestion objective that should stay hidden',
+      '-->',
+      '',
+      '```md',
+      '1. placeholder channel objective from a fenced example',
+      '2. placeholder provider objective from a fenced example',
+      '```',
+      '',
+      '1. keep the visible foundation queue honest',
+      '2. keep intake reruns explicit for imported profiles',
+      '3. ship Slack after the visible delivery helpers are solid',
+      '4. validate OpenAI after the visible provider scaffolds stay green',
+      '',
+      '## Usage notes',
+      '',
+      'Only the visible numbered list should count.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the visible foundation queue honest',
+    'keep intake reruns explicit for imported profiles',
+    'ship Slack after the visible delivery helpers are solid',
+    'validate OpenAI after the visible provider scaffolds stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep the visible foundation queue honest \| keep intake reruns explicit for imported profiles \| ship Slack after the visible delivery helpers are solid \| validate OpenAI after the visible provider scaffolds stay green \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /placeholder foundation objective/);
+  assert.doesNotMatch(summary.promptPreview, /placeholder channel objective/);
+});
+
+test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      'Keep the staging order durable, but do not enumerate it here yet.',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'strengthen the OpenClaw-like foundation around memory, skills, soul, and voice',
+    'improve the user-facing ingestion/update entrance for target-person materials',
+    'add chat channels Feishu, Telegram, WhatsApp, and Slack',
+    'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: strengthen the OpenClaw-like foundation around memory, skills, soul, and voice \| improve the user-facing ingestion\/update entrance for target-person materials \| add chat channels Feishu, Telegram, WhatsApp, and Slack \| add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen \| report progress in small verified increments/);
 });
 
 test('buildSummary work loop keeps foundation first when repo-core coverage is still thin', () => {
@@ -132,7 +406,7 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.match(summary.workLoop.currentPriority.summary, /core .* ready/i);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.priorities[1].status, 'queued');
   assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
@@ -166,7 +440,10 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nShared repo skill guidance.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n',
+  );
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n');
@@ -197,8 +474,64 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add missing sections to memory\/README\.md: what-belongs-here, buckets/);
-  assert.match(summary.promptPreview, /command: \{ if grep -Fqx -- '## What belongs here' 'memory\/README\.md'/);
+  assert.match(summary.promptPreview, /command: node -e 'const fs = require\('/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
+});
+
+test('buildSummary treats nested soul and voice structured headings as ready foundation guidance', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), [
+    '# Soul',
+    '',
+    'Durable posture.',
+    '',
+    '## Foundation posture',
+    '',
+    '### Core truths',
+    '- Stay faithful to the source material.',
+    '',
+    '### Boundaries',
+    '- Do not bluff certainty.',
+    '',
+    '### Vibe',
+    '- Stay grounded and practical.',
+    '',
+    '### Continuity',
+    '- Carry durable lessons forward.',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), [
+    '# Voice',
+    '',
+    'Stay direct.',
+    '',
+    '## House style',
+    '',
+    '### Tone',
+    'Warm and grounded.',
+    '',
+    '### Signature moves',
+    '- Use crisp examples.',
+    '',
+    '### Avoid',
+    '- Never pad the answer.',
+    '',
+    '### Language hints',
+    '- Preserve bilingual phrasing when the source material switches languages.',
+    '',
+  ].join('\n'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
 });
 
 test('buildSummary work loop prefers the checked-in sample manifest when the repo is otherwise ready for first imports', () => {
@@ -561,6 +894,68 @@ test('buildSummary work loop keeps the sample manifest path visible for matching
   assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json/);
 });
 
+test('buildSummary work loop prefers a customized profile-local intake manifest over matching checked-in sample imports', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'metadata-only.txt'), 'Sample text that should yield to the customized profile-local intake manifest.');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'metadata-only.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'local-note.txt'), 'Use the profile-local intake manifest first.');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'local-note.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/sample.txt',
+    'profiles/metadata-only/imports/local-note.txt',
+  ]);
+  assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/local-note\.txt/);
+});
+
 test('buildSummary work loop still scaffolds intake before inline sample talk imports become runnable', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -775,13 +1170,13 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
-  assert.doesNotMatch(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
 
@@ -812,13 +1207,109 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han)');
-  assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\]/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports\/materials\.template\.json/);
+});
+
+test('buildSummary work loop bundles imported invalid intake manifest repairs when multiple imported profiles are broken', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  for (const profile of [
+    {
+      person: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      sampleFile: 'samples/harry-post.txt',
+      sampleText: 'Ship the first slice before polishing the plan.\n',
+    },
+    {
+      person: 'jane-doe',
+      displayName: 'Jane Doe',
+      summary: 'Fast feedback beats polished drift.',
+      sampleFile: 'samples/jane-post.txt',
+      sampleText: 'Turn sharp notes into an actual next step.\n',
+    },
+  ]) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, profile.sampleFile), profile.sampleText);
+    runImportCommand(rootDir, 'text', {
+      person: profile.person,
+      file: path.join(rootDir, profile.sampleFile),
+    });
+    runUpdateCommand(rootDir, 'foundation', { person: profile.person });
+    fs.writeFileSync(path.join(rootDir, 'profiles', profile.person, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair invalid intake manifests for imported profiles — starting with Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, summary.ingestion.repairImportedInvalidIntakeBundleCommand);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
+});
+
+test('buildSummary work loop bundles metadata-only invalid intake manifest repairs when multiple starter manifests are broken', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  for (const profile of [
+    {
+      person: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+    },
+    {
+      person: 'second-person',
+      displayName: 'Second Person',
+      summary: 'Another scaffold-first profile.',
+    },
+  ]) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    fs.writeFileSync(path.join(rootDir, 'profiles', profile.person, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair invalid profile-local intake manifests — starting with Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, summary.ingestion.repairInvalidIntakeBundleCommand);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'second-person' --display-name 'Second Person' --summary 'Another scaffold-first profile\.'/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/second-person/imports/materials.template.json',
+  ]);
 });
 
 test('update intake backs up invalid starter manifests before rebuilding the scaffold', () => {
@@ -1190,7 +1681,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop narrows paths to the env template during credential bootstrap', () => {
+test('buildSummary work loop includes both env template and target env paths during credential bootstrap', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1223,16 +1714,16 @@ test('buildSummary work loop narrows paths to the env template during credential
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
 });
 
-test('buildSummary work loop drops stale implementation follow-ups during env bootstrap once checked-in delivery modules are runtime-ready', () => {
+test('buildSummary work loop drops stale implementation follow-ups while keeping both env bootstrap paths once checked-in delivery modules are runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1278,7 +1769,7 @@ test('buildSummary work loop drops stale implementation follow-ups during env bo
   assert.equal(summary.workLoop.priorities[2].status, 'blocked');
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
@@ -2085,12 +2576,12 @@ test('buildSummary work loop keeps repo-core foundation ahead of stale profile r
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
   assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /next action: scaffold missing or thin core foundation areas — starting with create memory\/README\.md \| add at least one entry under memory\/long-term and memory\/scratch/);
-  assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch, skills\/, SOUL\.md, voice\/README\.md/);
+  assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term, memory\/scratch, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
 });
 
 test('buildSummary work loop prioritizes the most incomplete stale foundation profile first', () => {

@@ -1,4 +1,4 @@
-import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 
 export interface VoiceProfileSummary {
   tone: string;
@@ -21,6 +21,33 @@ export interface VoiceProfileOptions {
 }
 
 type VoiceSection = 'tone' | 'signature-moves' | 'avoid' | 'language-hints' | 'voice-should-capture' | 'voice-should-not-capture' | 'current-default' | null;
+
+const VOICE_STARTER_GUIDANCE_LINES = new Set([
+  'Describe the target cadence, directness, and emotional texture here.',
+  'Capture recurring phrasing, structure, or rhetorical habits here.',
+  'List wording, hedges, or habits that break the voice.',
+  'Note bilingual, dialect, or code-switching habits worth preserving.',
+]);
+
+function normalizeHeadingText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+}
+
+function parseStructuredHeading(line: string): { level: number; text: string } | null {
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: normalizeHeadingText(match[2]),
+  };
+}
 
 function cleanVoiceLine(value: string) {
   return value
@@ -45,6 +72,10 @@ function pushUnique(target: string[], value: string) {
   }
 }
 
+function isStarterVoiceGuidance(value: string) {
+  return VOICE_STARTER_GUIDANCE_LINES.has(value);
+}
+
 function isListSection(section: VoiceSection) {
   return section === 'signature-moves'
     || section === 'avoid'
@@ -60,6 +91,7 @@ export class VoiceProfile {
   constraints: string[];
   signatures: string[];
   languageHints: string[];
+  hasToneGuidance: boolean;
 
   constructor({ tone = 'clear', style = 'adaptive', constraints = [], signatures = [], languageHints = [] }: VoiceProfileOptions = {}) {
     this.tone = tone;
@@ -67,68 +99,72 @@ export class VoiceProfile {
     this.constraints = constraints;
     this.signatures = signatures;
     this.languageHints = languageHints;
+    this.hasToneGuidance = style === 'documented' && tone.trim().length > 0;
   }
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
     const excerpt = findDocumentExcerpt(normalizedDocument);
+    const normalizedExcerpt = excerpt ? cleanVoiceLine(excerpt) : null;
+    const hasExcerptToneGuidance = normalizedExcerpt !== null && !isStarterVoiceGuidance(normalizedExcerpt);
+    const defaultTone = hasExcerptToneGuidance ? normalizedExcerpt : 'clear';
     const voice = new VoiceProfile({
-      tone: excerpt ?? 'clear',
-      style: excerpt ? 'documented' : 'adaptive',
+      tone: defaultTone,
+      style: hasExcerptToneGuidance ? 'documented' : 'adaptive',
     });
     let currentSection: VoiceSection = null;
     let currentSectionHasContent = false;
 
-    normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
+    collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
       if (!line) {
         return;
       }
 
-      if (line.startsWith('## ')) {
-        const heading = line.slice(3).trim().toLowerCase();
-        if (heading === 'tone') {
+      const heading = parseStructuredHeading(line);
+      if (heading) {
+        if (heading.level < 2) {
+          currentSection = null;
+          currentSectionHasContent = false;
+          return;
+        }
+
+        if (heading.text === 'tone') {
           currentSection = 'tone';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'signature moves') {
+        if (heading.text === 'signature moves') {
           currentSection = 'signature-moves';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'avoid') {
+        if (heading.text === 'avoid') {
           currentSection = 'avoid';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'language hints') {
+        if (heading.text === 'language hints') {
           currentSection = 'language-hints';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'voice should capture') {
+        if (heading.text === 'voice should capture') {
           currentSection = 'voice-should-capture';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'voice should not capture') {
+        if (heading.text === 'voice should not capture') {
           currentSection = 'voice-should-not-capture';
           currentSectionHasContent = false;
           return;
         }
-        if (heading === 'current default for manskill') {
+        if (heading.text === 'current default for manskill') {
           currentSection = 'current-default';
           currentSectionHasContent = false;
           return;
         }
 
-        currentSection = null;
-        currentSectionHasContent = false;
-        return;
-      }
-
-      if (line.startsWith('#')) {
         currentSection = null;
         currentSectionHasContent = false;
         return;
@@ -141,13 +177,14 @@ export class VoiceProfile {
       }
 
       const cleaned = cleanVoiceLine(line);
-      if (!cleaned || cleaned === '---') {
+      if (!cleaned || cleaned === '---' || isStarterVoiceGuidance(cleaned)) {
         return;
       }
 
       if (currentSection === 'tone') {
         voice.tone = cleaned;
         voice.style = 'documented';
+        voice.hasToneGuidance = true;
         currentSectionHasContent = true;
       } else if (currentSection === 'signature-moves') {
         pushUnique(voice.signatures, cleaned);
@@ -187,7 +224,7 @@ export class VoiceProfile {
       constraintCount: this.constraints.length,
       signatureCount: this.signatures.length,
       languageHintCount: this.languageHints.length,
-      hasGuidance: this.constraints.length > 0 || this.signatures.length > 0 || this.languageHints.length > 0,
+      hasGuidance: this.hasToneGuidance || this.constraints.length > 0 || this.signatures.length > 0 || this.languageHints.length > 0,
     };
   }
 }

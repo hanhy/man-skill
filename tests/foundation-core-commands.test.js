@@ -35,7 +35,7 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ];
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const MEMORY_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
 const MEMORY_SECTIONS = [
   {
@@ -51,7 +51,7 @@ const MEMORY_SECTIONS = [
     existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   },
 ];
-const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n';
 const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
 const SKILLS_README_SECTIONS = [
   {
@@ -63,8 +63,8 @@ const SKILLS_README_SECTIONS = [
   {
     heading: '## Layout',
     sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
-    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
-    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   },
 ];
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
@@ -82,6 +82,12 @@ const SOUL_SECTIONS = [
     existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
   },
   {
+    heading: '## Vibe',
+    sentinel: '- Describe the emotional texture or posture the agent should project.',
+    missingSectionAppend: '\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n',
+    existingBulletAppend: '- Describe the emotional texture or posture the agent should project.\n',
+  },
+  {
     heading: '## Decision rules',
     sentinel: '- Note the principles to use when tradeoffs appear.',
     missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
@@ -93,28 +99,33 @@ function shellSingleQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function buildDocumentRepairCommand(filePath, _sentinel, sections) {
-  const file = shellSingleQuote(filePath);
-  const buildSectionHasContentCommand = (heading) => [
-    'awk',
-    `-v heading=${shellSingleQuote(heading)}`,
-    shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
-    file,
-  ].join(' ');
-  const buildInsertIntoExistingSectionCommand = (heading, bullet) => {
-    const normalizedBullet = bullet.replace(/\n+$/, '');
-    const escapePerlReplacement = (value) => value
-      .replace(/\\/g, '\\\\')
-      .replace(/\$/g, '\\$')
-      .replace(/~/g, '\\~');
-    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
-    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
-  };
-  const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
-  );
+function stripMarkdownHeadingMarkup(heading) {
+  return heading
+    .trim()
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/\s+#+\s*$/, '')
+    .trim();
+}
 
-  return `{ ${sectionCommands.join('; ')}; }`;
+function buildDocumentRepairCommand(filePath, _sentinel, sections) {
+  const normalizedSections = sections.map((section) => ({
+    headingText: stripMarkdownHeadingMarkup(section.heading),
+    headingLevel: (section.heading.match(/^#{1,6}/)?.[0].length ?? 2),
+    missingSectionAppend: section.missingSectionAppend,
+    existingBulletAppend: section.existingBulletAppend,
+  }));
+  const script = [
+    "const fs = require('node:fs');",
+    `const file = ${JSON.stringify(filePath)};`,
+    `const sections = ${JSON.stringify(normalizedSections)};`,
+    "const parseHeadingAt = (lines, index) => { const current = lines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{1,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: atxMatch[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase(), lineCount: 1 }; } const next = lines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2 }; };",
+    "const hasVisibleContent = (sectionLines, sectionHeadingLevel) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; for (const line of sectionLines) { const rawLine = line ?? ''; const trimmed = rawLine.trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; continue; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } continue; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) continue; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } const normalizedLine = visibleLine.trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([visibleLine], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
+    "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
+    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(lines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
+    "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
+  ].join(' ');
+
+  return `node -e ${shellSingleQuote(script)}`;
 }
 
 test('buildCoreFoundationCommand scaffolds missing memory buckets with seed files', () => {
@@ -185,6 +196,51 @@ test('buildCoreFoundationCommand repairs thin memory README sections without clo
   );
 });
 
+test('buildCoreFoundationCommand repairs thin memory README headings with closing hashes without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-closing-hash-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n### What belongs here ###\n\n### Buckets ###\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n### What belongs here ###\n- Durable repo knowledge and operator context.\n\n### Buckets ###\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin memory README setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-setext-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\nWhat belongs here\n-----------------\n\nBuckets\n-------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\nWhat belongs here\n-----------------\n- Durable repo knowledge and operator context.\n\nBuckets\n-------\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs thin skills root README sections without clobbering the file', () => {
   assert.equal(
     buildCoreFoundationCommand({
@@ -197,15 +253,177 @@ test('buildCoreFoundationCommand repairs thin skills root README sections withou
   );
 });
 
-test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
+test('buildCoreFoundationCommand repairs level-one atx skills root headings without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-h1-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n# What lives here\n\n# Layout\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
   assert.equal(
-    buildCoreFoundationCommand({
-      area: 'voice',
-      status: 'thin',
-      paths: ['voice/README.md'],
-    }),
-    buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS),
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n# What lives here\n- Reusable operator procedures and behavior modules.\n\n# Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
+});
+
+test('buildCoreFoundationCommand repairs deeper thin skills root headings without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n### What lives here ###\n\n### Layout ###\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n### What lives here ###\n- Reusable operator procedures and behavior modules.\n\n### Layout ###\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-setext-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n---------------\n\nLayout\n------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\nWhat lives here\n---------------\n- Reusable operator procedures and behavior modules.\n\nLayout\n------\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root level-one setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-setext-h1-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n===============\n\nLayout\n======\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\nWhat lives here\n===============\n- Reusable operator procedures and behavior modules.\n\nLayout\n======\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root sections when only comments and fenced examples are present', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-invisible-content-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n<!-- explain the purpose here -->\n\n## Layout\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n<!-- explain the purpose here -->\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+});
+
+test('buildCoreFoundationCommand prefers matching root section headings over earlier nested headings with the same text', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-skills-root-duplicate-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n### Layout\n- Nested example heading that should stay untouched.\n\n## Layout\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n### Layout\n- Nested example heading that should stay untouched.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps nested subheadings from triggering thin skill doc repairs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-nested-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n## What this skill is for\n### Signals\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\n### Signals\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  assert.match(command ?? '', /node --input-type=module -e/);
+  assert.match(command ?? '', /voice should capture/);
+  assert.match(command ?? '', /current default for manskill/);
+  assert.match(command ?? '', /node -e/);
 });
 
 test('buildCoreFoundationCommand scaffolds missing soul guidance with starter content', () => {
@@ -237,11 +455,13 @@ test('buildCoreFoundationCommand keeps thin soul scaffolds idempotent', () => {
     paths: ['SOUL.md'],
   });
 
-  assert.match(command ?? '', /grep -Eq '\^## \(Core truths\|Continuity\)\$'/);
+  assert.doesNotMatch(command ?? '', /if grep -Eq/);
+  assert.match(command ?? '', /node --input-type=module -e/);
   assert.match(command ?? '', /## Core truths/);
+  assert.match(command ?? '', /## Vibe/);
   assert.match(command ?? '', /## Continuity/);
-  assert.match(command ?? '', /## Core values/);
-  assert.match(command ?? '', /## Decision rules/);
+  assert.match(command ?? '', /core values/);
+  assert.match(command ?? '', /decision rules/);
 });
 
 test('buildCoreFoundationCommand repairs heading-only thin voice scaffolds', () => {
@@ -285,6 +505,41 @@ test('buildCoreFoundationCommand repairs thin voice docs that are only missing l
   );
 });
 
+test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent while normalizing legacy headings', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  assert.doesNotMatch(command ?? '', /if grep -Eq/);
+  assert.match(command ?? '', /node --input-type=module -e/);
+  assert.match(command ?? '', /voice should capture/);
+  assert.match(command ?? '', /current default for manskill/);
+});
+
+test('buildCoreFoundationCommand normalizes legacy voice headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-legacy-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for ManSkill\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Lead with the operating takeaway.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Default to English with occasional 中文 examples.\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'soul',
@@ -293,13 +548,13 @@ test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () =
   });
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-command-'));
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n');
 
   execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -317,7 +572,7 @@ test('buildCoreFoundationCommand preserves openclaw-style soul headings when rep
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -338,7 +593,49 @@ test('buildCoreFoundationCommand normalizes mixed soul heading dialects toward o
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand normalizes legacy setext soul headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-setext-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\nCore values\n-----------\n- Stay faithful to source material.\n\nDecision rules\n--------------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand normalizes closing-hash soul headings toward openclaw when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-closing-hash-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core values ##\n- Stay faithful to source material.\n\n## Decision rules ##\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -356,7 +653,7 @@ test('buildCoreFoundationCommand treats boundaries-only thin soul docs as opencl
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
-    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Keep claims grounded.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+    '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Keep claims grounded.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
@@ -365,9 +662,9 @@ test('buildCoreFoundationCommand scaffolds a starter skill when the skills area 
     buildCoreFoundationCommand({
       area: 'skills',
       status: 'missing',
-      paths: ['skills/'],
+      paths: ['skills/starter/SKILL.md'],
     }),
-    "mkdir -p skills/starter && printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > 'skills/starter/SKILL.md'",
+    "mkdir -p 'skills/starter' && for file in 'skills/starter/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
   );
 });
 
@@ -412,8 +709,9 @@ test('buildCoreFoundationCommand appends starter guidance to heading-only skill 
     thinPaths: ['skills/delivery/SKILL.md'],
   });
 
-  assert.match(command ?? '', /if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'; then awk -v heading='## What this skill is for'/);
-  assert.match(command ?? '', /## Suggested workflow/);
+  assert.match(command ?? '', /^node -e /);
+  assert.match(command ?? '', /skills\/delivery\/SKILL\.md/);
+  assert.match(command ?? '', /Suggested workflow/);
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-command-'));
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
@@ -507,7 +805,7 @@ test('buildCoreFoundationCommand combines missing and thin skill doc repairs wit
 
   assert.match(command ?? '', /^\(mkdir -p 'skills\/slack'/);
   assert.match(command ?? '', /skills\/delivery\/SKILL\.md/);
-  assert.match(command ?? '', /perl -0pi -e/);
+  assert.match(command ?? '', /&& \(node -e /);
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skill-command-'));
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
@@ -534,11 +832,11 @@ test('buildCoreFoundationCommand combines skills root guidance scaffolds with mi
     thinPaths: ['skills/README.md', 'skills/delivery/SKILL.md'],
   });
 
-  assert.match(command ?? '', /^\(\{ if grep -Fqx -- '## What lives here' 'skills\/README\.md'/);
+  assert.match(command ?? '', /^\(node -e /);
   assert.match(command ?? '', /mkdir -p 'skills\/slack'/);
   assert.match(command ?? '', /skills\/delivery\/SKILL\.md/);
   assert.match(command ?? '', /&& \(mkdir -p 'skills\/slack'/);
-  assert.match(command ?? '', /&& \(\{ if grep -Fqx -- '## What this skill is for' 'skills\/delivery\/SKILL\.md'/);
+  assert.match(command ?? '', /&& \(node -e /);
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-mixed-skills-root-command-'));
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
@@ -550,7 +848,7 @@ test('buildCoreFoundationCommand combines skills root guidance scaffolds with mi
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\nShared repo skill guidance.\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\nShared repo skill guidance.\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),

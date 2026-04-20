@@ -1,14 +1,14 @@
-import { BaseProvider, extractProviderTextContent } from './base-provider.js';
+import { BaseProvider, extractProviderTextContent, normalizeProviderToolArguments } from './base-provider.js';
 
 export const kimiProviderScaffold = {
   id: 'kimi',
   name: 'Kimi',
   models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
   status: 'planned',
-  features: ['chat', 'long-context'],
+  features: ['chat', 'tools', 'long-context'],
   defaultModel: 'moonshot-v1-32k',
   authEnvVar: 'KIMI_API_KEY',
-  modalities: ['chat', 'long-context'],
+  modalities: ['chat', 'tools', 'long-context'],
   implementationPath: 'src/models/kimi.js',
   nextStep: 'implement moonshot-compatible client setup and model selection',
 };
@@ -20,7 +20,7 @@ function normalizeKimiToolCalls(toolCalls = []) {
       id: typeof toolCall.id === 'string' && toolCall.id.length > 0 ? toolCall.id : null,
       type: typeof toolCall.type === 'string' && toolCall.type.length > 0 ? toolCall.type : 'function',
       name: typeof toolCall.function?.name === 'string' && toolCall.function.name.length > 0 ? toolCall.function.name : null,
-      arguments: typeof toolCall.function?.arguments === 'string' && toolCall.function.arguments.length > 0 ? toolCall.function.arguments : '{}',
+      arguments: normalizeProviderToolArguments(toolCall.function?.arguments),
     }));
 }
 

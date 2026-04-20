@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { FileSystemLoader } from '../src/core/fs-loader.js';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 
 function makeTempRepo() {
@@ -100,11 +101,11 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
-  assert.match(soulDraft, /## Core values/);
+  assert.match(soulDraft, /## Core truths/);
   assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
   assert.match(soulDraft, /## Boundaries/);
   assert.match(soulDraft, /Stay within the evidence from imported materials/i);
-  assert.match(soulDraft, /## Decision rules/);
+  assert.match(soulDraft, /## Continuity/);
   assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
@@ -114,6 +115,57 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(skillsDraft, /- sample: Cut the scope, keep the momentum, and fix the rough edges tomorrow\./);
   assert.match(skillsDraft, /## Gaps to validate/);
   assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
+});
+
+test('refreshFoundationDrafts rewrites a memory foundation draft when its stored personId drifts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const result = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(repairedDraft.personId, 'harry-han');
+  assert.equal(repairedDraft.displayName, 'Harry Han');
+  assert.equal(repairedDraft.summary, 'Direct operator with a bias for momentum.');
+});
+
+test('scaffoldProfileIntake hides imported-profile intake shortcuts until the local manifest has real entries', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+
+  const intakeReadmePath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'README.md');
+  const intakeReadme = fs.readFileSync(intakeReadmePath, 'utf8');
+
+  assert.match(intakeReadme, /Recommended helper commands:/);
+  assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Import after editing: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.doesNotMatch(intakeReadme, /profile-local intake shortcut without refreshing drafts/);
+  assert.doesNotMatch(intakeReadme, /profile-local intake shortcut and refresh drafts/);
+  assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
 });
 
 test('CLI update foundation command writes derived profile drafts', () => {
@@ -835,6 +887,7 @@ test('CLI update intake errors advertise the full usage surface for person, stal
       assert.match(error.stderr, /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
       assert.match(error.stderr, /node src\/index\.js update intake --stale/);
       assert.match(error.stderr, /node src\/index\.js update intake --imported --refresh-foundation/);
+      assert.match(error.stderr, /node src\/index\.js update intake --all --refresh-foundation/);
       assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
       return true;
     },
@@ -854,6 +907,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
         /node src\/index\.js import intake --stale --refresh-foundation/,
         /node src\/index\.js import intake --imported --refresh-foundation/,
+        /node src\/index\.js import intake --all --refresh-foundation/,
       ],
     },
     {
@@ -864,6 +918,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         /Examples:/,
         /node src\/index\.js update foundation --person 'harry-han'/,
         /node src\/index\.js update foundation --stale/,
+        /node src\/index\.js update foundation --all/,
       ],
     },
   ];
@@ -1097,6 +1152,107 @@ test('refreshStaleFoundationDrafts updates only profiles with stale or missing d
   assert.equal(freshMemoryDraft.generatedAt, freshResult.generatedAt);
 });
 
+test('refreshStaleFoundationDrafts follows the same stale-foundation status as loadProfilesIndex', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Fresh Person',
+    text: 'Keep it steady.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Fresh Person' });
+
+  ingestion.importMessage({
+    personId: 'Missing Drafts',
+    text: 'Draft this next.',
+  });
+
+  ingestion.updateProfile({
+    personId: 'Metadata Drift',
+    displayName: 'Metadata Drift',
+    summary: 'First summary.',
+  });
+  ingestion.importMessage({
+    personId: 'Metadata Drift',
+    text: 'Keep the staged rollout honest.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Metadata Drift' });
+  ingestion.updateProfile({
+    personId: 'Metadata Drift',
+    displayName: 'Metadata Drift',
+    summary: 'Updated summary after draft generation.',
+  });
+
+  ingestion.importMessage({
+    personId: 'Stale Person',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Stale Person' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'Stale Person',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const staleByLoader = loader.loadProfilesIndex()
+    .filter((profile) => profile.foundationDraftStatus.needsRefresh)
+    .map((profile) => ({
+      personId: profile.id,
+      refreshReasons: profile.foundationDraftStatus.refreshReasons,
+    }))
+    .sort((left, right) => left.personId.localeCompare(right.personId));
+  const staleByRefresh = ingestion.refreshStaleFoundationDrafts().results
+    .map((entry) => entry.personId)
+    .sort();
+
+  assert.deepEqual(staleByRefresh, staleByLoader.map((entry) => entry.personId));
+  assert.deepEqual(staleByLoader, [
+    {
+      personId: 'metadata-drift',
+      refreshReasons: ['profile metadata drift', 'draft metadata drift'],
+    },
+    {
+      personId: 'missing-drafts',
+      refreshReasons: ['missing drafts', 'new materials'],
+    },
+    {
+      personId: 'stale-person',
+      refreshReasons: ['new materials'],
+    },
+  ]);
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when memory draft personId metadata drifts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Memory Drift',
+    displayName: 'Memory Drift',
+    summary: 'Needs the stored profile id repaired.',
+  });
+  ingestion.importMessage({
+    personId: 'Memory Drift',
+    text: 'Ship the first slice.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Memory Drift' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'memory-drift', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['memory-drift']);
+  assert.equal(result.results[0].generatedAt >= initial.generatedAt, true);
+  assert.equal(repairedDraft.personId, 'memory-drift');
+});
+
 test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts that miss structured sections', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1134,9 +1290,9 @@ test('refreshStaleFoundationDrafts repairs legacy markdown foundation drafts tha
 
   const repairedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
   assert.notEqual(repairedSoulDraft, legacySoulDraft);
-  assert.match(repairedSoulDraft, /## Core values/);
+  assert.match(repairedSoulDraft, /## Core truths/);
   assert.match(repairedSoulDraft, /## Boundaries/);
-  assert.match(repairedSoulDraft, /## Decision rules/);
+  assert.match(repairedSoulDraft, /## Continuity/);
 
   const repairedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
   assert.notEqual(repairedSkillsDraft, legacySkillsDraft);

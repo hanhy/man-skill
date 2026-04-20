@@ -33,17 +33,50 @@ function pickWhatsAppChange(payload = {}) {
   };
 }
 
-function extractWhatsAppMessageText(message = {}) {
+function extractWhatsAppInteractiveReply(message = {}) {
+  if (message?.interactive?.button_reply && typeof message.interactive.button_reply === 'object') {
+    return {
+      type: 'button_reply',
+      id: typeof message.interactive.button_reply.id === 'string' && message.interactive.button_reply.id.length > 0
+        ? message.interactive.button_reply.id
+        : null,
+      title: typeof message.interactive.button_reply.title === 'string' && message.interactive.button_reply.title.length > 0
+        ? message.interactive.button_reply.title
+        : null,
+      description: null,
+    };
+  }
+
+  if (message?.interactive?.list_reply && typeof message.interactive.list_reply === 'object') {
+    return {
+      type: 'list_reply',
+      id: typeof message.interactive.list_reply.id === 'string' && message.interactive.list_reply.id.length > 0
+        ? message.interactive.list_reply.id
+        : null,
+      title: typeof message.interactive.list_reply.title === 'string' && message.interactive.list_reply.title.length > 0
+        ? message.interactive.list_reply.title
+        : null,
+      description: typeof message.interactive.list_reply.description === 'string' && message.interactive.list_reply.description.length > 0
+        ? message.interactive.list_reply.description
+        : null,
+    };
+  }
+
+  return {
+    type: null,
+    id: null,
+    title: null,
+    description: null,
+  };
+}
+
+function extractWhatsAppMessageText(message = {}, interactiveReply = extractWhatsAppInteractiveReply(message)) {
   if (typeof message?.text?.body === 'string' && message.text.body.length > 0) {
     return message.text.body;
   }
 
-  if (typeof message?.interactive?.button_reply?.title === 'string' && message.interactive.button_reply.title.length > 0) {
-    return message.interactive.button_reply.title;
-  }
-
-  if (typeof message?.interactive?.list_reply?.title === 'string' && message.interactive.list_reply.title.length > 0) {
-    return message.interactive.list_reply.title;
+  if (typeof interactiveReply.title === 'string' && interactiveReply.title.length > 0) {
+    return interactiveReply.title;
   }
 
   if (typeof message?.button?.text === 'string' && message.button.text.length > 0) {
@@ -67,6 +100,7 @@ function extractWhatsAppMessageText(message = {}) {
 
 export function normalizeWhatsAppInboundEvent(payload = {}) {
   const { field, value, message, contact } = pickWhatsAppChange(payload);
+  const interactiveReply = extractWhatsAppInteractiveReply(message);
   const timestamp = typeof message?.timestamp === 'string' && /^\d+$/.test(message.timestamp)
     ? Number.parseInt(message.timestamp, 10)
     : (Number.isFinite(message?.timestamp) ? message.timestamp : null);
@@ -81,7 +115,11 @@ export function normalizeWhatsAppInboundEvent(payload = {}) {
       ? message.from
       : (typeof contact?.wa_id === 'string' && contact.wa_id.length > 0 ? contact.wa_id : null),
     profileName: typeof contact?.profile?.name === 'string' && contact.profile.name.length > 0 ? contact.profile.name : null,
-    text: extractWhatsAppMessageText(message),
+    text: extractWhatsAppMessageText(message, interactiveReply),
+    interactiveReplyType: interactiveReply.type,
+    interactiveReplyId: interactiveReply.id,
+    interactiveReplyTitle: interactiveReply.title,
+    interactiveReplyDescription: interactiveReply.description,
     messageId: typeof message?.id === 'string' && message.id.length > 0 ? message.id : null,
     contextMessageId: typeof message?.context?.id === 'string' && message.context.id.length > 0 ? message.context.id : null,
     timestamp,

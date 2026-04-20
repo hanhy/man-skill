@@ -16,11 +16,12 @@ This file stores stable facts about the person ManSkill is being shaped for.
 
 ## Current product direction
 
-The current staged goal is to build ManSkill step by step with three priorities:
+The current staged goal is to build ManSkill step by step with four priorities:
 
-1. strengthen the basic OpenClaw-like foundation around memory, skills, soul, and voice
-2. add chat channels including Feishu, Telegram, WhatsApp, and Slack
-3. support popular model providers including OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen
+1. strengthen the OpenClaw-like foundation around memory, skills, soul, and voice
+2. improve the user-facing ingestion/update entrance for target-person materials
+3. add chat channels Feishu, Telegram, WhatsApp, and Slack
+4. add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen
 
 ## Usage notes
 

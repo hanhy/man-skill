@@ -18,6 +18,20 @@ test('Slack channel runtime helpers cover readiness, inbound normalization, and 
     }),
     true,
   );
+  assert.deepEqual(
+    channel.missingEnvVars({
+      SLACK_BOT_TOKEN: '   ',
+      SLACK_SIGNING_SECRET: 'secret',
+    }),
+    ['SLACK_BOT_TOKEN'],
+  );
+  assert.equal(
+    channel.isConfigured({
+      SLACK_BOT_TOKEN: '   ',
+      SLACK_SIGNING_SECRET: 'secret',
+    }),
+    false,
+  );
 
   assert.deepEqual(
     channel.normalizeInboundEvent({
@@ -184,9 +198,66 @@ test('WhatsApp channel runtime helpers cover readiness, interactive inbound repl
       senderId: '15550001',
       profileName: 'Harry',
       text: 'Ship it',
+      interactiveReplyType: 'button_reply',
+      interactiveReplyId: 'btn-1',
+      interactiveReplyTitle: 'Ship it',
+      interactiveReplyDescription: null,
       messageId: 'wamid-1',
       contextMessageId: 'wamid-parent',
       timestamp: 1710000200,
+    },
+  );
+
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: 'phone-1' },
+                contacts: [
+                  {
+                    wa_id: '15550001',
+                    profile: { name: 'Harry' },
+                  },
+                ],
+                messages: [
+                  {
+                    from: '15550001',
+                    id: 'wamid-2',
+                    timestamp: '1710000201',
+                    type: 'interactive',
+                    interactive: {
+                      list_reply: {
+                        id: 'list-1',
+                        title: 'Review later',
+                        description: 'Send it to the review queue',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    {
+      platform: 'whatsapp',
+      eventType: 'interactive',
+      phoneNumberId: 'phone-1',
+      senderId: '15550001',
+      profileName: 'Harry',
+      text: 'Review later',
+      interactiveReplyType: 'list_reply',
+      interactiveReplyId: 'list-1',
+      interactiveReplyTitle: 'Review later',
+      interactiveReplyDescription: 'Send it to the review queue',
+      messageId: 'wamid-2',
+      contextMessageId: null,
+      timestamp: 1710000201,
     },
   );
 
@@ -285,6 +356,90 @@ test('Feishu channel runtime helpers cover readiness, rich-post text normalizati
       text: 'Ship the thin slice',
       threadId: 'omt-thread-1',
       timestamp: 1710000300,
+    },
+  );
+
+  assert.equal(
+    channel.normalizeInboundEvent({
+      type: 'event_callback',
+      header: {
+        event_type: 'im.message.receive_v1',
+        tenant_key: 'tenant-1',
+      },
+      event: {
+        sender: {
+          sender_id: {
+            open_id: 'ou_sender',
+          },
+        },
+        message: {
+          message_id: 'om_message_2',
+          message_type: 'post',
+          chat_id: 'oc_chat_1',
+          thread_id: 'omt-thread-1',
+          create_time: '1710000301',
+          content: JSON.stringify({
+            post: {
+              zh_cn: {
+                title: 'Daily notes',
+                content: [
+                  [],
+                ],
+              },
+              en_us: {
+                title: 'Daily notes',
+                content: [
+                  [
+                    { tag: 'text', text: 'Ship' },
+                    { tag: 'text', text: 'the' },
+                    { tag: 'text', text: 'thin' },
+                    { tag: 'text', text: 'slice' },
+                  ],
+                ],
+              },
+            },
+          }),
+        },
+      },
+    }).text,
+    'Ship the thin slice',
+  );
+
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      type: 'event_callback',
+      header: {
+        event_type: 'im.message.receive_v1',
+        tenant_key: 'tenant-1',
+      },
+      event: {
+        sender: {
+          sender_id: {
+            open_id: 'ou_sender',
+          },
+        },
+        message: {
+          message_id: 'om_message_3',
+          message_type: 'text',
+          chat_id: 'oc_chat_1',
+          create_time: '1710000302',
+          content: {
+            text: 'Already parsed object payload',
+          },
+        },
+      },
+    }),
+    {
+      platform: 'feishu',
+      eventType: 'im.message.receive_v1',
+      tenantKey: 'tenant-1',
+      chatId: 'oc_chat_1',
+      senderId: 'ou_sender',
+      messageId: 'om_message_3',
+      messageType: 'text',
+      text: 'Already parsed object payload',
+      threadId: null,
+      timestamp: 1710000302,
     },
   );
 

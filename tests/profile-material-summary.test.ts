@@ -163,9 +163,9 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
         },
         soul: {
           readySectionCount: 2,
-          totalSectionCount: 3,
-          readySections: ['core-values', 'boundaries'],
-          missingSections: ['decision-rules'],
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries'],
+          missingSections: ['vibe', 'continuity'],
         },
       },
     },
@@ -173,7 +173,7 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
 
   assert.equal(
     summary.profileCommands[0]?.draftGapSummary,
-    'memory missing | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-values, boundaries), missing decision-rules',
+    'memory missing | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/4 ready (core-truths, boundaries), missing vibe/continuity',
   );
 });
 
@@ -300,6 +300,33 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
+test('loadProfilesIndex marks memory foundation drafts stale when the stored personId drifts from the profile id', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.personId = 'someone-else';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['profile metadata drift']);
+  assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+});
+
 test('loadProfilesIndex marks legacy markdown foundation drafts without structured sections as stale and ungenerated', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -350,9 +377,9 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     materialTypes: {},
     highlights: [],
     readySectionCount: 0,
-    totalSectionCount: 3,
+    totalSectionCount: 4,
     readySections: [],
-    missingSections: ['core-values', 'boundaries', 'decision-rules'],
+    missingSections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -450,9 +477,9 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     materialTypes: {},
     highlights: [],
     readySectionCount: 1,
-    totalSectionCount: 3,
-    readySections: ['core-values'],
-    missingSections: ['boundaries', 'decision-rules'],
+    totalSectionCount: 4,
+    readySections: ['core-truths'],
+    missingSections: ['boundaries', 'vibe', 'continuity'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -467,6 +494,54 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     readySections: ['candidate-skills'],
     missingSections: ['evidence', 'gaps-to-validate'],
   });
+});
+
+test('loadProfilesIndex accepts deeper markdown headings in structured foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+
+  const deeperVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace(/## /g, '### ');
+  const deeperSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
+    .replace(/## /g, '### ');
+
+  fs.writeFileSync(voiceDraftPath, deeperVoiceDraft);
+  fs.writeFileSync(soulDraftPath, deeperSoulDraft);
+
+  assert.equal(hasValidFoundationMarkdownDraft(voiceDraftPath), true);
+  assert.equal(hasValidFoundationMarkdownDraft(soulDraftPath), true);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+});
+
+test('refreshFoundationDrafts writes profile soul drafts with openclaw-style headings', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const soulDraft = fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md'), 'utf8');
+
+  assert.match(soulDraft, /## Core truths/);
+  assert.match(soulDraft, /## Boundaries/);
+  assert.match(soulDraft, /## Vibe/);
+  assert.match(soulDraft, /## Continuity/);
+  assert.doesNotMatch(soulDraft, /## Core values/);
+  assert.doesNotMatch(soulDraft, /## Decision rules/);
 });
 
 test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice headings as valid structured drafts', () => {
@@ -531,6 +606,50 @@ test('loadProfilesIndex marks valid markdown drafts as stale when their target-p
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights, ['- [message] Ship the first slice.']);
+});
+
+test('PromptAssembler singularizes foundation rollup candidate and stale-profile wording when counts are one', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationRollup: {
+      memory: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        repoStaleProfileCount: 1,
+        totalEntries: 1,
+        highlights: ['Keep loops short.'],
+      },
+      voice: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        highlights: ['Warm and grounded.'],
+      },
+      soul: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateProfileCount: 1,
+        highlights: ['Protect the operator loop.'],
+      },
+      skills: {
+        profileCount: 1,
+        generatedProfileCount: 0,
+        candidateCount: 1,
+        highlights: ['execution heuristic'],
+      },
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /memory: 0\/1 generated, 1 candidate profile, 1 repo-stale profile, 1 entries, highlights: Keep loops short\./);
+  assert.match(prompt, /voice: 0\/1 generated, 1 candidate profile, highlights: Warm and grounded\./);
+  assert.match(prompt, /soul: 0\/1 generated, 1 candidate profile, highlights: Protect the operator loop\./);
+  assert.match(prompt, /skills: 0\/1 generated, 1 candidate, highlights: execution heuristic/);
 });
 
 test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
@@ -599,6 +718,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           complete: false,
           missingDrafts: ['memory', 'skills', 'soul', 'voice'],
           needsRefresh: true,
+          refreshReasons: ['missing-draft', 'new-material'],
         },
         foundationDraftSummaries: {
           memory: { generated: false, entryCount: 0, latestSummaries: [] },
@@ -639,7 +759,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   }).buildSystemPrompt();
 
   assert.match(prompt, /Foundation rollup:/);
-  assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profiles, 3 entries/);
+  assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 3 entries/);
   assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
   assert.match(prompt, /skills: 0\/2 generated, 1 candidate, highlights: execution heuristic/);
   assert.match(prompt, /Profiles:/);
@@ -651,7 +771,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
   assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
-  assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice/);
+  assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);
   assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
   assert.match(prompt, /Ship the first slice\./);
@@ -796,6 +916,17 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
           'new-material': 1,
         },
         staleRefreshCommand: 'node src/index.js update foundation --stale',
+        recommendedProfileId: 'jane-doe',
+        recommendedLabel: 'Jane Doe (jane-doe)',
+        recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + metadata-updated',
+        recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+        recommendedPaths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
+        recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-truths), missing boundaries/continuity',
         helperCommands: {
           refreshStale: 'node src/index.js update foundation --stale',
           refreshBundle: "(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person sam-lane)",
@@ -809,7 +940,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills', 'soul', 'voice'],
             refreshReasons: ['missing drafts', 'metadata-updated'],
-            draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-values), missing boundaries/decision-rules',
+            draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 1/3 ready (core-truths), missing boundaries/continuity',
           },
           {
             id: 'harry-han',
@@ -834,8 +965,9 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
     },
   }).buildSystemPrompt();
 
+  assert.match(prompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity/);
   assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
-  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity/);
   assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
   assert.match(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul\]/);
   assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
@@ -1211,9 +1343,9 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
             generated: false,
             highlights: [],
             readySectionCount: 1,
-            totalSectionCount: 3,
-            readySections: ['core-values'],
-            missingSections: ['boundaries', 'decision-rules'],
+            totalSectionCount: 4,
+            readySections: ['core-truths'],
+            missingSections: ['boundaries', 'vibe', 'continuity'],
           },
           skills: {
             generated: false,
@@ -1231,7 +1363,7 @@ test('PromptAssembler falls back to readiness highlights for stale voice, soul, 
   assert.match(prompt, /voice highlights: Tight loops beat big plans\./);
   assert.match(prompt, /soul highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: feedback-loop heuristic/);
-  assert.match(prompt, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate/);
+  assert.match(prompt, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 1\/4 ready \(core-truths\), missing boundaries\/vibe\/continuity \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate/);
 });
 
 test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
@@ -1486,12 +1618,12 @@ test('loadProfilesIndex ignores heading-only and fenced template sections when e
   assert.deepEqual((profile.foundationDraftSummaries.voice as any).readySections ?? [], []);
   assert.deepEqual((profile.foundationDraftSummaries.voice as any).missingSections ?? [], ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(profile.foundationDraftSummaries.soul.generated, false);
-  assert.deepEqual((profile.foundationDraftSummaries.soul as any).readySections ?? [], ['core-values']);
-  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], ['boundaries', 'decision-rules']);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).readySections ?? [], ['core-truths']);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], ['boundaries', 'vibe', 'continuity']);
   assert.equal(profile.foundationDraftSummaries.skills.generated, false);
   assert.deepEqual((profile.foundationDraftSummaries.skills as any).readySections ?? [], []);
   assert.deepEqual((profile.foundationDraftSummaries.skills as any).missingSections ?? [], ['candidate-skills', 'evidence', 'gaps-to-validate']);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 0\/4 ready, missing tone\/signature-moves\/avoid\/language-hints \| soul 1\/3 ready \(core-values\), missing boundaries\/decision-rules \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 0\/4 ready, missing tone\/signature-moves\/avoid\/language-hints \| soul 1\/4 ready \(core-truths\), missing boundaries\/vibe\/continuity \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate/);
 });
 
 test('loadProfilesIndex marks foundation status stale when memory draft metadata is unreadable', () => {
@@ -1698,6 +1830,16 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.refreshAllFoundationCommand, 'node src/index.js update foundation --all');
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
   assert.equal(summary.ingestion.refreshFoundationBundleCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(summary.ingestion.recommendedProfileId, 'jane-doe');
+  assert.equal(summary.ingestion.recommendedLabel, 'Jane Doe (jane-doe)');
+  assert.equal(summary.ingestion.recommendedAction, 'refresh stale or incomplete target profiles');
+  assert.equal(summary.ingestion.recommendedCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.deepEqual(summary.ingestion.recommendedPaths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
   assert.deepEqual(summary.ingestion.helperCommands, {
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     scaffoldAll: 'node src/index.js update intake --all',
@@ -1705,6 +1847,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     scaffoldImported: 'node src/index.js update intake --imported',
     scaffoldBundle: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     scaffoldImportedBundle: null,
+    repairInvalidBundle: null,
+    repairImportedInvalidBundle: null,
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
@@ -1743,7 +1887,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(janeCommand.materialCount, 1);
   assert.equal(janeCommand.needsRefresh, true);
   assert.deepEqual(janeCommand.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
-  assert.equal(janeCommand.draftGapSummary, 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/3 ready (core-values, boundaries), missing decision-rules | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate');
+  assert.equal(janeCommand.draftGapSummary, 'memory missing, 1 candidate (Tight loops beat big plans.) | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints | soul 2/4 ready (core-truths, boundaries), missing vibe/continuity | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate');
   assert.equal(janeCommand.latestMaterialAt, summary.profiles.find((profile) => profile.id === 'jane-doe')?.latestMaterialAt ?? null);
   assert.match(janeCommand.latestMaterialAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(janeCommand.updateProfileCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'");
@@ -1838,6 +1982,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 2 ready, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /helpers: .*update-bundle \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'\) && \(node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'\).*sync-bundle node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
@@ -1847,7 +1992,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\] for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for Harry Han \(harry-han\) \(message:1, text:1\) -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 2\/3 ready \(core-values, boundaries\), missing decision-rules \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| soul 2\/4 ready \(core-truths, boundaries\), missing vibe\/continuity \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.j/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\)/);
 });
@@ -1871,7 +2016,7 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 1);
   assert.match(summary.promptPreview, /imported intake: 1 ready, 0 backfills, 0 invalid manifests/);
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
 });
 
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
@@ -1976,10 +2121,12 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
+  assert.equal(summary.ingestion.helperCommands?.repairImportedInvalidBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(harry?.intakeReady, true);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
+  assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
 });
 
@@ -2003,8 +2150,10 @@ test('buildSummary keeps metadata-only profiles with invalid intake manifests vi
   const metadataOnly = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
 
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(summary.ingestion.helperCommands?.repairInvalidBundle, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
+  assert.match(summary.promptPreview, /repair-invalid-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
 });
 
@@ -2139,6 +2288,91 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation \| import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
 });
 
+test('buildSummary surfaces the profile-local intake shortcut for imported profiles when the refresh shortcut is unavailable', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum and fast feedback loops.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum and fast feedback loops.',
+  });
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first, then tighten it with real feedback.',
+  });
+
+  const summary = buildSummary(rootDir);
+  const importedCommand = summary.ingestion.allProfileCommands.find((entry) => entry.personId === 'harry-han');
+
+  assert.ok(importedCommand);
+  assert.equal(importedCommand.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(importedCommand.importIntakeCommand, null);
+  assert.equal(importedCommand.importManifestCommand, null);
+  assert.match(
+    summary.promptPreview,
+    /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Ship the thin slice first, then tighten it with real feedback\.\) \| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/,
+  );
+});
+
+test('buildSummary prefers customized profile-local intake manifest imports over matching checked-in sample imports once intake scaffolding is ready', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'metadata-only.txt'), 'Sample text that should yield to the customized profile-local intake manifest.');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'metadata-only-materials.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'metadata-only.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'local-note.txt'), 'Use the profile-local intake manifest first.');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'local-note.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands[0];
+
+  assert.equal(metadataOnlyCommand.personId, 'metadata-only');
+  assert.equal(metadataOnlyCommand.importCommands?.text, "node src/index.js import text --person metadata-only --file 'samples/metadata-only.txt' --refresh-foundation");
+  assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.equal(metadataOnlyCommand.importMaterialCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation \| import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+});
+
 test('buildSummary summarizes partially scaffolded intake status for metadata-only profiles', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -2269,6 +2503,13 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleInlineCommands: [],
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshFoundationBundleCommand: null,
+    repairInvalidIntakeBundleCommand: null,
+    repairImportedInvalidIntakeBundleCommand: null,
+    recommendedProfileId: null,
+    recommendedLabel: null,
+    recommendedAction: 'bootstrap a target profile',
+    recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+    recommendedPaths: [],
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
       scaffoldAll: 'node src/index.js update intake --all',
@@ -2276,6 +2517,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       scaffoldImported: 'node src/index.js update intake --imported',
       scaffoldBundle: null,
       scaffoldImportedBundle: null,
+      repairInvalidBundle: null,
+      repairImportedInvalidBundle: null,
       importManifest: 'node src/index.js import manifest --file <manifest.json>',
       importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
       importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
@@ -2303,6 +2546,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
   assert.match(summary.promptPreview, /profiles: 0 total \(0 imported, 0 metadata-only\)/);
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /next intake: bootstrap a target profile; command node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: scaffold-all node src\/index\.js update intake --all \| scaffold-stale node src\/index\.js update intake --stale \| scaffold-imported node src\/index\.js update intake --imported \| manifest node src\/index\.js import manifest --file <manifest\.json> \| manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation \| import-all node src\/index\.js import intake --all --refresh-foundation \| import-stale node src\/index\.js import intake --stale --refresh-foundation \| import-imported node src\/index\.js import intake --imported --refresh-foundation \| refresh-all node src\/index\.js update foundation --all \| refresh node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);

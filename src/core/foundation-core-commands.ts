@@ -33,7 +33,7 @@ const MEMORY_README_SECTIONS = [
     existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   },
 ] as const;
-const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n';
 const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
 const SKILLS_README_SECTIONS = [
   {
@@ -45,8 +45,8 @@ const SKILLS_README_SECTIONS = [
   {
     heading: '## Layout',
     sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
-    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
-    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   },
 ] as const;
 const SKILL_STARTER_TEMPLATE = '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n';
@@ -94,30 +94,9 @@ const VOICE_SECTIONS = [
     existingBulletAppend: '- Note bilingual, dialect, or code-switching habits worth preserving.\n',
   },
 ] as const;
-const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
+const SOUL_STARTER_TEMPLATE = '# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n';
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
-const SOUL_GUIDANCE_APPEND_TEMPLATE = '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n';
 const SOUL_SECTIONS = [
-  {
-    heading: '## Core values',
-    sentinel: '- Describe the durable values and goals that should survive across tasks.',
-    missingSectionAppend: '\n## Core values\n- Describe the durable values and goals that should survive across tasks.\n',
-    existingBulletAppend: '- Describe the durable values and goals that should survive across tasks.\n',
-  },
-  {
-    heading: '## Boundaries',
-    sentinel: '- Capture what the agent should protect or refuse to compromise.',
-    missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
-    existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
-  },
-  {
-    heading: '## Decision rules',
-    sentinel: '- Note the principles to use when tradeoffs appear.',
-    missingSectionAppend: '\n## Decision rules\n- Note the principles to use when tradeoffs appear.\n',
-    existingBulletAppend: '- Note the principles to use when tradeoffs appear.\n',
-  },
-] as const;
-const SOUL_OPENCLAW_SECTIONS = [
   {
     heading: '## Core truths',
     sentinel: '- Describe the durable values and goals that should survive across tasks.',
@@ -129,6 +108,12 @@ const SOUL_OPENCLAW_SECTIONS = [
     sentinel: '- Capture what the agent should protect or refuse to compromise.',
     missingSectionAppend: '\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n',
     existingBulletAppend: '- Capture what the agent should protect or refuse to compromise.\n',
+  },
+  {
+    heading: '## Vibe',
+    sentinel: '- Describe the emotional texture or posture the agent should project.',
+    missingSectionAppend: '\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n',
+    existingBulletAppend: '- Describe the emotional texture or posture the agent should project.\n',
   },
   {
     heading: '## Continuity',
@@ -147,7 +132,10 @@ function quoteShellPath(value: string): string {
 
 function buildSkillsStarterCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
-  if (normalizedPaths.length !== 1 || normalizedPaths[0] !== 'skills/') {
+  if (
+    normalizedPaths.length !== 1
+    || (normalizedPaths[0] !== 'skills/' && normalizedPaths[0] !== 'skills/starter/SKILL.md')
+  ) {
     return null;
   }
 
@@ -243,6 +231,14 @@ function buildMemoryReadmeRepairCommand(paths: string[]): string | null {
   return buildDocumentRepairCommand('memory/README.md', MEMORY_README_GUIDANCE_SENTINEL, MEMORY_README_SECTIONS);
 }
 
+function stripMarkdownHeadingMarkup(heading: string): string {
+  return heading
+    .trim()
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/\s+#+\s*$/, '')
+    .trim();
+}
+
 function buildDocumentRepairCommand(
   filePath: string,
   _sentinel: string,
@@ -253,27 +249,24 @@ function buildDocumentRepairCommand(
     existingBulletAppend: string;
   }>,
 ): string {
-  const file = shellSingleQuote(filePath);
-  const buildSectionHasContentCommand = (heading: string) => [
-    'awk',
-    `-v heading=${shellSingleQuote(heading)}`,
-    shellSingleQuote("BEGIN { in_section = 0; has_content = 0 } $0 == heading { in_section = 1; next } /^## / { if (in_section) exit } in_section && $0 !~ /^[[:space:]]*$/ { has_content = 1 } END { exit has_content ? 0 : 1 }"),
-    file,
+  const normalizedSections = sections.map((section) => ({
+    headingText: stripMarkdownHeadingMarkup(section.heading),
+    headingLevel: (section.heading.match(/^#{1,6}/)?.[0].length ?? 2),
+    missingSectionAppend: section.missingSectionAppend,
+    existingBulletAppend: section.existingBulletAppend,
+  }));
+  const script = [
+    "const fs = require('node:fs');",
+    `const file = ${JSON.stringify(filePath)};`,
+    `const sections = ${JSON.stringify(normalizedSections)};`,
+    "const parseHeadingAt = (lines, index) => { const current = lines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{1,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: atxMatch[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase(), lineCount: 1 }; } const next = lines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2 }; };",
+    "const hasVisibleContent = (sectionLines, sectionHeadingLevel) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; for (const line of sectionLines) { const rawLine = line ?? ''; const trimmed = rawLine.trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; continue; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } continue; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) continue; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } const normalizedLine = visibleLine.trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([visibleLine], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
+    "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
+    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(lines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
+    "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
   ].join(' ');
-  const buildInsertIntoExistingSectionCommand = (heading: string, bullet: string) => {
-    const normalizedBullet = bullet.replace(/\n+$/, '');
-    const escapePerlReplacement = (value: string) => value
-      .replace(/\\/g, '\\\\')
-      .replace(/\$/g, '\\$')
-      .replace(/~/g, '\\~');
-    const perlScript = `s~\\Q${heading}\\E\\n((?:\\n)*)(?=## |\\z)~${escapePerlReplacement(heading)}\\n${escapePerlReplacement(normalizedBullet)}\\n$1~s`;
-    return `perl -0pi -e ${shellSingleQuote(perlScript)} ${file}`;
-  };
-  const sectionCommands = sections.map((section) =>
-    `if grep -Fqx -- ${shellSingleQuote(section.heading)} ${file}; then ${buildSectionHasContentCommand(section.heading)} || ${buildInsertIntoExistingSectionCommand(section.heading, section.existingBulletAppend)}; else printf %s ${shellSingleQuote(section.missingSectionAppend)} >> ${file}; fi`,
-  );
 
-  return `{ ${sectionCommands.join('; ')}; }`;
+  return `node -e ${shellSingleQuote(script)}`;
 }
 
 function buildVoiceCommand(status: string | null): string | null {
@@ -282,7 +275,55 @@ function buildVoiceCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    return buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS);
+    const normalizeToOpenclaw = [
+      "import fs from 'node:fs';",
+      "const file = 'voice/README.md';",
+      "const raw = fs.readFileSync(file, 'utf8');",
+      "const lines = raw.split(/\\r?\\n/);",
+      "const stripHeadingText = (value) => value.trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase();",
+      "const parseHeadingAt = (sourceLines, index) => { const current = sourceLines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: stripHeadingText(atxMatch[2]), lineCount: 1, rawLines: [current] }; } const next = sourceLines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2, rawLines: [current, next] }; };",
+      "const looksLikeLanguageHint = (value) => { const normalized = value.trim().toLowerCase(); return normalized.includes('language') || normalized.includes('bilingual') || normalized.includes('multilingual') || normalized.includes('中文') || normalized.includes('english'); };",
+      "const aliasMap = new Map([['tone', 'tone'], ['signature moves', 'signature-moves'], ['voice should capture', 'signature-moves'], ['avoid', 'avoid'], ['voice should not capture', 'avoid'], ['language hints', 'language-hints'], ['current default for manskill', 'current-default']]);",
+      "const sectionHeadings = { tone: '## Tone', 'signature-moves': '## Signature moves', avoid: '## Avoid', 'language-hints': '## Language hints' };",
+      "const sectionOrder = ['tone', 'signature-moves', 'avoid', 'language-hints'];",
+      "const sections = { tone: [], 'signature-moves': [], avoid: [], 'language-hints': [] };",
+      "const prelude = [];",
+      "const extras = [];",
+      "let currentSection = null;",
+      "let currentExtra = null;",
+      "for (let index = 0; index < lines.length;) {",
+      "  const parsed = parseHeadingAt(lines, index);",
+      "  if (parsed) {",
+      "    const key = aliasMap.get(parsed.text) ?? null;",
+      "    if (key) { currentSection = key; currentExtra = null; index += parsed.lineCount; continue; }",
+      "    currentSection = null; currentExtra = [...parsed.rawLines]; extras.push(currentExtra); index += parsed.lineCount; continue;",
+      "  }",
+      "  const line = lines[index] ?? '';",
+      "  if (currentExtra) { currentExtra.push(line); index += 1; continue; }",
+      "  if (currentSection === 'current-default') { if (line.trim().length === 0) { index += 1; continue; } (looksLikeLanguageHint(line) ? sections['language-hints'] : sections['signature-moves']).push(line); index += 1; continue; }",
+      "  if (currentSection) { sections[currentSection].push(line); index += 1; continue; }",
+      "  prelude.push(line);",
+      "  index += 1;",
+      "}",
+      "const trimBlankEdges = (values) => { while (values.length > 0 && values[0].trim() === '') values.shift(); while (values.length > 0 && values[values.length - 1].trim() === '') values.pop(); return values; };",
+      "const output = trimBlankEdges([...prelude]);",
+      "for (const key of sectionOrder) {",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(sectionHeadings[key]);",
+      "  const body = trimBlankEdges([...sections[key]]).filter((line) => key === 'tone' || line.trim().length > 0);",
+      "  output.push(...body);",
+      "}",
+      "for (const extra of extras) {",
+      "  const body = trimBlankEdges([...extra]);",
+      "  if (body.length === 0) continue;",
+      "  if (output.length > 0 && output[output.length - 1].trim() !== '') output.push('');",
+      "  output.push(...body);",
+      "}",
+      "const normalized = `${output.join('\\n').replace(/\\n+$/, '')}\\n`;",
+      "fs.writeFileSync(file, normalized);",
+    ].join(' ');
+    const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
+    return `${normalizeCommand} && ${buildDocumentRepairCommand('voice/README.md', VOICE_GUIDANCE_SENTINEL, VOICE_SECTIONS)}`;
   }
 
   return null;
@@ -294,32 +335,33 @@ function buildSoulCommand(status: string | null): string | null {
   }
 
   if (status === 'thin') {
-    const defaultRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS);
-    const openclawRepair = buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_OPENCLAW_SECTIONS);
     const normalizeToOpenclaw = [
       "import fs from 'node:fs';",
       "const file = 'SOUL.md';",
       "const raw = fs.readFileSync(file, 'utf8');",
       "const lines = raw.split(/\\r?\\n/);",
-      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
-      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', continuity: '## Continuity' };",
-      "const sectionOrder = ['core-truths', 'boundaries', 'continuity'];",
-      "const seen = new Set();",
-      "const sections = { 'core-truths': [], boundaries: [], continuity: [] };",
+      "const stripHeadingText = (value) => value.trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase();",
+      "const parseHeadingAt = (sourceLines, index) => { const current = sourceLines[index] ?? ''; const trimmed = current.trim(); const atxMatch = trimmed.match(/^(#{2,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: stripHeadingText(atxMatch[2]), lineCount: 1, rawLines: [current] }; } const next = sourceLines[index + 1] ?? ''; const setextMatch = next.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2, rawLines: [current, next] }; };",
+      "const aliasMap = new Map([['core truths', 'core-truths'], ['core values', 'core-truths'], ['boundaries', 'boundaries'], ['vibe', 'vibe'], ['continuity', 'continuity'], ['decision rules', 'continuity']]);",
+      "const sectionHeadings = { 'core-truths': '## Core truths', boundaries: '## Boundaries', vibe: '## Vibe', continuity: '## Continuity' };",
+      "const sectionOrder = ['core-truths', 'boundaries', 'vibe', 'continuity'];",
+      "const sections = { 'core-truths': [], boundaries: [], vibe: [], continuity: [] };",
       "const prelude = [];",
       "const extras = [];",
       "let currentSection = null;",
       "let currentExtra = null;",
-      "for (const line of lines) {",
-      "  const trimmed = line.trim();",
-      "  if (/^## /.test(trimmed)) {",
-      "    const key = aliasMap.get(trimmed.slice(3).trim().toLowerCase()) ?? null;",
-      "    if (key) { currentSection = key; currentExtra = null; seen.add(key); continue; }",
-      "    currentSection = null; currentExtra = [line]; extras.push(currentExtra); continue;",
+      "for (let index = 0; index < lines.length;) {",
+      "  const parsed = parseHeadingAt(lines, index);",
+      "  if (parsed) {",
+      "    const key = aliasMap.get(parsed.text) ?? null;",
+      "    if (key) { currentSection = key; currentExtra = null; index += parsed.lineCount; continue; }",
+      "    currentSection = null; currentExtra = [...parsed.rawLines]; extras.push(currentExtra); index += parsed.lineCount; continue;",
       "  }",
-      "  if (currentExtra) { currentExtra.push(line); continue; }",
-      "  if (currentSection) { sections[currentSection].push(line); continue; }",
+      "  const line = lines[index] ?? '';",
+      "  if (currentExtra) { currentExtra.push(line); index += 1; continue; }",
+      "  if (currentSection) { sections[currentSection].push(line); index += 1; continue; }",
       "  prelude.push(line);",
+      "  index += 1;",
       "}",
       "const trimBlankEdges = (values) => { while (values.length > 0 && values[0].trim() === '') values.shift(); while (values.length > 0 && values[values.length - 1].trim() === '') values.pop(); return values; };",
       "const output = trimBlankEdges([...prelude]);",
@@ -339,8 +381,7 @@ function buildSoulCommand(status: string | null): string | null {
       "fs.writeFileSync(file, normalized);",
     ].join(' ');
     const normalizeCommand = `node --input-type=module -e ${shellSingleQuote(normalizeToOpenclaw)}`;
-    const openclawDetected = "grep -Eq '^## (Core truths|Continuity)$' 'SOUL.md' || { grep -Fqx -- '## Boundaries' 'SOUL.md' && ! grep -Eq '^## (Core values|Decision rules)$' 'SOUL.md'; }";
-    return `if ${openclawDetected}; then ${normalizeCommand} && ${openclawRepair}; else ${defaultRepair}; fi`;
+    return `${normalizeCommand} && ${buildDocumentRepairCommand('SOUL.md', SOUL_GUIDANCE_SENTINEL, SOUL_SECTIONS)}`;
   }
 
   return null;

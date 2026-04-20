@@ -1,4 +1,4 @@
-import { findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 
 export interface SoulProfileSummary {
   excerpt: string | null;
@@ -23,6 +23,33 @@ export interface SoulProfileOptions {
 }
 
 type SoulSection = 'core-truths' | 'boundaries' | 'vibe' | 'continuity' | null;
+
+const SOUL_STARTER_GUIDANCE_LINES = new Set([
+  'Describe the durable values and goals that should survive across tasks.',
+  'Capture what the agent should protect or refuse to compromise.',
+  'Describe the emotional texture or posture the agent should project.',
+  'Note the principles to use when tradeoffs appear.',
+]);
+
+function normalizeHeadingText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+#+\s*$/, '')
+    .trim()
+    .toLowerCase();
+}
+
+function parseStructuredHeading(line: string): { level: number; text: string } | null {
+  const match = line.trim().match(/^(#{1,6})\s+(.*)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: normalizeHeadingText(match[2]),
+  };
+}
 
 function mapSoulHeadingToSection(heading: string): SoulSection {
   switch (heading) {
@@ -49,6 +76,10 @@ function cleanSoulLine(value: string) {
     .trim();
 }
 
+function isStarterSoulGuidance(value: string) {
+  return SOUL_STARTER_GUIDANCE_LINES.has(value);
+}
+
 export class SoulProfile {
   excerpt: string | null;
   coreTruths: string[];
@@ -66,27 +97,25 @@ export class SoulProfile {
 
   static fromDocument(document = '') {
     const normalizedDocument = normalizeDocument(document);
-    const soul = new SoulProfile({ excerpt: findDocumentExcerpt(normalizedDocument) });
+    const excerpt = findDocumentExcerpt(normalizedDocument);
+    const normalizedExcerpt = excerpt ? cleanSoulLine(excerpt) : null;
+    const soul = new SoulProfile({ excerpt: normalizedExcerpt && !isStarterSoulGuidance(normalizedExcerpt) ? normalizedExcerpt : null });
     let currentSection: SoulSection = null;
 
-    normalizedDocument.split(/\r?\n/).forEach((rawLine) => {
+    collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
       if (!line) {
         return;
       }
 
-      if (line.startsWith('## ')) {
-        const heading = line.slice(3).trim().toLowerCase();
-        currentSection = mapSoulHeadingToSection(heading);
-        return;
-      }
-
-      if (line.startsWith('#')) {
+      const heading = parseStructuredHeading(line);
+      if (heading) {
+        currentSection = heading.level >= 2 ? mapSoulHeadingToSection(heading.text) : null;
         return;
       }
 
       const cleaned = cleanSoulLine(line);
-      if (!cleaned || cleaned === '---') {
+      if (!cleaned || cleaned === '---' || isStarterSoulGuidance(cleaned)) {
         return;
       }
 
