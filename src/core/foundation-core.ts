@@ -450,6 +450,9 @@ function buildCoreFoundationMaintenance({
       summary: summarizeDocumentFoundation(soul),
       action: soulAction,
       paths: ['SOUL.md'],
+      ...((soul.lineCount > 0 && (soul.readySections.length > 0 || soul.missingSections.length > 0))
+        ? { rootThinReadySections: soul.readySections, rootThinMissingSections: soul.missingSections }
+        : {}),
     },
     {
       area: 'voice',
@@ -457,6 +460,9 @@ function buildCoreFoundationMaintenance({
       summary: summarizeDocumentFoundation(voice),
       action: voiceAction,
       paths: ['voice/README.md'],
+      ...((voice.lineCount > 0 && (voice.readySections.length > 0 || voice.missingSections.length > 0))
+        ? { rootThinReadySections: voice.readySections, rootThinMissingSections: voice.missingSections }
+        : {}),
     },
   ];
 

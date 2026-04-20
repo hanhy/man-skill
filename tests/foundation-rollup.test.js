@@ -1122,6 +1122,61 @@ test('buildSummary surfaces memory root section context on thin memory queue ite
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
 });
 
+test('buildSummary surfaces soul and voice section context on thin document queue items', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Warm and grounded.\n');
+
+  const summary = buildSummary(rootDir);
+  const soulCommand = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+  const voiceCommand = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'soul',
+      status: 'thin',
+      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity',
+      action: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
+      paths: ['SOUL.md'],
+      rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
+      rootThinReadySections: ['core-truths'],
+      command: soulCommand,
+    },
+    {
+      area: 'voice',
+      status: 'thin',
+      summary: 'present, 1 lines, sections 1/4 ready (tone), missing signature-moves, avoid, language-hints',
+      action: 'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
+      paths: ['voice/README.md'],
+      rootThinMissingSections: ['signature-moves', 'avoid', 'language-hints'],
+      rootThinReadySections: ['tone'],
+      command: voiceCommand,
+    },
+  ]);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: boundaries, vibe, continuity @ SOUL\.md; context root sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; command /);
+  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context root sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
+});
+
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {
   const rootDir = makeTempRepo();
 
