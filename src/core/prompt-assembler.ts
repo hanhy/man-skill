@@ -180,6 +180,8 @@ type FoundationCoreMaintenance = {
   missingAreaCount?: number;
   thinAreaCount?: number;
   recommendedArea?: string | null;
+  recommendedStatus?: string | null;
+  recommendedSummary?: string | null;
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
   recommendedPaths?: string[];
@@ -1624,8 +1626,11 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       return `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]${summary}`;
     }).join(', ')}`
     : null;
+  const recommendedRepairSummary = typeof maintenance?.recommendedSummary === 'string' && maintenance.recommendedSummary.length > 0
+    ? maintenance.recommendedSummary
+    : null;
   const recommendedRepairLine = maintenance?.recommendedAction
-    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}`
+    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}${recommendedRepairSummary ? `; context ${recommendedRepairSummary}` : ''}`
     : null;
   const readyCoreFoundationDetails = overview
     && (overview.readyAreaCount ?? 0) === (overview.totalAreaCount ?? 0)

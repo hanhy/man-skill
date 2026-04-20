@@ -511,7 +511,10 @@ function buildCoreFoundationMaintenance({
     soul: queue.find((area) => area.area === 'soul')?.command ?? null,
     voice: queue.find((area) => area.area === 'voice')?.command ?? null,
   };
-  const recommendedArea = queue[0]?.area ?? null;
+  const recommendedQueueItem = queue[0] ?? null;
+  const recommendedArea = recommendedQueueItem?.area ?? null;
+  const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
+  const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
   const recommendedPaths = queue.length > 1
     ? Array.from(new Set(queue.flatMap((area) => area.paths ?? [])))
     : [...(queue[0]?.paths ?? [])];
@@ -574,6 +577,8 @@ function buildCoreFoundationMaintenance({
     missingAreaCount: areas.filter((area) => area.status === 'missing').length,
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
     recommendedArea,
+    recommendedStatus,
+    recommendedSummary,
     recommendedAction,
     recommendedCommand,
     recommendedPaths,
@@ -917,6 +922,8 @@ export interface CoreFoundationMaintenanceSummary {
   missingAreaCount: number;
   thinAreaCount: number;
   recommendedArea: string | null;
+  recommendedStatus: string | null;
+  recommendedSummary: string | null;
   recommendedAction: string | null;
   recommendedCommand: string | null;
   recommendedPaths: string[];

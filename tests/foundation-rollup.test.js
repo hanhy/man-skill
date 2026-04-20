@@ -516,6 +516,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     missingAreaCount: 0,
     thinAreaCount: 0,
     recommendedArea: null,
+    recommendedStatus: null,
+    recommendedSummary: null,
     recommendedAction: null,
     recommendedCommand: null,
     recommendedPaths: [],
@@ -590,6 +592,8 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '1 registered, 1 documented, root missing @ skills/README.md',
     recommendedAction: 'create skills/README.md',
     recommendedCommand: "mkdir -p 'skills' && printf %s '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n' > 'skills/README.md'",
     recommendedPaths: ['skills/README.md'],
@@ -880,6 +884,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     missingAreaCount: 2,
     thinAreaCount: 2,
     recommendedArea: 'memory',
+    recommendedStatus: null,
+    recommendedSummary: null,
     recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
     recommendedCommand: scaffoldAllCommand,
     recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md'],
@@ -937,6 +943,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
+  assert.match(summary.promptPreview, /- next repair: scaffold missing or thin core foundation areas — starting with add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command /);
+  assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context README yes, daily 0, long-term 0, scratch 0/);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
 });
@@ -1094,6 +1102,8 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'memory',
+    recommendedStatus: 'thin',
+    recommendedSummary: 'README no, daily 1, long-term 1, scratch 1',
     recommendedAction: 'create memory/README.md',
     recommendedCommand: "mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md'",
     recommendedPaths: ['memory/README.md'],
@@ -1302,6 +1312,8 @@ test('buildSummary treats placeholder skill directories as thin core foundation 
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '2 registered, 0 documented, root missing @ skills/README.md',
     recommendedAction: 'create skills/README.md | create skills/slack/SKILL.md and skills/telegram/SKILL.md',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/README.md', 'skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
@@ -1387,6 +1399,8 @@ test('buildSummary keeps mixed documented and placeholder skills thin until all 
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '2 registered, 1 documented, root missing @ skills/README.md',
     recommendedAction: 'create skills/README.md | create skills/slack/SKILL.md',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/README.md', 'skills/slack/SKILL.md'],
@@ -1477,6 +1491,8 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '1 registered, 0 documented, root missing @ skills/README.md',
     recommendedAction: 'create skills/README.md | add missing sections to skills/delivery/SKILL.md: what-this-skill-is-for, suggested-workflow',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/README.md', 'skills/delivery/SKILL.md'],
@@ -1651,6 +1667,8 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '2 registered, 1 documented, root missing @ skills/README.md',
     recommendedAction: 'create skills/README.md | add missing sections to skills/slack/SKILL.md: what-this-skill-is-for, suggested-workflow',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/README.md', 'skills/slack/SKILL.md'],
@@ -1833,6 +1851,8 @@ test('buildSummary treats partially structured skills root guidance as thin core
     missingAreaCount: 0,
     thinAreaCount: 1,
     recommendedArea: 'skills',
+    recommendedStatus: 'thin',
+    recommendedSummary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
     recommendedAction: 'add missing sections to skills/README.md: layout',
     recommendedCommand: skillsCommand,
     recommendedPaths: ['skills/README.md'],
