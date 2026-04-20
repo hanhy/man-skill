@@ -777,6 +777,64 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Ship the first slice\./);
 });
 
+test('PromptAssembler preserves root section count summaries when only aggregate counts are available', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySectionCount: 1,
+        rootTotalSectionCount: 2,
+        dailyCount: 1,
+        longTermCount: 0,
+        scratchCount: 0,
+        readyBucketCount: 1,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily'],
+        emptyBuckets: ['long-term', 'scratch'],
+        sampleEntries: ['daily/2026-04-20.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySectionCount: 1,
+        rootTotalSectionCount: 2,
+        count: 1,
+        documentedCount: 1,
+        sample: ['slack'],
+        samplePaths: ['skills/slack/SKILL.md'],
+      },
+      overview: {
+        readyAreaCount: 4,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 4,
+        missingAreaCount: 0,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-20\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready/);
+  assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready; docs: skills\/slack\/SKILL\.md/);
+});
+
 test('buildFoundationRollup maintenance aggregates missing draft coverage and refresh reasons', () => {
   const rollup = buildFoundationRollup([
     {
