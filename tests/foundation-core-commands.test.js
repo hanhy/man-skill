@@ -119,9 +119,10 @@ function buildDocumentRepairCommand(filePath, _sentinel, sections) {
     `const file = ${JSON.stringify(filePath)};`,
     `const sections = ${JSON.stringify(normalizedSections)};`,
     "const stripQuotePrefix = (value) => value.replace(/^\\s{0,3}(?:>\\s?)+/, '').trimEnd(); const parseHeadingAt = (lines, index) => { const current = lines[index] ?? ''; const normalizedCurrent = stripQuotePrefix(current); const trimmed = normalizedCurrent.trim(); const atxMatch = trimmed.match(/^(#{1,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: atxMatch[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase(), lineCount: 1 }; } const next = lines[index + 1] ?? ''; const normalizedNext = stripQuotePrefix(next); const setextMatch = normalizedNext.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2 }; };",
-    "const hasVisibleContent = (sectionLines, sectionHeadingLevel) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; for (const line of sectionLines) { const rawLine = line ?? ''; const trimmed = stripQuotePrefix(rawLine).trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; continue; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } continue; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) continue; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } const normalizedLine = stripQuotePrefix(visibleLine).trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([visibleLine], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
+    "const buildVisibleLines = (sourceLines) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; return sourceLines.map((rawLine = '') => { const trimmed = stripQuotePrefix(rawLine).trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; return ''; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } return ''; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) return ''; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } return visibleLine; }); };",
+    "const hasVisibleContent = (visibleSectionLines, sectionHeadingLevel) => { for (const line of visibleSectionLines) { const normalizedLine = stripQuotePrefix(line ?? '').trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([line], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
     "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
-    "for (const section of sections) { const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < lines.length;) { const parsed = parseHeadingAt(lines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(lines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
+    "for (const section of sections) { const visibleLines = buildVisibleLines(lines); const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(visibleLines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
     "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
   ].join(' ');
 
@@ -412,6 +413,30 @@ test('buildCoreFoundationCommand repairs thin skills root sections when only com
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
     '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n<!-- explain the purpose here -->\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+});
+
+test('buildCoreFoundationCommand ignores root section headings that only appear inside fenced code blocks', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-root-fenced-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n```md\n## What lives here\n- Example only.\n\n## Layout\n- Example only.\n```\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n```md\n## What lives here\n- Example only.\n\n## Layout\n- Example only.\n```\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -838,6 +863,30 @@ test('buildCoreFoundationCommand repairs thin skill docs that are only missing s
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
     '# Delivery\n\n## What this skill is for\n- Explain when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
+  );
+});
+
+test('buildCoreFoundationCommand ignores skill doc section headings that only appear inside fenced code blocks', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-fenced-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n```md\n## What this skill is for\n- Example only.\n\n## Suggested workflow\n- Example only.\n```\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n```md\n## What this skill is for\n- Example only.\n\n## Suggested workflow\n- Example only.\n```\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n',
   );
 });
 
