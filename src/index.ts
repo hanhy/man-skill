@@ -1028,7 +1028,9 @@ function buildDeliveryPriority({
   envTemplateCommand = null,
   envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
+  envConfigPath = '.env',
   envConfigPresent = false,
+  envConfigPopulateCommand = null,
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
@@ -1041,7 +1043,9 @@ function buildDeliveryPriority({
   envTemplateCommand?: string | null;
   envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
+  envConfigPath?: string | null;
   envConfigPresent?: boolean;
+  envConfigPopulateCommand?: string | null;
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
@@ -1118,6 +1122,9 @@ function buildDeliveryPriority({
   const envBootstrapPaths = [
     envTemplatePath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const envConfigPaths = [
+    envConfigPath,
+  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
     ? envBootstrapPaths
     : [
@@ -1162,12 +1169,26 @@ function buildDeliveryPriority({
         ? implementationBundleCommand
         : buildRelativeFileTouchCommand(implementationPath))
       : null;
+  } else if (
+    !command
+    && envConfigPresent
+    && manifestReady
+    && implementationReadyCount === pendingCount
+    && firstQueuedMissingEnvVars.length > 0
+    && typeof envConfigPopulateCommand === 'string'
+    && envConfigPopulateCommand.length > 0
+  ) {
+    command = envConfigPopulateCommand;
   }
 
   const deliveryBlocked = pendingCount > 0
     && normalizedAuthBlockedCount > 0
     && manifestReady
     && implementationReadyCount === pendingCount;
+
+  const resolvedPaths = command && command === envConfigPopulateCommand && envConfigPaths.length > 0
+    ? envConfigPaths
+    : paths;
 
   return {
     id,
@@ -1178,7 +1199,7 @@ function buildDeliveryPriority({
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
-    paths,
+    paths: resolvedPaths,
   };
 }
 
@@ -1665,7 +1686,9 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPath: envConfigPresent ? '.env' : null,
         envConfigPresent,
+        envConfigPopulateCommand: deliverySummary.helperCommands.populateChannelEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1679,7 +1702,9 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPath: envConfigPresent ? '.env' : null,
         envConfigPresent,
+        envConfigPopulateCommand: deliverySummary.helperCommands.populateProviderEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],

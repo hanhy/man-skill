@@ -2196,6 +2196,156 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
 });
 
+test('buildSummary work loop uses repo-local channel env repair commands once a partial .env already exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  fs.writeFileSync(path.join(rootDir, '.env'), 'OPENAI_API_KEY=***\n');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    KIMI_API_KEY: process.env.KIMI_API_KEY,
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
+    GLM_API_KEY: process.env.GLM_API_KEY,
+    QWEN_API_KEY: process.env.QWEN_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.KIMI_API_KEY;
+  delete process.env.MINIMAX_API_KEY;
+  delete process.env.GLM_API_KEY;
+  delete process.env.QWEN_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateChannelEnv);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+    assert.equal(summary.delivery.envTemplateCommand, null);
+    assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+    assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+    assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /paths: \.env/);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+  } finally {
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    }
+  }
+});
+
+test('buildSummary work loop uses repo-local provider env repair commands once channels are already configured', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    '',
+  ].join('\n'));
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    KIMI_API_KEY: process.env.KIMI_API_KEY,
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
+    GLM_API_KEY: process.env.GLM_API_KEY,
+    QWEN_API_KEY: process.env.QWEN_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.KIMI_API_KEY;
+  delete process.env.MINIMAX_API_KEY;
+  delete process.env.GLM_API_KEY;
+  delete process.env.QWEN_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.workLoop.currentPriority.id, 'providers');
+    assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateProviderEnv);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+    assert.equal(summary.delivery.configuredChannelCount, 0);
+    assert.equal(summary.delivery.configuredProviderCount, 0);
+    assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
+    assert.match(summary.promptPreview, /next action: set OPENAI_API_KEY for gpt-5/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /paths: \.env/);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+  } finally {
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    }
+  }
+});
+
 test('buildSummary work loop uses repo-local .env credentials before env bootstrap guidance', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
