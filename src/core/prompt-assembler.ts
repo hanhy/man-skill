@@ -1506,7 +1506,7 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
         return null;
       }
 
-      const labelMatch = thinPath.match(/^skills\/([^/]+)\/SKILL\.md$/);
+      const labelMatch = thinPath.match(/^skills\/(.+)\/SKILL\.md$/);
       const label = labelMatch?.[1] ?? thinPath;
       return `${label} ${summary}`;
     })

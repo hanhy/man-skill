@@ -1599,6 +1599,37 @@ test('buildSummary surfaces ready sections for partially structured thin skill d
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(slack\); root missing @ skills\/README\.md; thin docs: slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/slack\/SKILL\.md/);
 });
 
+test('buildSummary keeps nested thin skill labels compact in queued prompt context', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'channels', 'slack'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'channels', 'slack', 'SKILL.md'),
+    '# Slack\n\n## What this skill is for\n- Keep Slack thread replies grounded in the source discussion.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinMissingSections, {
+    'skills/channels/slack/SKILL.md': ['suggested-workflow'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
+    'skills/channels/slack/SKILL.md': ['what-this-skill-is-for'],
+  });
+  assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/channels\/slack\/SKILL\.md: suggested-workflow @ skills\/README\.md, skills\/channels\/slack\/SKILL\.md; context thin docs channels\/slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow; command /);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(channels\/slack\); root missing @ skills\/README\.md; thin docs: channels\/slack sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/channels\/slack\/SKILL\.md/);
+});
+
 test('buildSummary treats partially structured skills root guidance as thin core foundation coverage', () => {
   const rootDir = makeTempRepo();
 
