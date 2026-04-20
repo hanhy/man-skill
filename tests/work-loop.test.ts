@@ -362,6 +362,76 @@ test('buildSummary ignores commented and fenced placeholder objectives in USER.m
   assert.doesNotMatch(summary.promptPreview, /placeholder channel objective/);
 });
 
+test('buildSummary loads work-loop objectives from task-list items in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '- [ ] harden the memory + voice bridge before rollout',
+      '- [x] make intake reruns safe for partially imported profiles',
+      '- [ ] land Telegram before Slack and WhatsApp',
+      '- [ ] validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + voice bridge before rollout',
+    'make intake reruns safe for partially imported profiles',
+    'land Telegram before Slack and WhatsApp',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ voice bridge before rollout \| make intake reruns safe for partially imported profiles \| land Telegram before Slack and WhatsApp \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+});
+
+test('buildSummary accepts starred and plus task-list objectives in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '* [ ] keep soul and voice guidance in lockstep',
+      '+ [x] keep intake reruns explicit for imported profiles',
+      '* [ ] stage Slack after Telegram stays stable',
+      '+ [ ] validate OpenAI before widening provider coverage',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep soul and voice guidance in lockstep',
+    'keep intake reruns explicit for imported profiles',
+    'stage Slack after Telegram stays stable',
+    'validate OpenAI before widening provider coverage',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
+});
+
 test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -157,6 +157,25 @@ function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCo
   return null;
 }
 
+function parseWorkLoopObjectiveLine(line: string): string | null {
+  const trimmedLine = line.replace(/^\uFEFF/, '').trim();
+  if (trimmedLine.length === 0) {
+    return null;
+  }
+
+  const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
+  if (numberedMatch?.[1]) {
+    return numberedMatch[1].trim();
+  }
+
+  const taskListMatch = trimmedLine.match(/^[-*+]\s+\[(?: |x|X)\]\s+(.+)$/);
+  if (taskListMatch?.[1]) {
+    return taskListMatch[1].trim();
+  }
+
+  return null;
+}
+
 function extractWorkLoopObjectivesFromUserDocument(document: string | null | undefined): string[] {
   if (typeof document !== 'string' || document.trim().length === 0) {
     return [];
@@ -175,17 +194,7 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
       break;
     }
 
-    const trimmedLine = (lines[index] ?? '').replace(/^\uFEFF/, '').trim();
-    if (trimmedLine.length === 0) {
-      continue;
-    }
-
-    const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
-    if (!numberedMatch) {
-      continue;
-    }
-
-    const objective = numberedMatch[1]?.trim();
+    const objective = parseWorkLoopObjectiveLine(lines[index] ?? '');
     if (objective) {
       objectives.push(objective);
     }
