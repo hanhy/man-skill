@@ -835,6 +835,105 @@ test('PromptAssembler preserves root section count summaries when only aggregate
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready; docs: skills\/slack\/SKILL\.md/);
 });
 
+test('PromptAssembler preserves queued core-foundation root section counts when only aggregate counts are available', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 1,
+        readyBucketCount: 3,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term', 'scratch'],
+        emptyBuckets: [],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json', 'scratch/draft.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySectionCount: 1,
+        rootTotalSectionCount: 2,
+        rootMissingSections: ['layout'],
+        count: 1,
+        documentedCount: 1,
+        sample: ['slack'],
+        samplePaths: ['skills/slack/SKILL.md'],
+        sampleExcerpts: ['slack: Route thread replies safely.'],
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        lineCount: 4,
+        excerpt: 'Stay grounded.',
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        lineCount: 4,
+        excerpt: 'Stay direct.',
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+      },
+      overview: {
+        readyAreaCount: 3,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: ['skills'],
+        recommendedActions: ['add missing sections to skills/README.md: layout'],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 3,
+        missingAreaCount: 0,
+        thinAreaCount: 1,
+        recommendedArea: 'skills',
+        recommendedAction: 'add missing sections to skills/README.md: layout',
+        recommendedCommand: "node -e 'repair skills root'",
+        recommendedPaths: ['skills/README.md'],
+        helperCommands: {
+          skills: "node -e 'repair skills root'",
+        },
+        queuedAreas: [
+          {
+            area: 'skills',
+            status: 'thin',
+            summary: '1 registered, 1 documented, root 1/2 sections ready, missing layout',
+            action: 'add missing sections to skills/README.md: layout',
+            paths: ['skills/README.md'],
+            thinPaths: ['skills/README.md'],
+            rootThinMissingSections: ['layout'],
+            rootThinReadySectionCount: 1,
+            rootThinTotalSectionCount: 2,
+            command: "node -e 'repair skills root'",
+          },
+        ],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command node -e 'repair skills root'/);
+});
+
 test('buildFoundationRollup maintenance aggregates missing draft coverage and refresh reasons', () => {
   const rollup = buildFoundationRollup([
     {

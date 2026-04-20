@@ -420,6 +420,12 @@ function buildCoreFoundationMaintenance({
       ...(memoryRootThinMissingSections.length > 0 ? { thinPaths: ['memory/README.md'] } : {}),
       ...(memoryRootThinMissingSections.length > 0 ? { rootThinMissingSections: memoryRootThinMissingSections } : {}),
       ...(memoryRootThinReadySections.length > 0 ? { rootThinReadySections: memoryRootThinReadySections } : {}),
+      ...((memoryRootThinReadySections.length > 0 || memoryRootThinMissingSections.length > 0)
+        ? {
+          rootThinReadySectionCount: memoryRootThinReadySections.length,
+          rootThinTotalSectionCount: memoryRootThinReadySections.length + memoryRootThinMissingSections.length,
+        }
+        : {}),
     },
     {
       area: 'skills',
@@ -443,6 +449,12 @@ function buildCoreFoundationMaintenance({
       ...(Object.keys(thinSkillReadySectionsByPath).length > 0 ? { thinReadySections: thinSkillReadySectionsByPath } : {}),
       ...(rootThinMissingSections.length > 0 ? { rootThinMissingSections: rootThinMissingSections } : {}),
       ...(rootThinReadySections.length > 0 ? { rootThinReadySections: rootThinReadySections } : {}),
+      ...((rootThinReadySections.length > 0 || rootThinMissingSections.length > 0)
+        ? {
+          rootThinReadySectionCount: rootThinReadySections.length,
+          rootThinTotalSectionCount: rootThinReadySections.length + rootThinMissingSections.length,
+        }
+        : {}),
     },
     {
       area: 'soul',
@@ -451,7 +463,12 @@ function buildCoreFoundationMaintenance({
       action: soulAction,
       paths: ['SOUL.md'],
       ...((soul.lineCount > 0 && (soul.readySections.length > 0 || soul.missingSections.length > 0))
-        ? { rootThinReadySections: soul.readySections, rootThinMissingSections: soul.missingSections }
+        ? {
+          rootThinReadySections: soul.readySections,
+          rootThinMissingSections: soul.missingSections,
+          rootThinReadySectionCount: soul.readySectionCount,
+          rootThinTotalSectionCount: soul.totalSectionCount,
+        }
         : {}),
     },
     {
@@ -461,7 +478,12 @@ function buildCoreFoundationMaintenance({
       action: voiceAction,
       paths: ['voice/README.md'],
       ...((voice.lineCount > 0 && (voice.readySections.length > 0 || voice.missingSections.length > 0))
-        ? { rootThinReadySections: voice.readySections, rootThinMissingSections: voice.missingSections }
+        ? {
+          rootThinReadySections: voice.readySections,
+          rootThinMissingSections: voice.missingSections,
+          rootThinReadySectionCount: voice.readySectionCount,
+          rootThinTotalSectionCount: voice.totalSectionCount,
+        }
         : {}),
     },
   ];
@@ -854,6 +876,8 @@ export interface CoreFoundationMaintenanceQueueItem {
   thinPaths?: string[];
   rootThinMissingSections?: string[];
   rootThinReadySections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   command?: string | null;

@@ -861,6 +861,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
         paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
         rootThinReadySections: ['what-belongs-here', 'buckets'],
+        rootThinReadySectionCount: 2,
+        rootThinTotalSectionCount: 2,
         command: memoryCommand,
       },
       {
@@ -1115,6 +1117,8 @@ test('buildSummary surfaces memory root section context on thin memory queue ite
       thinPaths: ['memory/README.md'],
       rootThinMissingSections: ['buckets'],
       rootThinReadySections: ['what-belongs-here'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 2,
       command: memoryCommand,
     },
   ]);
@@ -1160,6 +1164,8 @@ test('buildSummary surfaces soul and voice section context on thin document queu
       paths: ['SOUL.md'],
       rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
       rootThinReadySections: ['core-truths'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 4,
       command: soulCommand,
     },
     {
@@ -1170,6 +1176,8 @@ test('buildSummary surfaces soul and voice section context on thin document queu
       paths: ['voice/README.md'],
       rootThinMissingSections: ['signature-moves', 'avoid', 'language-hints'],
       rootThinReadySections: ['tone'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 4,
       command: voiceCommand,
     },
   ]);
@@ -1808,6 +1816,8 @@ test('buildSummary treats partially structured skills root guidance as thin core
         thinPaths: ['skills/README.md'],
         rootThinMissingSections: ['layout'],
         rootThinReadySections: ['what-lives-here'],
+        rootThinReadySectionCount: 1,
+        rootThinTotalSectionCount: 2,
         command: skillsCommand,
       },
     ],

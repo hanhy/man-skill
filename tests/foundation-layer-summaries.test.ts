@@ -993,6 +993,8 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
       paths: ['memory/README.md'],
       thinPaths: ['memory/README.md'],
       rootThinMissingSections: ['what-belongs-here', 'buckets'],
+      rootThinReadySectionCount: 0,
+      rootThinTotalSectionCount: 2,
       command: summary.foundation.core.maintenance.helperCommands.memory,
     },
   ]);
@@ -1040,6 +1042,8 @@ test('buildSummary marks skills as thin when skills README lacks structured sect
       paths: ['skills/README.md'],
       thinPaths: ['skills/README.md'],
       rootThinMissingSections: ['what-lives-here', 'layout'],
+      rootThinReadySectionCount: 0,
+      rootThinTotalSectionCount: 2,
       command: summary.foundation.core.maintenance.helperCommands.skills,
     },
   ]);

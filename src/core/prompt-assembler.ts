@@ -161,10 +161,14 @@ type FoundationCoreMaintenanceQueueItem = {
   summary?: string;
   action?: string | null;
   paths?: string[];
+  missingPaths?: string[];
+  thinPaths?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   rootThinMissingSections?: string[];
   rootThinReadySections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
   command?: string | null;
 };
 
@@ -1467,29 +1471,44 @@ function formatRootSectionSummary(
   return `; root sections ${resolvedReadySectionCount}/${resolvedTotalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
-function formatThinSectionProgress(readySections: string[] | undefined, missingSections: string[] | undefined): string {
+function formatThinSectionProgress(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string {
   const normalizedReadySections = Array.isArray(readySections)
     ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const normalizedMissingSections = Array.isArray(missingSections)
     ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
-  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+  const resolvedTotalSectionCount = typeof totalSectionCount === 'number'
+    ? totalSectionCount
+    : normalizedReadySections.length + normalizedMissingSections.length;
+  const resolvedReadySectionCount = typeof readySectionCount === 'number'
+    ? readySectionCount
+    : normalizedReadySections.length;
 
-  if (totalSectionCount === 0) {
+  if (resolvedTotalSectionCount === 0) {
     return '';
   }
 
   const readySummary = normalizedReadySections.length > 0
-    ? `sections ${normalizedReadySections.length}/${totalSectionCount} ready (${normalizedReadySections.join(', ')})`
-    : `sections 0/${totalSectionCount} ready`;
+    ? `sections ${resolvedReadySectionCount}/${resolvedTotalSectionCount} ready (${normalizedReadySections.join(', ')})`
+    : `sections ${resolvedReadySectionCount}/${resolvedTotalSectionCount} ready`;
 
   return `${readySummary}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
   const contextParts: string[] = [];
-  const rootSummary = formatThinSectionProgress(area.rootThinReadySections, area.rootThinMissingSections);
+  const rootSummary = formatThinSectionProgress(
+    area.rootThinReadySections,
+    area.rootThinMissingSections,
+    area.rootThinReadySectionCount,
+    area.rootThinTotalSectionCount,
+  );
   if (rootSummary) {
     contextParts.push(`root ${rootSummary}`);
   }
