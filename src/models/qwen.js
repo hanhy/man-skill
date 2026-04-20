@@ -1,4 +1,11 @@
-import { BaseProvider, extractProviderTextContent, normalizeProviderToolArguments } from './base-provider.js';
+import {
+  BaseProvider,
+  extractProviderTextContent,
+  normalizeOpenAICompatibleUsage,
+  normalizeProviderToolArguments,
+  resolveOpenAICompatibleResponseMessage,
+  resolveOpenAICompatibleToolCalls,
+} from './base-provider.js';
 
 export const qwenProviderScaffold = {
   id: 'qwen',
@@ -48,7 +55,7 @@ export function buildQwenChatRequest({
 
 export function normalizeQwenChatResponse(response = {}) {
   const choice = Array.isArray(response.choices) ? response.choices[0] ?? {} : {};
-  const message = choice?.message && typeof choice.message === 'object' ? choice.message : {};
+  const message = resolveOpenAICompatibleResponseMessage(response);
 
   return {
     provider: 'qwen',
@@ -56,13 +63,11 @@ export function normalizeQwenChatResponse(response = {}) {
     model: typeof response.model === 'string' && response.model.length > 0 ? response.model : null,
     role: typeof message.role === 'string' && message.role.length > 0 ? message.role : 'assistant',
     text: extractProviderTextContent(message.content),
-    finishReason: typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0 ? choice.finish_reason : null,
-    toolCalls: normalizeQwenToolCalls(message.tool_calls),
-    usage: {
-      promptTokens: Number.isFinite(response?.usage?.prompt_tokens) ? response.usage.prompt_tokens : 0,
-      completionTokens: Number.isFinite(response?.usage?.completion_tokens) ? response.usage.completion_tokens : 0,
-      totalTokens: Number.isFinite(response?.usage?.total_tokens) ? response.usage.total_tokens : 0,
-    },
+    finishReason: typeof choice?.finish_reason === 'string' && choice.finish_reason.length > 0
+      ? choice.finish_reason
+      : (typeof response.status === 'string' && response.status.length > 0 ? response.status : null),
+    toolCalls: normalizeQwenToolCalls(resolveOpenAICompatibleToolCalls(response)),
+    usage: normalizeOpenAICompatibleUsage(response?.usage),
   };
 }
 
