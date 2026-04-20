@@ -974,7 +974,6 @@ function buildDeliveryPriority({
   authBlockedCount,
   queue,
   envTemplatePath = null,
-  envConfigPath = '.env',
   envTemplateCommand = null,
   envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
@@ -988,7 +987,6 @@ function buildDeliveryPriority({
   authBlockedCount?: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
-  envConfigPath?: string | null;
   envTemplateCommand?: string | null;
   envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
@@ -1068,9 +1066,6 @@ function buildDeliveryPriority({
     || needsEnvTemplateRepair;
   const envBootstrapPaths = [
     envTemplatePath,
-    ...(needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
-      ? [envConfigPath]
-      : []),
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
     ? envBootstrapPaths
@@ -1616,7 +1611,6 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedChannelCount,
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
-        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
@@ -1631,7 +1625,6 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedProviderCount,
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
-        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
