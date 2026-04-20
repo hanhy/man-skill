@@ -1119,14 +1119,15 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  const envBootstrapPaths = [
-    envTemplatePath,
-  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const envBootstrapPaths = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
+    ? [envTemplatePath, envConfigPath ?? '.env']
+    : [envTemplatePath];
+  const normalizedEnvBootstrapPaths = envBootstrapPaths.filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
-    ? envBootstrapPaths
+    ? normalizedEnvBootstrapPaths
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
       ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
