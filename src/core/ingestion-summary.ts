@@ -1151,7 +1151,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? 'node src/index.js import sample'
       : null,
     sampleStarterSource: sampleManifestPresent && sampleManifest.status === 'loaded'
-      ? 'manifest'
+      ? sampleManifestPath
       : null,
     sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? sampleManifest.starterLabel
