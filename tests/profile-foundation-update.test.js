@@ -1788,6 +1788,94 @@ test('CLI update intake preserves existing starter entries and customized entry 
   });
 });
 
+test('CLI update intake preserves legacy array-form starter manifests on rerun', () => {
+  const rootDir = makeTempRepo();
+
+  const initialOutput = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Direct operator with a bias for momentum.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const initial = JSON.parse(initialOutput);
+  fs.writeFileSync(
+    path.join(rootDir, initial.starterManifestPath),
+    JSON.stringify([
+      {
+        type: 'message',
+        text: 'Keep this legacy entry intact.',
+        notes: 'legacy array manifest sample',
+      },
+    ], null, 2),
+  );
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'intake',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Forward',
+      '--summary',
+      'Direct operator with faster loops.',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, result.starterManifestPath), 'utf8'));
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Forward');
+  assert.equal(template.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(template.entries, [
+    {
+      type: 'message',
+      text: 'Keep this legacy entry intact.',
+      notes: 'legacy array manifest sample',
+    },
+  ]);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: '<relative-path-to-image.png>',
+      notes: 'chat screenshot',
+    },
+  });
+});
+
 test('CLI update intake preserves custom README notes on rerun while refreshing generated commands', () => {
   const rootDir = makeTempRepo();
 

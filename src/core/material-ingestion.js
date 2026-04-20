@@ -383,6 +383,21 @@ function backupInvalidJsonFile(filePath) {
   return backupPath;
 }
 
+function normalizeExistingStarterManifest(parsedTemplate) {
+  if (!parsedTemplate || typeof parsedTemplate !== 'object') {
+    return null;
+  }
+
+  if (Array.isArray(parsedTemplate)) {
+    return {
+      entries: parsedTemplate,
+      entryTemplates: null,
+    };
+  }
+
+  return parsedTemplate;
+}
+
 function buildStarterManifestDocument({
   personId,
   displayName,
@@ -624,9 +639,7 @@ export class MaterialIngestion {
 
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
     const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
-    const existingTemplate = existingTemplateState.parsed && typeof existingTemplateState.parsed === 'object' && !Array.isArray(existingTemplateState.parsed)
-      ? existingTemplateState.parsed
-      : null;
+    const existingTemplate = normalizeExistingStarterManifest(existingTemplateState.parsed);
     const invalidStarterManifestBackupPath = existingTemplateState.parseError
       ? backupInvalidJsonFile(starterManifestAbsolutePath)
       : null;
