@@ -529,6 +529,11 @@ type IngestionSummary = {
   refreshFoundationBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
+  recommendedProfileId?: string | null;
+  recommendedLabel?: string | null;
+  recommendedAction?: string | null;
+  recommendedCommand?: string | null;
+  recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -1265,6 +1270,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const remainingProfileSummary = remainingProfileCommands.length > 0
     ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
+  const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
+    ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    : null;
 
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
@@ -1285,6 +1296,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     (ingestion.supportedImportTypes ?? []).length > 0
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
+    nextIntakeLine,
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,

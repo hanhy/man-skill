@@ -611,6 +611,78 @@ function buildProfileCommands(profile, options: any = {}) {
   };
 }
 
+function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
+  if (typeof profileId !== 'string' || profileId.length === 0) {
+    return [];
+  }
+
+  return [
+    `profiles/${profileId}/memory/long-term/foundation.json`,
+    `profiles/${profileId}/skills/README.md`,
+    `profiles/${profileId}/soul/README.md`,
+    `profiles/${profileId}/voice/README.md`,
+  ];
+}
+
+function collectProfileIntakePaths(profile: any): string[] {
+  const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
+    ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  if (missingIntakePaths.length > 0) {
+    return missingIntakePaths;
+  }
+
+  return Array.isArray(profile?.intakePaths)
+    ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+}
+
+function collectLoadedManifestFilePaths(rootDir: string, relativeManifestPath: string): string[] {
+  const absoluteManifestPath = path.join(rootDir, relativeManifestPath);
+  const manifestDir = path.dirname(absoluteManifestPath);
+  const realRootDir = fs.realpathSync(rootDir);
+  const parsedManifest = JSON.parse(fs.readFileSync(absoluteManifestPath, 'utf8'));
+  const manifest = Array.isArray(parsedManifest)
+    ? { entries: parsedManifest }
+    : (parsedManifest && typeof parsedManifest === 'object' ? parsedManifest : null);
+  const entries = Array.isArray(manifest?.entries) ? manifest.entries : [];
+
+  return Array.from(new Set(entries
+    .filter((entry) => entry && typeof entry === 'object' && typeof entry.file === 'string' && entry.file.trim().length > 0)
+    .map((entry) => {
+      const resolvedFilePath = path.resolve(manifestDir, entry.file);
+      const realFilePath = fs.realpathSync(resolvedFilePath);
+      const relativeFilePath = path.relative(realRootDir, realFilePath);
+      return path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')
+        ? null
+        : relativeFilePath.split(path.sep).join('/');
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)));
+}
+
+function collectReadyIntakeImportPaths(profile: any, rootDir: string | null): string[] {
+  const intakePaths = Array.isArray(profile?.intakePaths)
+    ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && (value.endsWith('materials.template.json') || value.endsWith('sample.txt')))
+    : [];
+  const starterManifestPath = intakePaths.find((value) => value.endsWith('materials.template.json')) ?? null;
+  if (!rootDir || !starterManifestPath) {
+    return intakePaths;
+  }
+
+  const manifestInspection = inspectProfileIntakeManifest(rootDir, {
+    ready: true,
+    starterManifestPath,
+  });
+  if (!manifestInspection || manifestInspection.status !== 'loaded') {
+    return intakePaths;
+  }
+
+  return Array.from(new Set([
+    ...intakePaths,
+    ...collectLoadedManifestFilePaths(rootDir, starterManifestPath),
+  ]));
+}
+
 export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const safeProfiles = Array.isArray(profiles) ? profiles : [];
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
@@ -782,6 +854,216 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleTalk: findSampleInlineCommand('talk'),
     sampleScreenshot: findSampleFileCommand('screenshot'),
   };
+  const rootDir = typeof options?.rootDir === 'string' ? options.rootDir : null;
+  const refreshTargets = allProfileCommands.filter((profile) => (profile?.materialCount ?? 0) > 0 && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0));
+  const firstRefreshTarget = refreshTargets[0] ?? null;
+  const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile) => profile?.intakeReady === false && profile?.updateIntakeCommand) ?? null;
+  const invalidReadyIntakeProfiles = metadataProfileCommands.filter((profile) =>
+    profile?.intakeReady === true
+    && profile?.intakeManifestStatus === 'invalid'
+    && typeof profile?.intakeManifestPath === 'string'
+    && profile.intakeManifestPath.length > 0,
+  );
+  const readyIntakeProfiles = metadataProfileCommands.filter((profile) =>
+    profile?.intakeReady === true
+    && profile?.intakeManifestStatus !== 'invalid'
+    && profile?.importManifestCommand
+    && profile.importManifestCommand === profile.importMaterialCommand
+    && !profile.importManifestCommand.includes('<'),
+  );
+  const metadataOnlyProfile = metadataProfileCommands.find((profile) => profile?.importMaterialCommand) ?? metadataOnlyProfileNeedingScaffold ?? invalidReadyIntakeProfiles[0] ?? null;
+  const runnableImportCommand = metadataOnlyProfile?.importMaterialCommand && !metadataOnlyProfile.importMaterialCommand.includes('<')
+    ? metadataOnlyProfile.importMaterialCommand
+    : null;
+  const sampleManifestPaths = sampleManifestPresent && sampleManifestPath
+    ? Array.from(new Set([
+      sampleManifestPath,
+      ...sampleManifest.filePaths,
+      typeof sampleText.path === 'string' && sampleText.path.length > 0 ? sampleText.path : null,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0)))
+    : [];
+  const sampleTextPath = typeof sampleText.path === 'string' && sampleText.path.length > 0
+    ? sampleText.path
+    : null;
+  const sampleTextPersonId = typeof sampleText.personId === 'string' && sampleText.personId.length > 0
+    ? sampleText.personId
+    : null;
+
+  let recommendedProfileId: string | null = null;
+  let recommendedLabel: string | null = null;
+  let recommendedAction: string | null = null;
+  let recommendedCommand: string | null = null;
+  let recommendedPaths: string[] = [];
+
+  if (safeProfiles.length === 0) {
+    const sampleStarterCommand = sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? 'node src/index.js import sample'
+      : null;
+    const exactSampleManifestCommand = sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
+      : null;
+    const sampleManifestInvalid = sampleManifest.status === 'invalid' && sampleManifestPath;
+
+    if (sampleStarterCommand) {
+      const sampleProfileCount = sampleManifest.profileIds.length;
+      recommendedAction = sampleManifest.starterLabel
+        ? (sampleProfileCount > 1
+          ? `import the checked-in sample target profiles for ${sampleManifest.starterLabel}`
+          : `import the checked-in sample target profile for ${sampleManifest.starterLabel}`)
+        : 'import the checked-in sample target profile';
+      recommendedCommand = exactSampleManifestCommand ?? sampleStarterCommand;
+      recommendedPaths = sampleManifestPaths;
+    } else if (sampleManifestInvalid) {
+      recommendedAction = 'fix the checked-in sample manifest for first imports';
+      recommendedCommand = null;
+      recommendedPaths = [sampleManifestPath];
+    } else {
+      recommendedAction = 'bootstrap a target profile';
+      recommendedCommand = bootstrapProfileCommand;
+      recommendedPaths = sampleManifestPaths;
+    }
+  } else if (firstRefreshTarget) {
+    recommendedProfileId = firstRefreshTarget.personId ?? null;
+    recommendedLabel = firstRefreshTarget.label ?? firstRefreshTarget.personId ?? null;
+    recommendedAction = 'refresh stale or incomplete target profiles';
+    recommendedCommand = helperCommands.refreshFoundationBundle ?? helperCommands.refreshStaleFoundation ?? firstRefreshTarget.refreshFoundationCommand ?? null;
+    recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths(profile.personId ?? null))));
+  } else if (importedIntakeBackfillProfiles.length > 0) {
+    const firstImportedBackfillProfile = importedIntakeBackfillProfiles[0] ?? null;
+    recommendedProfileId = firstImportedBackfillProfile?.personId ?? null;
+    recommendedLabel = firstImportedBackfillProfile?.label ?? firstImportedBackfillProfile?.personId ?? null;
+    recommendedAction = recommendedLabel
+      ? `backfill the intake landing zone for imported profiles — starting with ${recommendedLabel}`
+      : 'backfill intake landing zones for imported profiles';
+    recommendedCommand = importedIntakeBackfillProfiles.length > 1
+      ? (helperCommands.scaffoldImportedBundle ?? firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImported ?? null)
+      : (firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImportedBundle ?? helperCommands.scaffoldImported ?? null);
+    recommendedPaths = importedIntakeBackfillProfiles.length > 1
+      ? importedIntakeBackfillProfiles.flatMap((profile) => collectProfileIntakePaths(profile))
+      : collectProfileIntakePaths(firstImportedBackfillProfile);
+  } else if (importedInvalidIntakeManifestProfiles.length > 0) {
+    const firstInvalidImportedIntakeProfile = importedInvalidIntakeManifestProfiles[0] ?? null;
+    recommendedProfileId = firstInvalidImportedIntakeProfile?.personId ?? null;
+    recommendedLabel = firstInvalidImportedIntakeProfile?.label ?? firstInvalidImportedIntakeProfile?.personId ?? null;
+    recommendedAction = recommendedLabel
+      ? (importedInvalidIntakeManifestProfiles.length > 1
+        ? `repair invalid intake manifests for imported profiles — starting with ${recommendedLabel}`
+        : `repair the invalid intake manifest for imported profile ${recommendedLabel}`)
+      : 'repair invalid intake manifests for imported profiles';
+    recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
+      : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
+    recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
+      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
+      : (firstInvalidImportedIntakeProfile?.intakeManifestPath ? [firstInvalidImportedIntakeProfile.intakeManifestPath] : []);
+  } else if (metadataOnlyProfileCount > 0) {
+    if (metadataOnlyProfileNeedingScaffold) {
+      recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;
+      recommendedLabel = metadataOnlyProfileNeedingScaffold.label ?? metadataOnlyProfileNeedingScaffold.personId ?? null;
+      const isPartialIntake = metadataOnlyProfileNeedingScaffold?.intakeCompletion === 'partial';
+      const useBulkIntakeCommand = intakeStaleProfileCount > 1 && Boolean(helperCommands.scaffoldBundle ?? 'node src/index.js update intake --stale');
+      recommendedAction = recommendedLabel
+        ? (useBulkIntakeCommand
+          ? `${isPartialIntake ? 'complete' : 'scaffold'} incomplete intake landing zones — starting with ${recommendedLabel}`
+          : `${isPartialIntake ? 'complete' : 'scaffold'} the intake landing zone for ${recommendedLabel}`)
+        : `${isPartialIntake ? 'complete' : 'scaffold'} intake landing zones for metadata-only profiles`;
+      recommendedCommand = useBulkIntakeCommand
+        ? (helperCommands.scaffoldBundle ?? 'node src/index.js update intake --stale')
+        : (metadataOnlyProfileNeedingScaffold.updateIntakeCommand ?? helperCommands.scaffoldBundle ?? 'node src/index.js update intake --stale');
+      recommendedPaths = useBulkIntakeCommand
+        ? metadataProfileCommands
+          .filter((profile) => profile?.intakeReady === false && profile?.updateIntakeCommand)
+          .flatMap((profile) => collectProfileIntakePaths(profile))
+        : collectProfileIntakePaths(metadataOnlyProfileNeedingScaffold);
+    } else if (invalidReadyIntakeProfiles.length > 0) {
+      const firstInvalidReadyIntakeProfile = invalidReadyIntakeProfiles[0] ?? null;
+      recommendedProfileId = firstInvalidReadyIntakeProfile?.personId ?? null;
+      recommendedLabel = firstInvalidReadyIntakeProfile?.label ?? firstInvalidReadyIntakeProfile?.personId ?? null;
+      recommendedAction = recommendedLabel
+        ? (invalidReadyIntakeProfiles.length > 1
+          ? `repair invalid profile-local intake manifests — starting with ${recommendedLabel}`
+          : `repair the invalid intake manifest for ${recommendedLabel}`)
+        : 'repair invalid profile-local intake manifests';
+      recommendedCommand = invalidReadyIntakeProfiles.length > 1
+        ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)
+        : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? helperCommands.repairInvalidBundle ?? null);
+      recommendedPaths = invalidReadyIntakeProfiles.length > 1
+        ? Array.from(new Set(invalidReadyIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
+        : (firstInvalidReadyIntakeProfile?.intakeManifestPath ? [firstInvalidReadyIntakeProfile.intakeManifestPath] : []);
+    } else if (readyIntakeProfiles.length > 0) {
+      const firstReadyIntakeProfile = readyIntakeProfiles[0] ?? null;
+      recommendedProfileId = firstReadyIntakeProfile?.personId ?? null;
+      recommendedLabel = firstReadyIntakeProfile?.label ?? firstReadyIntakeProfile?.personId ?? null;
+      recommendedAction = readyIntakeProfiles.length > 1
+        ? (recommendedLabel
+          ? `import source materials for ready intake profiles — starting with ${recommendedLabel}`
+          : 'import source materials for ready intake profiles')
+        : (recommendedLabel
+          ? `import source materials for ${recommendedLabel}`
+          : 'import source materials for ready intake profiles');
+      recommendedCommand = readyIntakeProfiles.length > 1
+        ? (helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? firstReadyIntakeProfile?.importIntakeCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? null)
+        : (firstReadyIntakeProfile?.importMaterialCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? firstReadyIntakeProfile?.importIntakeCommand ?? helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? null);
+      recommendedPaths = readyIntakeProfiles.length > 1
+        ? readyIntakeProfiles.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+        : collectReadyIntakeImportPaths(firstReadyIntakeProfile, rootDir);
+    } else if (runnableImportCommand) {
+      recommendedProfileId = metadataOnlyProfile?.personId ?? null;
+      recommendedLabel = metadataOnlyProfile?.label ?? metadataOnlyProfile?.personId ?? null;
+      recommendedAction = recommendedLabel
+        ? `import source materials for ${recommendedLabel}`
+        : 'import source materials for metadata-only profiles';
+      recommendedCommand = runnableImportCommand;
+      recommendedPaths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
+        ? collectReadyIntakeImportPaths(metadataOnlyProfile, rootDir)
+        : (() => {
+          const matchingSampleFile = sampleFileCommands.find((entry) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.path === 'string'
+            && entry.path.length > 0,
+          );
+
+          if (matchingSampleFile) {
+            return Array.from(new Set([
+              typeof matchingSampleFile.sourcePath === 'string' && matchingSampleFile.sourcePath.length > 0
+                ? matchingSampleFile.sourcePath
+                : null,
+              matchingSampleFile.path,
+            ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
+          }
+
+          const matchingSampleInline = sampleInlineCommands.find((entry) =>
+            entry?.personId === metadataOnlyProfile?.personId
+            && entry?.command === runnableImportCommand
+            && typeof entry?.sourcePath === 'string'
+            && entry.sourcePath.length > 0,
+          );
+
+          if (matchingSampleInline) {
+            return [matchingSampleInline.sourcePath];
+          }
+
+          if (sampleTextPath && sampleTextPersonId === metadataOnlyProfile?.personId) {
+            return [sampleTextPath];
+          }
+
+          return [];
+        })();
+    } else if (sampleManifestPresent && sampleManifest.status === 'loaded') {
+      recommendedAction = 'import source materials for metadata-only profiles';
+      recommendedCommand = helperCommands.sampleManifest ?? helperCommands.importManifest ?? null;
+      recommendedPaths = sampleManifestPaths;
+    } else {
+      recommendedProfileId = metadataOnlyProfile?.personId ?? null;
+      recommendedLabel = metadataOnlyProfile?.label ?? metadataOnlyProfile?.personId ?? null;
+      recommendedAction = recommendedLabel
+        ? `import source materials for ${recommendedLabel}`
+        : 'import source materials for metadata-only profiles';
+      recommendedCommand = runnableImportCommand;
+      recommendedPaths = [];
+    }
+  }
 
   return {
     profileCount: safeProfiles.length,
@@ -842,6 +1124,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     refreshFoundationBundleCommand: helperCommands.refreshFoundationBundle,
     repairInvalidIntakeBundleCommand: helperCommands.repairInvalidBundle,
     repairImportedInvalidIntakeBundleCommand: helperCommands.repairImportedInvalidBundle,
+    recommendedProfileId,
+    recommendedLabel,
+    recommendedAction,
+    recommendedCommand,
+    recommendedPaths,
     helperCommands,
     profileCommands: orderedProfileCommands,
     allProfileCommands,

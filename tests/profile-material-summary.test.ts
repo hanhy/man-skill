@@ -1830,6 +1830,16 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.refreshAllFoundationCommand, 'node src/index.js update foundation --all');
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
   assert.equal(summary.ingestion.refreshFoundationBundleCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(summary.ingestion.recommendedProfileId, 'jane-doe');
+  assert.equal(summary.ingestion.recommendedLabel, 'Jane Doe (jane-doe)');
+  assert.equal(summary.ingestion.recommendedAction, 'refresh stale or incomplete target profiles');
+  assert.equal(summary.ingestion.recommendedCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.deepEqual(summary.ingestion.recommendedPaths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
   assert.deepEqual(summary.ingestion.helperCommands, {
     bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     scaffoldAll: 'node src/index.js update intake --all',
@@ -1972,6 +1982,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 2 ready, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /helpers: .*update-bundle \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'\) && \(node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'\).*sync-bundle node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
@@ -2494,6 +2505,11 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     refreshFoundationBundleCommand: null,
     repairInvalidIntakeBundleCommand: null,
     repairImportedInvalidIntakeBundleCommand: null,
+    recommendedProfileId: null,
+    recommendedLabel: null,
+    recommendedAction: 'bootstrap a target profile',
+    recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+    recommendedPaths: [],
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
       scaffoldAll: 'node src/index.js update intake --all',
@@ -2530,6 +2546,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
   assert.match(summary.promptPreview, /profiles: 0 total \(0 imported, 0 metadata-only\)/);
   assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
+  assert.match(summary.promptPreview, /next intake: bootstrap a target profile; command node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: scaffold-all node src\/index\.js update intake --all \| scaffold-stale node src\/index\.js update intake --stale \| scaffold-imported node src\/index\.js update intake --imported \| manifest node src\/index\.js import manifest --file <manifest\.json> \| manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation \| import-all node src\/index\.js import intake --all --refresh-foundation \| import-stale node src\/index\.js import intake --stale --refresh-foundation \| import-imported node src\/index\.js import intake --imported --refresh-foundation \| refresh-all node src\/index\.js update foundation --all \| refresh node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
