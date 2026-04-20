@@ -1,6 +1,6 @@
 export function normalizeProviderToolArguments(argumentsValue) {
   if (typeof argumentsValue === 'string') {
-    return argumentsValue.length > 0 ? argumentsValue : '{}';
+    return argumentsValue.trim().length > 0 ? argumentsValue : '{}';
   }
 
   if (argumentsValue && typeof argumentsValue === 'object') {
@@ -116,6 +116,10 @@ function collectProviderTextFragments(content, fragments = []) {
     }
   } else if (Array.isArray(content.content)) {
     content.content.forEach((part) => collectProviderTextFragments(part, fragments));
+  }
+
+  if (Array.isArray(content.parts)) {
+    content.parts.forEach((part) => collectProviderTextFragments(part, fragments));
   }
 
   if (typeof content.value === 'string') {

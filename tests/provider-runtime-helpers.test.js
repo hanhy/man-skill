@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { normalizeProviderToolArguments, extractProviderTextContent } from '../src/models/base-provider.js';
 import { createOpenAIProvider, normalizeOpenAIChatResponse } from '../src/models/openai.js';
 import { createAnthropicProvider, buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse } from '../src/models/anthropic.js';
 import { createKimiProvider, normalizeKimiChatResponse } from '../src/models/kimi.js';
@@ -49,6 +50,21 @@ test('provider runtime helpers expose required env vars and configuration checks
   assert.equal(openai.isConfigured({ OPENAI_API_KEY: '   ' }), false);
   assert.deepEqual(anthropic.missingEnvVars({}), ['ANTHROPIC_API_KEY']);
   assert.equal(anthropic.isConfigured({ ANTHROPIC_API_KEY: 'test-key' }), true);
+});
+
+test('base provider helpers normalize whitespace-only tool arguments and SDK-style parts arrays', () => {
+  assert.equal(normalizeProviderToolArguments('   '), '{}');
+  assert.equal(normalizeProviderToolArguments({ personId: 'harry-han' }), '{"personId":"harry-han"}');
+
+  assert.equal(
+    extractProviderTextContent({
+      parts: [
+        { text: 'Ship the thin slice' },
+        { text: { value: 'then tighten the loop.' } },
+      ],
+    }),
+    'Ship the thin slice then tighten the loop.',
+  );
 });
 
 test('anthropic provider runtime helpers build request payloads and normalize text/tool blocks compactly', () => {
