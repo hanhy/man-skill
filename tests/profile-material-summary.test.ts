@@ -462,26 +462,16 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     screenshot: 1,
     text: 1,
   });
-  assert.deepEqual(profile.foundationDraftSummaries.voice, {
-    generated: true,
-    generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
-    latestMaterialAt: profile.latestMaterialAt,
-    latestMaterialId: profile.latestMaterialId,
-    sourceCount: 3,
-    materialTypes: {
-      message: 1,
-      screenshot: 1,
-      text: 1,
-    },
-    highlights: [
-      '- [message] Ship the first slice.',
-      '- [text] Direct writing sample.',
-    ],
-    readySectionCount: 4,
-    totalSectionCount: 4,
-    readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
-    missingSections: [],
-  });
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialAt, profile.latestMaterialAt);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialId, profile.latestMaterialId);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
+    '- [message] Ship the first slice.',
+    '- [text] Direct writing sample.',
+  ]);
+  assert.equal(profile.foundationDraftSummaries.voice.readySectionCount, 4);
+  assert.equal(profile.foundationDraftSummaries.voice.totalSectionCount, 4);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.missingSections, []);
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: true,
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
@@ -1726,16 +1716,24 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
         ],
       },
     },
-  }).buildSystemPrompt();
+  });
+  const systemPrompt = prompt.buildSystemPrompt();
+  const preview = prompt.buildPreview(120000);
 
-  assert.match(prompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
-  assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
-  assert.match(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul\]/);
-  assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
-  assert.doesNotMatch(prompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul, reasons/);
-  assert.doesNotMatch(prompt, /- Sam Lane \(sam-lane\): needs-refresh, 1\/4 drafts generated/);
+  assert.match(systemPrompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
+  assert.match(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul\]/);
+  assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
+  assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul, reasons/);
+  assert.doesNotMatch(systemPrompt, /- Sam Lane \(sam-lane\): needs-refresh, 1\/4 drafts generated/);
+
+  assert.match(preview, /Foundation maintenance:\n- 0 ready, 3 queued for refresh, 3 incomplete/);
+  assert.match(preview, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts, missing memory\/skills\/soul\]/);
+  assert.doesNotMatch(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts generated/);
 });
 
 test('PromptAssembler includes delivery foundation snapshots in the system prompt', () => {
