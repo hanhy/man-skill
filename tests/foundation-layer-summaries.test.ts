@@ -354,6 +354,31 @@ test('voice profile ignores html comments when finding the default tone', () => 
   });
 });
 
+test('voice profile ignores admonition labels when finding the default tone', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '> [!NOTE]',
+    '> Warm and grounded.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Use crisp examples.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile ignores multiline html comments when parsing structured sections', () => {
   const voice = VoiceProfile.fromDocument([
     '# Voice',
@@ -498,6 +523,33 @@ test('soul profile ignores html comments when finding the default excerpt', () =
     continuity: [],
     coreTruthCount: 1,
     boundaryCount: 0,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile ignores admonition labels when finding the default excerpt', () => {
+  const soul = SoulProfile.fromDocument([
+    '# Soul',
+    '',
+    '> [!TIP]',
+    '> Stay faithful to the source material.',
+    '',
+    '## Boundaries',
+    '- Do not bluff certainty.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Stay faithful to the source material.',
+    coreTruths: [],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 0,
+    boundaryCount: 1,
     vibeLineCount: 0,
     continuityCount: 0,
     sectionCount: 1,

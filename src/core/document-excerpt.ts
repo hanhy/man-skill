@@ -148,6 +148,21 @@ function stripLeadingBlockquotePrefix(line: string): string {
   return line.replace(/^\s*(?:>\s*)+/, '');
 }
 
+function normalizeAdmonitionLine(line: string): string {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^\[!([A-Z][A-Z0-9-]*)\](?:\s+(.*))?$/);
+  if (!match) {
+    return line;
+  }
+
+  const trailingContent = match[2]?.trim() ?? '';
+  return trailingContent.length > 0 ? trailingContent : '';
+}
+
+function isMeaningfulExcerptLine(line: string): boolean {
+  return line.length > 0 && !line.startsWith('#') && line !== '---';
+}
+
 export function collectVisibleDocumentLines(document: unknown): string[] {
   const normalizedDocument = normalizeDocument(document);
   return normalizeSetextHeadings(
@@ -175,6 +190,6 @@ export function findDocumentExcerpt(document: unknown): string | null {
     : normalizedDocument;
 
   return collectVisibleDocumentLines(body)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
+    .map((line) => normalizeAdmonitionLine(line.trim()))
+    .find((line) => isMeaningfulExcerptLine(line)) ?? null;
 }

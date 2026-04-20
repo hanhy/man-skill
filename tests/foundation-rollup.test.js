@@ -689,6 +689,33 @@ test('buildSummary ignores html comments when deriving memory and skills excerpt
   assert.doesNotMatch(summary.promptPreview, /Generated skill note should stay hidden/);
 });
 
+test('buildSummary ignores admonition labels when deriving soul and voice root excerpts', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep shared operator procedures discoverable.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable workflows.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron\n\nKeep scheduled follow-ups reliable.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), ['# Voice', '', '> [!NOTE]', '> Warm and grounded.', '', '## Signature moves', '- Use crisp examples.', '', '## Avoid', '- Never pad the answer.', '', '## Language hints', '- Preserve bilingual phrasing when the source material switches languages.'].join('\n'));
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), ['# Soul', '', '> [!TIP]', '> Stay faithful to the source material.', '', '## Boundaries', '- Do not bluff certainty.', '', '## Vibe', '- Grounded and direct.', '', '## Continuity', '- Carry durable lessons forward.'].join('\n'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful to the source material.');
+  assert.match(summary.promptPreview, /- tone: Warm and grounded\./);
+  assert.match(summary.promptPreview, /- excerpt: Stay faithful to the source material\./);
+  assert.doesNotMatch(summary.promptPreview, /\[!NOTE\]/);
+  assert.doesNotMatch(summary.promptPreview, /\[!TIP\]/);
+});
+
 test('buildSummary prefers multiline skill frontmatter descriptions over raw yaml markers in core foundation excerpts', () => {
   const rootDir = makeTempRepo();
 
