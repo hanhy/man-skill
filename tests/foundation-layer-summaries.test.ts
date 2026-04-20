@@ -408,6 +408,37 @@ test('voice profile ignores admonition labels when finding the default tone', ()
   });
 });
 
+test('voice profile strips admonition labels inside structured sections', () => {
+  const voice = VoiceProfile.fromDocument([
+    '# Voice',
+    '',
+    '## Tone',
+    '[!NOTE] Warm and grounded.',
+    '',
+    '## Signature moves',
+    '- [!TIP] Use crisp examples.',
+    '',
+    '## Avoid',
+    '- [!WARNING] Never pad the answer.',
+    '',
+    '## Language hints',
+    '- [!IMPORTANT] Preserve bilingual phrasing when the source material switches languages.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile ignores multiline html comments when parsing structured sections', () => {
   const voice = VoiceProfile.fromDocument([
     '# Voice',
@@ -582,6 +613,39 @@ test('soul profile ignores admonition labels when finding the default excerpt', 
     vibeLineCount: 0,
     continuityCount: 0,
     sectionCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile strips admonition labels inside structured sections', () => {
+  const soul = SoulProfile.fromDocument([
+    '# Soul',
+    '',
+    '## Core truths',
+    '- [!NOTE] Stay faithful to the source material.',
+    '',
+    '## Boundaries',
+    '- [!WARNING] Do not bluff certainty.',
+    '',
+    '## Vibe',
+    '- [!TIP] Grounded and direct.',
+    '',
+    '## Continuity',
+    '- [!IMPORTANT] Carry durable lessons forward.',
+    '',
+  ].join('\n'));
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Stay faithful to the source material.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
     hasGuidance: true,
   });
 });
