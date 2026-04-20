@@ -457,17 +457,37 @@ test('CLI import intake --person reruns a ready profile-local starter manifest f
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already', '--refresh-foundation'], {
+  const firstOutput = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already', '--refresh-foundation'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
-  const result = JSON.parse(output);
+  const firstResult = JSON.parse(firstOutput);
+  const secondOutput = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Imported Already', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const secondResult = JSON.parse(secondOutput);
 
-  assert.equal(result.ok, true);
-  assert.equal(result.manifestFile, 'profiles/imported-already/imports/materials.template.json');
-  assert.equal(result.entryCount, 1);
-  assert.deepEqual(result.profileIds, ['imported-already']);
-  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.equal(firstResult.ok, true);
+  assert.equal(firstResult.manifestFile, 'profiles/imported-already/imports/materials.template.json');
+  assert.equal(firstResult.entryCount, 1);
+  assert.equal(firstResult.manifestEntryCount, 1);
+  assert.equal(firstResult.skippedEntryCount, 0);
+  assert.deepEqual(firstResult.profileIds, ['imported-already']);
+  assert.equal(firstResult.foundationRefresh.profileCount, 1);
+
+  assert.equal(secondResult.ok, true);
+  assert.equal(secondResult.manifestFile, 'profiles/imported-already/imports/materials.template.json');
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.manifestEntryCount, 1);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.profileIds, []);
+  assert.equal(secondResult.foundationRefresh.profileCount, 0);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'imported-already', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 2);
 });
 
 test('CLI import intake --all loads every ready profile-local starter manifest, including already-imported profiles, and skips incomplete intake scaffolds', () => {

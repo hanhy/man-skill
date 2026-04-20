@@ -187,6 +187,71 @@ test('importManifest imports mixed material entries across profiles from a JSON 
   assert.equal(janeMaterials.length, 1);
 });
 
+test('importManifest skips unchanged entries when the same manifest is rerun', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Harry Han',
+            type: 'message',
+            text: 'Ship the thin slice first.',
+            notes: 'chat sample',
+          },
+          {
+            personId: 'Harry Han',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+          {
+            personId: 'Jane Doe',
+            type: 'screenshot',
+            file: './chat.png',
+            notes: 'visual chat reference',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath });
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(firstResult.entryCount, 3);
+  assert.equal(firstResult.manifestEntryCount, 3);
+  assert.equal(firstResult.skippedEntryCount, 0);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.manifestEntryCount, 3);
+  assert.equal(secondResult.skippedEntryCount, 3);
+  assert.deepEqual(secondResult.results, []);
+  assert.deepEqual(secondResult.profileIds, []);
+  assert.deepEqual(secondResult.profileSummaries, []);
+
+  const harryMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(harryMaterials.length, 2);
+
+  const janeMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(janeMaterials.length, 1);
+});
+
 test('importManifest uses the checked-in Harry starter manifest as a runnable multimodal sample fixture', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

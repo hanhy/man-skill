@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -120,6 +121,83 @@ function formatMaterialTypes(materialTypes = {}) {
   }
 
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
+}
+
+function hashMaterialValue(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function buildMaterialFingerprint(payload) {
+  return hashMaterialValue(JSON.stringify(payload));
+}
+
+function buildTextMaterialFingerprint({ personId, notes = null, sourceFile, content }) {
+  return buildMaterialFingerprint({
+    personId: slugifyPersonId(personId ?? ''),
+    type: 'text',
+    notes: normalizeText(notes),
+    sourceFile: sourceFile ?? null,
+    contentHash: hashMaterialValue(content),
+  });
+}
+
+function buildMessageMaterialFingerprint({ personId, type, notes = null, text }) {
+  return buildMaterialFingerprint({
+    personId: slugifyPersonId(personId ?? ''),
+    type,
+    notes: normalizeText(notes),
+    text,
+  });
+}
+
+function buildScreenshotMaterialFingerprint({ personId, notes = null, sourceFile, fileBuffer }) {
+  return buildMaterialFingerprint({
+    personId: slugifyPersonId(personId ?? ''),
+    type: 'screenshot',
+    notes: normalizeText(notes),
+    sourceFile: sourceFile ?? null,
+    fileHash: hashMaterialValue(fileBuffer),
+  });
+}
+
+function deriveMaterialFingerprint(record) {
+  if (isNonEmptyString(record?.fingerprint)) {
+    return record.fingerprint;
+  }
+
+  if (!isNonEmptyString(record?.type) || !isNonEmptyString(record?.personId)) {
+    return null;
+  }
+
+  if (record.type === 'text' && isNonEmptyString(record?.content)) {
+    return buildTextMaterialFingerprint({
+      personId: record.personId,
+      notes: record.notes,
+      sourceFile: record.sourceFile ?? null,
+      content: record.content,
+    });
+  }
+
+  if ((record.type === 'message' || record.type === 'talk') && isNonEmptyString(record?.content)) {
+    return buildMessageMaterialFingerprint({
+      personId: record.personId,
+      type: record.type,
+      notes: record.notes,
+      text: record.content,
+    });
+  }
+
+  if (record.type === 'screenshot' && isNonEmptyString(record?.sourceFile)) {
+    return buildMaterialFingerprint({
+      personId: slugifyPersonId(record.personId),
+      type: 'screenshot',
+      notes: normalizeText(record.notes),
+      sourceFile: record.sourceFile,
+      fileHash: record.assetPath ?? null,
+    });
+  }
+
+  return null;
 }
 
 function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
@@ -958,7 +1036,7 @@ export class MaterialIngestion {
     });
   }
 
-  buildBatchManifestImportResult(profiles, results) {
+  buildBatchManifestImportResult(profiles, results, { refreshFoundation = false } = {}) {
     const profileIds = [...new Set(results.flatMap((result) => result?.profileIds ?? []))].sort();
     const profileSummaries = profileIds.map((personId) => results
       .flatMap((result) => result?.profileSummaries ?? [])
@@ -971,10 +1049,12 @@ export class MaterialIngestion {
 
     return {
       profileCount: profiles.length,
+      manifestEntryCount: results.reduce((total, result) => total + (result?.manifestEntryCount ?? result?.entryCount ?? 0), 0),
       entryCount: results.reduce((total, result) => total + (result?.entryCount ?? 0), 0),
+      skippedEntryCount: results.reduce((total, result) => total + (result?.skippedEntryCount ?? 0), 0),
       profileIds,
       ...(profileSummaries.length > 0 ? { profileSummaries } : {}),
-      ...(foundationRefreshResults.length > 0
+      ...(refreshFoundation
         ? {
             foundationRefresh: {
               profileCount: foundationRefreshResults.length,
@@ -990,14 +1070,14 @@ export class MaterialIngestion {
     const profiles = this.listProfilesWithReadyIntake();
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return this.buildBatchManifestImportResult(profiles, results);
+    return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
   }
 
   importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return this.buildBatchManifestImportResult(profiles, results);
+    return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
   }
 
   importImportedProfileIntakeManifests({ refreshFoundation = false } = {}) {
@@ -1006,10 +1086,31 @@ export class MaterialIngestion {
       .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
-    return this.buildBatchManifestImportResult(profiles, results);
+    return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
   }
 
-  writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null }) {
+  buildExistingMaterialFingerprintSet(personId) {
+    const normalizedPersonId = slugifyPersonId(personId ?? '');
+    if (!normalizedPersonId) {
+      return new Set();
+    }
+
+    const materialsDir = this.resolve('profiles', normalizedPersonId, 'materials');
+    if (!fs.existsSync(materialsDir)) {
+      return new Set();
+    }
+
+    return new Set(
+      fs.readdirSync(materialsDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+        .map((entry) => readJsonIfExists(path.join(materialsDir, entry.name)))
+        .filter(Boolean)
+        .map((record) => deriveMaterialFingerprint(record))
+        .filter(Boolean),
+    );
+  }
+
+  writeMaterialRecord({ personId, type, content = null, notes = null, sourceFile = null, assetPath = null, assetRelativePath = null, fingerprint = null }) {
     const { materialsDir } = this.ensureProfile(personId);
     const materialId = `${timestampId()}-${type}`;
     const recordPath = path.join(materialsDir, `${materialId}.json`);
@@ -1026,34 +1127,42 @@ export class MaterialIngestion {
           sourceFile,
           assetPath: assetRelativePath,
           content,
+          fingerprint,
         },
         null,
         2,
       ),
     );
 
-    return { materialId, recordPath, assetPath };
+    return { materialId, recordPath, assetPath, fingerprint };
   }
 
-  importTextDocument({ personId, sourceFile, notes = null }) {
+  importTextDocument({ personId, sourceFile, notes = null, fingerprint = null }) {
     if (!sourceFile) {
       throw new Error('sourceFile is required for text import');
     }
 
     const normalized = this.ensureProfile(personId);
     const content = fs.readFileSync(sourceFile, 'utf8');
+    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'text',
       content,
       notes,
-      sourceFile: path.relative(this.rootDir, sourceFile),
+      sourceFile: relativeSourceFile,
+      fingerprint: fingerprint ?? buildTextMaterialFingerprint({
+        personId: normalized.personId,
+        notes,
+        sourceFile: relativeSourceFile,
+        content,
+      }),
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
   }
 
-  importMessage({ personId, text, notes = null }) {
+  importMessage({ personId, text, notes = null, fingerprint = null }) {
     if (!text) {
       throw new Error('text is required for message import');
     }
@@ -1064,12 +1173,18 @@ export class MaterialIngestion {
       type: 'message',
       content: text,
       notes,
+      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
+        personId: normalized.personId,
+        type: 'message',
+        notes,
+        text,
+      }),
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
   }
 
-  importTalkSnippet({ personId, text, notes = null }) {
+  importTalkSnippet({ personId, text, notes = null, fingerprint = null }) {
     if (!text) {
       throw new Error('text is required for talk import');
     }
@@ -1080,12 +1195,18 @@ export class MaterialIngestion {
       type: 'talk',
       content: text,
       notes,
+      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
+        personId: normalized.personId,
+        type: 'talk',
+        notes,
+        text,
+      }),
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
   }
 
-  importScreenshotSource({ personId, sourceFile, notes = null }) {
+  importScreenshotSource({ personId, sourceFile, notes = null, fingerprint = null }) {
     if (!sourceFile) {
       throw new Error('sourceFile is required for screenshot import');
     }
@@ -1094,14 +1215,21 @@ export class MaterialIngestion {
     const assetFileName = `${timestampId()}-${path.basename(sourceFile)}`;
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
     fs.copyFileSync(sourceFile, targetPath);
+    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
 
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'screenshot',
       notes,
-      sourceFile: path.relative(this.rootDir, sourceFile),
+      sourceFile: relativeSourceFile,
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
+      fingerprint: fingerprint ?? buildScreenshotMaterialFingerprint({
+        personId: normalized.personId,
+        notes,
+        sourceFile: relativeSourceFile,
+        fileBuffer: fs.readFileSync(sourceFile),
+      }),
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1174,17 +1302,27 @@ export class MaterialIngestion {
       }
 
       if (entry.type === 'text') {
+        const sourceFile = assertFileWithinRoot({
+          rootDir: this.rootDir,
+          filePath: resolveImportFile(manifestDir, entry.file),
+          errorLabel: `Manifest entry ${index}`,
+          originalPath: entry.file,
+        });
+        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+        const content = fs.readFileSync(sourceFile, 'utf8');
+
         return {
           personId: resolvedPersonId,
           normalizedPersonId,
           type: 'text',
-          sourceFile: assertFileWithinRoot({
-            rootDir: this.rootDir,
-            filePath: resolveImportFile(manifestDir, entry.file),
-            errorLabel: `Manifest entry ${index}`,
-            originalPath: entry.file,
-          }),
+          sourceFile,
           notes: entry.notes ?? null,
+          fingerprint: buildTextMaterialFingerprint({
+            personId: normalizedPersonId,
+            notes: entry.notes ?? null,
+            sourceFile: relativeSourceFile,
+            content,
+          }),
         };
       }
 
@@ -1199,6 +1337,12 @@ export class MaterialIngestion {
           type: 'message',
           text: entry.text,
           notes: entry.notes ?? null,
+          fingerprint: buildMessageMaterialFingerprint({
+            personId: normalizedPersonId,
+            type: 'message',
+            notes: entry.notes ?? null,
+            text: entry.text,
+          }),
         };
       }
 
@@ -1213,21 +1357,36 @@ export class MaterialIngestion {
           type: 'talk',
           text: entry.text,
           notes: entry.notes ?? null,
+          fingerprint: buildMessageMaterialFingerprint({
+            personId: normalizedPersonId,
+            type: 'talk',
+            notes: entry.notes ?? null,
+            text: entry.text,
+          }),
         };
       }
 
       if (entry.type === 'screenshot') {
+        const sourceFile = assertFileWithinRoot({
+          rootDir: this.rootDir,
+          filePath: resolveImportFile(manifestDir, entry.file),
+          errorLabel: `Manifest entry ${index}`,
+          originalPath: entry.file,
+        });
+        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+
         return {
           personId: resolvedPersonId,
           normalizedPersonId,
           type: 'screenshot',
-          sourceFile: assertFileWithinRoot({
-            rootDir: this.rootDir,
-            filePath: resolveImportFile(manifestDir, entry.file),
-            errorLabel: `Manifest entry ${index}`,
-            originalPath: entry.file,
-          }),
+          sourceFile,
           notes: entry.notes ?? null,
+          fingerprint: buildScreenshotMaterialFingerprint({
+            personId: normalizedPersonId,
+            notes: entry.notes ?? null,
+            sourceFile: relativeSourceFile,
+            fileBuffer: fs.readFileSync(sourceFile),
+          }),
         };
       }
 
@@ -1238,52 +1397,76 @@ export class MaterialIngestion {
       this.updateProfile(profile);
     });
 
-    const results = validatedEntries.map((entry) => {
+    const fingerprintSets = new Map();
+    const getFingerprintSet = (personId) => {
+      if (!fingerprintSets.has(personId)) {
+        fingerprintSets.set(personId, this.buildExistingMaterialFingerprintSet(personId));
+      }
+
+      return fingerprintSets.get(personId);
+    };
+
+    const results = [];
+    let skippedEntryCount = 0;
+
+    validatedEntries.forEach((entry) => {
+      const existingFingerprints = getFingerprintSet(entry.normalizedPersonId);
+      if (entry.fingerprint && existingFingerprints.has(entry.fingerprint)) {
+        skippedEntryCount += 1;
+        return;
+      }
+
+      let importedEntry;
       if (entry.type === 'text') {
-        return {
+        importedEntry = {
           personId: entry.normalizedPersonId,
           type: 'text',
           ...this.importTextDocument({
             personId: entry.personId,
             sourceFile: entry.sourceFile,
             notes: entry.notes,
+            fingerprint: entry.fingerprint,
           }),
         };
-      }
-
-      if (entry.type === 'message') {
-        return {
+      } else if (entry.type === 'message') {
+        importedEntry = {
           personId: entry.normalizedPersonId,
           type: 'message',
           ...this.importMessage({
             personId: entry.personId,
             text: entry.text,
             notes: entry.notes,
+            fingerprint: entry.fingerprint,
           }),
         };
-      }
-
-      if (entry.type === 'talk') {
-        return {
+      } else if (entry.type === 'talk') {
+        importedEntry = {
           personId: entry.normalizedPersonId,
           type: 'talk',
           ...this.importTalkSnippet({
             personId: entry.personId,
             text: entry.text,
             notes: entry.notes,
+            fingerprint: entry.fingerprint,
+          }),
+        };
+      } else {
+        importedEntry = {
+          personId: entry.normalizedPersonId,
+          type: 'screenshot',
+          ...this.importScreenshotSource({
+            personId: entry.personId,
+            sourceFile: entry.sourceFile,
+            notes: entry.notes,
+            fingerprint: entry.fingerprint,
           }),
         };
       }
 
-      return {
-        personId: entry.normalizedPersonId,
-        type: 'screenshot',
-        ...this.importScreenshotSource({
-          personId: entry.personId,
-          sourceFile: entry.sourceFile,
-          notes: entry.notes,
-        }),
-      };
+      results.push(importedEntry);
+      if (entry.fingerprint) {
+        existingFingerprints.add(entry.fingerprint);
+      }
     });
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
@@ -1316,7 +1499,9 @@ export class MaterialIngestion {
 
     return {
       manifestFile: relativeManifestPath,
+      manifestEntryCount: validatedEntries.length,
       entryCount: results.length,
+      skippedEntryCount,
       profileIds,
       profileSummaries,
       ...(foundationRefresh ? { foundationRefresh } : {}),
