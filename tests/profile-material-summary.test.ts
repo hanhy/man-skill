@@ -177,6 +177,33 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
   );
 });
 
+test('loadProfilesIndex treats blockquoted voice draft headings as valid structured foundation content', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  const voiceDraftLines = voiceDraft.split(/\r?\n/);
+  const firstSectionIndex = voiceDraftLines.findIndex((line) => line.trim() === '## Tone');
+  const blockquotedVoiceDraft = [
+    ...voiceDraftLines.slice(0, firstSectionIndex),
+    ...voiceDraftLines.slice(firstSectionIndex).map((line) => (line.length > 0 ? `> ${line}` : line)),
+  ].join('\n');
+  fs.writeFileSync(voiceDraftPath, blockquotedVoiceDraft);
+
+  assert.equal(hasValidFoundationMarkdownDraft(voiceDraftPath), true);
+
+  const [profile] = loader.loadProfilesIndex();
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, { message: 1 });
+});
+
 test('loadProfilesIndex summarizes material types and latest material timestamp per profile', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

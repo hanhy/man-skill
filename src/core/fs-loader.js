@@ -236,6 +236,10 @@ function normalizeSetextHeadingLines(lines) {
   return normalizedLines;
 }
 
+function stripLeadingBlockquotePrefix(line) {
+  return line.replace(/^\s*(?:>\s*)+/, '');
+}
+
 function extractDocumentBodyLines(document) {
   if (!isNonEmptyString(document)) {
     return [];
@@ -691,7 +695,11 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     return null;
   }
 
-  const lines = filterOutsideMarkdownFences(resolvedContent.split(/\r?\n/));
+  const lines = normalizeSetextHeadingLines(
+    filterOutsideMarkdownFences(
+      extractDocumentBodyLines(resolvedContent).map((line) => stripLeadingBlockquotePrefix(line)),
+    ),
+  );
   const readySections = [];
   const missingSections = [];
 
