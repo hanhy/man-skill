@@ -34,7 +34,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
-  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus `\.env\.example` path visible/);
+  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus only the `\.env\.example` path visible/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
 });
