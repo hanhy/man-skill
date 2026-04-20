@@ -288,6 +288,7 @@ const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   soul: [
     { key: 'core-truths', headings: ['core values', 'core truths'] },
     { key: 'boundaries', headings: ['boundaries'] },
+    { key: 'vibe', headings: ['vibe'] },
     { key: 'continuity', headings: ['decision rules', 'continuity'] },
   ],
   skills: [
