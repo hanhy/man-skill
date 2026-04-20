@@ -557,6 +557,8 @@ export interface CoreMemoryFoundationSummary {
   rootExcerpt: string | null;
   rootMissingSections?: string[];
   rootReadySections?: string[];
+  rootReadySectionCount?: number;
+  rootTotalSectionCount?: number;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -574,6 +576,8 @@ export interface CoreSkillsFoundationSummary {
   rootExcerpt: string | null;
   rootMissingSections?: string[];
   rootReadySections?: string[];
+  rootReadySectionCount?: number;
+  rootTotalSectionCount?: number;
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -947,6 +951,8 @@ export function buildCoreFoundationSummary({
     ...(memoryHasStructuredRootSections ? {
       rootMissingSections: memoryRootSections.missingSections,
       rootReadySections: memoryRootSections.readySections,
+      rootReadySectionCount: memoryRootSections.readySections.length,
+      rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
     dailyCount: daily.length,
     longTermCount: longTerm.length,
@@ -973,6 +979,8 @@ export function buildCoreFoundationSummary({
     ...(skillsHasStructuredRootSections ? {
       rootMissingSections: skillsRootSections.missingSections,
       rootReadySections: skillsRootSections.readySections,
+      rootReadySectionCount: skillsRootSections.readySections.length,
+      rootTotalSectionCount: skillsRootSections.readySections.length + skillsRootSections.missingSections.length,
     } : {}),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,

@@ -196,6 +196,8 @@ type FoundationCore = {
     rootExcerpt?: string | null;
     rootMissingSections?: string[];
     rootReadySections?: string[];
+    rootReadySectionCount?: number;
+    rootTotalSectionCount?: number;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -212,6 +214,8 @@ type FoundationCore = {
     rootExcerpt?: string | null;
     rootMissingSections?: string[];
     rootReadySections?: string[];
+    rootReadySectionCount?: number;
+    rootTotalSectionCount?: number;
     count?: number;
     documentedCount?: number;
     undocumentedCount?: number;

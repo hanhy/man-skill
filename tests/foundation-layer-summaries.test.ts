@@ -767,6 +767,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     rootExcerpt: 'Durable repo knowledge and operator context.',
     rootMissingSections: [],
     rootReadySections: ['what-belongs-here', 'buckets'],
+    rootReadySectionCount: 2,
+    rootTotalSectionCount: 2,
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 0,
@@ -817,6 +819,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.hasRootDocument, false);
   assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
   assert.equal(summary.foundation.core.skills.rootExcerpt, null);
+  assert.equal(summary.foundation.core.skills.rootReadySectionCount, undefined);
+  assert.equal(summary.foundation.core.skills.rootTotalSectionCount, undefined);
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
   assert.match(summary.promptPreview, /Memory store:\n- short-term: 1\n- long-term: 1\n- total: 2\n- coverage: short-term yes, long-term yes/);
@@ -974,6 +978,8 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
 
   assert.deepEqual(summary.foundation.core.memory.rootReadySections, []);
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, ['what-belongs-here', 'buckets']);
+  assert.equal(summary.foundation.core.memory.rootReadySectionCount, 0);
+  assert.equal(summary.foundation.core.memory.rootTotalSectionCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['memory']);
   assert.equal(summary.foundation.core.maintenance.recommendedArea, 'memory');
   assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to memory/README.md: what-belongs-here, buckets');
@@ -1018,6 +1024,8 @@ test('buildSummary marks skills as thin when skills README lacks structured sect
 
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, []);
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, ['what-lives-here', 'layout']);
+  assert.equal(summary.foundation.core.skills.rootReadySectionCount, 0);
+  assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['skills']);
   assert.equal(summary.foundation.core.maintenance.recommendedArea, 'skills');
   assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to skills/README.md: what-lives-here, layout');

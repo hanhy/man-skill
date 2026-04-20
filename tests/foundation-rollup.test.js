@@ -407,6 +407,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     rootExcerpt: 'Keep durable notes here.',
     rootMissingSections: [],
     rootReadySections: ['what-belongs-here', 'buckets'],
+    rootReadySectionCount: 2,
+    rootTotalSectionCount: 2,
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 1,
@@ -423,6 +425,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     rootExcerpt: 'Keep reusable operator procedures here.',
     rootMissingSections: [],
     rootReadySections: ['what-lives-here', 'layout'],
+    rootReadySectionCount: 2,
+    rootTotalSectionCount: 2,
     count: 2,
     documentedCount: 2,
     undocumentedCount: 0,
@@ -614,9 +618,13 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge organized without leaking raw YAML metadata.');
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, ['what-belongs-here', 'buckets']);
   assert.deepEqual(summary.foundation.core.memory.rootReadySections, []);
+  assert.equal(summary.foundation.core.memory.rootReadySectionCount, 0);
+  assert.equal(summary.foundation.core.memory.rootTotalSectionCount, 2);
   assert.equal(summary.foundation.core.skills.rootExcerpt, 'Keep shared operator procedures discoverable.');
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
+  assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
@@ -914,6 +922,8 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     rootExcerpt: 'Keep durable notes here.',
     rootMissingSections: [],
     rootReadySections: ['what-belongs-here', 'buckets'],
+    rootReadySectionCount: 2,
+    rootTotalSectionCount: 2,
     dailyCount: 1,
     longTermCount: 0,
     scratchCount: 0,
@@ -1620,6 +1630,8 @@ test('buildSummary treats partially structured skills root guidance as thin core
     rootExcerpt: 'Shared repo guidance for reusable procedures.',
     rootMissingSections: ['layout'],
     rootReadySections: ['what-lives-here'],
+    rootReadySectionCount: 1,
+    rootTotalSectionCount: 2,
     count: 1,
     documentedCount: 1,
     undocumentedCount: 0,
@@ -1929,6 +1941,8 @@ test('buildSummary ignores skills root section headings that only appear inside 
 
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, ['what-lives-here', 'layout']);
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, []);
+  assert.equal(summary.foundation.core.skills.rootReadySectionCount, 0);
+  assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 3);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to skills/README.md: what-lives-here, layout');
   assert.match(summary.promptPreview, /root sections 0\/2 ready, missing what-lives-here, layout/);
