@@ -283,6 +283,8 @@ type SkillRegistrySummary = {
     id?: string;
     name?: string;
     status?: string;
+    description?: string | null;
+    foundationStatus?: string | null;
   }>;
   [key: string]: unknown;
 } | null;
@@ -1914,6 +1916,29 @@ function buildVoicePreviewBlock(voice: VoiceSummary): string {
   ].join('\n');
 }
 
+function truncatePreview(text: string, maxLength: number): string {
+  if (maxLength <= 0) {
+    return '';
+  }
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  if (maxLength === 1) {
+    return '…';
+  }
+
+  const truncated = text.slice(0, Math.max(0, maxLength - 1));
+  const lastNewlineIndex = truncated.lastIndexOf('\n');
+  const lineBoundaryCandidate = lastNewlineIndex >= 0 ? truncated.slice(0, lastNewlineIndex) : '';
+  const lineBoundary = lineBoundaryCandidate.trimEnd();
+  const fallback = truncated.trimEnd();
+  const safePrefix = lineBoundary.length > 0 ? lineBoundary : fallback;
+
+  return `${safePrefix}…`;
+}
+
 export class PromptAssembler {
   profile: AgentSummary;
   soul: string;
@@ -1981,46 +2006,48 @@ export class PromptAssembler {
     const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary);
     const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
 
-    return [
-      `Name: ${this.profile.name}`,
-      `Soul summary: ${this.profile.soul}`,
-      '',
-      'Soul profile:',
-      soulPreviewBlock,
-      '',
-      'Voice profile:',
-      voicePreviewBlock,
-      '',
-      'Memory store:',
-      memoryPreviewBlock,
-      '',
-      'Skill registry:',
-      skillsPreviewBlock,
-      ingestionEntranceBlock ? '' : null,
-      ingestionEntranceBlock ? 'Ingestion entrance:' : null,
-      ingestionEntranceBlock,
-      workLoopBlock ? '' : null,
-      workLoopBlock ? 'Work loop:' : null,
-      workLoopBlock,
-      coreFoundationBlock ? '' : null,
-      coreFoundationBlock ? 'Core foundation:' : null,
-      coreFoundationBlock,
-      deliveryFoundationBlock ? '' : null,
-      deliveryFoundationBlock ? 'Delivery foundation:' : null,
-      deliveryFoundationBlock,
-      foundationMaintenanceBlock ? '' : null,
-      foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
-      foundationMaintenanceBlock,
-      foundationRollupBlock ? '' : null,
-      foundationRollupBlock ? 'Foundation rollup:' : null,
-      foundationRollupBlock,
-      profileSnapshots ? '' : null,
-      profileSnapshots ? 'Profile foundation snapshots:' : null,
-      profileSnapshots,
-    ]
-      .filter(Boolean)
-      .join('\n')
-      .slice(0, maxLength);
+    return truncatePreview(
+      [
+        `Name: ${this.profile.name}`,
+        `Soul summary: ${this.profile.soul}`,
+        '',
+        'Soul profile:',
+        soulPreviewBlock,
+        '',
+        'Voice profile:',
+        voicePreviewBlock,
+        '',
+        'Memory store:',
+        memoryPreviewBlock,
+        '',
+        'Skill registry:',
+        skillsPreviewBlock,
+        ingestionEntranceBlock ? '' : null,
+        ingestionEntranceBlock ? 'Ingestion entrance:' : null,
+        ingestionEntranceBlock,
+        workLoopBlock ? '' : null,
+        workLoopBlock ? 'Work loop:' : null,
+        workLoopBlock,
+        coreFoundationBlock ? '' : null,
+        coreFoundationBlock ? 'Core foundation:' : null,
+        coreFoundationBlock,
+        deliveryFoundationBlock ? '' : null,
+        deliveryFoundationBlock ? 'Delivery foundation:' : null,
+        deliveryFoundationBlock,
+        foundationMaintenanceBlock ? '' : null,
+        foundationMaintenanceBlock ? 'Foundation maintenance:' : null,
+        foundationMaintenanceBlock,
+        foundationRollupBlock ? '' : null,
+        foundationRollupBlock ? 'Foundation rollup:' : null,
+        foundationRollupBlock,
+        profileSnapshots ? '' : null,
+        profileSnapshots ? 'Profile foundation snapshots:' : null,
+        profileSnapshots,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      maxLength,
+    );
   }
 
   buildSystemPrompt() {

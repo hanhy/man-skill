@@ -909,6 +909,34 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Ship the first slice\./);
 });
 
+test('PromptAssembler truncates previews at line boundaries with an ellipsis instead of slicing mid-line', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    soulProfile: {
+      excerpt: 'Keep the system inspectable.',
+      coreTruths: ['Prefer small verified slices.'],
+      boundaries: ['Do not bluff.'],
+      vibe: ['Grounded.'],
+      continuity: ['Carry forward durable lessons.'],
+    },
+    voice: {
+      tone: 'Direct.',
+      style: 'documented',
+      constraints: ['No padding.'],
+      signatures: ['Short sentences.'],
+      languageHints: ['Preserve bilingual habits.'],
+    },
+    memory: { shortTermEntries: 1, longTermEntries: 1 },
+    memorySummary: { shortTermEntries: 1, longTermEntries: 1, totalEntries: 2, shortTermPresent: true, longTermPresent: true },
+    skills: [],
+    skillsSummary: { skillCount: 1, discoveredCount: 1, customCount: 0, skills: [{ name: 'cron', status: 'discovered', description: 'Keep recurring runs small and verified.' }] },
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+  }).buildPreview(88);
+
+  assert.equal(prompt, 'Name: ManSkill\nSoul summary: persona core\nSoul profile:…');
+});
+
 test('PromptAssembler preserves root section count summaries when only aggregate counts are available', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
