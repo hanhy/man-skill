@@ -90,6 +90,7 @@ type QueueLike = {
 type DeliveryRecordLike = {
   id?: string | null;
   status?: string;
+  nextStep?: string | null;
 };
 
 type DeliverySummaryLike<TRecord extends DeliveryRecordLike> = {
@@ -235,15 +236,19 @@ function applyRuntimeReadyStatuses<
   TSummary extends DeliverySummaryLike<TRecord>,
 >(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
   const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
-  const promotedStatuses = new Map(
+  const queueById = new Map(
     queue
       .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
-      .map((item) => [item.id, promoteRuntimeReadyStatus(item.status, item.implementationReady)]),
+      .map((item) => [item.id, item]),
   );
-  const promotedRecords = records.map((record) => ({
-    ...record,
-    status: promotedStatuses.get(record.id ?? '') ?? record.status ?? 'unknown',
-  }));
+  const promotedRecords = records.map((record) => {
+    const queuedRecord = queueById.get(record.id ?? '');
+    return {
+      ...record,
+      status: queuedRecord ? promoteRuntimeReadyStatus(queuedRecord.status, queuedRecord.implementationReady) : (record.status ?? 'unknown'),
+      nextStep: queuedRecord?.implementationReady ? null : (record.nextStep ?? null),
+    };
+  });
   const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
   const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
   const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;

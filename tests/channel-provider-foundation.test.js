@@ -1188,7 +1188,11 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.equal(summary.models.plannedCount, 0);
   assert.equal(summary.models.candidateCount, 6);
   assert.equal(summary.channels.channels.find((channel) => channel.id === 'slack')?.status, 'candidate');
+  assert.equal(summary.channels.channels.find((channel) => channel.id === 'slack')?.nextStep, null);
+  assert.equal(summary.channels.channels.find((channel) => channel.id === 'telegram')?.nextStep, null);
   assert.equal(summary.models.providers.find((provider) => provider.id === 'openai')?.status, 'candidate');
+  assert.equal(summary.models.providers.find((provider) => provider.id === 'openai')?.nextStep, null);
+  assert.equal(summary.models.providers.find((provider) => provider.id === 'anthropic')?.nextStep, null);
   assert.match(summary.promptPreview, /channels: 4 total \(0 active, 0 planned, 4 candidate\)/);
   assert.match(summary.promptPreview, /models: 6 total \(0 active, 0 planned, 6 candidate\)/);
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
