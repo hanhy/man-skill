@@ -1,6 +1,7 @@
 export function normalizeProviderToolArguments(argumentsValue) {
   if (typeof argumentsValue === 'string') {
-    return argumentsValue.trim().length > 0 ? argumentsValue : '{}';
+    const trimmed = argumentsValue.trim();
+    return trimmed.length > 0 ? trimmed : '{}';
   }
 
   if (argumentsValue && typeof argumentsValue === 'object') {

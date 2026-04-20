@@ -54,6 +54,7 @@ test('provider runtime helpers expose required env vars and configuration checks
 
 test('base provider helpers normalize whitespace-only tool arguments and SDK-style parts arrays', () => {
   assert.equal(normalizeProviderToolArguments('   '), '{}');
+  assert.equal(normalizeProviderToolArguments('  {"personId":"harry-han"}  '), '{"personId":"harry-han"}');
   assert.equal(normalizeProviderToolArguments({ personId: 'harry-han' }), '{"personId":"harry-han"}');
 
   assert.equal(
@@ -145,7 +146,7 @@ test('openai-compatible provider runtime helpers normalize structured text conte
       type: 'function',
       function: {
         name: 'lookup_profile',
-        arguments: '{"personId":"harry-han"}',
+        arguments: '  {"personId":"harry-han"}  ',
       },
     }],
   });
