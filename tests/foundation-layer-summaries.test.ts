@@ -920,7 +920,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.match(summary.promptPreview, /Memory store:\n- short-term: 1\n- long-term: 1\n- total: 2\n- coverage: short-term yes, long-term yes/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
-  assert.match(summary.promptPreview, /coverage: 2\/4 ready; thin memory, skills/);
+  assert.match(summary.promptPreview, /coverage: 1\/4 ready; thin memory, skills, soul/);
   assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
 });
 
@@ -1221,19 +1221,20 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.foundation.core.soul.structured, false);
-  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
-  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
-  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.soul.readySections, []);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 0);
   assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful after the hidden scaffold.');
   assert.equal(summary.foundation.core.voice.structured, false);
-  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
-  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
-  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.readySections, []);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 0);
   assert.equal(summary.foundation.core.voice.rootExcerpt, 'Stay direct after the hidden scaffold.');
-  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
-  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
   assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
-  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
-  assert.doesNotMatch(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\./);
-  assert.doesNotMatch(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\./);
+  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\. @ SOUL\.md, sections 0\/4 ready, missing core-truths, boundaries, vibe, continuity/);
+  assert.match(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\. @ voice\/README\.md, sections 0\/4 ready, missing tone, signature-moves, avoid, language-hints/);
+  assert.doesNotMatch(summary.promptPreview, /- ready details: .*soul sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /- ready details: .*voice sections 4\/4/);
 });

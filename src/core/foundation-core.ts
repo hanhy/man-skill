@@ -825,7 +825,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
       profile.vibe.length > 0 ? 'vibe' : null,
       profile.continuity.length > 0 ? 'continuity' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
+    : [];
   const missingSections = structured
     ? [
       profile.coreTruths.length > 0 ? null : 'core-truths',
@@ -833,7 +833,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
       profile.vibe.length > 0 ? null : 'vibe',
       profile.continuity.length > 0 ? null : 'continuity',
     ].filter((value): value is string => typeof value === 'string')
-    : [];
+    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
 
   const lineCount = countContentLines(document);
   const excerpt = profile.excerpt;
@@ -874,7 +874,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
       profile.constraints.length > 0 ? 'avoid' : null,
       profile.languageHints.length > 0 ? 'language-hints' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
+    : [];
   const missingSections = structured
     ? [
       profile.hasToneGuidance ? null : 'tone',
@@ -882,7 +882,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
       profile.constraints.length > 0 ? null : 'avoid',
       profile.languageHints.length > 0 ? null : 'language-hints',
     ].filter((value): value is string => typeof value === 'string')
-    : [];
+    : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
 
   const lineCount = countContentLines(document);
   const excerpt = profile.style === 'documented' ? profile.tone : null;
