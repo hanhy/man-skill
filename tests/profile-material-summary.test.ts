@@ -718,6 +718,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           complete: false,
           missingDrafts: ['memory', 'skills', 'soul', 'voice'],
           needsRefresh: true,
+          refreshReasons: ['missing-draft', 'new-material'],
         },
         foundationDraftSummaries: {
           memory: { generated: false, entryCount: 0, latestSummaries: [] },
@@ -770,7 +771,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
   assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
-  assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice/);
+  assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);
   assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
   assert.match(prompt, /Ship the first slice\./);

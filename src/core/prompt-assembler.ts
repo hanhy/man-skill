@@ -594,7 +594,11 @@ function formatDraftStatus(status: FoundationDraftStatus = {}) {
   const freshness = status.needsRefresh ? 'stale' : 'fresh';
   const completeness = status.complete ? 'complete' : `missing ${(status.missingDrafts ?? []).join('/') || 'drafts'}`;
   const generatedAt = status.generatedAt ? `, generated ${status.generatedAt}` : '';
-  return `${freshness}, ${completeness}${generatedAt}`;
+  const refreshReasons = Array.isArray(status.refreshReasons)
+    ? status.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const reasonsSuffix = refreshReasons.length > 0 ? `, reasons ${refreshReasons.join(' + ')}` : '';
+  return `${freshness}, ${completeness}${generatedAt}${reasonsSuffix}`;
 }
 
 function cleanHighlight(value: string) {
