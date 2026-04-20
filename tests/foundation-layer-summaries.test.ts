@@ -757,8 +757,9 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
-  assert.match(summary.promptPreview, /- soul: present, 4 lines, Stay faithful\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
-  assert.match(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /- soul: present, 4 lines, Stay faithful\./);
+  assert.doesNotMatch(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\./);
   assert.doesNotMatch(summary.promptPreview, />\s*## Tone/);
   assert.doesNotMatch(summary.promptPreview, />\s*## Core truths/);
 });
@@ -1155,6 +1156,7 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
   assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
-  assert.match(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
-  assert.match(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /- soul: present, 1 lines, Stay faithful after the hidden scaffold\./);
+  assert.doesNotMatch(summary.promptPreview, /- voice: present, 1 lines, Stay direct after the hidden scaffold\./);
 });

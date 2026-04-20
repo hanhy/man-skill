@@ -533,10 +533,11 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /Core foundation:/);
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
-  assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
-  assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 2\/2 \(obsidian, telegram\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
+  assert.doesNotMatch(summary.promptPreview, /skills: 2 registered, 2 documented/);
+  assert.doesNotMatch(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\./);
+  assert.doesNotMatch(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\./);
 });
 
 test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in core foundation excerpts', () => {
@@ -1954,7 +1955,8 @@ test('buildSummary treats memory headings with closing hashes as structured sect
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: .*; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
 test('buildSummary treats memory headings with setext markdown as structured sections', () => {
@@ -1983,7 +1985,8 @@ test('buildSummary treats memory headings with setext markdown as structured sec
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: .*; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
 test('buildSummary treats soul and voice headings with closing hashes as structured sections', () => {
@@ -2014,8 +2017,9 @@ test('buildSummary treats soul and voice headings with closing hashes as structu
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /soul: present, \d+ lines, .*sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
-  assert.match(summary.promptPreview, /voice: present, \d+ lines, .*sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /soul: present, \d+ lines/);
+  assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines/);
 });
 
 test('buildSummary treats target-specific current default voice headings as structured foundation guidance', () => {
@@ -2048,7 +2052,8 @@ test('buildSummary treats target-specific current default voice headings as stru
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 1\/1 \(delivery\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\./);
 });
 
 test('buildSummary treats setext headings across root and profile foundation docs as structured sections', () => {

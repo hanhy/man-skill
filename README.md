@@ -84,7 +84,7 @@ The current structured contract is:
 - `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
-`buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
+`buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command; when all four repo-core layers are ready, that same block collapses to one compact `ready details` line so cron/operator runs keep the foundation visible without wasting preview budget before moving on to ingestion, channels, or providers.
 
 Those section-aware surfaces are also explicit in JSON: `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; plus `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount` and the parallel `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount`. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
 

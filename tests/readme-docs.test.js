@@ -115,7 +115,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.skills.skills.map((skill) => skill.id), ['channels/slack', 'channels/telegram', 'cron', 'providers/openai']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
-  assert.match(summary.promptPreview, /- memory: .* @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
-  assert.match(summary.promptPreview, /- skills: .* @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\)/);
+  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 4\/4 \(channels\/slack, channels\/telegram, cron, providers\/openai\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
+  assert.doesNotMatch(summary.promptPreview, /- skills: 4 registered, 4 documented/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 4\n- discovered: 4\n- custom: 0\n- top skills: channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; cron \[discovered\]: Use when scheduling a reminder or recurring task via the local system cron\/launchd setup for Op…; \+1 more/);
 });

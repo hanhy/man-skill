@@ -1510,6 +1510,43 @@ function formatThinSectionProgress(
   return `${readySummary}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
+function buildReadyCoreFoundationDetails(
+  memory: FoundationCore['memory'] = null,
+  skills: FoundationCore['skills'] = null,
+  soul: FoundationCore['soul'] = null,
+  voice: FoundationCore['voice'] = null,
+): string | null {
+  if (!memory || !skills || !soul || !voice) {
+    return null;
+  }
+
+  const populatedBuckets = Array.isArray(memory.populatedBuckets)
+    ? memory.populatedBuckets.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const skillSample = Array.isArray(skills.sample)
+    ? skills.sample.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+
+  if (
+    typeof memory.readyBucketCount !== 'number'
+    || typeof memory.totalBucketCount !== 'number'
+    || typeof memory.rootReadySectionCount !== 'number'
+    || typeof memory.rootTotalSectionCount !== 'number'
+    || typeof skills.documentedCount !== 'number'
+    || typeof skills.count !== 'number'
+    || typeof skills.rootReadySectionCount !== 'number'
+    || typeof skills.rootTotalSectionCount !== 'number'
+    || typeof soul.readySectionCount !== 'number'
+    || typeof soul.totalSectionCount !== 'number'
+    || typeof voice.readySectionCount !== 'number'
+    || typeof voice.totalSectionCount !== 'number'
+  ) {
+    return null;
+  }
+
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, root sections ${memory.rootReadySectionCount}/${memory.rootTotalSectionCount}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, root sections ${skills.rootReadySectionCount}/${skills.rootTotalSectionCount}; soul sections ${soul.readySectionCount}/${soul.totalSectionCount}; voice sections ${voice.readySectionCount}/${voice.totalSectionCount}`;
+}
+
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
   const contextParts: string[] = [];
   const rootSummary = formatThinSectionProgress(
@@ -1590,16 +1627,22 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const recommendedRepairLine = maintenance?.recommendedAction
     ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}`
     : null;
+  const readyCoreFoundationDetails = overview
+    && (overview.readyAreaCount ?? 0) === (overview.totalAreaCount ?? 0)
+    && queuedAreas.length === 0
+    ? buildReadyCoreFoundationDetails(memory, skills, soul, voice)
+    : null;
 
   return [
     coverageLine,
     maintenance
       ? `- queue: ${maintenance.readyAreaCount ?? 0} ready, ${maintenance.thinAreaCount ?? 0} thin, ${maintenance.missingAreaCount ?? 0} missing`
       : null,
-    memory
+    readyCoreFoundationDetails,
+    !readyCoreFoundationDetails && memory
       ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}`
       : null,
-    skills
+    !readyCoreFoundationDetails && skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
@@ -1609,10 +1652,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
         return progressSummary ? `${skillName} ${progressSummary}` : `${skillName}`;
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
-    soul
+    !readyCoreFoundationDetails && soul
       ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}`
       : null,
-    voice
+    !readyCoreFoundationDetails && voice
       ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}`
       : null,
     recommendedActions.length > 0
