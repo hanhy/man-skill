@@ -1066,6 +1066,9 @@ function buildDeliveryPriority({
     || needsEnvTemplateRepair;
   const envBootstrapPaths = [
     envTemplatePath,
+    needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
+      ? '.env'
+      : null,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
     ? envBootstrapPaths
