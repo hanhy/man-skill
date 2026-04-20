@@ -623,9 +623,9 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     ? profile.foundationDraftStatus.missingDrafts
     : [];
   const draftKinds = [
-    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
-    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
   ];
 
   const memoryGapSummary = (() => {

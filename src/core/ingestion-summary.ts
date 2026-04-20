@@ -93,9 +93,9 @@ function summarizeMemoryDraftGap(profile): string | null {
 function summarizeProfileDraftGaps(profile): string | null {
   const gapSummaries = [
     summarizeMemoryDraftGap(profile),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
     summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
