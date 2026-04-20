@@ -398,6 +398,73 @@ function normalizeExistingStarterManifest(parsedTemplate) {
   return parsedTemplate;
 }
 
+function inspectIntakeManifestState(rootDir, starterManifestPath) {
+  if (!isNonEmptyString(starterManifestPath)) {
+    return {
+      status: 'missing',
+      error: 'Starter intake manifest path is required',
+    };
+  }
+
+  const absoluteManifestPath = path.join(rootDir, starterManifestPath);
+  const fileState = readJsonFileState(absoluteManifestPath);
+  if (!fileState.exists) {
+    return {
+      status: 'missing',
+      error: 'Starter intake manifest is missing',
+    };
+  }
+
+  if (fileState.parseError) {
+    return {
+      status: 'invalid',
+      error: fileState.parseError,
+    };
+  }
+
+  const manifest = normalizeExistingStarterManifest(fileState.parsed);
+  if (!manifest || typeof manifest !== 'object') {
+    return {
+      status: 'invalid',
+      error: 'Manifest must be an array or object',
+    };
+  }
+
+  const entries = manifest.entries;
+  const hasStarterTemplates = Array.isArray(entries)
+    && entries.length === 0
+    && manifest.entryTemplates
+    && typeof manifest.entryTemplates === 'object'
+    && !Array.isArray(manifest.entryTemplates)
+    && Object.keys(manifest.entryTemplates).length > 0;
+  if (hasStarterTemplates) {
+    return {
+      status: 'starter',
+      error: null,
+    };
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      status: 'invalid',
+      error: 'Manifest must contain a non-empty entries array',
+    };
+  }
+
+  return {
+    status: 'loaded',
+    error: null,
+  };
+}
+
+function profileHasStarterIntakeManifest(rootDir, profile) {
+  if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
+    return false;
+  }
+
+  return inspectIntakeManifestState(rootDir, profile.intake.starterManifestPath).status === 'starter';
+}
+
 function buildStarterManifestDocument({
   personId,
   displayName,
@@ -836,6 +903,14 @@ export class MaterialIngestion {
       throw new Error(`Profile intake scaffold is not ready for import: ${normalizedPersonId}`);
     }
 
+    const intakeManifestState = inspectIntakeManifestState(this.rootDir, profile.intake.starterManifestPath);
+    if (intakeManifestState.status === 'starter') {
+      throw new Error(`Profile intake manifest has no entries yet: ${normalizedPersonId}`);
+    }
+    if (intakeManifestState.status !== 'loaded') {
+      throw new Error(intakeManifestState.error || `Profile intake manifest is not ready for import: ${normalizedPersonId}`);
+    }
+
     return this.importManifest({
       manifestFile: profile.intake.starterManifestPath,
       refreshFoundation,
@@ -886,7 +961,8 @@ export class MaterialIngestion {
 
   importImportedProfileIntakeManifests({ refreshFoundation = false } = {}) {
     const profiles = this.listProfilesWithReadyIntake({ includeImported: true })
-      .filter((profile) => (profile?.materialCount ?? 0) > 0);
+      .filter((profile) => (profile?.materialCount ?? 0) > 0)
+      .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return this.buildBatchManifestImportResult(profiles, results);

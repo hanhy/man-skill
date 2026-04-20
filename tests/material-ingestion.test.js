@@ -932,6 +932,69 @@ test('importAllProfileIntakeManifests aggregates profileSummaries and top-level 
   assert.match(result.foundationRefresh.results[1].voiceDraftPath, /profiles\/imported-already\/voice\/README\.md$/);
 });
 
+test('importImportedProfileIntakeManifests skips imported profiles whose local intake manifest is still the starter scaffold', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Starter Only',
+    text: 'This imported profile still has the untouched starter manifest.',
+  });
+  ingestion.importMessage({
+    personId: 'Loaded Intake',
+    text: 'This imported profile customized its local intake manifest.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'sample.txt'), 'Loaded intake sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Loaded Intake',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importImportedProfileIntakeManifests({ refreshFoundation: true });
+
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['loaded-intake']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['loaded-intake']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
+});
+
+test('importProfileIntakeManifest rejects imported profiles whose local intake manifest still has no entries', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Starter Only',
+    text: 'This imported profile still has the untouched starter manifest.',
+  });
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'starter-only', refreshFoundation: true }),
+    /Profile intake manifest has no entries yet: starter-only/,
+  );
+});
+
+test('importImportedProfileIntakeManifests still surfaces invalid imported intake manifests instead of silently skipping them', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Broken Intake',
+    text: 'This imported profile has a malformed local intake manifest.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'broken-intake', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  assert.throws(
+    () => ingestion.importImportedProfileIntakeManifests({ refreshFoundation: true }),
+    /Unexpected token|Expected property name|JSON/i,
+  );
+});
+
 test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
