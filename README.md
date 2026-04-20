@@ -86,6 +86,8 @@ The current structured contract is:
 
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
 
+Those section-aware surfaces are also explicit in JSON: `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; plus `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount` and the parallel `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount`. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
+
 The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
 - `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair
 - `foundation.maintenance.recommendedProfileId`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next target-profile draft refresh
