@@ -66,6 +66,10 @@ function looksLikeLanguageHint(value: string) {
     || normalized.includes('english');
 }
 
+function isCurrentDefaultHeading(value: string) {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+}
+
 function pushUnique(target: string[], value: string) {
   if (!target.includes(value)) {
     target.push(value);
@@ -159,7 +163,7 @@ export class VoiceProfile {
           currentSectionHasContent = false;
           return;
         }
-        if (heading.text === 'current default for manskill') {
+        if (isCurrentDefaultHeading(heading.text)) {
           currentSection = 'current-default';
           currentSectionHasContent = false;
           return;

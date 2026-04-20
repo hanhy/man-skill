@@ -585,7 +585,7 @@ test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice he
   const legacyVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
     .replace('## Signature moves', '## Voice should capture')
     .replace('## Avoid', '## Voice should not capture')
-    .replace('## Language hints', '## Current default for ManSkill');
+    .replace('## Language hints', '## Current default for Harry Han');
   const openclawSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
     .replace('## Core values', '## Core truths')
     .replace('## Decision rules', '## Continuity');

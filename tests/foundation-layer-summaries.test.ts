@@ -177,6 +177,22 @@ test('voice profile falls back to voice capture/default sections when explicit s
   });
 });
 
+test('voice profile treats target-specific current default headings as legacy language hint aliases too', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for Harry Han\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Voice files define how the agent sounds once the deeper identity is already set.',
+    style: 'documented',
+    constraints: ['temporary tasks', 'private user facts that belong in memory'],
+    signatures: ['sentence length preferences', 'directness vs softness', 'concise by default'],
+    languageHints: ['willing to preserve bilingual or mixed-language habits'],
+    constraintCount: 2,
+    signatureCount: 3,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile accepts prose lines inside signature, avoid, and language hint sections', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\nUse crisp examples without bullets.\n\n## Avoid\nNever pad the answer.\n\n## Language hints\nPreserve bilingual phrasing when the source material switches languages.\n`);
 

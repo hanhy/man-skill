@@ -282,12 +282,16 @@ const SKILL_SECTION_DEFINITIONS = [
   { key: 'suggested-workflow', headings: ['suggested workflow'] },
 ];
 
+function isCurrentDefaultVoiceHeading(value) {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+}
+
 const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   voice: [
     { key: 'tone', headings: ['tone'] },
     { key: 'signature-moves', headings: ['signature moves', 'voice should capture'] },
     { key: 'avoid', headings: ['avoid', 'voice should not capture'] },
-    { key: 'language-hints', headings: ['language hints', 'current default for manskill'] },
+    { key: 'language-hints', headings: ['language hints', 'current default for manskill'], matchesHeading: isCurrentDefaultVoiceHeading },
   ],
   soul: [
     { key: 'core-truths', headings: ['core values', 'core truths'] },
@@ -711,7 +715,10 @@ function summarizeFoundationDraftSections(filePath, content = null) {
       const trimmed = rawLine.trim();
       const heading = parseMarkdownHeading(trimmed);
       if (heading) {
-        if (heading.level >= 2 && section.headings.includes(heading.text)) {
+        if (
+          heading.level >= 2
+          && (section.headings.includes(heading.text) || section.matchesHeading?.(heading.text) === true)
+        ) {
           inSection = true;
           hasContent = false;
           sectionHeadingLevel = heading.level;

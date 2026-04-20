@@ -717,6 +717,25 @@ function hasStructuredHeading(document: string | null | undefined, headings: str
     .some((heading) => heading !== null && heading.level >= 2 && normalizedHeadings.includes(heading.text));
 }
 
+function hasStructuredHeadingMatcher(
+  document: string | null | undefined,
+  matcher: (headingText: string) => boolean,
+): boolean {
+  if (!isNonEmptyString(document)) {
+    return false;
+  }
+
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
+  return visibleDocument
+    .split('\n')
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading !== null && heading.level >= 2 && matcher(heading.text));
+}
+
+function isCurrentDefaultVoiceHeading(value: string): boolean {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+}
+
 function summarizeStructuredSections(
   document: string | null | undefined,
   sections: Array<{ key: string; heading: string }>,
@@ -818,8 +837,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'language hints',
     'voice should capture',
     'voice should not capture',
-    'current default for manskill',
-  ]);
+  ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,

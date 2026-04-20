@@ -577,7 +577,7 @@ test('buildCoreFoundationCommand normalizes legacy voice headings toward opencla
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'voice', 'README.md'),
-    '# Voice\n\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for ManSkill\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n',
+    '# Voice\n\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for Harry Han\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n',
   );
 
   execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
