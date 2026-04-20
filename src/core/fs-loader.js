@@ -929,6 +929,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: voiceMetadata.sourceCount,
           materialTypes: voiceMetadata.materialTypes,
           highlights: readMarkdownHighlights(voiceDraftPath),
+          ...(voiceSectionSummary ?? {}),
         }
       : {
           generated: false,
@@ -949,6 +950,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: soulMetadata.sourceCount,
           materialTypes: soulMetadata.materialTypes,
           highlights: readMarkdownHighlights(soulDraftPath),
+          ...(soulSectionSummary ?? {}),
         }
       : {
           generated: false,
@@ -969,6 +971,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: skillsMetadata.sourceCount,
           materialTypes: skillsMetadata.materialTypes,
           highlights: readMarkdownHighlights(skillsDraftPath),
+          ...(skillsSectionSummary ?? {}),
         }
       : {
           generated: false,

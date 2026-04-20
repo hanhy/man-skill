@@ -462,10 +462,26 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     screenshot: 1,
     text: 1,
   });
-  assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
-    '- [message] Ship the first slice.',
-    '- [text] Direct writing sample.',
-  ]);
+  assert.deepEqual(profile.foundationDraftSummaries.voice, {
+    generated: true,
+    generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
+    latestMaterialAt: profile.latestMaterialAt,
+    latestMaterialId: profile.latestMaterialId,
+    sourceCount: 3,
+    materialTypes: {
+      message: 1,
+      screenshot: 1,
+      text: 1,
+    },
+    highlights: [
+      '- [message] Ship the first slice.',
+      '- [text] Direct writing sample.',
+    ],
+    readySectionCount: 4,
+    totalSectionCount: 4,
+    readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+    missingSections: [],
+  });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: true,
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
@@ -478,6 +494,10 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
       text: 1,
     },
     highlights: ['- [text] Direct writing sample.'],
+    readySectionCount: 4,
+    totalSectionCount: 4,
+    readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+    missingSections: [],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: true,
@@ -491,6 +511,10 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
       text: 1,
     },
     highlights: [],
+    readySectionCount: 3,
+    totalSectionCount: 3,
+    readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+    missingSections: [],
   });
   assert.deepEqual(profile.foundationReadiness.memory.latestTypes.slice().sort(), ['message', 'screenshot', 'text']);
   assert.equal(profile.foundationReadiness.memory.candidateCount, 3);
@@ -906,9 +930,30 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
             entryCount: 3,
             latestSummaries: ['Ship the first slice.', 'Direct writing sample.'],
           },
-          voice: { generated: true, highlights: ['- [message] Ship the first slice.'] },
-          soul: { generated: true, highlights: ['- [text] Direct writing sample.'] },
-          skills: { generated: false, highlights: [] },
+          voice: {
+            generated: true,
+            highlights: ['- [message] Ship the first slice.'],
+            readySectionCount: 4,
+            totalSectionCount: 4,
+            readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+            missingSections: [],
+          },
+          soul: {
+            generated: true,
+            highlights: ['- [text] Direct writing sample.'],
+            readySectionCount: 4,
+            totalSectionCount: 4,
+            readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+            missingSections: [],
+          },
+          skills: {
+            generated: true,
+            highlights: [],
+            readySectionCount: 3,
+            totalSectionCount: 3,
+            readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+            missingSections: [],
+          },
         },
       },
       {
@@ -978,6 +1023,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /profile summary: Direct operator with a bias for momentum\./);
   assert.match(prompt, /drafts: fresh, complete, generated 2026-04-16T15:00:01.000Z/);
   assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
+  assert.match(prompt, /draft sections: skills 3\/3 ready \(candidate-skills, evidence, gaps-to-validate\) \| soul 4\/4 ready \(core-truths, boundaries, vibe, continuity\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
   assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
   assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);

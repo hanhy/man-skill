@@ -663,22 +663,26 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     memoryGapSummary,
     ...draftKinds
       .map(({ key, summary }) => {
-        const totalSectionCount = summary?.totalSectionCount ?? 0;
-        const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
-        const readySections = Array.isArray(summary?.readySections)
-          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
-        const missingSections = Array.isArray(summary?.missingSections)
-          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
+        if (!summary) {
+          return null;
+        }
+
+        const readySectionCount = Number(summary.readySectionCount ?? 0);
+        const totalSectionCount = Number(summary.totalSectionCount ?? 0);
         if (totalSectionCount <= 0) {
           return null;
         }
 
-        const hasGap = missingSections.length > 0 || readySectionCount < totalSectionCount;
-        if (!hasGap) {
+        const missingSections = Array.isArray(summary.missingSections)
+          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
+        if (missingSections.length === 0 && !missingDrafts.includes(key)) {
           return null;
         }
+
+        const readySections = Array.isArray(summary.readySections)
+          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+          : [];
 
         return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
       })
@@ -686,6 +690,42 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
   ].filter(Boolean);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
+}
+
+function summarizeDraftSections(profile: ProfileSnapshot = {}) {
+  const draftKinds = [
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+  ];
+
+  const sectionSummaries = draftKinds
+    .map(({ key, summary }) => {
+      if (!summary || summary.generated !== true) {
+        return null;
+      }
+
+      const readySectionCount = Number(summary.readySectionCount ?? 0);
+      const totalSectionCount = Number(summary.totalSectionCount ?? 0);
+      if (totalSectionCount <= 0) {
+        return null;
+      }
+
+      const readySections = Array.isArray(summary.readySections)
+        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      const missingSections = Array.isArray(summary.missingSections)
+        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      if (missingSections.length > 0) {
+        return null;
+      }
+
+      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}`;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return sectionSummaries.length > 0 ? sectionSummaries.join(' | ') : null;
 }
 
 function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
@@ -712,6 +752,11 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
     lines.push(
       `  memory candidates: ${profile.foundationReadiness.memory?.candidateCount ?? 0} | voice: ${profile.foundationReadiness.voice?.candidateCount ?? 0} | soul: ${profile.foundationReadiness.soul?.candidateCount ?? 0} | skills: ${profile.foundationReadiness.skills?.candidateCount ?? 0}`,
     );
+  }
+
+  const draftSections = summarizeDraftSections(profile);
+  if (draftSections) {
+    lines.push(`  draft sections: ${draftSections}`);
   }
 
   const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries?.length
