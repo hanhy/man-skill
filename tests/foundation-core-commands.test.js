@@ -588,6 +588,29 @@ test('buildCoreFoundationCommand normalizes legacy voice headings toward opencla
   );
 });
 
+test('buildCoreFoundationCommand repairs thin voice docs with level-one ATX section headings without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-voice-h1-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n# Tone\nWarm and grounded.\n\n# Signature moves\n- Use crisp examples.\n\n# Avoid\n- Never pad the answer.\n\n# Language hints\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'soul',
@@ -684,6 +707,28 @@ test('buildCoreFoundationCommand normalizes closing-hash soul headings toward op
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
     '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin soul docs with level-one ATX section headings without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-h1-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n# Core truths\n- Stay faithful to source material.\n\n# Boundaries\n- Keep claims grounded.\n\n# Vibe\n- Grounded and direct.\n\n# Continuity\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Keep claims grounded.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
