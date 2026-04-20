@@ -1002,6 +1002,110 @@ test('PromptAssembler preserves queued core-foundation root section counts when 
   assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command node -e 'repair skills root'/);
 });
 
+test('PromptAssembler preserves thin skill doc section counts when only aggregate counts are available', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 1,
+        readyBucketCount: 3,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term', 'scratch'],
+        emptyBuckets: [],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json', 'scratch/draft.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here', 'layout'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        count: 1,
+        documentedCount: 1,
+        thinCount: 1,
+        sample: ['delivery'],
+        samplePaths: ['skills/delivery/SKILL.md'],
+        thinSample: ['delivery'],
+        thinPaths: ['skills/delivery/SKILL.md'],
+        thinReadySectionCounts: { delivery: 1 },
+        thinTotalSectionCounts: { delivery: 2 },
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        lineCount: 4,
+        excerpt: 'Stay grounded.',
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        lineCount: 4,
+        excerpt: 'Stay direct.',
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+      },
+      overview: {
+        readyAreaCount: 3,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: ['skills'],
+        recommendedActions: ['add missing sections to skills/delivery/SKILL.md'],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 3,
+        missingAreaCount: 0,
+        thinAreaCount: 1,
+        recommendedArea: 'skills',
+        recommendedAction: 'add missing sections to skills/delivery/SKILL.md',
+        recommendedCommand: "node -e 'repair delivery skill'",
+        recommendedPaths: ['skills/delivery/SKILL.md'],
+        helperCommands: {
+          skills: "node -e 'repair delivery skill'",
+        },
+        queuedAreas: [
+          {
+            area: 'skills',
+            status: 'thin',
+            summary: '1 registered, 1 documented, 1 thin doc',
+            action: 'add missing sections to skills/delivery/SKILL.md',
+            paths: ['skills/delivery/SKILL.md'],
+            thinPaths: ['skills/delivery/SKILL.md'],
+            thinReadySectionCounts: { 'skills/delivery/SKILL.md': 1 },
+            thinTotalSectionCounts: { 'skills/delivery/SKILL.md': 2 },
+            command: "node -e 'repair delivery skill'",
+          },
+        ],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /skills: 1 registered, 1 documented \(delivery\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/delivery\/SKILL\.md; thin docs: delivery sections 1\/2 ready @ skills\/delivery\/SKILL\.md/);
+  assert.match(prompt, /skills \[thin\]: add missing sections to skills\/delivery\/SKILL\.md @ skills\/delivery\/SKILL\.md; context thin docs delivery sections 1\/2 ready; command node -e 'repair delivery skill'/);
+});
+
 test('PromptAssembler preserves aggregate draft gap counts when missing section names are unavailable', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

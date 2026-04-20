@@ -165,6 +165,8 @@ type FoundationCoreMaintenanceQueueItem = {
   thinPaths?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
+  thinReadySectionCounts?: Record<string, number>;
+  thinTotalSectionCounts?: Record<string, number>;
   rootThinMissingSections?: string[];
   rootThinReadySections?: string[];
   rootThinReadySectionCount?: number;
@@ -233,6 +235,8 @@ type FoundationCore = {
     thinPaths?: string[];
     thinMissingSections?: Record<string, string[]>;
     thinReadySections?: Record<string, string[]>;
+    thinReadySectionCounts?: Record<string, number>;
+    thinTotalSectionCounts?: Record<string, number>;
   };
   soul?: CoreDocumentFoundationSummary;
   voice?: CoreDocumentFoundationSummary;
@@ -1521,11 +1525,18 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
   const thinSectionPaths = new Set<string>([
     ...Object.keys(area.thinReadySections ?? {}),
     ...Object.keys(area.thinMissingSections ?? {}),
+    ...Object.keys(area.thinReadySectionCounts ?? {}),
+    ...Object.keys(area.thinTotalSectionCounts ?? {}),
   ]);
   const thinPathSummaries = Array.from(thinSectionPaths)
     .sort((left, right) => left.localeCompare(right))
     .map((thinPath) => {
-      const summary = formatThinSectionProgress(area.thinReadySections?.[thinPath], area.thinMissingSections?.[thinPath]);
+      const summary = formatThinSectionProgress(
+        area.thinReadySections?.[thinPath],
+        area.thinMissingSections?.[thinPath],
+        area.thinReadySectionCounts?.[thinPath],
+        area.thinTotalSectionCounts?.[thinPath],
+      );
       if (!summary) {
         return null;
       }
@@ -1592,13 +1603,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
-        const readySummary = readySections.length > 0
-          ? ` sections ${readySections.length}/${readySections.length + missingSections.length} ready (${readySections.join(', ')})`
-          : '';
-        const missingSummary = missingSections.length > 0
-          ? `${readySections.length > 0 ? ', ' : ' '}missing ${missingSections.join(', ')}`
-          : '';
-        return `${skillName}${readySummary}${missingSummary}`;
+        const readySectionCount = skills.thinReadySectionCounts?.[skillName];
+        const totalSectionCount = skills.thinTotalSectionCounts?.[skillName];
+        const progressSummary = formatThinSectionProgress(readySections, missingSections, readySectionCount, totalSectionCount);
+        return progressSummary ? `${skillName} ${progressSummary}` : `${skillName}`;
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     soul

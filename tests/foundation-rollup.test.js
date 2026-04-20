@@ -1512,7 +1512,7 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
   assert.deepEqual(summary.workLoop.currentPriority?.paths, ['skills/README.md', 'skills/delivery/SKILL.md']);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
   assert.match(summary.promptPreview, /skills \[thin\]: create skills\/README\.md \| add missing sections to skills\/delivery\/SKILL\.md: what-this-skill-is-for, suggested-workflow @ skills\/README\.md, skills\/delivery\/SKILL\.md; context thin docs delivery sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow; command /);
-  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /node -e 'const fs = require\('/);
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
@@ -1584,7 +1584,7 @@ test('buildSummary treats frontmatter-only SKILL docs as thin core foundation co
       foundationStatus: 'thin',
     },
   ]);
-  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root missing @ skills\/README\.md; thin docs: delivery sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow @ skills\/delivery\/SKILL\.md/);
   assert.doesNotMatch(summary.promptPreview, /excerpts: delivery: Keep handoffs crisp\./);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
 });
@@ -1702,7 +1702,7 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
       foundationStatus: 'thin',
     },
   ]);
-  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); root missing @ skills\/README\.md; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack missing what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 2 registered, 1 documented \(delivery, slack\); root missing @ skills\/README\.md; docs: skills\/delivery\/SKILL\.md; excerpts: delivery: Deliver concise handoffs\.\; thin docs: slack sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow @ skills\/slack\/SKILL\.md/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver concise handoffs\.; slack \[discovered, thin\]/);
 });
 
@@ -2340,7 +2340,7 @@ test('buildSummary keeps skill docs with fenced template examples thin until the
   assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
     cron: ['what-this-skill-is-for', 'suggested-workflow'],
   });
-  assert.match(summary.promptPreview, /thin docs: cron missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
+  assert.match(summary.promptPreview, /thin docs: cron sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
 });
 
 test('buildSummary keeps skill docs with mismatched fence markers thin until a matching fence really closes', () => {
@@ -2370,7 +2370,7 @@ test('buildSummary keeps skill docs with mismatched fence markers thin until a m
   assert.deepEqual(summary.foundation.core.skills.thinMissingSections, {
     cron: ['what-this-skill-is-for', 'suggested-workflow'],
   });
-  assert.match(summary.promptPreview, /thin docs: cron missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
+  assert.match(summary.promptPreview, /thin docs: cron sections 0\/2 ready, missing what-this-skill-is-for, suggested-workflow @ skills\/cron\/SKILL\.md/);
   assert.doesNotMatch(summary.promptPreview, /Example template only/);
 });
 
