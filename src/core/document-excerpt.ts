@@ -144,9 +144,19 @@ function normalizeSetextHeadings(lines: string[]): string[] {
   return normalizedLines;
 }
 
+function stripLeadingBlockquotePrefix(line: string): string {
+  return line.replace(/^\s*(?:>\s*)+/, '');
+}
+
 export function collectVisibleDocumentLines(document: unknown): string[] {
   const normalizedDocument = normalizeDocument(document);
-  return normalizeSetextHeadings(filterOutsideMarkdownFences(normalizedDocument.split(/\r?\n/)));
+  return normalizeSetextHeadings(
+    filterOutsideMarkdownFences(
+      normalizedDocument
+        .split(/\r?\n/)
+        .map((line) => stripLeadingBlockquotePrefix(line)),
+    ),
+  );
 }
 
 export function findDocumentExcerpt(document: unknown): string | null {
@@ -157,14 +167,14 @@ export function findDocumentExcerpt(document: unknown): string | null {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const bodyLines = normalizedDocument.startsWith('---')
+  const body = normalizedDocument.startsWith('---')
     ? (() => {
         const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+        return closingIndex >= 0 ? lines.slice(closingIndex + 2).join('\n') : normalizedDocument;
       })()
-    : lines;
+    : normalizedDocument;
 
-  return normalizeSetextHeadings(filterOutsideMarkdownFences(bodyLines))
+  return collectVisibleDocumentLines(body)
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---') ?? null;
 }

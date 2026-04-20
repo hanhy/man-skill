@@ -225,6 +225,22 @@ test('voice profile parses setext headings inside structured sections', () => {
   });
 });
 
+test('voice profile parses blockquoted structured sections without leaking quote markers into the tone', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n> ## Tone\n> Warm and grounded.\n>\n> ## Signature moves\n> - Use crisp examples.\n> - Close with a concrete next step.\n>\n> ## Avoid\n> - Never pad the answer.\n>\n> ## Language hints\n> - Preserve bilingual phrasing when the source material switches languages.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples.', 'Close with a concrete next step.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 2,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile uses frontmatter description as the default tone instead of YAML metadata lines', () => {
   const voice = VoiceProfile.fromDocument(`---
 name: ManSkill voice
@@ -608,6 +624,24 @@ test('soul profile parses setext headings inside structured sections', () => {
   });
 });
 
+test('soul profile parses blockquoted structured sections without leaking quote markers into the excerpt', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\n> ## Core truths\n> Stay faithful to the source material.\n> Prefer verified slices over big rewrites.\n>\n> ## Boundaries\n> - Do not bluff certainty.\n>\n> ## Vibe\n> - Grounded and direct.\n>\n> ## Continuity\n> - Carry durable lessons forward.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Stay faithful to the source material.',
+    coreTruths: ['Stay faithful to the source material.', 'Prefer verified slices over big rewrites.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile ignores untouched starter-template guidance bullets', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n`);
 
@@ -624,6 +658,41 @@ test('soul profile ignores untouched starter-template guidance bullets', () => {
     sectionCount: 0,
     hasGuidance: false,
   });
+});
+
+test('buildSummary treats blockquoted soul and voice docs as structured foundation guidance', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver verified slices.\n\n## Suggested workflow\n- Run the smallest validating loop first.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n> ## Core truths\n> Stay faithful.\n>\n> ## Boundaries\n> - Do not bluff certainty.\n>\n> ## Vibe\n> - Grounded and direct.\n>\n> ## Continuity\n> - Carry durable lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n> ## Tone\n> Warm and grounded.\n>\n> ## Signature moves\n> - Use crisp examples.\n>\n> ## Avoid\n> - Never pad the answer.\n>\n> ## Language hints\n> - Preserve bilingual phrasing when the source material switches languages.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.soul.structured, true);
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Stay faithful.');
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.equal(summary.foundation.core.voice.structured, true);
+  assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.match(summary.promptPreview, /- soul: present, 4 lines, Stay faithful\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
+  assert.match(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.doesNotMatch(summary.promptPreview, />\s*## Tone/);
+  assert.doesNotMatch(summary.promptPreview, />\s*## Core truths/);
 });
 
 test('buildSummary carries the richer foundation layer summaries at top level', () => {
