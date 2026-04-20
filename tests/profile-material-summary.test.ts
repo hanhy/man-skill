@@ -975,33 +975,102 @@ test('PromptAssembler preserves queued core-foundation root section counts when 
         missingAreaCount: 0,
         thinAreaCount: 1,
         recommendedArea: 'skills',
-        recommendedStatus: 'thin',
-        recommendedSummary: '1 registered, 1 documented, root 1/2 sections ready, missing layout',
         recommendedAction: 'add missing sections to skills/README.md: layout',
-        recommendedCommand: "node -e 'repair skills root'",
+        recommendedCommand: 'python scripts/repair-skills-root.py',
         recommendedPaths: ['skills/README.md'],
-        helperCommands: {
-          skills: "node -e 'repair skills root'",
-        },
+        helperCommands: {},
         queuedAreas: [
           {
             area: 'skills',
             status: 'thin',
-            summary: '1 registered, 1 documented, root 1/2 sections ready, missing layout',
+            summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
             action: 'add missing sections to skills/README.md: layout',
             paths: ['skills/README.md'],
-            thinPaths: ['skills/README.md'],
             rootThinMissingSections: ['layout'],
             rootThinReadySectionCount: 1,
             rootThinTotalSectionCount: 2,
-            command: "node -e 'repair skills root'",
+            command: 'python scripts/repair-skills-root.py',
           },
         ],
       },
     },
   }).buildPreview(4000);
 
-  assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command node -e 'repair skills root'/);
+  assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command python scripts\/repair-skills-root\.py/);
+});
+
+test('PromptAssembler keeps compact ready core foundation details when section counts can be derived from arrays', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 1,
+        readyBucketCount: 3,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term', 'scratch'],
+        emptyBuckets: [],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json', 'scratch/draft.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here', 'layout'],
+        rootMissingSections: [],
+        count: 2,
+        documentedCount: 2,
+        sample: ['slack', 'telegram'],
+        samplePaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        lineCount: 4,
+        excerpt: 'Stay grounded.',
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        lineCount: 4,
+        excerpt: 'Stay direct.',
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+      },
+      overview: {
+        readyAreaCount: 4,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 4,
+        missingAreaCount: 0,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2; skills docs 2\/2 \(slack, telegram\), root sections 2\/2; soul sections 4\/4; voice sections 4\/4/);
+  assert.doesNotMatch(prompt, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
 test('PromptAssembler preserves thin skill doc section counts when only aggregate counts are available', () => {

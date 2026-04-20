@@ -1528,25 +1528,74 @@ function buildReadyCoreFoundationDetails(
   const skillSample = Array.isArray(skills.sample)
     ? skills.sample.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const resolveSectionProgress = (
+    readySections: string[] | undefined,
+    missingSections: string[] | undefined,
+    readySectionCount?: number,
+    totalSectionCount?: number,
+  ) => {
+    const normalizedReadySections = Array.isArray(readySections)
+      ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const normalizedMissingSections = Array.isArray(missingSections)
+      ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const resolvedReadySectionCount = typeof readySectionCount === 'number'
+      ? readySectionCount
+      : normalizedReadySections.length;
+    const resolvedTotalSectionCount = typeof totalSectionCount === 'number'
+      ? totalSectionCount
+      : normalizedReadySections.length + normalizedMissingSections.length;
+
+    if (resolvedTotalSectionCount === 0) {
+      return null;
+    }
+
+    return {
+      readySectionCount: resolvedReadySectionCount,
+      totalSectionCount: resolvedTotalSectionCount,
+    };
+  };
+
+  const memoryRootProgress = resolveSectionProgress(
+    memory.rootReadySections,
+    memory.rootMissingSections,
+    memory.rootReadySectionCount,
+    memory.rootTotalSectionCount,
+  );
+  const skillsRootProgress = resolveSectionProgress(
+    skills.rootReadySections,
+    skills.rootMissingSections,
+    skills.rootReadySectionCount,
+    skills.rootTotalSectionCount,
+  );
+  const soulProgress = resolveSectionProgress(
+    soul.readySections,
+    soul.missingSections,
+    soul.readySectionCount,
+    soul.totalSectionCount,
+  );
+  const voiceProgress = resolveSectionProgress(
+    voice.readySections,
+    voice.missingSections,
+    voice.readySectionCount,
+    voice.totalSectionCount,
+  );
 
   if (
     typeof memory.readyBucketCount !== 'number'
     || typeof memory.totalBucketCount !== 'number'
-    || typeof memory.rootReadySectionCount !== 'number'
-    || typeof memory.rootTotalSectionCount !== 'number'
     || typeof skills.documentedCount !== 'number'
     || typeof skills.count !== 'number'
-    || typeof skills.rootReadySectionCount !== 'number'
-    || typeof skills.rootTotalSectionCount !== 'number'
-    || typeof soul.readySectionCount !== 'number'
-    || typeof soul.totalSectionCount !== 'number'
-    || typeof voice.readySectionCount !== 'number'
-    || typeof voice.totalSectionCount !== 'number'
+    || !memoryRootProgress
+    || !skillsRootProgress
+    || !soulProgress
+    || !voiceProgress
   ) {
     return null;
   }
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, root sections ${memory.rootReadySectionCount}/${memory.rootTotalSectionCount}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, root sections ${skills.rootReadySectionCount}/${skills.rootTotalSectionCount}; soul sections ${soul.readySectionCount}/${soul.totalSectionCount}; voice sections ${voice.readySectionCount}/${voice.totalSectionCount}`;
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, root sections ${memoryRootProgress.readySectionCount}/${memoryRootProgress.totalSectionCount}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, root sections ${skillsRootProgress.readySectionCount}/${skillsRootProgress.totalSectionCount}; soul sections ${soulProgress.readySectionCount}/${soulProgress.totalSectionCount}; voice sections ${voiceProgress.readySectionCount}/${voiceProgress.totalSectionCount}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
