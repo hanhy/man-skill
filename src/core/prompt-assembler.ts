@@ -1677,8 +1677,13 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const remainingQueuedAreas = queuedAreas.slice(2);
   const remainingQueuedAreaSummary = remainingQueuedAreas.length > 0
     ? `- +${remainingQueuedAreas.length} more queued: ${remainingQueuedAreas.map((area) => {
-      const summary = typeof area.summary === 'string' && area.summary.length > 0
-        ? ` (${area.summary})`
+      const sectionContext = formatQueuedAreaSectionContext(area).replace(/^;\s*/, '');
+      const detailParts = [
+        typeof area.summary === 'string' && area.summary.length > 0 ? area.summary : null,
+        sectionContext.length > 0 ? sectionContext : null,
+      ].filter((value): value is string => Boolean(value));
+      const summary = detailParts.length > 0
+        ? ` (${detailParts.join('; ')})`
         : '';
       return `${area.area ?? 'foundation'} [${area.status ?? 'unknown'}]${summary}`;
     }).join(', ')}`

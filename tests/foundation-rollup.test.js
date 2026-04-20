@@ -1234,6 +1234,25 @@ test('buildSummary surfaces soul and voice section context on thin document queu
   assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context root sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
 });
 
+test('buildSummary compact queued-area remainder keeps root section context for hidden thin soul and voice docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Warm and grounded.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
+  assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 1 lines, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; context root sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity\), voice \[thin\] \(present, 1 lines, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; context root sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints\)/);
+});
+
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {
   const rootDir = makeTempRepo();
 
