@@ -139,6 +139,70 @@ test('buildIngestionSummary exposes a per-profile foundation refresh bundle for 
   );
 });
 
+test('buildIngestionSummary keeps ready metadata-only imports on the non-refresh stale helper even when an exact bundle exists', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: 'alpha-ready',
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: 'Alpha Ready',
+        summary: 'Starter intake is ready to import.',
+      },
+      intake: {
+        ready: true,
+        completion: 'ready',
+        importsDir: 'profiles/alpha-ready/imports',
+        intakeReadmePath: 'profiles/alpha-ready/imports/README.md',
+        starterManifestPath: 'profiles/alpha-ready/imports/materials.template.json',
+        sampleTextPath: 'profiles/alpha-ready/imports/sample.txt',
+        missingPaths: [],
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+    {
+      id: 'beta-ready',
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: 'Beta Ready',
+        summary: 'Another ready starter intake.',
+      },
+      intake: {
+        ready: true,
+        completion: 'ready',
+        importsDir: 'profiles/beta-ready/imports',
+        intakeReadmePath: 'profiles/beta-ready/imports/README.md',
+        starterManifestPath: 'profiles/beta-ready/imports/materials.template.json',
+        sampleTextPath: 'profiles/beta-ready/imports/sample.txt',
+        missingPaths: [],
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+  ]);
+
+  assert.equal(
+    summary.helperCommands.importIntakeBundle,
+    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+  );
+  assert.equal(summary.recommendedAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
+  assert.equal(summary.recommendedCommand, 'node src/index.js import intake --stale');
+  assert.deepEqual(summary.recommendedPaths, [
+    'profiles/alpha-ready/imports/materials.template.json',
+    'profiles/alpha-ready/imports/sample.txt',
+    'profiles/beta-ready/imports/materials.template.json',
+    'profiles/beta-ready/imports/sample.txt',
+  ]);
+});
+
 test('buildIngestionSummary carries section-aware draft gap summaries onto stale imported profile commands', () => {
   const summary = buildTsIngestionSummary([
     {
