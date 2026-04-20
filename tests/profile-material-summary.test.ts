@@ -139,7 +139,7 @@ test('buildIngestionSummary exposes a per-profile foundation refresh bundle for 
   );
 });
 
-test('buildIngestionSummary keeps ready metadata-only imports on the non-refresh stale helper even when an exact bundle exists', () => {
+test('buildIngestionSummary prefers the exact ready-intake bundle over the coarse stale helper when multiple metadata-only imports are ready', () => {
   const summary = buildTsIngestionSummary([
     {
       id: 'alpha-ready',
@@ -194,7 +194,10 @@ test('buildIngestionSummary keeps ready metadata-only imports on the non-refresh
     "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
   );
   assert.equal(summary.recommendedAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
-  assert.equal(summary.recommendedCommand, 'node src/index.js import intake --stale');
+  assert.equal(
+    summary.recommendedCommand,
+    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+  );
   assert.deepEqual(summary.recommendedPaths, [
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/alpha-ready/imports/sample.txt',

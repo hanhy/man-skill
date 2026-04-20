@@ -1046,7 +1046,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           ? `import source materials for ${recommendedLabel}`
           : 'import source materials for ready intake profiles');
       recommendedCommand = readyIntakeProfiles.length > 1
-        ? (helperCommands.importIntakeStale ?? helperCommands.importIntakeBundle ?? helperCommands.importIntakeAll ?? firstReadyIntakeProfile?.importIntakeCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? null)
+        ? (helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? firstReadyIntakeProfile?.importIntakeCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? null)
         : (firstReadyIntakeProfile?.importMaterialCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? firstReadyIntakeProfile?.importIntakeCommand ?? helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? null);
       recommendedPaths = readyIntakeProfiles.length > 1
         ? readyIntakeProfiles.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))

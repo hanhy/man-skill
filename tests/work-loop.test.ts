@@ -1663,7 +1663,7 @@ test('buildSummary work loop includes manifest-backed file assets when a ready i
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
 });
 
-test('buildSummary work loop prefers the non-refresh stale intake helper when multiple metadata-only profiles are ready', () => {
+test('buildSummary work loop prefers the exact ready-intake bundle when multiple metadata-only profiles are ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
 
@@ -1710,7 +1710,10 @@ test('buildSummary work loop prefers the non-refresh stale intake helper when mu
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle,
     "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
   );
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js import intake --stale');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+  );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/alpha-ready/imports/materials.template.json',
     'profiles/alpha-ready/imports/sample.txt',
@@ -1719,7 +1722,10 @@ test('buildSummary work loop prefers the non-refresh stale intake helper when mu
     'profiles/beta-ready/imports/beta-shot.png',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import intake --stale/);
+  assert.match(
+    summary.promptPreview,
+    /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/,
+  );
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
