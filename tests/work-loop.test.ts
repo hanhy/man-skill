@@ -323,6 +323,41 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: keep the memory \+ skills foundation explicit before more rollout work \| keep metadata-only intake refreshes obvious for imported profiles \| stage Slack after Telegram stays runtime-ready \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
 });
 
+test('buildSummary loads work-loop objectives from blockquoted USER.md current product direction headings and list items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '> ## Current product direction',
+      '>',
+      '> 1. keep blockquoted foundation priorities visible',
+      '> 2. keep blockquoted intake reruns explicit for imported profiles',
+      '> 3. stage Feishu after the core channels stay runtime-ready',
+      '> 4. validate GLM after the primary provider adapters stay green',
+      '',
+      '> ## Usage notes',
+      '>',
+      '> Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep blockquoted foundation priorities visible',
+    'keep blockquoted intake reruns explicit for imported profiles',
+    'stage Feishu after the core channels stay runtime-ready',
+    'validate GLM after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep blockquoted foundation priorities visible \| keep blockquoted intake reruns explicit for imported profiles \| stage Feishu after the core channels stay runtime-ready \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
 test('buildSummary loads work-loop objectives from USER.md when the current product direction heading is nested and uses parenthesized numbering', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
