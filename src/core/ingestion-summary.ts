@@ -15,6 +15,10 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
+function shellQuoteArgument(value) {
+  return /^[A-Za-z0-9._-]+$/.test(String(value)) ? String(value) : shellQuote(value);
+}
+
 function slugifyPersonId(value: string) {
   return value
     .trim()
@@ -125,6 +129,7 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
   }
 
   const normalizedProfileId = profileId.trim();
+  const quotedProfileId = shellQuoteArgument(normalizedProfileId);
   const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
     ? options.sampleTextPath
     : null;
@@ -166,14 +171,14 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
   return {
     text: runnableSampleCommandByType.text
       ?? (runnableTextPath
-        ? `node src/index.js import text --person ${normalizedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
-        : `node src/index.js import text --person ${normalizedProfileId} --file <sample.txt> --refresh-foundation`),
+        ? `node src/index.js import text --person ${quotedProfileId} --file ${shellQuote(runnableTextPath)} --refresh-foundation`
+        : `node src/index.js import text --person ${quotedProfileId} --file <sample.txt> --refresh-foundation`),
     message: runnableSampleCommandByType.message
-      ?? `node src/index.js import message --person ${normalizedProfileId} --text <message> --refresh-foundation`,
+      ?? `node src/index.js import message --person ${quotedProfileId} --text <message> --refresh-foundation`,
     talk: runnableSampleCommandByType.talk
-      ?? `node src/index.js import talk --person ${normalizedProfileId} --text <snippet> --refresh-foundation`,
+      ?? `node src/index.js import talk --person ${quotedProfileId} --text <snippet> --refresh-foundation`,
     screenshot: runnableSampleCommandByType.screenshot
-      ?? `node src/index.js import screenshot --person ${normalizedProfileId} --file <image.png> --refresh-foundation`,
+      ?? `node src/index.js import screenshot --person ${quotedProfileId} --file <image.png> --refresh-foundation`,
   };
 }
 
@@ -286,7 +291,7 @@ function normalizeSampleTextSummary(sampleTextPath, sampleManifest) {
     present: Boolean(selectedPath),
     personId: samplePersonId,
     command: selectedPath && samplePersonId
-      ? `node src/index.js import text --person ${samplePersonId} --file ${shellQuote(selectedPath)} --refresh-foundation`
+      ? `node src/index.js import text --person ${shellQuoteArgument(samplePersonId)} --file ${shellQuote(selectedPath)} --refresh-foundation`
       : null,
   };
 }
@@ -309,7 +314,7 @@ function buildSampleFileCommand(entry) {
     path: filePath,
     personId,
     sourcePath,
-    command: `node src/index.js import ${type} --person ${personId} --file ${shellQuote(filePath)} --refresh-foundation`,
+    command: `node src/index.js import ${type} --person ${shellQuoteArgument(personId)} --file ${shellQuote(filePath)} --refresh-foundation`,
   };
 }
 
@@ -331,7 +336,7 @@ function buildSampleInlineCommand(entry) {
     text,
     personId,
     sourcePath,
-    command: `node src/index.js import ${type} --person ${personId} --text ${shellQuote(text)} --refresh-foundation`,
+    command: `node src/index.js import ${type} --person ${shellQuoteArgument(personId)} --text ${shellQuote(text)} --refresh-foundation`,
   };
 }
 

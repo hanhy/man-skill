@@ -203,6 +203,80 @@ test('buildIngestionSummary keeps ready metadata-only imports on the non-refresh
   ]);
 });
 
+test('buildIngestionSummary shell-quotes sample import commands when person ids contain spaces and apostrophes', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: "o'brien lane",
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: "O'Brien Lane",
+        summary: 'Profile scaffold without imported materials yet.',
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+  ], {
+    sampleManifestPath: 'samples/o-brien lane materials.json',
+    sampleManifest: {
+      status: 'loaded',
+      entryCount: 2,
+      profileIds: ["o'brien lane"],
+      profileLabels: ["O'Brien Lane (o'brien lane)"],
+      filePaths: ['samples/o brien note.txt'],
+      materialTypes: { message: 1, text: 1 },
+      textFilePersonIds: {
+        'samples/o brien note.txt': "o'brien lane",
+      },
+      fileEntries: [
+        {
+          type: 'text',
+          filePath: 'samples/o brien note.txt',
+          personId: "o'brien lane",
+        },
+      ],
+      inlineEntries: [
+        {
+          type: 'message',
+          text: "Don't drop the quote.",
+          personId: "o'brien lane",
+        },
+      ],
+      error: null,
+    },
+    sampleTextPath: 'samples/o brien note.txt',
+  });
+
+  assert.equal(summary.sampleTextPersonId, "o'brien lane");
+  assert.equal(summary.sampleTextCommand, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
+  assert.deepEqual(summary.sampleFileCommands, [
+    {
+      type: 'text',
+      path: 'samples/o brien note.txt',
+      personId: "o'brien lane",
+      sourcePath: 'samples/o-brien lane materials.json',
+      command: "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation",
+    },
+  ]);
+  assert.deepEqual(summary.sampleInlineCommands, [
+    {
+      type: 'message',
+      text: "Don't drop the quote.",
+      personId: "o'brien lane",
+      sourcePath: 'samples/o-brien lane materials.json',
+      command: "node src/index.js import message --person 'o'\"'\"'brien lane' --text 'Don'\"'\"'t drop the quote.' --refresh-foundation",
+    },
+  ]);
+  assert.equal(summary.metadataProfileCommands[0]?.importCommands?.text, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.importCommands?.message, "node src/index.js import message --person 'o'\"'\"'brien lane' --text 'Don'\"'\"'t drop the quote.' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.helperCommands?.directImports?.text, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.helperCommands?.directImports?.message, "node src/index.js import message --person 'o'\"'\"'brien lane' --text 'Don'\"'\"'t drop the quote.' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.importMaterialCommand, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
+});
+
 test('buildIngestionSummary carries section-aware draft gap summaries onto stale imported profile commands', () => {
   const summary = buildTsIngestionSummary([
     {
