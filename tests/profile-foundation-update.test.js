@@ -607,10 +607,7 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-ready', 'voice', 'README.md')), false);
 });
 
-test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests without refreshing foundation drafts by default', () => {
-  const rootDir = makeTempRepo();
-  const ingestion = new MaterialIngestion(rootDir);
-
+function seedReadyStaleIntakeFixture(rootDir, ingestion) {
   ingestion.scaffoldProfileIntake({
     personId: 'Alpha Ready',
     displayName: 'Alpha Ready',
@@ -652,6 +649,13 @@ test('CLI import intake --stale loads only ready metadata-only profile-local sta
       entries: [{ type: 'message', text: 'Beta keeps it terse.' }],
     }, null, 2),
   );
+}
+
+test('CLI import intake --stale loads only ready metadata-only profile-local starter manifests without refreshing foundation drafts by default', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  seedReadyStaleIntakeFixture(rootDir, ingestion);
 
   const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--stale'], {
     cwd: rootDir,
@@ -671,6 +675,31 @@ test('CLI import intake --stale loads only ready metadata-only profile-local sta
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), false);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), false);
   assert.equal(result.results.some((entry) => entry.profileIds.includes('imported-already')), false);
+});
+
+test('CLI import intake --stale refreshes foundation drafts when --refresh-foundation is passed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  seedReadyStaleIntakeFixture(rootDir, ingestion);
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--stale', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 2);
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['alpha-ready', 'beta-ready']);
+  assert.equal(result.foundationRefresh.profileCount, 2);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['alpha-ready', 'beta-ready']);
+  assert.match(result.foundationRefresh.results[0].voiceDraftPath, /profiles\/alpha-ready\/voice\/README\.md$/);
+  assert.match(result.foundationRefresh.results[1].voiceDraftPath, /profiles\/beta-ready\/voice\/README\.md$/);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-already', 'voice', 'README.md')), false);
 });
 
 test('CLI import sample command loads the checked-in sample manifest and refreshes foundation drafts', () => {

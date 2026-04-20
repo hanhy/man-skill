@@ -38,6 +38,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus only the `\.env\.example` path visible/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
+  assert.match(ingestionDoc, /`import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds/i);
+  assert.match(ingestionDoc, /without refreshing derived drafts by default/i);
+  assert.match(ingestionDoc, /re-run the same bulk intake path with `--refresh-foundation` when you want memory \/ voice \/ soul \/ skills drafts regenerated in the same pass/i);
 });
 
 test('checked-in USER current product direction stays aligned with the default work-loop objectives', () => {

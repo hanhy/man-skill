@@ -41,9 +41,10 @@ This shortcut auto-loads `samples/harry-materials.json`, runs the manifest impor
 
 ```bash
 node src/index.js import intake --stale
+node src/index.js import intake --stale --refresh-foundation
 ```
 
-This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete, imports each starter manifest, and refreshes their derived drafts in one pass without re-importing profiles that already have stored materials.
+This bulk path walks metadata-only profiles whose `profiles/<person-id>/imports/materials.template.json` landing zones are already complete and imports each starter manifest without re-importing profiles that already have stored materials. The plain `--stale` path leaves derived drafts alone so you can inspect the imported records first. Re-run the same bulk intake path with `--refresh-foundation` when you want memory / voice / soul / skills drafts regenerated in the same pass.
 
 ### Import every ready profile-local intake manifest only for already-imported profiles
 
@@ -153,7 +154,7 @@ Single-target shorthand is also supported when all entries belong to one person:
 - `file` paths inside the manifest are resolved relative to the manifest file itself
 - `--refresh-foundation` can be used on both one-off `import <type>` commands and `import manifest`
 - `import sample` is a higher-level shortcut that uses the checked-in sample manifest and always refreshes the starter profile's derived drafts; add `--file <manifest.json>` when you want to pick a different checked-in sample explicitly
-- `import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds (that is, profile-local starter manifests whose intake entrance exists and whose manifest is not invalid), so the profile-local entrance can be processed without re-importing profiles that already have stored materials
+- `import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds (that is, profile-local starter manifests whose intake entrance exists and whose manifest is not invalid) without refreshing derived drafts by default, so the profile-local entrance can be processed without re-importing profiles that already have stored materials; re-run the same bulk intake path with `--refresh-foundation` when you want memory / voice / soul / skills drafts regenerated in the same pass
 - manifest imports can span multiple target profiles in one pass
 - manifest import results now also include per-profile summaries with imported material counts/types, the stored display label/summary, `needsRefresh`, sorted `missingDrafts`, and direct follow-up commands for `update profile` and `update foundation`
 - when `import manifest` is paired with `--refresh-foundation`, those per-profile summaries are recomputed after draft generation so freshly imported profiles report `needsRefresh: false` instead of stale pre-refresh status
