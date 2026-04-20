@@ -1554,6 +1554,7 @@ function buildReadyCoreFoundationDetails(
     return {
       readySectionCount: resolvedReadySectionCount,
       totalSectionCount: resolvedTotalSectionCount,
+      readySections: normalizedReadySections,
     };
   };
 
@@ -1595,7 +1596,12 @@ function buildReadyCoreFoundationDetails(
     return null;
   }
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, root sections ${memoryRootProgress.readySectionCount}/${memoryRootProgress.totalSectionCount}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, root sections ${skillsRootProgress.readySectionCount}/${skillsRootProgress.totalSectionCount}; soul sections ${soulProgress.readySectionCount}/${soulProgress.totalSectionCount}; voice sections ${voiceProgress.readySectionCount}/${voiceProgress.totalSectionCount}`;
+  const formatReadySectionSummary = (
+    label: string,
+    progress: { readySectionCount: number; totalSectionCount: number; readySections: string[] },
+  ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}`;
+
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', memoryRootProgress)}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress)}; soul ${formatReadySectionSummary('sections', soulProgress)}; voice ${formatReadySectionSummary('sections', voiceProgress)}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
