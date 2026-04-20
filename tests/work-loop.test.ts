@@ -315,6 +315,41 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: keep the repo foundation guidance explicit before more rollout work \| keep intake updates obvious for partially imported profiles \| land WhatsApp after Slack and Telegram stay stable \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
 });
 
+test('buildSummary loads work-loop objectives from USER.md when the current product direction uses plain bullet items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '- harden the memory + soul handoff before delivery rollout',
+      '- make intake reruns safe for partially imported profiles',
+      '- ship Telegram before the other chat surfaces',
+      '- validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+});
+
 test('buildSummary ignores commented and fenced placeholder objectives in USER.md current product direction', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

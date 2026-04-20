@@ -173,6 +173,11 @@ function parseWorkLoopObjectiveLine(line: string): string | null {
     return taskListMatch[1].trim();
   }
 
+  const plainBulletMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
+  if (plainBulletMatch?.[1]) {
+    return plainBulletMatch[1].trim();
+  }
+
   return null;
 }
 
