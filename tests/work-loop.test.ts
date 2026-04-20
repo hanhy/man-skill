@@ -1681,7 +1681,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop keeps credential bootstrap paths scoped to both the template source and repo-local env target during env copy', () => {
+test('buildSummary work loop keeps credential bootstrap paths scoped to the template source during env copy', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1711,19 +1711,21 @@ test('buildSummary work loop keeps credential bootstrap paths scoped to both the
   });
 
   const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
+  assert.match(workLoopBlock, /paths: \.env\.example/);
+  assert.doesNotMatch(workLoopBlock, /paths: .*\.env(?:,|$)/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
 });
 
-test('buildSummary work loop drops stale implementation follow-ups while keeping env bootstrap paths scoped to both source and target once checked-in delivery modules are runtime-ready', () => {
+test('buildSummary work loop drops stale implementation follow-ups while keeping env bootstrap paths scoped to the template source once checked-in delivery modules are runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1762,6 +1764,7 @@ test('buildSummary work loop drops stale implementation follow-ups while keeping
   });
 
   const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
 
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
@@ -1769,13 +1772,14 @@ test('buildSummary work loop drops stale implementation follow-ups while keeping
   assert.equal(summary.workLoop.priorities[2].status, 'blocked');
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
-  assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
+  assert.match(workLoopBlock, /paths: \.env\.example/);
+  assert.doesNotMatch(workLoopBlock, /paths: .*\.env(?:,|$)/);
   assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
 });
 
