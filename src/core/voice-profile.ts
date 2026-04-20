@@ -49,11 +49,13 @@ function parseStructuredHeading(line: string): { level: number; text: string } |
   };
 }
 
+const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+
 function cleanVoiceLine(value: string) {
   return normalizeAdmonitionLine(
     value
       .trim()
-      .replace(/^(?:[-*]|\d+\.)\s+/, '')
+      .replace(LIST_MARKER_PATTERN, '')
       .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
       .trim(),
   ).trim();
@@ -176,7 +178,7 @@ export class VoiceProfile {
         return;
       }
 
-      if (isListSection(currentSection) && !/^(?:[-*]|\d+\.)\s+/.test(line) && currentSectionHasContent) {
+      if (isListSection(currentSection) && !LIST_MARKER_PATTERN.test(line) && currentSectionHasContent) {
         currentSection = null;
         currentSectionHasContent = false;
         return;

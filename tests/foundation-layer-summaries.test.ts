@@ -223,7 +223,7 @@ test('voice profile accepts prose lines inside signature, avoid, and language hi
 });
 
 test('voice profile strips numbered list markers inside structured sections', () => {
-  const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n1. Use crisp examples.\n2. Close with a concrete next step.\n\n## Avoid\n1. Never pad the answer.\n\n## Language hints\n1. Preserve bilingual phrasing when the source material switches languages.\n`);
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n1. Use crisp examples.\n2) Close with a concrete next step.\n\n## Avoid\n1) Never pad the answer.\n\n## Language hints\n1) Preserve bilingual phrasing when the source material switches languages.\n`);
 
   assert.deepEqual(voice.summary(), {
     tone: 'Warm and grounded.',
@@ -734,7 +734,7 @@ Description: Keep the operating posture grounded.
 });
 
 test('soul profile strips numbered list markers inside structured sections', () => {
-  const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\n1. Stay faithful to the source material.\n2. Prefer verified slices over big rewrites.\n\n## Boundaries\n1. Do not bluff certainty.\n\n## Vibe\n1. Grounded and direct.\n\n## Continuity\n1. Carry durable lessons forward.\n`);
+  const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\n1. Stay faithful to the source material.\n2) Prefer verified slices over big rewrites.\n\n## Boundaries\n1) Do not bluff certainty.\n\n## Vibe\n1) Grounded and direct.\n\n## Continuity\n1) Carry durable lessons forward.\n`);
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Durable posture.',

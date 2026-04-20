@@ -68,11 +68,13 @@ function mapSoulHeadingToSection(heading: string): SoulSection {
   }
 }
 
+const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+
 function cleanSoulLine(value: string) {
   return normalizeAdmonitionLine(
     value
       .trim()
-      .replace(/^(?:[-*]|\d+\.)\s+/, '')
+      .replace(LIST_MARKER_PATTERN, '')
       .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
       .trim(),
   ).trim();
