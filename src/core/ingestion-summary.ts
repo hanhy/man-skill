@@ -837,6 +837,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
   const bootstrapProfileCommand = 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"';
   const importedIntakeScaffoldCommand = 'node src/index.js update intake --imported';
+  const importedIntakeImportCommand = 'node src/index.js import intake --imported';
+  const importedIntakeImportAndRefreshCommand = 'node src/index.js import intake --imported --refresh-foundation';
   const helperCommands = {
     bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
@@ -863,7 +865,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: 'node src/index.js import intake --all',
     importIntakeStale: 'node src/index.js import intake --stale',
-    importIntakeImported: 'node src/index.js import intake --imported --refresh-foundation',
+    importIntakeImported: importedIntakeImportCommand,
+    importIntakeImportedAndRefresh: importedIntakeImportAndRefreshCommand,
     importIntakeBundle: buildCommandBundle(
       metadataProfileCommands
         .filter((profile) => profile?.intakeReady === true)
@@ -1124,7 +1127,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeStaleProfileCount,
     intakeImportAllCommand: 'node src/index.js import intake --all',
     intakeImportStaleCommand: 'node src/index.js import intake --stale',
-    intakeImportImportedCommand: 'node src/index.js import intake --imported --refresh-foundation',
+    intakeImportImportedCommand: importedIntakeImportCommand,
+    intakeImportImportedAndRefreshCommand: importedIntakeImportAndRefreshCommand,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand,
     intakeAllCommand: 'node src/index.js update intake --all',

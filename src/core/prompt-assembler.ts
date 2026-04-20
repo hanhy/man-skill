@@ -472,6 +472,7 @@ type IngestionHelperCommands = {
   importIntakeAll?: string | null;
   importIntakeStale?: string | null;
   importIntakeImported?: string | null;
+  importIntakeImportedAndRefresh?: string | null;
   importIntakeBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
@@ -506,6 +507,7 @@ type IngestionSummary = {
   bootstrapProfileCommand?: string | null;
   intakeImportedCommand?: string | null;
   intakeImportImportedCommand?: string | null;
+  intakeImportImportedAndRefreshCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
@@ -1271,6 +1273,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.repairImportedInvalidBundle
       || helperCommands.importIntakeStale
       || helperCommands.importIntakeImported
+      || helperCommands.importIntakeImportedAndRefresh
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || helperCommands.refreshFoundationBundle
@@ -1341,6 +1344,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
+      pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);

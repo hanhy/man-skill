@@ -575,7 +575,7 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'gamma-missing', 'voice', 'README.md')), false);
 });
 
-test('CLI import intake --imported reruns only ready already-imported profile-local starter manifests', () => {
+test('CLI import intake --imported reruns only ready already-imported profile-local starter manifests without refreshing drafts by default', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -611,7 +611,7 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported', '--refresh-foundation'], {
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
@@ -621,9 +621,10 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
   assert.equal(result.profileCount, 1);
   assert.equal(result.entryCount, 1);
   assert.deepEqual(result.profileIds, ['imported-ready']);
+  assert.equal(result.foundationRefresh ?? null, null);
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0].manifestFile, 'profiles/imported-ready/imports/materials.template.json');
-  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-ready', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-ready', 'voice', 'README.md')), false);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-ready', 'voice', 'README.md')), false);
 });
 
@@ -955,7 +956,7 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
         /Examples:/,
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
         /\n  node src\/index\.js import intake --stale\n/,
-        /\n  node src\/index\.js import intake --imported --refresh-foundation\n/,
+        /\n  node src\/index\.js import intake --imported\n/,
         /\n  node src\/index\.js import intake --all(?:\n|$)/,
       ],
     },

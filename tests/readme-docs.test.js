@@ -52,6 +52,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /`import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds/i);
   assert.match(ingestionDoc, /without refreshing derived drafts by default/i);
   assert.match(ingestionDoc, /re-run the same bulk intake path with `--refresh-foundation` when you want memory \/ voice \/ soul \/ skills drafts regenerated in the same pass/i);
+  assert.match(ingestionDoc, /plain `import intake --imported` path leaves derived drafts alone so you can inspect the replayed materials first/i);
+  assert.match(ingestionDoc, /add `--refresh-foundation` when you want the same pass to regenerate memory \/ voice \/ soul \/ skills drafts too/i);
   assert.match(ingestionDoc, /repair-invalid-bundle/i);
   assert.match(ingestionDoc, /repair-imported-invalid-bundle/i);
   assert.match(ingestionDoc, /sample-message/i);
