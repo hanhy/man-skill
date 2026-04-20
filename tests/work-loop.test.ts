@@ -174,8 +174,8 @@ test('buildSummary work loop keeps foundation current when soul and voice docs o
   assert.match(summary.workLoop.currentPriority.nextAction ?? '', /repair thin core foundation areas — starting with add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity/);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 2\/4 ready \(2 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity @ SOUL\.md; context root sections 0\/4 ready, missing core-truths, boundaries, vibe, continuity/);
-  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: tone, signature-moves, avoid, language-hints @ voice\/README\.md; context root sections 0\/4 ready, missing tone, signature-moves, avoid, language-hints/);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity @ SOUL\.md; context sections 0\/4 ready, missing core-truths, boundaries, vibe, continuity/);
+  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: tone, signature-moves, avoid, language-hints @ voice\/README\.md; context sections 0\/4 ready, missing tone, signature-moves, avoid, language-hints/);
   assert.doesNotMatch(summary.promptPreview, /current: Ingestion \[queued\]/);
 });
 

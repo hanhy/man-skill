@@ -1214,6 +1214,117 @@ test('PromptAssembler preserves queued core-foundation root section counts when 
   assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command python scripts\/repair-skills-root\.py/);
 });
 
+test('PromptAssembler labels queued soul and voice section context without a misleading root prefix', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 1,
+        readyBucketCount: 3,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term', 'scratch'],
+        emptyBuckets: [],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json', 'scratch/draft.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here', 'layout'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        count: 1,
+        documentedCount: 1,
+        sample: ['slack'],
+        samplePaths: ['skills/slack/SKILL.md'],
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        lineCount: 1,
+        excerpt: 'Stay grounded.',
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: ['core-truths'],
+        missingSections: ['boundaries', 'vibe', 'continuity'],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        lineCount: 1,
+        excerpt: 'Stay direct.',
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: ['tone'],
+        missingSections: ['signature-moves', 'avoid', 'language-hints'],
+      },
+      overview: {
+        readyAreaCount: 2,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: ['soul', 'voice'],
+        recommendedActions: ['add missing sections to SOUL.md: boundaries, vibe, continuity'],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 2,
+        missingAreaCount: 0,
+        thinAreaCount: 2,
+        recommendedArea: 'soul',
+        recommendedAction: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
+        recommendedCommand: 'python scripts/repair-soul.py',
+        recommendedPaths: ['SOUL.md'],
+        helperCommands: {},
+        queuedAreas: [
+          {
+            area: 'soul',
+            status: 'thin',
+            summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity',
+            action: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
+            paths: ['SOUL.md'],
+            rootThinReadySectionCount: 1,
+            rootThinTotalSectionCount: 4,
+            rootThinReadySections: ['core-truths'],
+            rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
+            command: 'python scripts/repair-soul.py',
+          },
+          {
+            area: 'voice',
+            status: 'thin',
+            summary: 'present, 1 lines, sections 1/4 ready (tone), missing signature-moves, avoid, language-hints',
+            action: 'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
+            paths: ['voice/README.md'],
+            rootThinReadySectionCount: 1,
+            rootThinTotalSectionCount: 4,
+            rootThinReadySections: ['tone'],
+            rootThinMissingSections: ['signature-moves', 'avoid', 'language-hints'],
+            command: 'python scripts/repair-voice.py',
+          },
+        ],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /soul \[thin\]: add missing sections to SOUL\.md: boundaries, vibe, continuity @ SOUL\.md; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; command python scripts\/repair-soul\.py/);
+  assert.match(prompt, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command python scripts\/repair-voice\.py/);
+  assert.doesNotMatch(prompt, /context root sections 1\/4 ready/);
+});
+
 test('PromptAssembler keeps compact ready core foundation details when section counts can be derived from arrays', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

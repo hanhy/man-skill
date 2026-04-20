@@ -1664,7 +1664,8 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
     area.rootThinTotalSectionCount,
   );
   if (rootSummary) {
-    contextParts.push(`root ${rootSummary}`);
+    const rootLabel = area.area === 'soul' || area.area === 'voice' ? '' : 'root ';
+    contextParts.push(`${rootLabel}${rootSummary}`.trim());
   }
 
   const thinSectionPaths = new Set<string>([

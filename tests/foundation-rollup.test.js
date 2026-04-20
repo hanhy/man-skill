@@ -1287,8 +1287,8 @@ test('buildSummary surfaces soul and voice section context on thin document queu
       command: voiceCommand,
     },
   ]);
-  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: boundaries, vibe, continuity @ SOUL\.md; context root sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; command /);
-  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context root sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: boundaries, vibe, continuity @ SOUL\.md; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; command /);
+  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
 });
 
 test('buildSummary compact queued-area remainder keeps root section context for hidden thin soul and voice docs', () => {
@@ -1307,7 +1307,7 @@ test('buildSummary compact queued-area remainder keeps root section context for 
   const summary = buildSummary(rootDir);
 
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
-  assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 1 lines, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; context root sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity\), voice \[thin\] \(present, 1 lines, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; context root sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 1 lines, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity\), voice \[thin\] \(present, 1 lines, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints\)/);
 });
 
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {
