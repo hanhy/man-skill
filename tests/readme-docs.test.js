@@ -35,6 +35,14 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
+  assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
+  assert.match(architectureDoc, /repair-invalid-bundle/i);
+  assert.match(architectureDoc, /repair-imported-invalid-bundle/i);
+  assert.match(architectureDoc, /sample-message/i);
+  assert.match(architectureDoc, /sample-talk/i);
+  assert.match(architectureDoc, /sample-screenshot/i);
+  assert.match(architectureDoc, /update-bundle/i);
+  assert.match(architectureDoc, /sync-bundle/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
@@ -44,6 +52,13 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /`import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds/i);
   assert.match(ingestionDoc, /without refreshing derived drafts by default/i);
   assert.match(ingestionDoc, /re-run the same bulk intake path with `--refresh-foundation` when you want memory \/ voice \/ soul \/ skills drafts regenerated in the same pass/i);
+  assert.match(ingestionDoc, /repair-invalid-bundle/i);
+  assert.match(ingestionDoc, /repair-imported-invalid-bundle/i);
+  assert.match(ingestionDoc, /sample-message/i);
+  assert.match(ingestionDoc, /sample-talk/i);
+  assert.match(ingestionDoc, /sample-screenshot/i);
+  assert.match(ingestionDoc, /update-bundle/i);
+  assert.match(ingestionDoc, /sync-bundle/i);
 });
 
 test('checked-in USER current product direction stays aligned with the default work-loop objectives', () => {
