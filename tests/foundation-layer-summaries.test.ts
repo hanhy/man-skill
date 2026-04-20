@@ -9,6 +9,7 @@ import { MemoryStore } from '../src/core/memory-store.ts';
 import { SkillRegistry } from '../src/core/skill-registry.ts';
 import { SoulProfile } from '../src/core/soul-profile.ts';
 import { VoiceProfile } from '../src/core/voice-profile.ts';
+import { summarizeRootSectionSummary } from '../src/core/foundation-core.ts';
 import { buildSummary } from '../src/index.js';
 
 function makeTempRepo() {
@@ -31,6 +32,18 @@ function seedMinimalRepo(rootDir: string) {
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\nServe faithfully.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
 }
+
+test('summarizeRootSectionSummary preserves count-only root progress without section names', () => {
+  assert.equal(
+    summarizeRootSectionSummary(undefined, ['layout'], 1, 2),
+    ', root 1/2 sections ready, missing layout',
+  );
+  assert.equal(
+    summarizeRootSectionSummary(['what-belongs-here'], undefined, 1, 2),
+    ', root 1/2 sections ready (what-belongs-here)',
+  );
+  assert.equal(summarizeRootSectionSummary(undefined, undefined, 0, 0), '');
+});
 
 test('foundation layer primitives expose readiness-oriented summary metadata', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nLead with fidelity.\n\n## Core truths\n\nKeep the system inspectable.\nPrefer small verified slices.\n\n## Boundaries\n\n- Do not bluff certainty.\n- Do not hide provenance.\n\n## Vibe\n\nGrounded and direct.\n\n## Continuity\n\nCarry durable lessons forward.\n`);

@@ -297,25 +297,49 @@ function collectMemorySampleEntries({
   ];
 }
 
-function summarizeRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined): string {
-  const normalizedReadySections = Array.isArray(readySections) ? readySections : [];
-  const normalizedMissingSections = Array.isArray(missingSections) ? missingSections : [];
-  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+export function summarizeRootSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const resolvedTotalSectionCount = typeof totalSectionCount === 'number'
+    ? totalSectionCount
+    : normalizedReadySections.length + normalizedMissingSections.length;
+  const resolvedReadySectionCount = typeof readySectionCount === 'number'
+    ? readySectionCount
+    : normalizedReadySections.length;
 
-  if (totalSectionCount === 0) {
+  if (resolvedTotalSectionCount === 0) {
     return '';
   }
 
-  return `, root ${normalizedReadySections.length}/${totalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+  return `, root ${resolvedReadySectionCount}/${resolvedTotalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
 function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
-  const rootSectionSummary = summarizeRootSectionSummary(memory.rootReadySections, memory.rootMissingSections);
+  const rootSectionSummary = summarizeRootSectionSummary(
+    memory.rootReadySections,
+    memory.rootMissingSections,
+    memory.rootReadySectionCount,
+    memory.rootTotalSectionCount,
+  );
   return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}${rootSectionSummary}`;
 }
 
 function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
-  const rootSectionSummary = summarizeRootSectionSummary(skills.rootReadySections, skills.rootMissingSections);
+  const rootSectionSummary = summarizeRootSectionSummary(
+    skills.rootReadySections,
+    skills.rootMissingSections,
+    skills.rootReadySectionCount,
+    skills.rootTotalSectionCount,
+  );
   const missingRootSummary = !skills.hasRootDocument && isNonEmptyString(skills.rootPath)
     ? `, root missing @ ${skills.rootPath}`
     : '';
