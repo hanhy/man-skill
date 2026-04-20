@@ -859,6 +859,38 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
+function stripEnvInlineComment(value: string) {
+  let result = '';
+  let quote: 'single' | 'double' | null = null;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+
+    if (character === "'" && quote !== 'double') {
+      quote = quote === 'single' ? null : 'single';
+      result += character;
+      continue;
+    }
+
+    if (character === '"' && quote !== 'single') {
+      quote = quote === 'double' ? null : 'double';
+      result += character;
+      continue;
+    }
+
+    if (character === '#' && quote === null) {
+      const previousCharacter = result[result.length - 1] ?? '';
+      if (result.trim().length === 0 || /\s/.test(previousCharacter)) {
+        break;
+      }
+    }
+
+    result += character;
+  }
+
+  return result.trimEnd();
+}
+
 function stripWrappingQuotes(value: string) {
   const trimmed = value.trim();
   if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
@@ -887,7 +919,7 @@ function readEnvFileValues(envFileAbsolutePath: string): NodeJS.ProcessEnv {
       }
 
       const [, envVar, rawValue] = match;
-      environment[envVar] = stripWrappingQuotes(rawValue);
+      environment[envVar] = stripWrappingQuotes(stripEnvInlineComment(rawValue));
       return environment;
     }, {});
 }

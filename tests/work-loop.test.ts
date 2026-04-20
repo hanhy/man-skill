@@ -2033,6 +2033,122 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.doesNotMatch(workLoopBlock, /- paths:/);
 });
 
+test('buildSummary work loop uses quoted repo-local .env credentials with inline comments before env bootstrap guidance', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=placeholder',
+    'SLACK_SIGNING_SECRET=placeholder',
+    'TELEGRAM_BOT_TOKEN=placeholder',
+    'WHATSAPP_ACCESS_TOKEN=placeholder',
+    'WHATSAPP_PHONE_NUMBER_ID=placeholder',
+    'FEISHU_APP_ID=placeholder',
+    'FEISHU_APP_SECRET=placeholder',
+    'OPENAI_API_KEY=placeholder',
+    'ANTHROPIC_API_KEY=placeholder',
+    'KIMI_API_KEY=placeholder',
+    'MINIMAX_API_KEY=placeholder',
+    'GLM_API_KEY=placeholder',
+    'QWEN_API_KEY=placeholder',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'export SLACK_BOT_TOKEN="repo-slack-token" # copied from vault',
+    "SLACK_SIGNING_SECRET='repo-slack-secret' # copied from vault",
+    'TELEGRAM_BOT_TOKEN=repo-telegram-token # copied from vault',
+    'WHATSAPP_ACCESS_TOKEN=repo-whatsapp-token # copied from vault',
+    'WHATSAPP_PHONE_NUMBER_ID=repo-whatsapp-phone',
+    'FEISHU_APP_ID=repo-feishu-id',
+    'FEISHU_APP_SECRET=repo-feishu-secret # copied from vault',
+    '',
+  ].join('\n'));
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), path.join(rootDir, 'manifests', 'channels.json'));
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), path.join(rootDir, 'manifests', 'providers.json'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.configuredChannelCount, 4);
+    assert.equal(summary.delivery.authBlockedChannelCount, 0);
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.status, 'queued');
+    assert.equal(summary.workLoop.currentPriority.command, null);
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'credentials present');
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json']);
+    assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+    assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
+  } finally {
+    if (typeof originalEnv.SLACK_BOT_TOKEN === 'string') {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    } else {
+      delete process.env.SLACK_BOT_TOKEN;
+    }
+    if (typeof originalEnv.SLACK_SIGNING_SECRET === 'string') {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    } else {
+      delete process.env.SLACK_SIGNING_SECRET;
+    }
+    if (typeof originalEnv.TELEGRAM_BOT_TOKEN === 'string') {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    } else {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    }
+    if (typeof originalEnv.WHATSAPP_ACCESS_TOKEN === 'string') {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    }
+    if (typeof originalEnv.WHATSAPP_PHONE_NUMBER_ID === 'string') {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    }
+    if (typeof originalEnv.FEISHU_APP_ID === 'string') {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    } else {
+      delete process.env.FEISHU_APP_ID;
+    }
+    if (typeof originalEnv.FEISHU_APP_SECRET === 'string') {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    } else {
+      delete process.env.FEISHU_APP_SECRET;
+    }
+  }
+});
+
 test('buildSummary work loop skips env bootstrap once a repo-local .env already exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
