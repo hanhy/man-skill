@@ -95,9 +95,11 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
+  assert.equal(summary.foundation.core.skills.count, 2);
+  assert.deepEqual(summary.skills.skills.map((skill) => skill.id), ['channels/slack', 'cron']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.match(summary.promptPreview, /- memory: .* @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /- skills: .* @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\)/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: cron \[discovered\]: Use when scheduling a reminder or recurring task via the local system cron\/launchd setup for Op…/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; cron \[discovered\]: Use when scheduling a reminder or recurring task via the local system cron\/launchd setup for Op…/);
 });
