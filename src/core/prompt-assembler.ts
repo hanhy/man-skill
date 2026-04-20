@@ -1280,7 +1280,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
-    `- metadata-only intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    `- metadata-only intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} import-ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
     (ingestion.importedProfileCount ?? 0) > 0
       ? `- imported intake: ${ingestion.importedIntakeReadyProfileCount ?? 0} ready, ${ingestion.importedIntakeBackfillProfileCount ?? 0} backfill${(ingestion.importedIntakeBackfillProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.importedInvalidIntakeManifestProfileCount ?? 0} invalid manifest${(ingestion.importedInvalidIntakeManifestProfileCount ?? 0) === 1 ? '' : 's'}`
       : null,

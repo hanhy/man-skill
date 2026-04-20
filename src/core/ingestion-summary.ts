@@ -688,14 +688,6 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const importedProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) > 0);
   const metadataOnlyProfiles = safeProfiles.filter((profile) => (profile?.materialCount ?? 0) <= 0);
   const metadataOnlyProfileCount = metadataOnlyProfiles.length;
-  const metadataOnlyProfilesWithReadyIntake = metadataOnlyProfiles.filter((profile) => profile?.intake?.ready);
-  const metadataOnlyProfilesWithPartialIntake = metadataOnlyProfiles.filter((profile) => profile?.intake?.completion === 'partial');
-  const metadataOnlyProfilesWithMissingIntake = metadataOnlyProfiles.filter((profile) => (profile?.intake?.completion ?? 'missing') === 'missing');
-  const intakeReadyProfileCount = metadataOnlyProfilesWithReadyIntake.length;
-  const intakePartialProfileCount = metadataOnlyProfilesWithPartialIntake.length;
-  const intakeMissingProfileCount = metadataOnlyProfilesWithMissingIntake.length;
-  const intakeScaffoldProfileCount = metadataOnlyProfileCount - intakeReadyProfileCount;
-  const intakeStaleProfileCount = metadataOnlyProfilesWithPartialIntake.length + metadataOnlyProfilesWithMissingIntake.length;
   const sampleManifest = normalizeSampleManifestSummary(options?.sampleManifestPath, options?.sampleManifest);
   const sampleManifestPath = sampleManifest.path;
   const sampleManifestPresent = sampleManifest.present;
@@ -782,6 +774,17 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
   const metadataInvalidIntakeManifestProfiles = metadataProfileCommands
     .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const metadataOnlyProfilesWithImportReadyIntake = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
+  const metadataOnlyProfilesWithPartialIntake = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === false && profile?.intakeCompletion === 'partial');
+  const metadataOnlyProfilesWithMissingIntake = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === false && (profile?.intakeCompletion ?? 'missing') === 'missing');
+  const intakeReadyProfileCount = metadataOnlyProfilesWithImportReadyIntake.length;
+  const intakePartialProfileCount = metadataOnlyProfilesWithPartialIntake.length;
+  const intakeMissingProfileCount = metadataOnlyProfilesWithMissingIntake.length;
+  const intakeScaffoldProfileCount = metadataOnlyProfileCount - intakeReadyProfileCount;
+  const intakeStaleProfileCount = metadataOnlyProfilesWithPartialIntake.length + metadataOnlyProfilesWithMissingIntake.length;
   const orderedProfileCommands = allProfileCommands
     .filter((profile) => {
       const imported = (profile?.materialCount ?? 0) > 0;

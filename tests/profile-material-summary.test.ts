@@ -1979,7 +1979,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 ready, 0 partial, 1 missing/);
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 2 ready, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
@@ -2149,9 +2149,12 @@ test('buildSummary keeps metadata-only profiles with invalid intake manifests vi
   const summary = buildSummary(rootDir);
   const metadataOnly = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
 
+  assert.equal(summary.ingestion.intakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(summary.ingestion.intakeScaffoldProfileCount, 1);
   assert.equal(summary.ingestion.helperCommands?.repairInvalidBundle, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
   assert.match(summary.promptPreview, /repair-invalid-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
@@ -2544,7 +2547,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
 
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 0 total \(0 imported, 0 metadata-only\)/);
-  assert.match(summary.promptPreview, /intake scaffolds: 0 ready, 0 partial, 0 missing/);
+  assert.match(summary.promptPreview, /intake scaffolds: 0 import-ready, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
   assert.match(summary.promptPreview, /next intake: bootstrap a target profile; command node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
