@@ -512,6 +512,51 @@ test('buildSummary accepts starred and plus task-list objectives in USER.md curr
   assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
 });
 
+test('buildSummary ignores commented and fenced current product direction scaffolds in USER.md', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '<!--',
+      '## Current product direction',
+      '1. hidden foundation objective',
+      '2. hidden ingestion objective',
+      '-->',
+      '',
+      '```md',
+      '## Current product direction',
+      '1. fenced delivery objective',
+      '2. fenced provider objective',
+      '```',
+      '',
+      '## Current product direction',
+      '',
+      '- visible foundation objective',
+      '- visible ingestion objective',
+      '',
+      '## Usage notes',
+      '',
+      'Keep this durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'visible foundation objective',
+    'visible ingestion objective',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 3);
+  assert.match(summary.promptPreview, /objectives: visible foundation objective \| visible ingestion objective \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /hidden foundation objective/);
+  assert.doesNotMatch(summary.promptPreview, /fenced delivery objective/);
+});
+
 test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

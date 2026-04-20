@@ -33,6 +33,7 @@ test('README documents the default delivery foundation targets and repo manifest
 test('architecture and ingestion docs explain work-loop leader/blocker semantics and sample-manifest entrypoints', () => {
   assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the actionable `currentPriority`/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
+  assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(architectureDoc, /sampleStarterSource/);
@@ -46,6 +47,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sync-bundle/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
+  assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus only the `\.env\.example` path visible/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
