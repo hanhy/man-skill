@@ -856,8 +856,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
-    importIntakeAll: 'node src/index.js import intake --all --refresh-foundation',
-    importIntakeStale: 'node src/index.js import intake --stale --refresh-foundation',
+    importIntakeAll: 'node src/index.js import intake --all',
+    importIntakeStale: 'node src/index.js import intake --stale',
     importIntakeImported: 'node src/index.js import intake --imported --refresh-foundation',
     importIntakeBundle: buildCommandBundle(
       metadataProfileCommands
@@ -1117,8 +1117,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,
     intakeStaleProfileCount,
-    intakeImportAllCommand: 'node src/index.js import intake --all --refresh-foundation',
-    intakeImportStaleCommand: 'node src/index.js import intake --stale --refresh-foundation',
+    intakeImportAllCommand: 'node src/index.js import intake --all',
+    intakeImportStaleCommand: 'node src/index.js import intake --stale',
     intakeImportImportedCommand: 'node src/index.js import intake --imported --refresh-foundation',
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],
     bootstrapProfileCommand,

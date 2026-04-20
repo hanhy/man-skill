@@ -1743,9 +1743,9 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
       'Usage: node src/index.js import intake --person <person-id> [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js import intake --person 'harry-han' --refresh-foundation",
-        'node src/index.js import intake --stale --refresh-foundation',
+        'node src/index.js import intake --stale',
         'node src/index.js import intake --imported --refresh-foundation',
-        'node src/index.js import intake --all --refresh-foundation',
+        'node src/index.js import intake --all',
       ],
     );
   }

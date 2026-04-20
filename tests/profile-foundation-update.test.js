@@ -934,9 +934,9 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
       expectedExamples: [
         /Examples:/,
         /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
-        /node src\/index\.js import intake --stale --refresh-foundation/,
-        /node src\/index\.js import intake --imported --refresh-foundation/,
-        /node src\/index\.js import intake --all --refresh-foundation/,
+        /\n  node src\/index\.js import intake --stale\n/,
+        /\n  node src\/index\.js import intake --imported --refresh-foundation\n/,
+        /\n  node src\/index\.js import intake --all(?:\n|$)/,
       ],
     },
     {
