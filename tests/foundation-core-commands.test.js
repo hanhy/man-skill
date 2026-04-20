@@ -51,7 +51,7 @@ const MEMORY_SECTIONS = [
     existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   },
 ];
-const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n';
+const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n';
 const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and behavior modules.';
 const SKILLS_README_SECTIONS = [
   {
@@ -63,8 +63,8 @@ const SKILLS_README_SECTIONS = [
   {
     heading: '## Layout',
     sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
-    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
-    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+    existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   },
 ];
 const SOUL_GUIDANCE_SENTINEL = '- Describe the durable values and goals that should survive across tasks.';
@@ -225,7 +225,7 @@ test('buildCoreFoundationCommand repairs level-one atx skills root headings with
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\n# What lives here\n- Reusable operator procedures and behavior modules.\n\n# Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\n# What lives here\n- Reusable operator procedures and behavior modules.\n\n# Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -246,7 +246,7 @@ test('buildCoreFoundationCommand repairs deeper thin skills root headings withou
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\n### What lives here ###\n- Reusable operator procedures and behavior modules.\n\n### Layout ###\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\n### What lives here ###\n- Reusable operator procedures and behavior modules.\n\n### Layout ###\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -270,7 +270,7 @@ test('buildCoreFoundationCommand repairs thin skills root setext headings withou
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\nWhat lives here\n---------------\n- Reusable operator procedures and behavior modules.\n\nLayout\n------\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\nWhat lives here\n---------------\n- Reusable operator procedures and behavior modules.\n\nLayout\n------\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -294,7 +294,7 @@ test('buildCoreFoundationCommand repairs thin skills root level-one setext headi
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\nWhat lives here\n===============\n- Reusable operator procedures and behavior modules.\n\nLayout\n======\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\nWhat lives here\n===============\n- Reusable operator procedures and behavior modules.\n\nLayout\n======\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -318,7 +318,7 @@ test('buildCoreFoundationCommand repairs thin skills root sections when only com
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n<!-- explain the purpose here -->\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n```md\n- Example layout guidance lives here.\n```\n',
+    '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n<!-- explain the purpose here -->\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n```md\n- Example layout guidance lives here.\n```\n',
   );
 });
 
@@ -341,7 +341,7 @@ test('buildCoreFoundationCommand prefers matching root section headings over ear
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n### Layout\n- Nested example heading that should stay untouched.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\n## What lives here\n- Shared repo guidance.\n\n### Layout\n- Nested example heading that should stay untouched.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
@@ -803,7 +803,7 @@ test('buildCoreFoundationCommand combines skills root guidance scaffolds with mi
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
-    '# Skills\n\nShared repo skill guidance.\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- README.md: shared conventions for the repo skills layer\n',
+    '# Skills\n\nShared repo skill guidance.\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), 'utf8'),

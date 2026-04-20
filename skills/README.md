@@ -13,6 +13,7 @@ They should be specific enough to be useful and narrow enough to stay maintainab
 ## Layout
 - `README.md` explains the purpose and structure of the shared skills layer
 - `skills/<name>/SKILL.md` holds one concrete skill with trigger conditions, workflow steps, pitfalls, and verification guidance
+- `skills/<category>/<name>/SKILL.md` keeps larger registries grouped without collapsing category folders into fake leaf skills
 - adjacent supporting files should stay close to the owning skill so behavior remains inspectable and maintainable
 
 ## Good uses for skills

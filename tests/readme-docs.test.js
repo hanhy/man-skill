@@ -73,6 +73,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
 
   assert.match(skillsDoc, /## What lives here/);
   assert.match(skillsDoc, /## Layout/);
+  assert.match(skillsDoc, /skills\/<category>\/<name>\/SKILL\.md/);
 
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);
