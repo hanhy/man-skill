@@ -994,6 +994,51 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/today\.md, long-term\/stable\.md, scratch\/draft\.md; root: Keep durable memory organized by horizon\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
 });
 
+test('buildSummary marks skills as thin when skills README lacks structured sections', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff.\n\n## Vibe\n- Stay grounded.\n\n## Continuity\n- Carry lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nShared repo skill guidance.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron\n\n## What this skill is for\n- Use scheduled follow-ups carefully.\n\n## Suggested workflow\n- Add the exact recurring command.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, []);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, ['what-lives-here', 'layout']);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['skills']);
+  assert.equal(summary.foundation.core.maintenance.recommendedArea, 'skills');
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to skills/README.md: what-lives-here, layout');
+  assert.deepEqual(summary.foundation.core.maintenance.recommendedPaths, ['skills/README.md']);
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'skills',
+      status: 'thin',
+      summary: '1 registered, 1 documented, root 0/2 sections ready, missing what-lives-here, layout',
+      action: 'add missing sections to skills/README.md: what-lives-here, layout',
+      paths: ['skills/README.md'],
+      thinPaths: ['skills/README.md'],
+      rootThinMissingSections: ['what-lives-here', 'layout'],
+      command: summary.foundation.core.maintenance.helperCommands.skills,
+    },
+  ]);
+  assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin skills/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: what-lives-here, layout @ skills\/README\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Shared repo skill guidance\. @ skills\/README\.md; root sections 0\/2 ready, missing what-lives-here, layout; docs: skills\/cron\/SKILL\.md; excerpts: cron: Use scheduled follow-ups carefully\./);
+});
+
 test('buildSummary foundation core marks partially structured soul and voice docs as thin with missing sections', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -1026,9 +1071,10 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   assert.equal(summary.foundation.core.voice.readySectionCount, 1);
   assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
   assert.deepEqual(summary.foundation.core.voice.missingSections, ['signature-moves', 'avoid', 'language-hints']);
-  assert.equal(summary.foundation.core.overview.readyAreaCount, 2);
-  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 1);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['skills', 'soul', 'voice']);
   assert.deepEqual(summary.foundation.core.overview.recommendedActions, [
+    'add missing sections to skills/README.md: what-lives-here, layout',
     'add missing sections to SOUL.md: boundaries, vibe, continuity',
     'add missing sections to voice/README.md: signature-moves, avoid, language-hints',
   ]);

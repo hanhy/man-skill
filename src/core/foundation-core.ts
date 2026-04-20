@@ -959,8 +959,7 @@ export function buildCoreFoundationSummary({
     sampleEntries: collectMemorySampleEntries({ daily, longTerm, scratch }),
   };
   const skillsRootDocument = skillInventory?.root;
-  const hasStructuredSkillsRoot = hasStructuredHeading(skillsRootDocument, ['what lives here', 'layout']);
-  const skillsRootSections = hasStructuredSkillsRoot
+  const skillsRootSections = isNonEmptyString(skillsRootDocument)
     ? summarizeStructuredSections(skillsRootDocument, [
       { key: 'what-lives-here', heading: '## What lives here' },
       { key: 'layout', heading: '## Layout' },

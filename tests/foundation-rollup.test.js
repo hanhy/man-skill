@@ -389,9 +389,9 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'obsidian'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill\n\nCapture durable operator notes.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'obsidian', 'SKILL.md'), '# Obsidian skill\n\n## What this skill is for\n- Capture durable operator notes.\n\n## Suggested workflow\n- Sync the durable notes before updating summaries.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
@@ -421,6 +421,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     hasRootDocument: true,
     rootPath: 'skills/README.md',
     rootExcerpt: 'Keep reusable operator procedures here.',
+    rootMissingSections: [],
+    rootReadySections: ['what-lives-here', 'layout'],
     count: 2,
     documentedCount: 2,
     undocumentedCount: 0,
@@ -490,7 +492,7 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
   assert.match(summary.promptPreview, /coverage: 4\/4 ready/);
   assert.match(summary.promptPreview, /queue: 4 ready, 0 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
-  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\. @ skills\/README\.md; docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
+  assert.match(summary.promptPreview, /skills: 2 registered, 2 documented \(obsidian, telegram\); root: Keep reusable operator procedures here\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/obsidian\/SKILL\.md, skills\/telegram\/SKILL\.md; excerpts: obsidian: Capture durable operator notes\. \| telegram: Deliver concise thread updates\./);
   assert.match(summary.promptPreview, /soul: present, 2 lines, Build a faithful operator core\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
   assert.match(summary.promptPreview, /voice: present, 2 lines, Keep replies direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
 });
@@ -591,7 +593,7 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'skills', 'README.md'),
-    ['---', 'description: Keep shared operator procedures discoverable.', '---', '', '# Skills', '', 'Layout details live below.'].join('\n'),
+    ['---', 'description: Keep shared operator procedures discoverable.', '---', '', '# Skills', '', '## What lives here', '- Keep shared operator procedures discoverable.', '', '## Layout', '- skills/<name>/SKILL.md stores the per-skill workflow.'].join('\n'),
   );
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
@@ -613,10 +615,10 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, ['what-belongs-here', 'buckets']);
   assert.deepEqual(summary.foundation.core.memory.rootReadySections, []);
   assert.equal(summary.foundation.core.skills.rootExcerpt, 'Keep shared operator procedures discoverable.');
-  assert.equal(summary.foundation.core.skills.rootMissingSections, undefined);
-  assert.equal(summary.foundation.core.skills.rootReadySections, undefined);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
-  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
+  assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
   assert.doesNotMatch(summary.promptPreview, /root: >/);
 });
@@ -897,8 +899,8 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
@@ -975,8 +977,8 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
   fs.mkdirSync(path.join(voiceRootDir, 'memory', 'long-term'), { recursive: true });
   fs.mkdirSync(path.join(voiceRootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(voiceRootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(voiceRootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(voiceRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(voiceRootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(voiceRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
   fs.writeFileSync(path.join(voiceRootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
   fs.writeFileSync(path.join(voiceRootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(voiceRootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
@@ -998,8 +1000,8 @@ test('buildSummary work loop surfaces runnable commands for thin soul and missin
   fs.mkdirSync(path.join(soulRootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(soulRootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(soulRootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(soulRootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(soulRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(soulRootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(soulRootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
   fs.writeFileSync(path.join(soulRootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
   fs.writeFileSync(path.join(soulRootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(soulRootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
@@ -1024,8 +1026,8 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
@@ -1867,12 +1869,12 @@ test('buildSummary ignores skills root section headings that only appear inside 
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.foundation.core.skills.rootMissingSections, undefined);
-  assert.equal(summary.foundation.core.skills.rootReadySections, undefined);
-  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
-  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.doesNotMatch(summary.promptPreview, /root sections .* missing/);
-  assert.doesNotMatch(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md/);
+  assert.deepEqual(summary.foundation.core.skills.rootMissingSections, ['what-lives-here', 'layout']);
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, []);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 3);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to skills/README.md: what-lives-here, layout');
+  assert.match(summary.promptPreview, /root sections 0\/2 ready, missing what-lives-here, layout/);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: what-lives-here, layout/);
 });
 
 test('buildSummary ignores soul and voice section headings that only appear inside fenced code blocks with fence-like lines', () => {
@@ -2232,8 +2234,8 @@ test('buildSummary work loop includes all stale intake paths when bulk intake sc
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\nKeep reusable operator procedures here.');
-  fs.writeFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), '# Slack skill\n\nDeliver concise thread updates.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'slack', 'SKILL.md'), '# Slack skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
 
   ingestion.updateProfile({
     personId: 'Alpha Missing',
