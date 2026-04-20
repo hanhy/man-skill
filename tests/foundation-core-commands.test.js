@@ -658,6 +658,29 @@ test('buildCoreFoundationCommand normalizes blockquoted legacy voice headings to
   );
 });
 
+test('buildCoreFoundationCommand ignores html-comment-only legacy voice headings when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-commented-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n<!--\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for Harry Han\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n-->\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n<!--\n## Tone\nWarm and grounded.\n\nVoice should capture\n--------------------\n- Use crisp examples.\n\n## Voice should not capture ##\n- Never pad the answer.\n\n## Current default for Harry Han\n- Default to English with occasional 中文 examples.\n- Lead with the operating takeaway.\n-->\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'soul',
@@ -754,6 +777,28 @@ test('buildCoreFoundationCommand normalizes blockquoted legacy soul headings tow
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
     '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Keep tradeoffs grounded in the source.\n',
+  );
+});
+
+test('buildCoreFoundationCommand ignores html-comment-only legacy soul headings when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-commented-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n<!--\n## Core values ##\n- Stay faithful to source material.\n\nDecision rules\n--------------\n- Keep tradeoffs grounded in the source.\n-->\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n<!--\n## Core values ##\n- Stay faithful to source material.\n\nDecision rules\n--------------\n- Keep tradeoffs grounded in the source.\n-->\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
