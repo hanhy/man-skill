@@ -860,6 +860,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         summary: 'README yes, daily 0, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
         paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+        rootThinReadySections: ['what-belongs-here', 'buckets'],
         command: memoryCommand,
       },
       {
@@ -893,7 +894,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*skills\/starter/);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
@@ -946,7 +947,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     'README yes, daily 1, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
   );
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
@@ -1077,6 +1078,48 @@ test('buildSummary keeps thin memory queue actionable when bucket files exist bu
   });
   assert.match(summary.promptPreview, /queue: 3 ready, 1 thin, 0 missing/);
   assert.match(summary.promptPreview, /memory \[thin\]: create memory\/README\.md @ memory\/README\.md; command mkdir -p 'memory' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context\.\n\n## Buckets\n- daily\/: short-lived run notes\n- long-term\/: durable facts and conventions\n- scratch\/: in-flight ideas to refine or promote\n' > 'memory\/README\.md'/);
+});
+
+test('buildSummary surfaces memory root section context on thin memory queue items', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'telegram'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'telegram', 'SKILL.md'), '# Telegram skill\n\n## What this skill is for\n- Deliver concise thread updates.\n\n## Suggested workflow\n- Reuse the narrowest thread context first.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n- Keep replies direct.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nBuild a faithful operator core.');
+
+  const summary = buildSummary(rootDir);
+  const memoryCommand = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'memory',
+      status: 'thin',
+      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets',
+      action: 'add missing sections to memory/README.md: buckets',
+      paths: ['memory/README.md'],
+      thinPaths: ['memory/README.md'],
+      rootThinMissingSections: ['buckets'],
+      rootThinReadySections: ['what-belongs-here'],
+      command: memoryCommand,
+    },
+  ]);
+  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets; command /);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
 });
 
 test('buildSummary work loop scaffolds a starter repo skill when the skills area is missing entirely', () => {

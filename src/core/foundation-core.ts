@@ -377,6 +377,7 @@ function buildCoreFoundationMaintenance({
 }): CoreFoundationMaintenanceSummary {
   const queue: CoreFoundationMaintenanceQueueItem[] = [];
   const memoryRootThinMissingSections = Array.isArray(memory.rootMissingSections) ? memory.rootMissingSections : [];
+  const memoryRootThinReadySections = Array.isArray(memory.rootReadySections) ? memory.rootReadySections : [];
   const rootThinMissingSections = Array.isArray(skills.rootMissingSections) ? skills.rootMissingSections : [];
   const rootThinReadySections = Array.isArray(skills.rootReadySections) ? skills.rootReadySections : [];
   const skillsAction = buildSkillsMaintenanceAction({
@@ -417,6 +418,8 @@ function buildCoreFoundationMaintenance({
         emptyBuckets: memory.emptyBuckets,
       }),
       ...(memoryRootThinMissingSections.length > 0 ? { thinPaths: ['memory/README.md'] } : {}),
+      ...(memoryRootThinMissingSections.length > 0 ? { rootThinMissingSections: memoryRootThinMissingSections } : {}),
+      ...(memoryRootThinReadySections.length > 0 ? { rootThinReadySections: memoryRootThinReadySections } : {}),
     },
     {
       area: 'skills',
@@ -843,6 +846,8 @@ export interface CoreFoundationMaintenanceQueueItem {
   paths: string[];
   missingPaths?: string[];
   thinPaths?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySections?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   command?: string | null;

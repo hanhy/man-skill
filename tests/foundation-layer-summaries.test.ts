@@ -992,11 +992,12 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
       action: 'add missing sections to memory/README.md: what-belongs-here, buckets',
       paths: ['memory/README.md'],
       thinPaths: ['memory/README.md'],
+      rootThinMissingSections: ['what-belongs-here', 'buckets'],
       command: summary.foundation.core.maintenance.helperCommands.memory,
     },
   ]);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: what-belongs-here, buckets @ memory\/README\.md/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: what-belongs-here, buckets @ memory\/README\.md; context root sections 0\/2 ready, missing what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/today\.md, long-term\/stable\.md, scratch\/draft\.md; root: Keep durable memory organized by horizon\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
 });
 
