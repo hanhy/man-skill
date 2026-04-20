@@ -196,6 +196,51 @@ test('buildCoreFoundationCommand repairs thin memory README sections without clo
   );
 });
 
+test('buildCoreFoundationCommand repairs thin memory README headings with closing hashes without appending duplicate level-two sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-closing-hash-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n### What belongs here ###\n\n### Buckets ###\n');
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n### What belongs here ###\n- Durable repo knowledge and operator context.\n\n### Buckets ###\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin memory README setext headings without appending duplicate atx sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-setext-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\nWhat belongs here\n-----------------\n\nBuckets\n-------\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\nWhat belongs here\n-----------------\n- Durable repo knowledge and operator context.\n\nBuckets\n-------\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs thin skills root README sections without clobbering the file', () => {
   assert.equal(
     buildCoreFoundationCommand({
