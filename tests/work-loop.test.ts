@@ -2708,7 +2708,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han) — reasons profile metadata drift + draft metadata drift');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.maintenance.recommendedCommand);
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person harry-han');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update foundation --person 'harry-han'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, summary.foundation.maintenance.recommendedPaths);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/memory/long-term/foundation.json',
@@ -2718,7 +2718,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: refresh Harry Han \(harry-han\) — reasons profile metadata drift \+ draft metadata drift/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person harry-han/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'harry-han'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
 
@@ -2785,7 +2785,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   );
   assert.equal(
     summary.workLoop.currentPriority.command,
-    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
+    "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with jane-doe (missing drafts + new materials)');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
@@ -2799,7 +2799,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/voice/README.md',
   ]);
   assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with jane-doe \(missing drafts \+ new materials\)/);
-  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person jane-doe\) && \(node src\/index\.js update foundation --person harry-han\)/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'jane-doe'\) && \(node src\/index\.js update foundation --person 'harry-han'\)/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
@@ -2814,7 +2814,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   );
   assert.equal(
     summary.workLoop.priorities[1].command,
-    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
+    "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
   assert.deepEqual(summary.workLoop.priorities[1].paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',

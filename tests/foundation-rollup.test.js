@@ -203,11 +203,11 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     },
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
-    refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
+    refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
     recommendedLabel: 'jane-doe',
     recommendedAction: 'refresh jane-doe — reasons missing drafts',
-    recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
       'profiles/jane-doe/skills/README.md',
@@ -218,7 +218,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
-      refreshBundle: 'node src/index.js update foundation --person jane-doe',
+      refreshBundle: "node src/index.js update foundation --person 'jane-doe'",
     },
     queuedProfiles: [
       {
@@ -234,10 +234,43 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
-        refreshCommand: 'node src/index.js update foundation --person jane-doe',
+        refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
       },
     ],
   });
+});
+
+test('buildFoundationRollup shell-quotes refresh commands for profile ids with spaces and apostrophes', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: "o'brien lane",
+      materialCount: 1,
+      latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        skills: { generated: false, highlights: [] },
+        soul: { generated: false, highlights: [] },
+        voice: { generated: false, highlights: [] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the feedback loop short.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Protect operator context.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the feedback loop short.'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.refreshBundleCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
+  assert.equal(rollup.maintenance.recommendedCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
+  assert.equal(rollup.maintenance.helperCommands.refreshBundle, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.refreshCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
 });
 
 test('buildFoundationRollup preserves aggregate draft gap counts when section names are unavailable', () => {
@@ -343,11 +376,11 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     },
     refreshAllCommand: 'node src/index.js update foundation --all',
     staleRefreshCommand: 'node src/index.js update foundation --stale',
-    refreshBundleCommand: 'node src/index.js update foundation --person jane-doe',
+    refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
     recommendedLabel: 'Jane Doe (jane-doe)',
     recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + new materials',
-    recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+    recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
       'profiles/jane-doe/skills/README.md',
@@ -358,7 +391,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
-      refreshBundle: 'node src/index.js update foundation --person jane-doe',
+      refreshBundle: "node src/index.js update foundation --person 'jane-doe'",
     },
     queuedProfiles: [
       {
@@ -374,17 +407,17 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
-        refreshCommand: 'node src/index.js update foundation --person jane-doe',
+        refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
       },
     ],
   });
   assert.match(summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
-  assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Ingestion entrance:[\s\S]*drafts: 1 ready, 1 queued for refresh, 1 incomplete[\s\S]*refresh-bundle node src\/index\.js update foundation --person jane-doe/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .* \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person jane-doe/);
+  assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /Ingestion entrance:[\s\S]*drafts: 1 ready, 1 queued for refresh, 1 incomplete[\s\S]*refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .* \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {

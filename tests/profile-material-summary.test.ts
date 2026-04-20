@@ -135,7 +135,7 @@ test('buildIngestionSummary exposes a per-profile foundation refresh bundle for 
 
   assert.equal(
     summary.helperCommands.refreshFoundationBundle,
-    "(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)",
+    "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
 });
 
@@ -1448,7 +1448,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
         recommendedProfileId: 'jane-doe',
         recommendedLabel: 'Jane Doe (jane-doe)',
         recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + metadata-updated',
-        recommendedCommand: 'node src/index.js update foundation --person jane-doe',
+        recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
         recommendedPaths: [
           'profiles/jane-doe/memory/long-term/foundation.json',
           'profiles/jane-doe/skills/README.md',
@@ -1458,7 +1458,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
         recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         helperCommands: {
           refreshStale: 'node src/index.js update foundation --stale',
-          refreshBundle: "(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han) && (node src/index.js update foundation --person sam-lane)",
+          refreshBundle: "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han') && (node src/index.js update foundation --person sam-lane)",
         },
         queuedProfiles: [
           {
@@ -1494,7 +1494,7 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
     },
   }).buildSystemPrompt();
 
-  assert.match(prompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(prompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
   assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
   assert.match(prompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
   assert.match(prompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
@@ -1553,7 +1553,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
           materialCount: 1,
           materialTypes: { talk: 1 },
           latestMaterialAt: '2026-04-16T16:00:00.000Z',
-          refreshFoundationCommand: 'node src/index.js update foundation --person jane-doe',
+          refreshFoundationCommand: "node src/index.js update foundation --person 'jane-doe'",
           updateProfileCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
           updateProfileAndRefreshCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
           importCommands: {
@@ -1669,7 +1669,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(prompt, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file samples\/harry-post\.txt --refresh-foundation/);
   assert.match(prompt, /sample screenshot: harry-han -> node src\/index\.js import screenshot --person harry-han --file samples\/harry-chat\.png --refresh-foundation/);
-  assert.match(prompt, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest 2026-04-16T16:00:00\.000Z \| refresh node src\/index\.js update foundation --person jane-doe \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
+  assert.match(prompt, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest 2026-04-16T16:00:00\.000Z \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(prompt, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\); scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(prompt, /\+1 more profile: Harry Han \(harry-han\) \[intake ready\]/);
   assert.match(prompt, /Delivery foundation:/);
@@ -2358,11 +2358,11 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
   assert.equal(summary.ingestion.refreshAllFoundationCommand, 'node src/index.js update foundation --all');
   assert.equal(summary.ingestion.staleRefreshCommand, 'node src/index.js update foundation --stale');
-  assert.equal(summary.ingestion.refreshFoundationBundleCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(summary.ingestion.refreshFoundationBundleCommand, "node src/index.js update foundation --person 'jane-doe'");
   assert.equal(summary.ingestion.recommendedProfileId, 'jane-doe');
   assert.equal(summary.ingestion.recommendedLabel, 'Jane Doe (jane-doe)');
   assert.equal(summary.ingestion.recommendedAction, 'refresh stale or incomplete target profiles');
-  assert.equal(summary.ingestion.recommendedCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js update foundation --person 'jane-doe'");
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
@@ -2388,7 +2388,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateProfileAndRefreshBundle: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
     refreshAllFoundation: 'node src/index.js update foundation --all',
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
-    refreshFoundationBundle: 'node src/index.js update foundation --person jane-doe',
+    refreshFoundationBundle: "node src/index.js update foundation --person 'jane-doe'",
     sampleStarter: 'node src/index.js import sample',
     sampleManifest: "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation",
     sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
@@ -2407,7 +2407,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   ]);
   assert.equal(readyProfileCommand?.materialCount, 1);
   assert.equal(readyProfileCommand?.needsRefresh, false);
-  assert.equal(readyProfileCommand?.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
+  assert.equal(readyProfileCommand?.refreshFoundationCommand, "node src/index.js update foundation --person 'harry-han'");
 
   assert.deepEqual(janeCommand.materialTypes, { talk: 1 });
   assert.equal(janeCommand.personId, 'jane-doe');
@@ -2421,7 +2421,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(janeCommand.latestMaterialAt ?? '', /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(janeCommand.updateProfileCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'");
   assert.equal(janeCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation");
-  assert.equal(janeCommand.refreshFoundationCommand, 'node src/index.js update foundation --person jane-doe');
+  assert.equal(janeCommand.refreshFoundationCommand, "node src/index.js update foundation --person 'jane-doe'");
   assert.equal(janeCommand.importMaterialCommand, null);
   assert.deepEqual(janeCommand.importCommands, {
     text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
@@ -2436,7 +2436,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importManifest: null,
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
-    refreshFoundation: 'node src/index.js update foundation --person jane-doe',
+    refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
     directImports: {
       text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
       message: 'node src/index.js import message --person jane-doe --text <message> --refresh-foundation',
@@ -2511,11 +2511,11 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 2 ready, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
-  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person jane-doe @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
+  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /helpers: .*update-bundle \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'\) && \(node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'\).*sync-bundle node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
-  assert.match(summary.promptPreview, /helpers: .*manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation.*refresh-bundle node src\/index\.js update foundation --person jane-doe.*sample-message node src\/index\.js import message --person harry-han --text 'Ship the thin slice first\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /helpers: .*manifest\+refresh node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation.*refresh-bundle node src\/index\.js update foundation --person 'jane-doe'.*sample-message node src\/index\.js import message --person harry-han --text 'Ship the thin slice first\.' --refresh-foundation/);
   assert.match(summary.promptPreview, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation \| node src\/index\.js update foundation --all \| node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /sample import: node src\/index\.js import text --person <person-id> --file <sample\.txt> --refresh-foundation/);
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[manifest\] for Harry Han \(harry-han\)/);
@@ -2545,7 +2545,7 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 1);
   assert.match(summary.promptPreview, /imported intake: 1 ready, 0 backfills, 0 invalid manifests/);
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+\| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
 });
 
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
@@ -2848,7 +2848,7 @@ test('buildSummary surfaces the profile-local intake shortcut for imported profi
   assert.equal(importedCommand.importManifestCommand, null);
   assert.match(
     summary.promptPreview,
-    /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Ship the thin slice first, then tighten it with real feedback\.\) \| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person harry-han \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/,
+    /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^;]+; gaps memory missing, 1 candidate \(Ship the thin slice first, then tighten it with real feedback\.\) \| shortcut node src\/index\.js import intake --person 'harry-han' \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/,
   );
 });
 

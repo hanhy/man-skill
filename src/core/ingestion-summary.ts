@@ -596,7 +596,7 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileCommand = buildUpdateProfileCommand(profile);
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
-  const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${profile.id}` : null;
+  const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${shellQuote(profile.id)}` : null;
   const importIntakeWithoutRefreshCommand = intakeManifestRunnable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;

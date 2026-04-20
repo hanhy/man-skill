@@ -80,6 +80,18 @@ function buildCommandBundle(commands: Array<string | null | undefined> = []): st
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildFoundationRefreshCommand(profileId: string | null | undefined): string | null {
+  if (typeof profileId !== 'string' || profileId.length === 0) {
+    return null;
+  }
+
+  return `node src/index.js update foundation --person ${shellQuote(profileId)}`;
+}
+
 function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
   if (typeof profileId !== 'string' || profileId.length === 0) {
     return [];
@@ -166,7 +178,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
       latestMaterialAt: profile.latestMaterialAt ?? null,
       draftGapSummary: summarizeProfileDraftGaps(profile),
-      refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
+      refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
     }))
     .sort((left, right) => {
       const missingDraftDifference = (right.missingDrafts?.length ?? 0) - (left.missingDrafts?.length ?? 0);

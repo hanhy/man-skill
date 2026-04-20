@@ -46,14 +46,14 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   const result = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   assert.equal(result.personId, 'harry-han');
-  assert.equal(result.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
+  assert.equal(result.refreshFoundationCommand, "node src/index.js update foundation --person 'harry-han'");
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(result.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
-    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -186,14 +186,14 @@ test('CLI update foundation command writes derived profile drafts', () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.personId, 'harry-han');
-  assert.equal(result.refreshFoundationCommand, 'node src/index.js update foundation --person harry-han');
+  assert.equal(result.refreshFoundationCommand, "node src/index.js update foundation --person 'harry-han'");
   assert.equal(result.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'");
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation");
   assert.equal(result.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
   assert.equal(result.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
-    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
     updateIntake: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
@@ -1654,7 +1654,7 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
     importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
-    refreshFoundation: 'node src/index.js update foundation --person harry-han',
+    refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     directImports: {
       text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
       message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
@@ -2062,7 +2062,7 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
       importCommand: "node src/index.js import manifest --file 'materials.json'",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
-      refreshFoundationCommand: 'node src/index.js update foundation --person harry-han',
+      refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
       importIntakeWithoutRefreshCommand: "node src/index.js import intake --person 'harry-han'",
       helperCommands: {
         scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
@@ -2071,7 +2071,7 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
         importManifest: "node src/index.js import manifest --file 'materials.json'",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
-        refreshFoundation: 'node src/index.js update foundation --person harry-han',
+        refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
       },
     },
   ]);

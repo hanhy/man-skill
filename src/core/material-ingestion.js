@@ -654,7 +654,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const importCommand = buildManifestImportCommand(manifestPath);
   const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
   const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
-  const refreshFoundationCommand = `node src/index.js update foundation --person ${personId}`;
+  const refreshFoundationCommand = `node src/index.js update foundation --person ${shellQuote(personId)}`;
   const scaffoldCommand = buildUpdateIntakeCommand({ personId, displayName, summary });
   const importIntakeWithoutRefreshCommand = buildImportIntakeCommand(personId);
   const importIntakeCommand = buildImportIntakeCommand(personId, { refreshFoundation: true });
@@ -828,7 +828,7 @@ export class MaterialIngestion {
       importIntakeCommand,
       updateIntakeCommand,
       importCommands,
-      refreshFoundationCommand: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+      refreshFoundationCommand: `node src/index.js update foundation --person ${shellQuote(profileUpdate.personId)}`,
       updateProfileCommand,
       updateProfileAndRefreshCommand,
       helperCommands: {
@@ -838,7 +838,7 @@ export class MaterialIngestion {
         importManifest: importManifestCommand,
         updateProfile: updateProfileCommand,
         updateProfileAndRefresh: updateProfileAndRefreshCommand,
-        refreshFoundation: `node src/index.js update foundation --person ${profileUpdate.personId}`,
+        refreshFoundation: `node src/index.js update foundation --person ${shellQuote(profileUpdate.personId)}`,
         directImports: importCommands,
       },
     };
@@ -1456,7 +1456,7 @@ export class MaterialIngestion {
       summary: profileDocument?.summary,
       refreshFoundation: true,
     });
-    const refreshFoundationCommand = `node src/index.js update foundation --person ${normalized.personId}`;
+    const refreshFoundationCommand = `node src/index.js update foundation --person ${shellQuote(normalized.personId)}`;
     const updateIntakeCommand = buildUpdateIntakeCommand({
       personId: normalized.personId,
       displayName: profileDocument?.displayName,
