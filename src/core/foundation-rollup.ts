@@ -103,11 +103,16 @@ function summarizeDraftGap(summary: any, key: string): string | null {
     ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
 
-  if (totalSectionCount <= 0 || missingSections.length === 0) {
+  if (totalSectionCount <= 0) {
     return null;
   }
 
-  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+  const hasGap = missingSections.length > 0 || readySectionCount < totalSectionCount;
+  if (!hasGap) {
+    return null;
+  }
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
 }
 
 function summarizeMemoryDraftGap(profile: any): string | null {

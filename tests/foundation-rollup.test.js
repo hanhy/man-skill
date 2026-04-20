@@ -240,6 +240,44 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
   });
 });
 
+test('buildFoundationRollup preserves aggregate draft gap counts when section names are unavailable', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        skills: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 3 },
+        soul: { generated: false, highlights: [], readySectionCount: 2, totalSectionCount: 4, readySections: ['core-truths', 'boundaries'] },
+        voice: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 4, readySections: ['tone'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Stay grounded.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep it direct.'] },
+      },
+      profile: { displayName: 'Jane Doe' },
+    },
+  ]);
+
+  assert.equal(
+    rollup.maintenance.recommendedDraftGapSummary,
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+  );
+  assert.equal(
+    rollup.maintenance.queuedProfiles[0]?.draftGapSummary,
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+  );
+});
+
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

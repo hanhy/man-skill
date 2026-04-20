@@ -177,6 +177,47 @@ test('buildIngestionSummary carries section-aware draft gap summaries onto stale
   );
 });
 
+test('buildIngestionSummary preserves aggregate draft gap counts when missing section names are unavailable', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { talk: 1 },
+      latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      profile: {
+        displayName: 'Jane Doe',
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      },
+      foundationDraftSummaries: {
+        skills: {
+          readySectionCount: 1,
+          totalSectionCount: 3,
+        },
+        voice: {
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+        },
+      },
+      foundationReadiness: {
+        memory: {
+          candidateCount: 1,
+          sampleSummaries: ['Tight loops beat big plans.'],
+        },
+      },
+    },
+  ]);
+
+  assert.equal(
+    summary.profileCommands[0]?.draftGapSummary,
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | voice 1/4 ready (tone)',
+  );
+});
+
 test('loadProfilesIndex treats blockquoted voice draft headings as valid structured foundation content', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -959,6 +1000,41 @@ test('PromptAssembler preserves queued core-foundation root section counts when 
   }).buildPreview(4000);
 
   assert.match(prompt, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready, missing layout; command node -e 'repair skills root'/);
+});
+
+test('PromptAssembler preserves aggregate draft gap counts when missing section names are unavailable', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    profiles: [
+      {
+        id: 'jane-doe',
+        materialCount: 1,
+        materialTypes: { talk: 1 },
+        latestMaterialAt: '2026-04-16T16:00:00.000Z',
+        profile: { displayName: 'Jane Doe' },
+        foundationDraftStatus: {
+          complete: false,
+          needsRefresh: true,
+          missingDrafts: ['memory', 'skills', 'voice'],
+          refreshReasons: ['missing drafts'],
+        },
+        foundationReadiness: {
+          memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        },
+        foundationDraftSummaries: {
+          skills: { readySectionCount: 1, totalSectionCount: 3 },
+          voice: { readySectionCount: 1, totalSectionCount: 4, readySections: ['tone'] },
+        },
+      },
+    ],
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \| voice 1\/4 ready \(tone\)/);
 });
 
 test('buildFoundationRollup maintenance aggregates missing draft coverage and refresh reasons', () => {
