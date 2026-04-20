@@ -995,6 +995,40 @@ test('importImportedProfileIntakeManifests still surfaces invalid imported intak
   );
 });
 
+test('importProfileIntakeManifest rejects a profile-local manifest that targets a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [
+        {
+          type: 'message',
+          text: 'This should stay bound to the owning profile.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /targets a different profile/i,
+  );
+
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe')), false);
+  const materialFiles = fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    ? fs.readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials')).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+});
+
 test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

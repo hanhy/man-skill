@@ -15,6 +15,14 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
+function slugifyPersonId(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function buildCommandBundle(commands: Array<string | null | undefined>): string | null {
   const normalizedCommands = commands.filter((command): command is string => typeof command === 'string' && command.length > 0);
   if (normalizedCommands.length === 0) {
@@ -374,7 +382,7 @@ function buildUpdateProfileCommand(profile, options: any = {}) {
   return commandParts.join(' ');
 }
 
-function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null) {
+function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null, expectedProfileId: string | null = null) {
   const starterManifestPath = typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
     ? intake.starterManifestPath
     : null;
@@ -431,13 +439,33 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
     };
   }
 
+  const normalizedExpectedProfileId = typeof expectedProfileId === 'string' && expectedProfileId.trim().length > 0
+    ? slugifyPersonId(expectedProfileId)
+    : null;
   const manifestDir = path.dirname(absoluteManifestPath);
   const realRootDir = fs.realpathSync(rootDir);
   const supportedTypes = new Set(['text', 'message', 'talk', 'screenshot']);
   try {
+    const manifestPersonId = typeof manifest.personId === 'string' && manifest.personId.trim().length > 0
+      ? manifest.personId
+      : null;
+    if (normalizedExpectedProfileId && manifestPersonId && slugifyPersonId(manifestPersonId) !== normalizedExpectedProfileId) {
+      throw new Error(`Profile intake manifest targets a different profile: expected ${normalizedExpectedProfileId}`);
+    }
+
     entries.forEach((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
+      }
+
+      const resolvedPersonId = typeof entry.personId === 'string' && entry.personId.trim().length > 0
+        ? entry.personId
+        : manifestPersonId;
+      if (normalizedExpectedProfileId && !resolvedPersonId) {
+        throw new Error(`Profile intake manifest entry ${index} is missing personId for ${normalizedExpectedProfileId}`);
+      }
+      if (normalizedExpectedProfileId && resolvedPersonId && slugifyPersonId(resolvedPersonId) !== normalizedExpectedProfileId) {
+        throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${normalizedExpectedProfileId}`);
       }
 
       const type = typeof entry.type === 'string' ? entry.type : null;
@@ -535,7 +563,7 @@ function buildProfileCommands(profile, options: any = {}) {
     ? importCommands.screenshot
     : null;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
-  const intakeManifest = inspectProfileIntakeManifest(typeof options?.rootDir === 'string' ? options.rootDir : null, intake);
+  const intakeManifest = inspectProfileIntakeManifest(typeof options?.rootDir === 'string' ? options.rootDir : null, intake, profile.id);
   const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
     ? intake.starterManifestPath
     : null;
@@ -672,7 +700,7 @@ function collectReadyIntakeImportPaths(profile: any, rootDir: string | null): st
   const manifestInspection = inspectProfileIntakeManifest(rootDir, {
     ready: true,
     starterManifestPath,
-  });
+  }, typeof profile?.personId === 'string' ? profile.personId : null);
   if (!manifestInspection || manifestInspection.status !== 'loaded') {
     return intakePaths;
   }

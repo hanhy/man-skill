@@ -398,7 +398,39 @@ function normalizeExistingStarterManifest(parsedTemplate) {
   return parsedTemplate;
 }
 
-function inspectIntakeManifestState(rootDir, starterManifestPath) {
+function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
+  if (!isNonEmptyString(expectedPersonId)) {
+    return;
+  }
+
+  const normalizedExpectedPersonId = slugifyPersonId(expectedPersonId);
+  if (!normalizedExpectedPersonId) {
+    return;
+  }
+
+  const manifestPersonId = isNonEmptyString(manifest?.personId) ? manifest.personId : null;
+  if (manifestPersonId && slugifyPersonId(manifestPersonId) !== normalizedExpectedPersonId) {
+    throw new Error(`Profile intake manifest targets a different profile: expected ${normalizedExpectedPersonId}`);
+  }
+
+  const entries = Array.isArray(manifest?.entries) ? manifest.entries : [];
+  entries.forEach((entry, index) => {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`Manifest entry ${index} must be an object`);
+    }
+
+    const resolvedPersonId = isNonEmptyString(entry.personId) ? entry.personId : manifestPersonId;
+    if (!isNonEmptyString(resolvedPersonId)) {
+      throw new Error(`Profile intake manifest entry ${index} is missing personId for ${normalizedExpectedPersonId}`);
+    }
+
+    if (slugifyPersonId(resolvedPersonId) !== normalizedExpectedPersonId) {
+      throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${normalizedExpectedPersonId}`);
+    }
+  });
+}
+
+function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPersonId = null) {
   if (!isNonEmptyString(starterManifestPath)) {
     return {
       status: 'missing',
@@ -448,6 +480,15 @@ function inspectIntakeManifestState(rootDir, starterManifestPath) {
     return {
       status: 'invalid',
       error: 'Manifest must contain a non-empty entries array',
+    };
+  }
+
+  try {
+    validateProfileLocalManifestOwnership(manifest, expectedPersonId);
+  } catch (error) {
+    return {
+      status: 'invalid',
+      error: error instanceof Error ? error.message : 'Invalid intake manifest',
     };
   }
 
@@ -903,7 +944,7 @@ export class MaterialIngestion {
       throw new Error(`Profile intake scaffold is not ready for import: ${normalizedPersonId}`);
     }
 
-    const intakeManifestState = inspectIntakeManifestState(this.rootDir, profile.intake.starterManifestPath);
+    const intakeManifestState = inspectIntakeManifestState(this.rootDir, profile.intake.starterManifestPath, normalizedPersonId);
     if (intakeManifestState.status === 'starter') {
       throw new Error(`Profile intake manifest has no entries yet: ${normalizedPersonId}`);
     }
