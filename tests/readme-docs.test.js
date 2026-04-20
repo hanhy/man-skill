@@ -73,7 +73,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
 
   assert.match(skillsDoc, /## What lives here/);
   assert.match(skillsDoc, /## Layout/);
-  assert.match(skillsDoc, /skills\/<category>\/<name>\/SKILL\.md/);
+  assert.match(skillsDoc, /- <skill>\/SKILL\.md: per-skill workflow and guidance/);
+  assert.match(skillsDoc, /- <category>\/<skill>\/SKILL\.md: grouped skill families for larger registries/);
+  assert.match(skillsDoc, /- README\.md: shared conventions for the repo skills layer/);
 
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);
