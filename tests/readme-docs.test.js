@@ -16,6 +16,9 @@ const skillsDoc = fs.readFileSync(path.join(repoRoot, 'skills', 'README.md'), 'u
 const soulDoc = fs.readFileSync(path.join(repoRoot, 'SOUL.md'), 'utf8');
 const voiceDoc = fs.readFileSync(path.join(repoRoot, 'voice', 'README.md'), 'utf8');
 const userDoc = fs.readFileSync(path.join(repoRoot, 'USER.md'), 'utf8');
+const harryIntakeReadme = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'README.md'), 'utf8');
+const harryIntakeManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'materials.template.json'), 'utf8'));
+const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'sample.txt'), 'utf8');
 
 test('README documents the default delivery foundation targets and repo manifests', () => {
   assert.match(readme, /Delivery foundation/i);
@@ -58,6 +61,48 @@ test('checked-in USER current product direction stays aligned with the default w
     'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
     'report progress in small verified increments',
   ]);
+});
+
+test('checked-in intake scaffold stays aligned with the repo-level starter ingress for Harry Han', () => {
+  assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json`/);
+  assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/);
+
+  assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
+  assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(harryIntakeReadme, /Sample text placeholder: profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(harryIntakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(harryIntakeReadme, /edit target-profile metadata without refreshing drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(harryIntakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
+  assert.doesNotMatch(harryIntakeReadme, /import intake --person 'harry-han'/);
+  assert.match(harryIntakeReadme, /text: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
+
+  assert.equal(harryIntakeManifest.personId, 'harry-han');
+  assert.equal(harryIntakeManifest.displayName, 'Harry Han');
+  assert.equal(harryIntakeManifest.summary, 'Direct operator with a bias for momentum and fast feedback loops.');
+  assert.deepEqual(harryIntakeManifest.entries, []);
+  assert.deepEqual(Object.keys(harryIntakeManifest.entryTemplates), ['text', 'message', 'talk', 'screenshot']);
+  assert.equal(harryIntakeManifest.entryTemplates.text.file, 'sample.txt');
+  assert.equal(harryIntakeManifest.entryTemplates.message.text, '<paste a representative short message>');
+  assert.equal(harryIntakeManifest.entryTemplates.talk.text, '<paste a transcript snippet>');
+  assert.equal(harryIntakeManifest.entryTemplates.screenshot.file, '<relative-path-to-image.png>');
+  assert.match(harryIntakeSample, /Replace this file with a real writing sample for Harry Han\./);
+
+  const summary = buildSummary(repoRoot);
+  const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+  assert.ok(harryCommand);
+  assert.equal(harryCommand.intakeReady, true);
+  assert.equal(harryCommand.intakeManifestStatus, 'starter');
+  assert.equal(harryCommand.intakeManifestPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(harryCommand.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harryCommand.importIntakeCommand, null);
+  assert.equal(harryCommand.importManifestCommand, null);
+  assert.equal(harryCommand.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(harryCommand.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(harryCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
