@@ -252,6 +252,102 @@ test('importManifest skips unchanged entries when the same manifest is rerun', (
   assert.equal(janeMaterials.length, 1);
 });
 
+test('importManifest skips legacy screenshot entries when an existing screenshot record is missing fingerprint', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Jane Doe',
+            type: 'screenshot',
+            file: './chat.png',
+            notes: 'visual chat reference',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath });
+  assert.equal(firstResult.entryCount, 1);
+  assert.equal(firstResult.skippedEntryCount, 0);
+
+  const materialsDir = path.join(rootDir, 'profiles', 'jane-doe', 'materials');
+  const [recordFileName] = fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'));
+  const recordPath = path.join(materialsDir, recordFileName);
+  const legacyRecord = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+  delete legacyRecord.fingerprint;
+  fs.writeFileSync(recordPath, JSON.stringify(legacyRecord, null, 2));
+
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath });
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.manifestEntryCount, 1);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.results, []);
+
+  const screenshotRecords = fs
+    .readdirSync(materialsDir)
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(screenshotRecords.length, 1);
+});
+
+test('importManifest skips legacy screenshot entries when the copied asset is missing but the original source file remains', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        entries: [
+          {
+            personId: 'Jane Doe',
+            type: 'screenshot',
+            file: './chat.png',
+            notes: 'visual chat reference',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath });
+  assert.equal(firstResult.entryCount, 1);
+
+  const materialsDir = path.join(rootDir, 'profiles', 'jane-doe', 'materials');
+  const [recordFileName] = fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'));
+  const recordPath = path.join(materialsDir, recordFileName);
+  const legacyRecord = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+  delete legacyRecord.fingerprint;
+  fs.writeFileSync(recordPath, JSON.stringify(legacyRecord, null, 2));
+  fs.rmSync(path.join(rootDir, legacyRecord.assetPath));
+
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath });
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+
+  const screenshotRecords = fs
+    .readdirSync(materialsDir)
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(screenshotRecords.length, 1);
+});
+
 test('importManifest uses the checked-in Harry starter manifest as a runnable multimodal sample fixture', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

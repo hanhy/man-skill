@@ -160,7 +160,7 @@ function buildScreenshotMaterialFingerprint({ personId, notes = null, sourceFile
   });
 }
 
-function deriveMaterialFingerprint(record) {
+function deriveMaterialFingerprint(record, rootDir = null) {
   if (isNonEmptyString(record?.fingerprint)) {
     return record.fingerprint;
   }
@@ -188,12 +188,36 @@ function deriveMaterialFingerprint(record) {
   }
 
   if (record.type === 'screenshot' && isNonEmptyString(record?.sourceFile)) {
+    const relativeAssetPath = isNonEmptyString(record?.assetPath) ? record.assetPath : null;
+    const fingerprintSourcePaths = isNonEmptyString(rootDir)
+      ? [relativeAssetPath, record.sourceFile]
+        .filter((value, index, values) => isNonEmptyString(value) && values.indexOf(value) === index)
+        .map((relativePath) => path.join(rootDir, relativePath))
+      : [];
+    if (fingerprintSourcePaths.length > 0) {
+      for (const candidatePath of fingerprintSourcePaths) {
+        if (!fs.existsSync(candidatePath)) {
+          continue;
+        }
+        try {
+          return buildScreenshotMaterialFingerprint({
+            personId: record.personId,
+            notes: record.notes,
+            sourceFile: record.sourceFile,
+            fileBuffer: fs.readFileSync(candidatePath),
+          });
+        } catch {
+          // Try the next candidate path before falling back to the legacy weaker fingerprint below.
+        }
+      }
+    }
+
     return buildMaterialFingerprint({
       personId: slugifyPersonId(record.personId),
       type: 'screenshot',
       notes: normalizeText(record.notes),
       sourceFile: record.sourceFile,
-      fileHash: record.assetPath ?? null,
+      fileHash: relativeAssetPath,
     });
   }
 
@@ -1105,7 +1129,7 @@ export class MaterialIngestion {
         .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
         .map((entry) => readJsonIfExists(path.join(materialsDir, entry.name)))
         .filter(Boolean)
-        .map((record) => deriveMaterialFingerprint(record))
+        .map((record) => deriveMaterialFingerprint(record, this.rootDir))
         .filter(Boolean),
     );
   }
