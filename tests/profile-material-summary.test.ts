@@ -1371,6 +1371,8 @@ test('PromptAssembler keeps compact ready core foundation details when section c
         rootExcerpt: 'Keep durable notes here.',
         rootReadySections: ['what-belongs-here', 'buckets'],
         rootMissingSections: [],
+        canonicalShortTermBucket: 'daily',
+        legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
         dailyCount: 1,
         longTermCount: 1,
         scratchCount: 1,
@@ -1426,7 +1428,7 @@ test('PromptAssembler keeps compact ready core foundation details when section c
     },
   }).buildPreview(4000);
 
-  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 2\/2 \(slack, telegram\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 2\/2 \(slack, telegram\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(prompt, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 

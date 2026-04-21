@@ -861,7 +861,7 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
   assert.doesNotMatch(summary.promptPreview, /root: >/);
@@ -1344,7 +1344,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
   );
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
 
@@ -1519,7 +1519,7 @@ test('buildSummary surfaces memory root section context on thin memory queue ite
     },
   ]);
   assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets; command /);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
 });
 
 test('buildSummary surfaces soul and voice section context on thin document queue items', () => {
@@ -2365,7 +2365,7 @@ test('buildSummary treats memory headings with closing hashes as structured sect
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2395,7 +2395,7 @@ test('buildSummary treats memory headings with setext markdown as structured sec
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2427,7 +2427,7 @@ test('buildSummary treats soul and voice headings with closing hashes as structu
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /soul: present, \d+ lines/);
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines/);
 });
@@ -2462,7 +2462,7 @@ test('buildSummary treats target-specific current default voice headings as stru
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\./);
 });
 

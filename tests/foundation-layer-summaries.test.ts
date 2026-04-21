@@ -872,7 +872,7 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
-  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /- soul: present, 4 lines, Stay faithful\./);
   assert.doesNotMatch(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\./);
   assert.doesNotMatch(summary.promptPreview, />\s*## Tone/);
@@ -967,11 +967,11 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, undefined);
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
-  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- buckets: 2\/3 ready \(daily, long-term\), missing scratch/);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- buckets: 2\/3 ready \(daily, long-term\), missing scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
   assert.match(summary.promptPreview, /coverage: 1\/4 ready; thin memory, skills, soul/);
-  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
 });
 
 test('buildSummary skill preview shows descriptions and summarizes hidden skills compactly', () => {
@@ -1144,7 +1144,7 @@ test('buildSummary marks memory as thin when memory README lacks structured sect
   ]);
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
   assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: what-belongs-here, buckets @ memory\/README\.md; context root sections 0\/2 ready, missing what-belongs-here, buckets/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/today\.md, long-term\/stable\.md, scratch\/draft\.md; root: Keep durable memory organized by horizon\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/today\.md, long-term\/stable\.md, scratch\/draft\.md; root: Keep durable memory organized by horizon\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
 });
 
 test('buildSummary marks skills as thin when skills README lacks structured sections', () => {
@@ -1230,7 +1230,7 @@ test('buildSummary treats blockquoted memory sections and setext skills sections
   assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
 });
 
 test('buildSummary foundation core marks partially structured soul and voice docs as thin with missing sections', () => {
