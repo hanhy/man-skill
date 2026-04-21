@@ -582,6 +582,7 @@ export interface CoreMemoryFoundationSummary {
   rootReadySections?: string[];
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
+  headingAliases?: string[];
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   dailyCount: number;
@@ -603,6 +604,7 @@ export interface CoreSkillsFoundationSummary {
   rootReadySections?: string[];
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
+  headingAliases?: string[];
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -665,6 +667,34 @@ const VOICE_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
     matches: (headingText) => isCurrentDefaultVoiceHeading(headingText),
   },
 ];
+
+const MEMORY_ROOT_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'what-lives-here->what-belongs-here',
+    matches: (headingText) => headingText === 'what lives here',
+  },
+  {
+    label: 'layout->buckets',
+    matches: (headingText) => headingText === 'layout',
+  },
+];
+
+const SKILLS_ROOT_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'what-belongs-here->what-lives-here',
+    matches: (headingText) => headingText === 'what belongs here',
+  },
+  {
+    label: 'buckets->layout',
+    matches: (headingText) => headingText === 'buckets',
+  },
+];
+
+type StructuredSectionDefinition = {
+  key: string;
+  heading: string;
+  matches?: (headingText: string) => boolean;
+};
 
 function normalizeSetextHeadingLines(lines: string[]): string[] {
   const normalizedLines: string[] = [];
@@ -766,7 +796,7 @@ function isCurrentDefaultVoiceHeading(value: string): boolean {
 
 function summarizeStructuredSections(
   document: string | null | undefined,
-  sections: Array<{ key: string; heading: string }>,
+  sections: StructuredSectionDefinition[],
 ): { readySections: string[]; missingSections: string[] } {
   const visibleDocument = stripNonVisibleMarkdownContent(document);
   if (!isNonEmptyString(visibleDocument)) {
@@ -781,7 +811,9 @@ function summarizeStructuredSections(
     const headingText = section.heading.trim().replace(/^##\s+/, '').toLowerCase();
     const headingIndex = lines.findIndex((line) => {
       const parsed = parseMarkdownHeading(line);
-      return parsed !== null && parsed.level >= 2 && parsed.text === headingText;
+      return parsed !== null
+        && parsed.level >= 2
+        && (parsed.text === headingText || section.matches?.(parsed.text) === true);
     });
     if (headingIndex === -1) {
       missingSections.push(section.key);
@@ -1075,10 +1107,19 @@ export function buildCoreFoundationSummary({
   const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memoryRootSections = isNonEmptyString(memoryIndex?.root)
     ? summarizeStructuredSections(memoryIndex?.root, [
-      { key: 'what-belongs-here', heading: '## What belongs here' },
-      { key: 'buckets', heading: '## Buckets' },
+      {
+        key: 'what-belongs-here',
+        heading: '## What belongs here',
+        matches: (headingText) => headingText === 'what lives here',
+      },
+      {
+        key: 'buckets',
+        heading: '## Buckets',
+        matches: (headingText) => headingText === 'layout',
+      },
     ])
     : { readySections: [], missingSections: [] };
+  const memoryHeadingAliases = collectHeadingAliases(memoryIndex?.root, MEMORY_ROOT_HEADING_ALIAS_DEFINITIONS);
   const memoryHasStructuredRootSections = memoryRootSections.readySections.length > 0 || memoryRootSections.missingSections.length > 0;
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
@@ -1090,6 +1131,7 @@ export function buildCoreFoundationSummary({
       rootReadySectionCount: memoryRootSections.readySections.length,
       rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
+    ...(memoryHeadingAliases.length > 0 ? { headingAliases: memoryHeadingAliases } : {}),
     canonicalShortTermBucket: 'daily' as const,
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     dailyCount: daily.length,
@@ -1105,10 +1147,19 @@ export function buildCoreFoundationSummary({
   const skillsRootDocument = skillInventory?.root;
   const skillsRootSections = isNonEmptyString(skillsRootDocument)
     ? summarizeStructuredSections(skillsRootDocument, [
-      { key: 'what-lives-here', heading: '## What lives here' },
-      { key: 'layout', heading: '## Layout' },
+      {
+        key: 'what-lives-here',
+        heading: '## What lives here',
+        matches: (headingText) => headingText === 'what belongs here',
+      },
+      {
+        key: 'layout',
+        heading: '## Layout',
+        matches: (headingText) => headingText === 'buckets',
+      },
     ])
     : { readySections: [], missingSections: [] };
+  const skillsHeadingAliases = collectHeadingAliases(skillsRootDocument, SKILLS_ROOT_HEADING_ALIAS_DEFINITIONS);
   const skillsHasStructuredRootSections = skillsRootSections.readySections.length > 0 || skillsRootSections.missingSections.length > 0;
   const skills = {
     hasRootDocument: isNonEmptyString(skillsRootDocument),
@@ -1120,6 +1171,7 @@ export function buildCoreFoundationSummary({
       rootReadySectionCount: skillsRootSections.readySections.length,
       rootTotalSectionCount: skillsRootSections.readySections.length + skillsRootSections.missingSections.length,
     } : {}),
+    ...(skillsHeadingAliases.length > 0 ? { headingAliases: skillsHeadingAliases } : {}),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,

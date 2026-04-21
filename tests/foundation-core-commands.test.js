@@ -40,12 +40,14 @@ const MEMORY_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.
 const MEMORY_SECTIONS = [
   {
     heading: '## What belongs here',
+    aliases: ['What lives here'],
     sentinel: '- Durable repo knowledge and operator context.',
     missingSectionAppend: '\n## What belongs here\n- Durable repo knowledge and operator context.\n',
     existingBulletAppend: '- Durable repo knowledge and operator context.\n',
   },
   {
     heading: '## Buckets',
+    aliases: ['Layout'],
     sentinel: '- daily/: short-lived run notes',
     missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
     existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
@@ -56,12 +58,14 @@ const SKILLS_README_GUIDANCE_SENTINEL = '- Reusable operator procedures and beha
 const SKILLS_README_SECTIONS = [
   {
     heading: '## What lives here',
+    aliases: ['What belongs here'],
     sentinel: '- Reusable operator procedures and behavior modules.',
     missingSectionAppend: '\n## What lives here\n- Reusable operator procedures and behavior modules.\n',
     existingBulletAppend: '- Reusable operator procedures and behavior modules.\n',
   },
   {
     heading: '## Layout',
+    aliases: ['Buckets'],
     sentinel: '- <skill>/SKILL.md: per-skill workflow and guidance',
     missingSectionAppend: '\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
     existingBulletAppend: '- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
@@ -110,6 +114,9 @@ function stripMarkdownHeadingMarkup(heading) {
 function buildDocumentRepairCommand(filePath, _sentinel, sections) {
   const normalizedSections = sections.map((section) => ({
     headingText: stripMarkdownHeadingMarkup(section.heading),
+    headingAliases: Array.isArray(section.aliases)
+      ? section.aliases.map((alias) => stripMarkdownHeadingMarkup(alias))
+      : [],
     headingLevel: (section.heading.match(/^#{1,6}/)?.[0].length ?? 2),
     missingSectionAppend: section.missingSectionAppend,
     existingBulletAppend: section.existingBulletAppend,
@@ -122,7 +129,7 @@ function buildDocumentRepairCommand(filePath, _sentinel, sections) {
     "const buildVisibleLines = (sourceLines) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; return sourceLines.map((rawLine = '') => { const trimmed = stripQuotePrefix(rawLine).trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; return ''; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } return ''; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) return ''; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } return visibleLine; }); };",
     "const hasVisibleContent = (visibleSectionLines, sectionHeadingLevel) => { for (const line of visibleSectionLines) { const normalizedLine = stripQuotePrefix(line ?? '').trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([line], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
     "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
-    "for (const section of sections) { const visibleLines = buildVisibleLines(lines); const target = section.headingText.toLowerCase(); let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(visibleLines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
+    "for (const section of sections) { const visibleLines = buildVisibleLines(lines); const target = section.headingText.toLowerCase(); const aliases = Array.isArray(section.headingAliases) ? section.headingAliases.map((value) => value.toLowerCase()) : []; let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target || aliases.includes(parsed.text)) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(visibleLines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
     "fs.writeFileSync(file, `${lines.join('\\n').replace(/\\n*$/, '')}\\n`);",
   ].join(' ');
 
@@ -266,6 +273,30 @@ test('buildCoreFoundationCommand repairs thin memory README blockquoted headings
   );
 });
 
+test('buildCoreFoundationCommand repairs thin memory README legacy sibling headings without appending duplicate canonical sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-readme-legacy-alias-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What lives here\n\n## Layout\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n## What lives here\n- Durable repo knowledge and operator context.\n\n## Layout\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs thin skills root README sections without clobbering the file', () => {
   assert.equal(
     buildCoreFoundationCommand({
@@ -365,6 +396,30 @@ test('buildCoreFoundationCommand repairs thin skills root blockquoted headings w
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
     '# Skills\n\n> ## What lives here\n> - Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
+test('buildCoreFoundationCommand repairs thin skills root legacy sibling headings without appending duplicate canonical sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-skills-root-legacy-alias-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What belongs here\n\n## Buckets\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '# Skills\n\n## What belongs here\n- Reusable operator procedures and behavior modules.\n\n## Buckets\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 

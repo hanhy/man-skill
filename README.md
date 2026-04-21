@@ -87,9 +87,9 @@ The current structured contract is:
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
 The summary surfaces keep that contract machine-readable:
-- `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready
+- `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready, while optional `headingAliases` makes sibling-root fallbacks like `What lives here` / `Layout` visible when they still back the canonical memory sections
 - `foundation.core.memory.canonicalShortTermBucket` and `foundation.core.memory.legacyShortTermAliases` mirror the same daily-vs-legacy mapping inside the repo-core foundation contract
-- `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide
+- `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide, while optional `headingAliases` makes sibling-root fallbacks like `What belongs here` / `Buckets` visible when they still back the canonical skills sections
 - `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract, while optional `headingAliases` makes legacy root headings like `Core values` / `Decision rules` visible when they still map onto the canonical OpenClaw sections
 - `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract, while optional `headingAliases` makes fallback headings like `Voice should capture` / `Current default for ...` visible when they still back the canonical voice sections
 - the top-level memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers even though `daily/` is the checked-in path
