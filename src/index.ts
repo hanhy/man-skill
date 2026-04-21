@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
+import { CHANNEL_ROLLOUT_ORDER, PROVIDER_ROLLOUT_ORDER, buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
@@ -221,6 +221,62 @@ function loadWorkLoopObjectives(rootDir: string): string[] {
   return configuredObjectives.includes(progressObjective)
     ? configuredObjectives
     : [...configuredObjectives, progressObjective];
+}
+
+function collectObjectiveDeliveryPriorityIds(objectives: string[], supportedIds: readonly string[]): string[] {
+  const normalizedSupportedIds = orderStringsByPreferredSequence(supportedIds as unknown as string[], supportedIds);
+  const collectedIds: string[] = [];
+
+  objectives.forEach((objective) => {
+    const normalizedObjective = objective.toLowerCase();
+    const cueMatches = [
+      { cue: 'before', index: normalizedObjective.indexOf(' before ') },
+      { cue: 'after', index: normalizedObjective.indexOf(' after ') },
+      { cue: 'until', index: normalizedObjective.indexOf(' until ') },
+    ].filter((match) => match.index >= 0);
+    const firstCue = cueMatches.sort((left, right) => left.index - right.index)[0] ?? null;
+    const mentionedIds = normalizedSupportedIds
+      .map((id) => ({ id, index: normalizedObjective.indexOf(id.toLowerCase()) }))
+      .filter((match) => match.index >= 0)
+      .sort((left, right) => left.index - right.index);
+
+    if (mentionedIds.length === 0) {
+      return;
+    }
+
+    if (firstCue) {
+      const idsBeforeCue = mentionedIds.filter((match) => match.index < firstCue.index).map((match) => match.id);
+      const idsAfterCue = mentionedIds.filter((match) => match.index > firstCue.index).map((match) => match.id);
+
+      if (firstCue.cue === 'before') {
+        if (idsBeforeCue.length > 0) {
+          collectedIds.push(...idsBeforeCue);
+        }
+        return;
+      }
+
+      if (idsAfterCue.length > 0) {
+        collectedIds.push(...idsAfterCue);
+      }
+      return;
+    }
+
+    if (mentionedIds.length > 1 && /\b(?:prioriti(?:ze|s(?:e)?)|focus|ship|stage|validate|deliver)\b/u.test(normalizedObjective)) {
+      collectedIds.push(...mentionedIds.map((match) => match.id));
+      return;
+    }
+
+    if (mentionedIds.length === 1) {
+      collectedIds.push(mentionedIds[0].id);
+    }
+  });
+
+  return orderStringsByPreferredSequence(collectedIds, collectedIds);
+}
+
+function deriveDeliveryRolloutOrder(objectives: string[], defaultOrder: readonly string[]): string[] {
+  const prioritizedIds = collectObjectiveDeliveryPriorityIds(objectives, defaultOrder);
+  return orderStringsByPreferredSequence(defaultOrder as unknown as string[], prioritizedIds);
 }
 
 function promoteRuntimeReadyStatus(status?: string | null, implementationReady?: boolean): string {
@@ -1622,7 +1678,13 @@ export function buildSummary(rootDir: string) {
   const rawEnvTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
   const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
-  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
+  const channelRolloutOrder = deriveDeliveryRolloutOrder(workLoopObjectives, CHANNEL_ROLLOUT_ORDER);
+  const providerRolloutOrder = deriveDeliveryRolloutOrder(workLoopObjectives, PROVIDER_ROLLOUT_ORDER);
+  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, {
+    rootDir,
+    channelRolloutOrder,
+    providerRolloutOrder,
+  });
   const promotedChannelQueue = baseDeliverySummary.channelQueue.map((channel) => ({
     ...channel,
     status: promoteRuntimeReadyStatus(channel.status, channel.implementationReady),

@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildSummary, runImportCommand, runUpdateCommand } from '../src/index.js';
+import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
+import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-work-loop-'));
@@ -276,6 +278,126 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   ]);
   assert.equal(summary.workLoop.objectiveCount, 5);
   assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| keep Slack queued until Telegram is runtime-ready \| stage OpenAI before the rest of the provider set \| report progress in small verified increments/);
+});
+
+test('buildSummary uses USER.md current product direction to reprioritize delivery queues and work-loop paths', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['telegram', 'feishu', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['anthropic', 'openai', 'kimi', 'minimax', 'glm', 'qwen']);
+  assert.deepEqual(summary.delivery.requiredEnvVars, [
+    'TELEGRAM_BOT_TOKEN',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ]);
+  assert.deepEqual(summary.workLoop.priorities[2].paths, [
+    'manifests/channels.json',
+    'src/channels/telegram.js',
+    'src/channels/feishu.js',
+    'src/channels/whatsapp.js',
+    'src/channels/slack.js',
+  ]);
+  assert.deepEqual(summary.workLoop.priorities[3].paths, [
+    'manifests/providers.json',
+    'src/models/anthropic.js',
+    'src/models/openai.js',
+    'src/models/kimi.js',
+    'src/models/minimax.js',
+    'src/models/glm.js',
+    'src/models/qwen.js',
+  ]);
+});
+
+test('buildSummary keeps deferred delivery objectives from over-promoting later channels ahead of the remaining rollout', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. keep Slack queued until Telegram is runtime-ready',
+      '4. stage OpenAI before the rest of the provider set',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['telegram', 'feishu', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.requiredEnvVars.slice(0, 7), [
+    'TELEGRAM_BOT_TOKEN',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+  ]);
+});
+
+test('buildSummary reprioritizes multiple explicitly named delivery targets when USER.md calls them out together', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. prioritize Slack and Telegram channels first',
+      '4. focus Anthropic and OpenAI providers first',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['slack', 'telegram', 'feishu', 'whatsapp']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['anthropic', 'openai', 'kimi', 'minimax', 'glm', 'qwen']);
 });
 
 test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses setext markdown', () => {
