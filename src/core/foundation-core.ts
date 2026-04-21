@@ -619,6 +619,8 @@ export interface CoreMemoryFoundationSummary {
   rootReadySections?: string[];
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
+  canonicalShortTermBucket: 'daily';
+  legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -1038,6 +1040,8 @@ export function buildCoreFoundationSummary({
       rootReadySectionCount: memoryRootSections.readySections.length,
       rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
+    canonicalShortTermBucket: 'daily' as const,
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,

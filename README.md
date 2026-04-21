@@ -88,6 +88,7 @@ The current structured contract is:
 
 The summary surfaces keep that contract machine-readable:
 - `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready
+- `foundation.core.memory.canonicalShortTermBucket` and `foundation.core.memory.legacyShortTermAliases` mirror the same daily-vs-legacy mapping inside the repo-core foundation contract
 - `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide
 - `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract
 - `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract
