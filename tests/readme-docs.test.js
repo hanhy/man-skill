@@ -98,6 +98,15 @@ test('checked-in USER current product direction stays aligned with the default w
   ]);
 });
 
+test('README keeps the intake replay defaults aligned with the CLI entrance semantics', () => {
+  assert.match(readme, /bulk-import only first-run metadata-only intake manifests with `import intake --stale`/i);
+  assert.match(readme, /re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory \/ voice \/ soul \/ skills drafts too/i);
+  assert.match(readme, /bulk-import only already-imported profile-local intake manifests with `import intake --imported`/i);
+  assert.match(readme, /re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory \/ voice \/ soul \/ skills drafts/i);
+  assert.match(readme, /`node src\/index\.js --help` now prints a concise operator-facing usage guide/i);
+  assert.match(readme, /without refreshing derived drafts by default/i);
+});
+
 test('checked-in intake scaffold stays aligned with the repo-level starter ingress for Harry Han', () => {
   assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json`/);
   assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/);

@@ -14,6 +14,7 @@ function makeTempRepo() {
 }
 
 const cliEntrypoint = fileURLToPath(new URL('../src/index.js', import.meta.url));
+const repoRoot = path.resolve(path.dirname(cliEntrypoint), '..');
 
 test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for a profile', () => {
   const rootDir = makeTempRepo();
@@ -203,6 +204,21 @@ test('CLI update foundation command writes derived profile drafts', () => {
   });
   assert.match(result.voiceDraftPath, /profiles\/harry-han\/voice\/README\.md$/);
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
+});
+
+test('CLI --help explains the stale/imported intake replay defaults and refresh variants', () => {
+  const output = execFileSync('node', [cliEntrypoint, '--help'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  assert.match(output, /import intake --stale \[--refresh-foundation\].*still need first imports/i);
+  assert.match(output, /import intake --imported \[--refresh-foundation\].*already-imported profiles/i);
+  assert.match(output, /import intake --all \[--refresh-foundation\].*including already-imported profiles/i);
+  assert.match(output, /update intake --stale \[--refresh-foundation\].*metadata-only profiles with missing or partial imports\/ assets/i);
+  assert.match(output, /update intake --imported \[--refresh-foundation\].*already-imported profiles missing imports\/ assets/i);
+  assert.match(output, /update intake --all \[--refresh-foundation\].*every metadata-only profile/i);
+  assert.doesNotMatch(output, /"foundation"\s*:/);
 });
 
 test('CLI update intake --stale scaffolds only metadata-only profiles with incomplete intake landing zones', () => {

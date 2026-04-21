@@ -59,7 +59,8 @@ The current operator-facing entrance is:
 - backfill missing intake landing zones for already-imported profiles with `update intake --imported`
 - import checked-in starter material with `import sample`
 - import profile-local intake manifests with `import intake --person <id>`
-- bulk-import only first-run metadata-only intake manifests with `import intake --stale --refresh-foundation`
+- bulk-import only first-run metadata-only intake manifests with `import intake --stale` without refreshing derived drafts by default
+- re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory / voice / soul / skills drafts too
 - bulk-import only already-imported profile-local intake manifests with `import intake --imported`
 - re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory / voice / soul / skills drafts
 - regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation`, `update foundation --person <id>`, or `update foundation --stale`
