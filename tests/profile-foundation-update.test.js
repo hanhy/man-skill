@@ -256,6 +256,32 @@ test('CLI update intake --stale scaffolds only metadata-only profiles with incom
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'zeta-partial', 'imports', 'sample.txt')), true);
 });
 
+test('CLI update intake --stale keeps foundation refresh empty when only metadata-only profiles are touched', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Alpha Missing',
+    displayName: 'Alpha Missing',
+    summary: 'No imported materials yet.',
+  });
+
+  const output = execFileSync('node', [cliEntrypoint, 'update', 'intake', '--stale', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['alpha-missing']);
+  assert.deepEqual(result.foundationRefresh, {
+    profileCount: 0,
+    results: [],
+  });
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-missing', 'voice', 'README.md')), false);
+});
+
 test('CLI update intake --all reruns intake scaffolding for every metadata-only profile', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

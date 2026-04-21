@@ -67,25 +67,28 @@ Use this broader path when you intentionally want to replay every ready `profile
 
 ```bash
 node src/index.js update intake --stale
+node src/index.js update intake --stale --refresh-foundation
 ```
 
-This repair path fills in only metadata-only profiles whose `imports/` starter area is missing files or still partial.
+This repair path fills in only metadata-only profiles whose `imports/` starter area is missing files or still partial. Even if you pass `--refresh-foundation`, the returned `foundationRefresh` bundle stays empty until those touched profiles have imported materials; this batch is still about making the intake entrance ready for a first import.
 
 ### Backfill missing intake landing zones for already-imported profiles
 
 ```bash
 node src/index.js update intake --imported
+node src/index.js update intake --imported --refresh-foundation
 ```
 
-Use this when imported profiles still need their `profiles/<person-id>/imports/README.md`, `sample.txt`, or `materials.template.json` landing zone restored without re-scaffolding metadata-only profiles that have never been imported.
+Use this when imported profiles still need their `profiles/<person-id>/imports/README.md`, `sample.txt`, or `materials.template.json` landing zone restored without re-scaffolding metadata-only profiles that have never been imported. Add `--refresh-foundation` when you want the same pass to regenerate memory / voice / soul / skills drafts for those already-imported profiles once the intake landing zone is back in place.
 
 ### Rebuild intake landing zones for every metadata-only profile
 
 ```bash
 node src/index.js update intake --all
+node src/index.js update intake --all --refresh-foundation
 ```
 
-Use this when you want to refresh the checked-in `imports/README.md`, `materials.template.json`, and `sample.txt` starter assets across every metadata-only profile, even if some of them are already complete.
+Use this when you want to refresh the checked-in `imports/README.md`, `materials.template.json`, and `sample.txt` starter assets across every metadata-only profile, even if some of them are already complete. Like `update intake --stale`, this remains scaffold-only metadata prep until those targets have imported materials, so the optional `foundationRefresh` bundle stays empty on purely metadata-only runs.
 
 ### Import a JSON manifest of mixed materials
 

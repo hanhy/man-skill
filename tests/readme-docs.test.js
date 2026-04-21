@@ -101,10 +101,19 @@ test('checked-in USER current product direction stays aligned with the default w
 });
 
 test('README keeps the intake replay defaults aligned with the CLI entrance semantics', () => {
+  assert.match(readme, /backfill missing intake landing zones for already-imported profiles with `update intake --imported`/i);
+  assert.match(readme, /re-run that imported backfill plus draft regeneration with `update intake --imported --refresh-foundation` when the touched profiles already have materials on disk/i);
   assert.match(readme, /bulk-import only first-run metadata-only intake manifests with `import intake --stale`/i);
   assert.match(readme, /re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory \/ voice \/ soul \/ skills drafts too/i);
   assert.match(readme, /bulk-import only already-imported profile-local intake manifests with `import intake --imported`/i);
   assert.match(readme, /re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory \/ voice \/ soul \/ skills drafts/i);
+  assert.match(readme, /Batch `update intake --stale` and `update intake --all` remain scaffold-only metadata prep, so even when `--refresh-foundation` is passed their returned `foundationRefresh` bundle stays empty until those targets actually have imported materials; use `update intake --imported --refresh-foundation` for the combined backfill-and-regenerate path on already-imported profiles/i);
+  assert.match(ingestionDoc, /node src\/index\.js update intake --stale\s+node src\/index\.js update intake --stale --refresh-foundation/i);
+  assert.match(ingestionDoc, /Even if you pass `--refresh-foundation`, the returned `foundationRefresh` bundle stays empty until those touched profiles have imported materials/i);
+  assert.match(ingestionDoc, /node src\/index\.js update intake --imported\s+node src\/index\.js update intake --imported --refresh-foundation/i);
+  assert.match(ingestionDoc, /Add `--refresh-foundation` when you want the same pass to regenerate memory \/ voice \/ soul \/ skills drafts for those already-imported profiles once the intake landing zone is back in place/i);
+  assert.match(ingestionDoc, /node src\/index\.js update intake --all\s+node src\/index\.js update intake --all --refresh-foundation/i);
+  assert.match(ingestionDoc, /Like `update intake --stale`, this remains scaffold-only metadata prep until those targets have imported materials, so the optional `foundationRefresh` bundle stays empty on purely metadata-only runs/i);
   assert.match(readme, /`node src\/index\.js --help` now prints a concise operator-facing usage guide/i);
   assert.match(readme, /without refreshing derived drafts by default/i);
 });
