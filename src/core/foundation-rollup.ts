@@ -259,6 +259,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'voice'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'voice'),
+      repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {
           const generatedHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
@@ -274,6 +275,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'soul'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'soul'),
+      repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {
           const generatedHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
@@ -289,6 +291,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'skills'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'skills'),
+      repoStaleProfileCount: staleProfileCount,
       candidateCount: safeProfiles.reduce(
         (total, profile) => total + (profile.foundationReadiness?.skills?.candidateCount ?? 0),
         0,

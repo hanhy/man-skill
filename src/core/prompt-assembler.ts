@@ -946,13 +946,13 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
       ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
-      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(voice.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
       : null,
     soul
-      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(soul.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
-      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
+      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${formatCountLabel(skills.repoStaleProfileCount ?? 0, 'repo-stale profile')}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
 }

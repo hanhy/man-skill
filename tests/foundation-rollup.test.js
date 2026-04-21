@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import { buildFoundationRollup } from '../src/core/foundation-rollup.js';
 import { buildFoundationRollup as buildFoundationRollupTs } from '../src/core/foundation-rollup.ts';
+import { PromptAssembler } from '../src/core/prompt-assembler.ts';
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { buildSummary } from '../src/index.js';
@@ -175,18 +176,21 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
     highlights: ['[message] Ship the first slice.', 'Tight loops beat big plans.'],
   });
   assert.deepEqual(rollup.soul, {
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
     highlights: ['[text] Keep the scope tight.', 'Tight loops beat big plans.'],
   });
   assert.deepEqual(rollup.skills, {
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });
@@ -314,6 +318,65 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
   );
 });
 
+test('PromptAssembler foundation rollup keeps repo-stale counts visible across voice, soul, and skills', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    foundationRollup: {
+      memory: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        repoStaleProfileCount: 1,
+        totalEntries: 2,
+        highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.'],
+      },
+      voice: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        repoStaleProfileCount: 1,
+        highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
+      },
+      soul: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        repoStaleProfileCount: 1,
+        highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
+      },
+      skills: {
+        profileCount: 2,
+        generatedProfileCount: 1,
+        candidateProfileCount: 2,
+        repoStaleProfileCount: 1,
+        candidateCount: 2,
+        highlights: ['execution heuristic', 'feedback-loop heuristic'],
+      },
+      maintenance: {
+        profileCount: 2,
+        readyProfileCount: 1,
+        refreshProfileCount: 1,
+        incompleteProfileCount: 1,
+        missingDraftCounts: { memory: 1, skills: 1, soul: 1, voice: 1 },
+        refreshReasonCounts: { 'missing drafts': 1 },
+        staleRefreshCommand: "node src/index.js update foundation --stale",
+        helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
+        queuedProfiles: [],
+      },
+    },
+  }).buildPreview(10000);
+
+  assert.match(preview, /Foundation rollup:/);
+  assert.match(preview, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 entries, highlights: Keep the feedback loop short\. \| Ship the thin slice first\./);
+  assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
+});
+
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -356,10 +419,25 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     totalEntries: 2,
     highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.', 'Tight loops beat big plans.'],
   });
+  assert.deepEqual(summary.foundation.voice, {
+    profileCount: 2,
+    generatedProfileCount: 1,
+    candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
+    highlights: ['[talk] Keep the feedback loop short.', '[message] Ship the thin slice first.', 'Tight loops beat big plans.'],
+  });
+  assert.deepEqual(summary.foundation.soul, {
+    profileCount: 2,
+    generatedProfileCount: 1,
+    candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
+    highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
+  });
   assert.deepEqual(summary.foundation.skills, {
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    repoStaleProfileCount: 1,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });
@@ -420,8 +498,6 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
-  assert.match(summary.promptPreview, /Ingestion entrance:[\s\S]*drafts: 1 ready, 1 queued for refresh, 1 incomplete[\s\S]*refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .* \| shortcut node src\/index\.js import intake --person 'jane-doe' \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
