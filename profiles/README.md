@@ -49,6 +49,7 @@ The per-profile command palette still stays actionable in that starter-template 
 - `refresh-intake` via `node src/index.js update intake --person <id> ...`
 - `importManifestCommand` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
 - `starterImportCommand` for the checked-in `profiles/<id>/imports/sample.txt` starter import when it is available
+- `followUpImportIntakeCommand` for the `import intake --person <id> --refresh-foundation` replay that becomes runnable after editing the starter manifest
 - `updateProfileCommand` for metadata-only edits
 - `updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration
 
