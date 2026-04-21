@@ -5,7 +5,7 @@ export const slackChannelScaffold = {
   name: 'Slack',
   transport: 'chat',
   direction: ['inbound', 'outbound'],
-  status: 'planned',
+  status: 'candidate',
   capabilities: ['threads', 'mentions', 'bot-token'],
   auth: {
     type: 'bot-token',
@@ -15,7 +15,7 @@ export const slackChannelScaffold = {
   inboundPath: '/hooks/slack/events',
   outboundMode: 'thread-reply',
   implementationPath: 'src/channels/slack.js',
-  nextStep: 'implement inbound event handling and outbound thread replies',
+  nextStep: null,
 };
 
 function pickSlackMessageRecord(event = {}) {

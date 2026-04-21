@@ -2120,7 +2120,7 @@ test('buildSummary work loop repairs the env template before channel scaffolding
     summary.delivery.helperCommands.populateEnvTemplate,
     "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(
     summary.workLoop.currentPriority.command,
     "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
@@ -2130,7 +2130,7 @@ test('buildSummary work loop repairs the env template before channel scaffolding
   assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, SLACK_SIGNING_SECRET, ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY\)/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
@@ -2280,8 +2280,8 @@ test('buildSummary work loop keeps credential bootstrap paths scoped to the temp
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
-  assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
   assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
@@ -2342,7 +2342,7 @@ test('buildSummary work loop carries env bootstrap paths for both the template s
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
   assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
-  assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
 });
 
 test('buildSummary work loop marks delivery blocked when the rollout leader is auth-blocked even if later channel implementations are still missing', () => {
@@ -2681,12 +2681,12 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.channelQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
 });
@@ -2992,10 +2992,10 @@ test('buildSummary work loop scaffolds the channel manifest once the queue leade
     const summary = buildSummary(rootDir);
 
     assert.equal(summary.workLoop.currentPriority.id, 'channels');
-    assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; credentials present');
     assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
     assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
-    assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow/);
+    assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; credentials present/);
     assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
@@ -3029,10 +3029,10 @@ test('buildSummary work loop scaffolds the channel manifest when delivery setup 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
-  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
 });
 
@@ -3074,7 +3074,7 @@ test('buildSummary work loop bundles missing channel implementations once the ch
 
     assert.equal(summary.delivery.helperCommands.scaffoldChannelImplementationBundle, "(mkdir -p 'src/channels' && touch 'src/channels/feishu.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/slack.js')");
     assert.equal(summary.workLoop.currentPriority.id, 'channels');
-    assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; credentials present');
     assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldChannelImplementationBundle);
     assert.deepEqual(summary.workLoop.currentPriority.paths, [
       'manifests/channels.json',
@@ -3084,7 +3084,7 @@ test('buildSummary work loop bundles missing channel implementations once the ch
       'src/channels/slack.js',
     ]);
     assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, 0 auth-blocked, manifest ready, scaffolds 0\/4 present/);
-    assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/feishu\.js; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow/);
+    assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/feishu\.js; credentials present/);
     assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\)/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
@@ -3234,7 +3234,7 @@ test('buildSummary work loop repairs the env template when it misses the leader 
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateEnvTemplate);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
 });
 
@@ -3280,11 +3280,11 @@ test('buildSummary work loop keeps scaffold-only delivery files visible as runti
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.match(summary.workLoop.currentPriority.summary, /4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'implement pending channel integrations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'implement pending channel integrations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/slack.js']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
-  assert.match(summary.promptPreview, /next action: implement pending channel integrations — starting with src\/channels\/feishu\.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /next action: implement pending channel integrations — starting with src\/channels\/feishu\.js; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
   assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
 });
@@ -3316,7 +3316,7 @@ test('buildSummary work loop still scaffolds missing delivery files before scaff
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, "(mkdir -p 'src/channels' && touch 'src/channels/feishu.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js')");
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js']);
 });
 
@@ -3349,7 +3349,7 @@ test('buildSummary work loop paths follow the actual missing delivery file when 
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'src/channels' && touch 'src/channels/feishu.js'");
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
   assert.match(summary.promptPreview, /command: mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'/);
   assert.match(summary.promptPreview, /paths: manifests\/channels\.json, src\/channels\/feishu\.js/);
@@ -3381,11 +3381,11 @@ test('buildSummary work loop bundles missing provider implementations once the p
 
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "(mkdir -p 'src/models' && touch 'src/models/openai.js') && (mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js') && (mkdir -p 'src/models' && touch 'src/models/minimax.js') && (mkdir -p 'src/models' && touch 'src/models/glm.js') && (mkdir -p 'src/models' && touch 'src/models/qwen.js')");
   assert.equal(summary.workLoop.currentPriority.id, 'providers');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; auth configured for gpt-5; next: implement chat/tool request translation and response normalization');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; auth configured for gpt-5');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldProviderImplementationBundle);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js', 'src/models/anthropic.js', 'src/models/kimi.js', 'src/models/minimax.js', 'src/models/glm.js', 'src/models/qwen.js']);
   assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 6 configured, 0 auth-blocked, manifest ready, scaffolds 0\/6 present/);
-  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; auth configured for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; auth configured for gpt-5/);
   assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/minimax\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/glm\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/qwen\.js'\)/);
 });
 

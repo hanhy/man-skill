@@ -5,7 +5,7 @@ export const telegramChannelScaffold = {
   name: 'Telegram',
   transport: 'chat',
   direction: ['inbound', 'outbound'],
-  status: 'planned',
+  status: 'candidate',
   capabilities: ['bot-token', 'webhook', 'polling'],
   auth: {
     type: 'bot-token',
@@ -15,7 +15,7 @@ export const telegramChannelScaffold = {
   inboundPath: '/hooks/telegram',
   outboundMode: 'chat-send',
   implementationPath: 'src/channels/telegram.js',
-  nextStep: 'wire bot webhook intake and outbound chat sends',
+  nextStep: null,
 };
 
 function pickTelegramEventRecord(payload = {}) {

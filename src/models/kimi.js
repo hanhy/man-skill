@@ -11,13 +11,13 @@ export const kimiProviderScaffold = {
   id: 'kimi',
   name: 'Kimi',
   models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-  status: 'planned',
+  status: 'candidate',
   features: ['chat', 'tools', 'long-context'],
   defaultModel: 'moonshot-v1-32k',
   authEnvVar: 'KIMI_API_KEY',
   modalities: ['chat', 'tools', 'long-context'],
   implementationPath: 'src/models/kimi.js',
-  nextStep: 'implement moonshot-compatible client setup and model selection',
+  nextStep: null,
 };
 
 function normalizeKimiToolCalls(toolCalls = []) {

@@ -5,7 +5,7 @@ export const whatsappChannelScaffold = {
   name: 'WhatsApp',
   transport: 'chat',
   direction: ['inbound', 'outbound'],
-  status: 'planned',
+  status: 'candidate',
   capabilities: ['session', 'group-chat', 'business-api'],
   auth: {
     type: 'access-token',
@@ -15,7 +15,7 @@ export const whatsappChannelScaffold = {
   inboundPath: '/hooks/whatsapp',
   outboundMode: 'session-send',
   implementationPath: 'src/channels/whatsapp.js',
-  nextStep: 'map business-api webhooks and outbound message delivery',
+  nextStep: null,
 };
 
 function pickWhatsAppChange(payload = {}) {
