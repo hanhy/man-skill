@@ -39,6 +39,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
+  assert.match(architectureDoc, /skills candidate-profile coverage/i);
+  assert.match(ingestionDoc, /skills candidate-profile coverage/i);
   assert.match(architectureDoc, /repair-invalid-bundle/i);
   assert.match(architectureDoc, /repair-imported-invalid-bundle/i);
   assert.match(architectureDoc, /sample-message/i);
