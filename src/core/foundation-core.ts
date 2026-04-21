@@ -537,63 +537,12 @@ function buildCoreFoundationMaintenance({
   };
   const recommendedQueueItem = queue[0] ?? null;
   const recommendedArea = recommendedQueueItem?.area ?? null;
-  const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
-  const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
-  const recommendedPaths = queue.length > 1
-    ? Array.from(new Set(queue.flatMap((area) => area.paths ?? [])))
-    : [...(queue[0]?.paths ?? [])];
+  const recommendedStatus = recommendedQueueItem?.status ?? null;
+  const recommendedSummary = recommendedQueueItem?.summary ?? null;
+  const recommendedPaths = [...(recommendedQueueItem?.paths ?? [])];
   const queuedStatuses = new Set(queue.map((area) => area.status));
-  const recommendedCommand = (() => {
-    if (queue.length === 0) {
-      return null;
-    }
-
-    if (queue.length === 1) {
-      return queue[0]?.command ?? null;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('missing') && helperCommands.scaffoldMissing) {
-      return helperCommands.scaffoldMissing;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('thin') && helperCommands.scaffoldThin) {
-      return helperCommands.scaffoldThin;
-    }
-
-    return helperCommands.scaffoldAll;
-  })();
-  const recommendedAction = (() => {
-    const firstAction = queue[0]?.action ?? null;
-    if (queue.length === 0) {
-      return null;
-    }
-
-    if (queue.length === 1) {
-      return firstAction;
-    }
-
-    if (!firstAction) {
-      if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
-        return 'scaffold missing core foundation areas';
-      }
-
-      if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
-        return 'repair thin core foundation areas';
-      }
-
-      return 'scaffold missing or thin core foundation areas';
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
-      return `scaffold missing core foundation areas — starting with ${firstAction}`;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
-      return `repair thin core foundation areas — starting with ${firstAction}`;
-    }
-
-    return `scaffold missing or thin core foundation areas — starting with ${firstAction}`;
-  })();
+  const recommendedCommand = recommendedQueueItem?.command ?? null;
+  const recommendedAction = recommendedQueueItem?.action ?? null;
 
   return {
     areaCount: areas.length,

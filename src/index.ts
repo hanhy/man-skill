@@ -884,12 +884,16 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
     : '';
   const hasQueuedCoreFoundation = queuedAreas.length > 0;
-  const coreNextAction = recommendedCoreAction ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null));
-  const coreCommand = recommendedCoreCommand ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand);
-  const corePaths = recommendedCorePaths.length > 0
-    ? recommendedCorePaths
-    : (useBulkCoreScaffoldCommand
-      ? bulkCoreScaffoldPaths
+  const coreNextAction = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldLabel
+    : (recommendedCoreAction ?? queuedArea?.action ?? null);
+  const coreCommand = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldCommand
+    : (recommendedCoreCommand ?? queuedAreaCommand);
+  const corePaths = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldPaths
+    : (recommendedCorePaths.length > 0
+      ? recommendedCorePaths
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
   const profileNextAction = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand ? bulkRefreshLabel : (recommendedProfileAction ?? buildFoundationRefreshLabel(recommendedProfile, queuedProfileLabel)))
