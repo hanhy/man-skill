@@ -433,8 +433,8 @@ function shouldRewriteProfileDocument({ existingProfile = null, normalizedId, pe
     || (existingProfile.summary ?? null) !== nextSummary;
 }
 
-function buildManifestImportCommand(manifestPath) {
-  return `node src/index.js import manifest --file ${shellQuote(manifestPath)}`;
+function buildManifestImportCommand(manifestPath, { refreshFoundation = false } = {}) {
+  return `node src/index.js import manifest --file ${shellQuote(manifestPath)}${refreshFoundation ? ' --refresh-foundation' : ''}`;
 }
 
 function shellQuote(value) {
@@ -724,6 +724,7 @@ function buildIntakeReadme({
   starterManifestPath,
   sampleTextPath,
   sampleImagesDirPath,
+  importManifestWithoutRefreshCommand,
   importManifestCommand,
   importAfterEditingWithoutRefreshCommand,
   importAfterEditingCommand,
@@ -758,6 +759,37 @@ function buildIntakeReadme({
       : '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
     '',
+    'Path rule:',
+    `- \`materials.template.json\` resolves every \`file\` relative to \`${path.posix.dirname(starterManifestPath)}/\`.`,
+    `- Keep local screenshots or attachments next to \`${path.posix.basename(sampleTextPath)}\` or inside a small subdirectory like \`${sampleImagesDirPath}/\`.`,
+    `- Example: if you save a screenshot at \`${sampleImagesDirPath}/chat.png\`, use \`images/chat.png\` inside the manifest.`,
+    '',
+    'Starter entry examples:',
+    '```json',
+    '[',
+    '  {',
+    '    "type": "text",',
+    '    "file": "sample.txt",',
+    '    "notes": "long-form writing sample"',
+    '  },',
+    '  {',
+    '    "type": "message",',
+    '    "text": "Ship the thin slice first, then tighten it with real feedback.",',
+    '    "notes": "representative short message"',
+    '  },',
+    '  {',
+    '    "type": "talk",',
+    '    "text": "If we can learn it in one run today, that beats polishing a big plan all week.",',
+    '    "notes": "voice memo transcript"',
+    '  },',
+    '  {',
+    '    "type": "screenshot",',
+    '    "file": "images/chat.png",',
+    '    "notes": "chat screenshot"',
+    '  }',
+    ']',
+    '```',
+    '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
     !hasReadyProfileLocalReplay && importAfterEditingWithoutRefreshCommand
@@ -772,6 +804,12 @@ function buildIntakeReadme({
     importIntakeCommand
       ? `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`
       : null,
+    importManifestWithoutRefreshCommand
+      ? `- inspect the edited manifest without refreshing drafts: ${importManifestWithoutRefreshCommand}`
+      : null,
+    importManifestCommand
+      ? `- import the edited manifest and refresh drafts: ${importManifestCommand}`
+      : null,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
     '',
@@ -780,7 +818,10 @@ function buildIntakeReadme({
     `- message: ${importCommands?.message}`,
     `- talk: ${importCommands?.talk}`,
     `- screenshot: ${importCommands?.screenshot}`,
-    `- manifest: ${importManifestCommand}`,
+    importManifestWithoutRefreshCommand && importManifestWithoutRefreshCommand !== importManifestCommand
+      ? `- manifest inspect: ${importManifestWithoutRefreshCommand}`
+      : null,
+    `- manifest: ${importManifestCommand ?? importManifestWithoutRefreshCommand}`,
     '',
     'Custom notes:',
     INTAKE_CUSTOM_NOTES_START,
@@ -799,6 +840,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
   const summary = profileSummary?.profile?.summary ?? null;
   const importCommand = buildManifestImportCommand(manifestPath);
+  const importManifestAndRefreshCommand = buildManifestImportCommand(manifestPath, { refreshFoundation: true });
   const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
   const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${shellQuote(personId)}`;
@@ -816,6 +858,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
     needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
     missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
     importCommand,
+    importManifestAndRefreshCommand,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     refreshFoundationCommand,
@@ -825,6 +868,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: importCommand,
+      importManifestAndRefresh: importManifestAndRefreshCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,
@@ -917,7 +961,8 @@ export class MaterialIngestion {
       );
     }
 
-    const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const importManifestWithoutRefreshCommand = buildManifestImportCommand(intakePaths.starterManifestPath);
+    const importManifestCommand = buildManifestImportCommand(intakePaths.starterManifestPath, { refreshFoundation: true });
     const updateProfileCommand = buildUpdateProfileCommand({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -956,6 +1001,7 @@ export class MaterialIngestion {
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
         sampleTextPath: relativeSampleTextPath,
         sampleImagesDirPath: intakePaths.sampleImagesDirPath.split(path.sep).join('/'),
+        importManifestWithoutRefreshCommand,
         importManifestCommand,
         importAfterEditingWithoutRefreshCommand,
         importAfterEditingCommand,
@@ -977,6 +1023,7 @@ export class MaterialIngestion {
       invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'
         ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
         : null,
+      importManifestWithoutRefreshCommand,
       importManifestCommand,
       importIntakeWithoutRefreshCommand,
       importIntakeCommand,

@@ -42,7 +42,7 @@ The top-level `ingestion` block keeps the profile entrance explicit even before 
 That same entrance also advertises:
 - a plain `node src/index.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection
 - a `node src/index.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory / voice / soul / skills drafts in one pass
-- direct `import manifest --file ... --refresh-foundation` and one-off `import text|message|talk|screenshot ...` paths when operators want to skip the higher-level replay command and run the underlying import directly
+- direct `import manifest --file ... --refresh-foundation` and one-off `import text|message|talk|screenshot ...` paths when operators want to skip the higher-level replay command and run the underlying import directly, plus a plain `import manifest --file ...` variant when they want to inspect imported materials before regenerating drafts
 
 When an already-imported profile still only has the untouched `profiles/<person-id>/imports/materials.template.json` starter scaffold, the top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest and `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay to run after the edit.
 
@@ -50,6 +50,7 @@ The per-profile command palette still stays actionable in that starter-template 
 - `refresh-intake` via `node src/index.js update intake --person <id> ...`
 - `after-editing import` via `node src/index.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet
 - `after-editing import+refresh` via `node src/index.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory / voice / soul / skills drafts
+- `importManifestWithoutRefreshCommand` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'`
 - `importManifestCommand` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
 - `starterImportCommand` for the checked-in `profiles/<id>/imports/sample.txt` starter import
 - both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand` so the prompt preview can surface the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that become runnable after editing the starter manifest

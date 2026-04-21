@@ -167,7 +167,10 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
   assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
+  assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
+  assert.match(intakeReadme, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
@@ -208,6 +211,9 @@ test('scaffoldProfileIntake labels loaded manifests as profile-local reruns and 
   assert.match(intakeReadme, /Profile-local manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(intakeReadme, /profile-local intake shortcut without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /profile-local intake shortcut and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
+  assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(intakeReadme, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
@@ -2301,6 +2307,7 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
       needsRefresh: false,
       missingDrafts: [],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
@@ -2310,6 +2317,7 @@ test('CLI import manifest supports single-target shorthand metadata and inherite
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
