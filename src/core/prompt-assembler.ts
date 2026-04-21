@@ -1500,8 +1500,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
         ? `; gaps ${profile.draftGapSummary}`
         : '';
+      const isStarterTemplateProfile = profile.intakeReady === true
+        && typeof profile.intakeStatusSummary === 'string'
+        && profile.intakeStatusSummary.includes('starter template');
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
+        : '';
+      const refreshIntakeSegment = isStarterTemplateProfile && profile.updateIntakeCommand
+        ? ` | refresh-intake ${profile.updateIntakeCommand}`
         : '';
       const intakeShortcutCommand = profile.importIntakeCommand ?? profile.importIntakeWithoutRefreshCommand ?? null;
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
@@ -1550,7 +1556,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${manifestSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
