@@ -761,6 +761,45 @@ test('buildSummary ignores nested bullet details under current product direction
   assert.doesNotMatch(summary.promptPreview, /prefer explicit reruns over broad stale sweeps/);
 });
 
+test('buildSummary preserves wrapped objective text lines in USER.md current product direction items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. harden the memory + soul handoff before',
+      '   delivery rollout with explicit root guidance',
+      '2. make intake reruns safe for partially',
+      '   imported profiles before wider delivery work',
+      '3. ship Telegram before the other chat',
+      '   surfaces once the runtime helpers stay stable',
+      '4. validate Anthropic before broad provider',
+      '   expansion across the rest of the adapter set',
+      '',
+      '## Usage notes',
+      '',
+      'Wrapped continuation lines should stay inside the same objective.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout with explicit root guidance',
+    'make intake reruns safe for partially imported profiles before wider delivery work',
+    'ship Telegram before the other chat surfaces once the runtime helpers stay stable',
+    'validate Anthropic before broad provider expansion across the rest of the adapter set',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout with explicit root guidance \| make intake reruns safe for partially imported profiles before wider delivery work \| ship Telegram before the other chat surfaces once the runtime helpers stay stable \| validate Anthropic before broad provider expansion across the rest of the adapter set \| report progress in small verified increments/);
+});
+
 test('buildSummary ignores commented and fenced current product direction scaffolds in USER.md', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

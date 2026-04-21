@@ -213,8 +213,22 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
       break;
     }
 
-    const parsedObjective = parseWorkLoopObjectiveLine(lines[index] ?? '');
+    const currentLine = lines[index] ?? '';
+    const parsedObjective = parseWorkLoopObjectiveLine(currentLine);
     if (!parsedObjective) {
+      const trimmedLine = currentLine.trim();
+      const continuationIndent = currentLine.match(/^(\s*)/)?.[1].length ?? 0;
+      const looksLikeNestedListDetail = /^[-*+]\s+/.test(trimmedLine);
+      if (
+        trimmedLine.length > 0
+        && objectives.length > 0
+        && objectiveIndent !== null
+        && !nextHeading
+        && continuationIndent > objectiveIndent
+        && !looksLikeNestedListDetail
+      ) {
+        objectives[objectives.length - 1] = `${objectives[objectives.length - 1]} ${trimmedLine}`;
+      }
       continue;
     }
 
