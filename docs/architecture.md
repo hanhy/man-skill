@@ -24,6 +24,7 @@ The project aims to keep personal-agent construction simple:
 
 3. **Memory**
    - `daily/` (the canonical short-term working-memory bucket), `long-term/`, and `scratch/` stores
+   - legacy `memory/short-term/` files still fold into the canonical `daily` lane when the repo is loaded, so older scaffolds stay readable while new work converges on `daily/`
    - curated identity facts, preferences, habits, and dated logs
 
 4. **Skills**
@@ -58,6 +59,7 @@ The project aims to keep personal-agent construction simple:
 - load voice guidance from `voice/README.md`
 - load memory index from `memory/`
 - keep `memory/daily/` as the checked-in short-term bucket while still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers
+- fold legacy `memory/short-term/` files into that canonical `daily` lane during repo loading, so older repos keep their short-term coverage without needing an immediate directory migration
 - keep the `MemoryStore` runtime alias honest too: `shortTerm` remains a writable compatibility alias of `daily` instead of a second mutable bucket
 - expose `memorySummary.canonicalShortTermBucket` plus `memorySummary.legacyShortTermAliases` so downstream tooling can see the canonical daily bucket and its compatibility field names without hard-coding the mapping
 - discover local skill folders from `skills/`

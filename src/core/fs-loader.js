@@ -26,6 +26,13 @@ function listFilesIfExists(dirPath) {
     .sort();
 }
 
+function listCanonicalMemoryDailyFiles(rootDir) {
+  return Array.from(new Set([
+    ...listFilesIfExists(path.join(rootDir, 'memory', 'daily')),
+    ...listFilesIfExists(path.join(rootDir, 'memory', 'short-term')),
+  ])).sort();
+}
+
 function listDirectoriesIfExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return [];
@@ -1007,7 +1014,7 @@ export class FileSystemLoader {
   loadMemoryIndex() {
     return {
       root: readTextIfExists(this.resolve('memory', 'README.md')),
-      daily: listFilesIfExists(this.resolve('memory', 'daily')),
+      daily: listCanonicalMemoryDailyFiles(this.rootDir),
       longTerm: listFilesIfExists(this.resolve('memory', 'long-term')),
       scratch: listFilesIfExists(this.resolve('memory', 'scratch')),
     };
