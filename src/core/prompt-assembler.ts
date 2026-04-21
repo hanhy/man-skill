@@ -1687,6 +1687,15 @@ function formatPreviewRootSectionSummary(
   return summary.replace(/^; root sections /, '- root sections: ');
 }
 
+function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | undefined): string | null {
+  const summary = formatHeadingAliasSummary(headingAliases);
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; aliases /, '- root heading aliases: ');
+}
+
 function formatThinSectionProgress(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -2031,7 +2040,7 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
 
 function buildMemoryPreviewBlock(
   memory: MemorySummary,
-  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount'> | null,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
 ): string {
   if (!memory) {
     return '- unavailable';
@@ -2067,12 +2076,13 @@ function buildMemoryPreviewBlock(
         foundationMemory.rootTotalSectionCount,
       )
       : null,
+    formatPreviewHeadingAliasSummary(foundationMemory?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -2146,6 +2156,7 @@ function buildSkillsPreviewBlock(
     `- custom: ${skills.customCount ?? 0}`,
     rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
     rootSectionSummary,
+    formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
