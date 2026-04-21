@@ -10,7 +10,7 @@ The point is not to store everything. The point is to preserve what helps the ag
 - Working notes that are useful now and can later be promoted, rewritten, or deleted.
 
 ## Buckets
-- `daily/` for dated logs or session summaries.
+- `daily/` for dated logs or session summaries. This is the checked-in short-term bucket.
 - `long-term/` for distilled identity facts, preferences, habits, and other stable knowledge.
 - `scratch/` for temporary working notes that may later be promoted or deleted.
 

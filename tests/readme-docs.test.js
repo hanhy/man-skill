@@ -44,6 +44,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(architectureDoc, /bootstrap that means `paths` keeps both `\.env\.example` and `\.env` visible when `cp \.env\.example \.env` is the active delivery step/i);
+  assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
+  assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
   assert.match(architectureDoc, /skills candidate-profile coverage/i);
@@ -60,6 +62,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command and surface both `\.env\.example` and `\.env` when the bootstrap step writes the repo-local env file/);
+  assert.match(ingestionDoc, /once `\.env` already exists, the blocked delivery step narrows to the repo-local `touch '\.env' && \.{3}` populate helper so `paths` drops back to `\.env`/i);
+  assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
   assert.match(ingestionDoc, /`sampleStarterSource` keeps the exact checked-in manifest path visible/i);
@@ -133,18 +137,24 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryCommand.intakeReady, true);
   assert.equal(harryCommand.intakeManifestStatus, 'starter');
   assert.equal(harryCommand.intakeManifestPath, 'profiles/harry-han/imports/materials.template.json');
-  assert.equal(harryCommand.importIntakeWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harryCommand.importIntakeWithoutRefreshCommand, null);
   assert.equal(harryCommand.importIntakeCommand, null);
-  assert.equal(harryCommand.importManifestCommand, null);
+  assert.equal(harryCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(harryCommand.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
+  assert.equal(
+    summary.workLoop.priorities.find((priority) => priority.id === 'ingestion')?.summary,
+    '1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available',
+  );
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
   assert.match(readme, /Foundation contract/i);
   assert.match(readme, /OpenClaw-like/i);
   assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
+  assert.match(readme, /`daily\/` as the canonical short-term working-memory bucket/i);
+  assert.match(readme, /memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
@@ -157,6 +167,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /next repair.*next refresh/i);
+  assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
+  assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
   assert.match(architectureDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
   assert.match(architectureDoc, /foundation\.core\.soul.*readySections.*missingSections.*readySectionCount.*totalSectionCount/i);
@@ -173,6 +185,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
 
   assert.match(memoryDoc, /## What belongs here/);
   assert.match(memoryDoc, /## Buckets/);
+  assert.match(memoryDoc, /`daily\/`.*checked-in short-term bucket/i);
 
   assert.match(skillsDoc, /## What lives here/);
   assert.match(skillsDoc, /## Layout/);

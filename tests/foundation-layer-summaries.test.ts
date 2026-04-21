@@ -62,8 +62,9 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     voice: voice.summary(),
   });
   const memory = new MemoryStore({
-    shortTerm: [{ id: 'daily-1' }],
+    daily: [{ id: 'daily-1' }],
     longTerm: [{ id: 'long-1' }, { id: 'long-2' }],
+    scratch: [{ id: 'scratch-1' }],
   });
   const skills = new SkillRegistry([
     'delivery',
@@ -85,11 +86,15 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
   });
 
   assert.deepEqual(memory.summary(), {
-    shortTermEntries: 1,
+    dailyEntries: 1,
     longTermEntries: 2,
-    totalEntries: 3,
-    shortTermPresent: true,
+    scratchEntries: 1,
+    totalEntries: 4,
+    dailyPresent: true,
     longTermPresent: true,
+    scratchPresent: true,
+    shortTermEntries: 1,
+    shortTermPresent: true,
   });
 
   assert.deepEqual(skills.summary(), {
@@ -139,6 +144,27 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     hasVoice: true,
     foundationLayers: ['memory', 'skills', 'soul', 'voice'],
     voice: voice.summary(),
+  });
+});
+
+test('memory store prefers daily over legacy shortTerm input and ignores non-array buckets', () => {
+  const memory = new MemoryStore({
+    daily: [{ id: 'daily-1' }],
+    shortTerm: [{ id: 'legacy-short-term' }],
+    longTerm: { bad: true } as unknown as unknown[],
+    scratch: 'not-an-array' as unknown as unknown[],
+  });
+
+  assert.deepEqual(memory.summary(), {
+    dailyEntries: 1,
+    longTermEntries: 0,
+    scratchEntries: 0,
+    totalEntries: 1,
+    dailyPresent: true,
+    longTermPresent: false,
+    scratchPresent: false,
+    shortTermEntries: 1,
+    shortTermPresent: true,
   });
 });
 
@@ -848,11 +874,15 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   const summary = buildSummary(rootDir);
 
   assert.deepEqual(summary.memory, {
-    shortTermEntries: 1,
+    dailyEntries: 1,
     longTermEntries: 1,
+    scratchEntries: 0,
     totalEntries: 2,
-    shortTermPresent: true,
+    dailyPresent: true,
     longTermPresent: true,
+    scratchPresent: false,
+    shortTermEntries: 1,
+    shortTermPresent: true,
   });
 
   assert.deepEqual(summary.foundation.core.memory, {
@@ -917,7 +947,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, undefined);
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
-  assert.match(summary.promptPreview, /Memory store:\n- short-term: 1\n- long-term: 1\n- total: 2\n- coverage: short-term yes, long-term yes/);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- coverage: daily yes, long-term yes, scratch no/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
   assert.match(summary.promptPreview, /coverage: 1\/4 ready; thin memory, skills, soul/);

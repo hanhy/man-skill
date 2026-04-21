@@ -1,43 +1,66 @@
 export interface MemorySummary {
-  shortTermEntries: number;
+  dailyEntries: number;
   longTermEntries: number;
+  scratchEntries: number;
   totalEntries: number;
-  shortTermPresent: boolean;
+  dailyPresent: boolean;
   longTermPresent: boolean;
+  scratchPresent: boolean;
+  shortTermEntries: number;
+  shortTermPresent: boolean;
 }
 
 export interface MemoryStoreOptions {
+  daily?: unknown[];
   shortTerm?: unknown[];
   longTerm?: unknown[];
+  scratch?: unknown[];
 }
 
 export class MemoryStore {
+  daily: unknown[];
   shortTerm: unknown[];
   longTerm: unknown[];
+  scratch: unknown[];
 
-  constructor({ shortTerm = [], longTerm = [] }: MemoryStoreOptions = {}) {
-    this.shortTerm = shortTerm;
-    this.longTerm = longTerm;
+  constructor({ daily, shortTerm, longTerm, scratch }: MemoryStoreOptions = {}) {
+    this.daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
+    this.shortTerm = this.daily;
+    this.longTerm = Array.isArray(longTerm) ? longTerm : [];
+    this.scratch = Array.isArray(scratch) ? scratch : [];
+  }
+
+  addDaily(entry: unknown): void {
+    this.daily.push(entry);
   }
 
   addShortTerm(entry: unknown): void {
-    this.shortTerm.push(entry);
+    this.addDaily(entry);
   }
 
   addLongTerm(entry: unknown): void {
     this.longTerm.push(entry);
   }
 
+  addScratch(entry: unknown): void {
+    this.scratch.push(entry);
+  }
+
   summary(): MemorySummary {
-    const shortTermEntries = this.shortTerm.length;
+    const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
+    const scratchEntries = this.scratch.length;
 
     return {
-      shortTermEntries,
+      dailyEntries,
       longTermEntries,
-      totalEntries: shortTermEntries + longTermEntries,
-      shortTermPresent: shortTermEntries > 0,
+      scratchEntries,
+      totalEntries: dailyEntries + longTermEntries + scratchEntries,
+      dailyPresent: dailyEntries > 0,
       longTermPresent: longTermEntries > 0,
+      scratchPresent: scratchEntries > 0,
+      shortTermEntries: dailyEntries,
+      shortTermPresent: dailyEntries > 0,
     };
   }
 }

@@ -51,3 +51,64 @@ test('collectVisibleDocumentLines preserves admonition lines for downstream stru
     'Keep replies direct.',
   ]);
 });
+
+
+test('collectVisibleDocumentLines and findDocumentExcerpt ignore indented code blocks', () => {
+  const document = [
+    '# Skills',
+    '',
+    '    ## What lives here',
+    '    - Template heading that should stay hidden.',
+    '    ## Layout',
+    '    - Template heading that should stay hidden too.',
+    '',
+    'Keep reusable operator workflows discoverable outside indented samples.',
+  ].join('\n');
+
+  assert.deepEqual(collectVisibleDocumentLines(document), [
+    '# Skills',
+    '',
+    'Keep reusable operator workflows discoverable outside indented samples.',
+  ]);
+  assert.equal(findDocumentExcerpt(document), 'Keep reusable operator workflows discoverable outside indented samples.');
+});
+
+
+test('collectVisibleDocumentLines keeps tab-indented code blocks hidden until real prose resumes', () => {
+  const document = [
+    '# Voice',
+    '',
+    '\t## Tone',
+    '\t- Template heading that should stay hidden.',
+    '',
+    '\t## Signature moves',
+    '\t- Template heading that should stay hidden too.',
+    '',
+    'Keep replies direct once visible prose resumes.',
+  ].join('\n');
+
+  assert.deepEqual(collectVisibleDocumentLines(document), [
+    '# Voice',
+    '',
+    'Keep replies direct once visible prose resumes.',
+  ]);
+  assert.equal(findDocumentExcerpt(document), 'Keep replies direct once visible prose resumes.');
+});
+
+test('collectVisibleDocumentLines keeps blockquoted indented code blocks hidden until visible prose resumes', () => {
+  const document = [
+    '# Voice',
+    '',
+    '>     ## Tone',
+    '>     - Template heading that should stay hidden.',
+    '',
+    '> Visible prose resumes after the hidden sample block.',
+  ].join('\n');
+
+  assert.deepEqual(collectVisibleDocumentLines(document), [
+    '# Voice',
+    '',
+    'Visible prose resumes after the hidden sample block.',
+  ]);
+  assert.equal(findDocumentExcerpt(document), 'Visible prose resumes after the hidden sample block.');
+});

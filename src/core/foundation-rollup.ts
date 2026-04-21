@@ -58,6 +58,11 @@ function buildProfileLabel(profile: any): string {
 }
 
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'] as const;
+const STRUCTURED_DRAFT_TOTAL_SECTION_COUNTS = {
+  skills: 3,
+  soul: 4,
+  voice: 4,
+} as const;
 
 function countGeneratedDrafts(profile: any): number {
   return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
@@ -65,6 +70,79 @@ function countGeneratedDrafts(profile: any): number {
 
 function countCandidateDrafts(profile: any): number {
   return FOUNDATION_DRAFT_KEYS.filter((key) => (profile?.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
+}
+
+function countSectionDraftGaps(summary: any): number {
+  const missingSections = Array.isArray(summary?.missingSections)
+    ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  if (missingSections.length > 0) {
+    return missingSections.length;
+  }
+
+  const totalSectionCount = Number(summary?.totalSectionCount ?? 0);
+  const readySectionCount = Number(summary?.readySectionCount ?? totalSectionCount);
+  if (!Number.isFinite(totalSectionCount) || totalSectionCount <= 0) {
+    return 0;
+  }
+
+  if (!Number.isFinite(readySectionCount)) {
+    return totalSectionCount;
+  }
+
+  return Math.max(totalSectionCount - readySectionCount, 0);
+}
+
+function buildDraftGapCounts(profile: any): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const missingDrafts = new Set(
+    Array.isArray(profile?.foundationDraftStatus?.missingDrafts)
+      ? profile.foundationDraftStatus.missingDrafts.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [],
+  );
+
+  if (missingDrafts.has('memory')) {
+    counts.memory = 1;
+  }
+
+  const skillsGapCount = countSectionDraftGaps(profile?.foundationDraftSummaries?.skills);
+  if (skillsGapCount > 0 || missingDrafts.has('skills')) {
+    counts.skills = skillsGapCount > 0 ? skillsGapCount : STRUCTURED_DRAFT_TOTAL_SECTION_COUNTS.skills;
+  }
+
+  const soulGapCount = countSectionDraftGaps(profile?.foundationDraftSummaries?.soul);
+  if (soulGapCount > 0 || missingDrafts.has('soul')) {
+    counts.soul = soulGapCount > 0 ? soulGapCount : STRUCTURED_DRAFT_TOTAL_SECTION_COUNTS.soul;
+  }
+
+  const voiceGapCount = countSectionDraftGaps(profile?.foundationDraftSummaries?.voice);
+  if (voiceGapCount > 0 || missingDrafts.has('voice')) {
+    counts.voice = voiceGapCount > 0 ? voiceGapCount : STRUCTURED_DRAFT_TOTAL_SECTION_COUNTS.voice;
+  }
+
+  return counts;
+}
+
+function countDraftGaps(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((total, value) => total + value, 0);
+}
+
+function mergeCountMaps(countMaps: Array<Record<string, number> | null | undefined>): Record<string, number> {
+  return countMaps.reduce<Record<string, number>>((mergedCounts, countMap) => {
+    if (!countMap || typeof countMap !== 'object') {
+      return mergedCounts;
+    }
+
+    for (const [key, value] of Object.entries(countMap)) {
+      if (!Number.isFinite(value) || value <= 0) {
+        continue;
+      }
+
+      mergedCounts[key] = (mergedCounts[key] ?? 0) + value;
+    }
+
+    return mergedCounts;
+  }, {});
 }
 
 function buildCommandBundle(commands: Array<string | null | undefined> = []): string | null {
@@ -165,25 +243,35 @@ function summarizeProfileDraftGaps(profile: any): string | null {
 function summarizeMaintenanceQueue(profiles: any[] = []) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
-    .map((profile) => ({
-      id: profile.id ?? null,
-      displayName: profile.profile?.displayName ?? null,
-      summary: profile.profile?.summary ?? null,
-      label: buildProfileLabel(profile),
-      status: 'stale',
-      generatedDraftCount: countGeneratedDrafts(profile),
-      expectedDraftCount: FOUNDATION_DRAFT_KEYS.length,
-      candidateDraftCount: countCandidateDrafts(profile),
-      missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
-      refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
-      latestMaterialAt: profile.latestMaterialAt ?? null,
-      draftGapSummary: summarizeProfileDraftGaps(profile),
-      refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
-    }))
+    .map((profile) => {
+      const draftGapCounts = buildDraftGapCounts(profile);
+      return {
+        id: profile.id ?? null,
+        displayName: profile.profile?.displayName ?? null,
+        summary: profile.profile?.summary ?? null,
+        label: buildProfileLabel(profile),
+        status: 'stale',
+        generatedDraftCount: countGeneratedDrafts(profile),
+        expectedDraftCount: FOUNDATION_DRAFT_KEYS.length,
+        candidateDraftCount: countCandidateDrafts(profile),
+        missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
+        refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
+        latestMaterialAt: profile.latestMaterialAt ?? null,
+        draftGapCount: countDraftGaps(draftGapCounts),
+        draftGapCounts,
+        draftGapSummary: summarizeProfileDraftGaps(profile),
+        refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
+      };
+    })
     .sort((left, right) => {
       const missingDraftDifference = (right.missingDrafts?.length ?? 0) - (left.missingDrafts?.length ?? 0);
       if (missingDraftDifference !== 0) {
         return missingDraftDifference;
+      }
+
+      const draftGapDifference = (right.draftGapCount ?? 0) - (left.draftGapCount ?? 0);
+      if (draftGapDifference !== 0) {
+        return draftGapDifference;
       }
 
       const generatedDraftDifference = (left.generatedDraftCount ?? 0) - (right.generatedDraftCount ?? 0);
@@ -202,6 +290,8 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     readyProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.needsRefresh && profile.foundationDraftStatus?.complete).length,
     refreshProfileCount: queuedProfiles.length,
     incompleteProfileCount: profiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
+    draftGapCountTotal: queuedProfiles.reduce((total, profile) => total + (profile.draftGapCount ?? 0), 0),
+    draftGapCounts: mergeCountMaps(queuedProfiles.map((profile) => profile.draftGapCounts)),
     missingDraftCounts: FOUNDATION_DRAFT_KEYS.reduce<Record<string, number>>((counts, draftKey) => {
       counts[draftKey] = queuedProfiles.filter((profile) => profile.missingDrafts.includes(draftKey)).length;
       return counts;

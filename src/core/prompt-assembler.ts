@@ -97,6 +97,8 @@ type MaintenanceQueueItem = {
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
+  draftGapCount?: number;
+  draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
   refreshCommand?: string | null;
 };
@@ -106,6 +108,8 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  draftGapCountTotal?: number;
+  draftGapCounts?: Record<string, number>;
   missingDraftCounts?: Record<string, number>;
   refreshReasonCounts?: Record<string, number>;
   refreshAllCommand?: string | null;
@@ -267,11 +271,15 @@ type VoiceSummary = {
 } | null;
 
 type MemorySummary = {
+  dailyEntries?: number;
   shortTermEntries?: number;
   longTermEntries?: number;
+  scratchEntries?: number;
   totalEntries?: number;
+  dailyPresent?: boolean;
   shortTermPresent?: boolean;
   longTermPresent?: boolean;
+  scratchPresent?: boolean;
   [key: string]: unknown;
 } | null;
 
@@ -496,10 +504,12 @@ type IngestionSummary = {
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
   importedIntakeReadyProfileCount?: number;
+  importedStarterIntakeProfileCount?: number;
   importedIntakeBackfillProfileCount?: number;
   importedInvalidIntakeManifestProfileCount?: number;
   invalidMetadataOnlyIntakeManifestProfileCount?: number;
   intakeReadyProfileCount?: number;
+  intakeStarterProfileCount?: number;
   intakePartialProfileCount?: number;
   intakeMissingProfileCount?: number;
   intakeScaffoldProfileCount?: number;
@@ -870,6 +880,10 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
     ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
+  const draftGapCountSummary = Number.isFinite(maintenance.draftGapCountTotal) && (maintenance.draftGapCountTotal ?? 0) > 0
+    ? `${maintenance.draftGapCountTotal} total`
+    : null;
+  const draftGapBreakdown = formatCountMap(maintenance.draftGapCounts);
   const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
   const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
@@ -879,10 +893,14 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
       ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
       : '';
+    const draftGapBreakdownSuffix = formatCountMap(profile.draftGapCounts);
+    const draftGapCountSuffix = Number.isFinite(profile.draftGapCount) && (profile.draftGapCount ?? 0) > 0
+      ? `, ${profile.draftGapCount} draft gap${profile.draftGapCount === 1 ? '' : 's'}${draftGapBreakdownSuffix ? ` (${draftGapBreakdownSuffix})` : ''}`
+      : '';
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
@@ -896,6 +914,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
 
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    draftGapCountSummary ? `- draft gaps: ${draftGapCountSummary}${draftGapBreakdown ? ` (${draftGapBreakdown})` : ''}` : null,
     missingDraftSummary ? `- missing drafts: ${missingDraftSummary}` : null,
     refreshReasonSummary ? `- refresh reasons: ${refreshReasonSummary}` : null,
     helperLine ? `- helpers: ${helperLine}` : null,
@@ -1340,9 +1359,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   return [
     `- profiles: ${ingestion.profileCount ?? 0} total (${ingestion.importedProfileCount ?? 0} imported, ${ingestion.metadataOnlyProfileCount ?? 0} metadata-only)`,
     `- drafts: ${ingestion.readyProfileCount ?? 0} ready, ${ingestion.refreshProfileCount ?? 0} queued for refresh, ${ingestion.incompleteProfileCount ?? 0} incomplete`,
-    `- metadata-only intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} import-ready, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
+    `- metadata-only intake scaffolds: ${ingestion.intakeReadyProfileCount ?? 0} import-ready, ${ingestion.intakeStarterProfileCount ?? 0} starter template${(ingestion.intakeStarterProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.intakePartialProfileCount ?? 0} partial, ${ingestion.intakeMissingProfileCount ?? 0} missing`,
     (ingestion.importedProfileCount ?? 0) > 0
-      ? `- imported intake: ${ingestion.importedIntakeReadyProfileCount ?? 0} ready, ${ingestion.importedIntakeBackfillProfileCount ?? 0} backfill${(ingestion.importedIntakeBackfillProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.importedInvalidIntakeManifestProfileCount ?? 0} invalid manifest${(ingestion.importedInvalidIntakeManifestProfileCount ?? 0) === 1 ? '' : 's'}`
+      ? `- imported intake: ${ingestion.importedIntakeReadyProfileCount ?? 0} ready, ${ingestion.importedStarterIntakeProfileCount ?? 0} starter template${(ingestion.importedStarterIntakeProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.importedIntakeBackfillProfileCount ?? 0} backfill${(ingestion.importedIntakeBackfillProfileCount ?? 0) === 1 ? '' : 's'}, ${ingestion.importedInvalidIntakeManifestProfileCount ?? 0} invalid manifest${(ingestion.importedInvalidIntakeManifestProfileCount ?? 0) === 1 ? '' : 's'}`
       : null,
     (ingestion.importedIntakeBackfillProfileCount ?? 0) > 0
       ? `- intake backfill: ${ingestion.importedIntakeBackfillProfileCount} imported profile${ingestion.importedIntakeBackfillProfileCount === 1 ? '' : 's'} queued`
@@ -1472,12 +1491,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
         ? ` | shortcut ${intakeShortcutCommand}`
         : '';
+      const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
+        ? ` | manifest ${profile.importManifestCommand}`
+        : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${manifestSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -1864,15 +1886,20 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
     return '- unavailable';
   }
 
-  const shortTermEntries = memory.shortTermEntries ?? 0;
+  const dailyEntries = memory.dailyEntries ?? memory.shortTermEntries ?? 0;
   const longTermEntries = memory.longTermEntries ?? 0;
-  const totalEntries = memory.totalEntries ?? (shortTermEntries + longTermEntries);
+  const scratchEntries = memory.scratchEntries ?? 0;
+  const totalEntries = memory.totalEntries ?? (dailyEntries + longTermEntries + scratchEntries);
+  const dailyPresent = memory.dailyPresent ?? memory.shortTermPresent ?? false;
+  const longTermPresent = memory.longTermPresent ?? false;
+  const scratchPresent = memory.scratchPresent ?? false;
 
   return [
-    `- short-term: ${shortTermEntries}`,
+    `- daily: ${dailyEntries}`,
     `- long-term: ${longTermEntries}`,
+    `- scratch: ${scratchEntries}`,
     `- total: ${totalEntries}`,
-    `- coverage: short-term ${memory.shortTermPresent ? 'yes' : 'no'}, long-term ${memory.longTermPresent ? 'yes' : 'no'}`,
+    `- coverage: daily ${dailyPresent ? 'yes' : 'no'}, long-term ${longTermPresent ? 'yes' : 'no'}, scratch ${scratchPresent ? 'yes' : 'no'}`,
   ].join('\n');
 }
 

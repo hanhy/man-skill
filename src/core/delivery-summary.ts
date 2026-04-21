@@ -145,6 +145,8 @@ export type DeliverySummary = {
 
 type DeliverySummaryOptions = {
   rootDir?: string | null;
+  channelRolloutOrder?: readonly string[];
+  providerRolloutOrder?: readonly string[];
 };
 
 function uniqueStringsPreservingOrder(values: Array<string | null | undefined>): string[] {
@@ -338,8 +340,8 @@ function buildProviderSetupHint(record: ProviderSummaryRecord, environment: Node
   return 'choose auth and default model';
 }
 
-const CHANNEL_ROLLOUT_ORDER = ['feishu', 'telegram', 'whatsapp', 'slack'] as const;
-const PROVIDER_ROLLOUT_ORDER = ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'] as const;
+export const CHANNEL_ROLLOUT_ORDER = ['feishu', 'telegram', 'whatsapp', 'slack'] as const;
+export const PROVIDER_ROLLOUT_ORDER = ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'] as const;
 
 function compareRolloutOrder(
   leftId: string | null | undefined,
@@ -364,18 +366,18 @@ function compareRolloutOrder(
   return (leftId ?? '').localeCompare(rightId ?? '');
 }
 
-function collectOrderedChannelEnvVars(records: ChannelSummaryRecord[] = []): string[] {
+function collectOrderedChannelEnvVars(records: ChannelSummaryRecord[] = [], rolloutOrder: readonly string[] = CHANNEL_ROLLOUT_ORDER): string[] {
   return uniqueStringsPreservingOrder(
     [...records]
-      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, CHANNEL_ROLLOUT_ORDER))
+      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, rolloutOrder))
       .flatMap((record) => (record?.auth?.envVars ?? []).filter(Boolean)),
   );
 }
 
-function collectOrderedProviderEnvVars(records: ProviderSummaryRecord[] = []): string[] {
+function collectOrderedProviderEnvVars(records: ProviderSummaryRecord[] = [], rolloutOrder: readonly string[] = PROVIDER_ROLLOUT_ORDER): string[] {
   return uniqueStringsPreservingOrder(
     [...records]
-      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, PROVIDER_ROLLOUT_ORDER))
+      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, rolloutOrder))
       .flatMap((record) => record?.authEnvVar ? [record.authEnvVar] : []),
   );
 }
@@ -387,6 +389,8 @@ export function buildDeliverySummary(
   options: DeliverySummaryOptions = {},
 ): DeliverySummary {
   const rootDir = options.rootDir ?? null;
+  const channelRolloutOrder = orderStringsByPreferredSequence(CHANNEL_ROLLOUT_ORDER as unknown as string[], options.channelRolloutOrder ?? CHANNEL_ROLLOUT_ORDER);
+  const providerRolloutOrder = orderStringsByPreferredSequence(PROVIDER_ROLLOUT_ORDER as unknown as string[], options.providerRolloutOrder ?? PROVIDER_ROLLOUT_ORDER);
   const channelManifestPath = channels?.manifest?.path ?? 'manifests/channels.json';
   const providerManifestPath = models?.manifest?.path ?? 'manifests/providers.json';
   const envTemplatePath = normalizeRepoRelativePath('.env.example', rootDir);
@@ -394,8 +398,7 @@ export function buildDeliverySummary(
   const envTemplateCommand = envTemplatePresent && envTemplatePath ? `cp ${envTemplatePath} .env` : null;
   const allChannelRecords = channels?.channels ?? [];
   const allProviderRecords = models?.providers ?? [];
-  const channelQueue = (channels?.channels ?? [])
-    .filter((channel) => channel?.status !== 'active')
+  const allChannelQueueRecords = (channels?.channels ?? [])
     .map((channel) => {
       const authEnvVars = (channel.auth?.envVars ?? []).filter(Boolean);
       const missingEnvVars = collectMissingEnvVars(authEnvVars, environment);
@@ -436,9 +439,10 @@ export function buildDeliverySummary(
         },
       };
     })
-    .sort((left, right) => compareRolloutOrder(left.id, right.id, CHANNEL_ROLLOUT_ORDER));
-  const providerQueue = (models?.providers ?? [])
-    .filter((provider) => provider?.status !== 'active')
+    .sort((left, right) => compareRolloutOrder(left.id, right.id, channelRolloutOrder));
+  const channelQueue = allChannelQueueRecords
+    .filter((channel) => channel?.status !== 'active' || channel.missingEnvVars.length > 0);
+  const allProviderQueueRecords = (models?.providers ?? [])
     .map((provider) => {
       const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
       const implementationPath = provider.implementationPath ?? null;
@@ -477,10 +481,12 @@ export function buildDeliverySummary(
         },
       };
     })
-    .sort((left, right) => compareRolloutOrder(left.id, right.id, PROVIDER_ROLLOUT_ORDER));
+    .sort((left, right) => compareRolloutOrder(left.id, right.id, providerRolloutOrder));
+  const providerQueue = allProviderQueueRecords
+    .filter((provider) => provider?.status !== 'active' || provider.missingEnvVars.length > 0);
 
-  const orderedChannelEnvVars = collectOrderedChannelEnvVars(allChannelRecords);
-  const orderedProviderEnvVars = collectOrderedProviderEnvVars(allProviderRecords);
+  const orderedChannelEnvVars = collectOrderedChannelEnvVars(allChannelRecords, channelRolloutOrder);
+  const orderedProviderEnvVars = collectOrderedProviderEnvVars(allProviderRecords, providerRolloutOrder);
   const requiredEnvVars = [...orderedChannelEnvVars, ...orderedProviderEnvVars];
   const channelScaffoldCoverage = allChannelRecords.map((channel) => isImplementationPresent(channel.implementationPath ?? null, rootDir));
   const providerScaffoldCoverage = allProviderRecords.map((provider) => isImplementationPresent(provider.implementationPath ?? null, rootDir));

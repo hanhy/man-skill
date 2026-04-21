@@ -1,27 +1,42 @@
 export class MemoryStore {
-  constructor({ shortTerm = [], longTerm = [] } = {}) {
-    this.shortTerm = shortTerm;
-    this.longTerm = longTerm;
+  constructor({ daily, shortTerm, longTerm, scratch } = {}) {
+    this.daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
+    this.shortTerm = this.daily;
+    this.longTerm = Array.isArray(longTerm) ? longTerm : [];
+    this.scratch = Array.isArray(scratch) ? scratch : [];
+  }
+
+  addDaily(entry) {
+    this.daily.push(entry);
   }
 
   addShortTerm(entry) {
-    this.shortTerm.push(entry);
+    this.addDaily(entry);
   }
 
   addLongTerm(entry) {
     this.longTerm.push(entry);
   }
 
+  addScratch(entry) {
+    this.scratch.push(entry);
+  }
+
   summary() {
-    const shortTermEntries = this.shortTerm.length;
+    const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
+    const scratchEntries = this.scratch.length;
 
     return {
-      shortTermEntries,
+      dailyEntries,
       longTermEntries,
-      totalEntries: shortTermEntries + longTermEntries,
-      shortTermPresent: shortTermEntries > 0,
+      scratchEntries,
+      totalEntries: dailyEntries + longTermEntries + scratchEntries,
+      dailyPresent: dailyEntries > 0,
       longTermPresent: longTermEntries > 0,
+      scratchPresent: scratchEntries > 0,
+      shortTermEntries: dailyEntries,
+      shortTermPresent: dailyEntries > 0,
     };
   }
 }

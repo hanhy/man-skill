@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildSummary, runImportCommand, runUpdateCommand } from '../src/index.js';
+import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
+import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-work-loop-'));
@@ -167,6 +169,33 @@ test('buildSummary work loop advances to ingestion when memory and skills root d
   assert.doesNotMatch(summary.promptPreview, /current: Foundation \[queued\]/);
 });
 
+test('buildSummary work loop advances to ingestion when soul and voice docs use mixed closing-hash and setext headings', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths ##\n- Stay faithful to the source material.\n\nBoundaries\n----------\n- Do not bluff or overspeculate.\n\n## Vibe ##\n- Keep the tone grounded and direct.\n\nContinuity\n----------\n- Preserve durable lessons across runs.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone ##\nWarm and grounded.\n\nSignature moves\n---------------\n- Use crisp examples.\n\n## Avoid ##\n- Never pad the answer.\n\nLanguage hints\n--------------\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.doesNotMatch(summary.promptPreview, /current: Foundation \[queued\]/);
+});
+
 test('buildSummary work loop keeps foundation current when soul and voice docs only contain unstructured prose after hidden scaffolds', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -276,6 +305,126 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   ]);
   assert.equal(summary.workLoop.objectiveCount, 5);
   assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| keep Slack queued until Telegram is runtime-ready \| stage OpenAI before the rest of the provider set \| report progress in small verified increments/);
+});
+
+test('buildSummary uses USER.md current product direction to reprioritize delivery queues and work-loop paths', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['telegram', 'feishu', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['anthropic', 'openai', 'kimi', 'minimax', 'glm', 'qwen']);
+  assert.deepEqual(summary.delivery.requiredEnvVars, [
+    'TELEGRAM_BOT_TOKEN',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ]);
+  assert.deepEqual(summary.workLoop.priorities[2].paths, [
+    'manifests/channels.json',
+    'src/channels/telegram.js',
+    'src/channels/feishu.js',
+    'src/channels/whatsapp.js',
+    'src/channels/slack.js',
+  ]);
+  assert.deepEqual(summary.workLoop.priorities[3].paths, [
+    'manifests/providers.json',
+    'src/models/anthropic.js',
+    'src/models/openai.js',
+    'src/models/kimi.js',
+    'src/models/minimax.js',
+    'src/models/glm.js',
+    'src/models/qwen.js',
+  ]);
+});
+
+test('buildSummary keeps deferred delivery objectives from over-promoting later channels ahead of the remaining rollout', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. keep Slack queued until Telegram is runtime-ready',
+      '4. stage OpenAI before the rest of the provider set',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['telegram', 'feishu', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.requiredEnvVars.slice(0, 7), [
+    'TELEGRAM_BOT_TOKEN',
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+  ]);
+});
+
+test('buildSummary reprioritizes multiple explicitly named delivery targets when USER.md calls them out together', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. prioritize Slack and Telegram channels first',
+      '4. focus Anthropic and OpenAI providers first',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['slack', 'telegram', 'feishu', 'whatsapp']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['anthropic', 'openai', 'kimi', 'minimax', 'glm', 'qwen']);
 });
 
 test('buildSummary loads work-loop objectives from USER.md when the current product direction heading uses setext markdown', () => {
@@ -572,6 +721,44 @@ test('buildSummary accepts starred and plus task-list objectives in USER.md curr
   ]);
   assert.equal(summary.workLoop.objectiveCount, 5);
   assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
+});
+
+test('buildSummary ignores nested bullet details under current product direction objectives in USER.md', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. harden the memory + soul handoff before delivery rollout',
+      '   - keep the root docs and bucket notes aligned while doing it',
+      '2. make intake reruns safe for partially imported profiles',
+      '   - prefer explicit reruns over broad stale sweeps',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Indented details should stay attached to their parent objective.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /prefer explicit reruns over broad stale sweeps/);
 });
 
 test('buildSummary ignores commented and fenced current product direction scaffolds in USER.md', () => {
@@ -1252,7 +1439,7 @@ test('buildSummary work loop still scaffolds intake before inline sample talk im
   assert.match(summary.promptPreview, /sample talk: metadata-only -> node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
 });
 
-test('buildSummary work loop prefers the profile-local starter manifest over fallback sample manifests for metadata-only profiles', () => {
+test('buildSummary work loop uses the seeded sample text for starter-only profile-local intake scaffolds even when fallback sample manifests exist', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
@@ -1290,17 +1477,14 @@ test('buildSummary work loop prefers the profile-local starter manifest over fal
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop prefers the profile-local starter manifest once intake scaffolding is ready', () => {
+test('buildSummary work loop uses the seeded sample text once profile-local intake scaffolding is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
 
@@ -1325,17 +1509,14 @@ test('buildSummary work loop prefers the profile-local starter manifest once int
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop ignores broken sample manifests when a profile-local starter manifest is ready', () => {
+test('buildSummary work loop ignores broken sample manifests when a starter-only profile-local intake scaffold already has a seeded sample text path', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
@@ -1373,13 +1554,10 @@ test('buildSummary work loop ignores broken sample manifests when a profile-loca
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
@@ -1813,27 +1991,25 @@ test('buildSummary work loop prefers the exact ready-intake bundle when multiple
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Beta Ready (beta-ready)');
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle,
-    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+    "node src/index.js import intake --person 'beta-ready' --refresh-foundation",
   );
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+    "node src/index.js import manifest --file 'profiles/beta-ready/imports/materials.template.json' --refresh-foundation",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/alpha-ready/imports/materials.template.json',
-    'profiles/alpha-ready/imports/sample.txt',
     'profiles/beta-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/sample.txt',
     'profiles/beta-ready/imports/beta-shot.png',
   ]);
-  assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
+  assert.match(summary.promptPreview, /next action: import source materials for Beta Ready \(beta-ready\)/);
   assert.match(
     summary.promptPreview,
-    /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/,
+    /command: node src\/index\.js import manifest --file 'profiles\/beta-ready\/imports\/materials\.template\.json' --refresh-foundation/,
   );
-  assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
 test('buildSummary work loop repairs the env template before channel scaffolding when leader credentials are missing', () => {
@@ -2098,6 +2274,151 @@ test('buildSummary work loop carries env bootstrap paths for both the template s
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
   assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+});
+
+test('buildSummary work loop marks delivery blocked when the rollout leader is auth-blocked even if later channel implementations are still missing', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'telegram.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'whatsapp.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'slack.js'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.channelQueue[0].id, 'feishu');
+  assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
+  assert.equal(summary.delivery.channelQueue[1].id, 'telegram');
+  assert.equal(summary.delivery.channelQueue[1].implementationStatus, 'missing');
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.priorities[2].status, 'blocked');
+  assert.equal(summary.workLoop.blockedPriorityCount, 2);
+  assert.equal(summary.workLoop.queuedPriorityCount, 0);
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1/4 present, implementations 1/4 ready');
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1\/4 present, implementations 1\/4 ready/);
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
+});
+
+test('buildSummary work loop switches blocked channel rollout to the repo-local env populate command once .env exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(workLoopBlock, /paths: \.env/);
+  assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
+});
+
+test('buildSummary work loop switches blocked provider rollout to the repo-local env populate command once channels are active and .env exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=',
+    '',
+  ].join('\n'));
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
+
+  assert.equal(summary.workLoop.currentPriority.id, 'providers');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
+  assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(workLoopBlock, /paths: \.env/);
+  assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
+});
+
+test('buildSummary work loop repairs missing credentials for active delivery integrations before claiming the rollout is ready', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.readyPriorityCount, 2);
+  assert.equal(summary.workLoop.queuedPriorityCount, 0);
+  assert.equal(summary.workLoop.blockedPriorityCount, 2);
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4/4 present, implementations 4/4 ready');
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
 });
 
 test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
@@ -2968,6 +3289,7 @@ test('buildSummary work loop paths follow the actual missing delivery file when 
 test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -2990,17 +3312,18 @@ test('buildSummary work loop bundles missing provider implementations once the p
 
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "(mkdir -p 'src/models' && touch 'src/models/openai.js') && (mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js') && (mkdir -p 'src/models' && touch 'src/models/minimax.js') && (mkdir -p 'src/models' && touch 'src/models/glm.js') && (mkdir -p 'src/models' && touch 'src/models/qwen.js')");
   assert.equal(summary.workLoop.currentPriority.id, 'providers');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; auth configured for gpt-5; next: implement chat/tool request translation and response normalization');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldProviderImplementationBundle);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js', 'src/models/anthropic.js', 'src/models/kimi.js', 'src/models/minimax.js', 'src/models/glm.js', 'src/models/qwen.js']);
-  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 0\/6 present/);
-  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 6 configured, 0 auth-blocked, manifest ready, scaffolds 0\/6 present/);
+  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; auth configured for gpt-5; next: implement chat\/tool request translation and response normalization/);
   assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/minimax\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/glm\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/qwen\.js'\)/);
 });
 
 test('buildSummary work loop refuses to scaffold outside-repo provider implementation paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -3051,6 +3374,7 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
 test('buildSummary work loop omits outside-repo implementation paths when bundling provider scaffolds', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },

@@ -58,11 +58,16 @@ export function extractFrontmatterDescription(document: unknown): string | null 
   return null;
 }
 
+function lineStartsIndentedCodeBlock(line: string): boolean {
+  return /^(?:	| {4,})\S?/.test(line);
+}
+
 function filterOutsideMarkdownFences(lines: string[]): string[] {
   const visibleLines: string[] = [];
   let activeFenceMarker: '`' | '~' | null = null;
   let activeFenceLength = 0;
   let insideHtmlComment = false;
+  let insideIndentedCodeBlock = false;
 
   for (const rawLine of lines) {
     const trimmedLine = rawLine.trim();
@@ -75,7 +80,7 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
         continue;
       }
     } else {
-      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\\s*$`);
+      const closingFencePattern = new RegExp(`^${activeFenceMarker === '`' ? '`' : '~'}{${activeFenceLength},}\s*$`);
       if (closingFencePattern.test(trimmedLine)) {
         activeFenceMarker = null;
         activeFenceLength = 0;
@@ -112,7 +117,26 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
       break;
     }
 
-    visibleLines.push(visibleLine);
+    const normalizedLine = visibleLine;
+    const isBlankLine = normalizedLine.trim().length === 0;
+    const isIndentedCodeLine = lineStartsIndentedCodeBlock(normalizedLine);
+    const previousVisibleLine = visibleLines.at(-1) ?? '';
+    const canStartIndentedCodeBlock = visibleLines.length === 0 || previousVisibleLine.trim().length === 0;
+
+    if (insideIndentedCodeBlock) {
+      if (isBlankLine || isIndentedCodeLine) {
+        continue;
+      }
+
+      insideIndentedCodeBlock = false;
+    }
+
+    if (canStartIndentedCodeBlock && isIndentedCodeLine) {
+      insideIndentedCodeBlock = true;
+      continue;
+    }
+
+    visibleLines.push(normalizedLine);
   }
 
   return visibleLines;
@@ -145,7 +169,22 @@ function normalizeSetextHeadings(lines: string[]): string[] {
 }
 
 function stripLeadingBlockquotePrefix(line: string): string {
-  return line.replace(/^\s*(?:>\s*)+/, '');
+  const leadingWhitespaceMatch = line.match(/^(\s*)/);
+  const leadingWhitespace = leadingWhitespaceMatch?.[1] ?? '';
+  let normalizedLine = line.slice(leadingWhitespace.length);
+
+  if (!normalizedLine.startsWith('>')) {
+    return line;
+  }
+
+  while (normalizedLine.startsWith('>')) {
+    normalizedLine = normalizedLine.slice(1);
+    if (normalizedLine.startsWith(' ')) {
+      normalizedLine = normalizedLine.slice(1);
+    }
+  }
+
+  return normalizedLine;
 }
 
 export function normalizeAdmonitionLine(line: string): string {

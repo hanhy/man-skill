@@ -23,7 +23,7 @@ The project aims to keep personal-agent construction simple:
    - wording, rhythm, humor, directness, multilingual traits
 
 3. **Memory**
-   - short-term, long-term, and scratch stores
+   - `daily/` (the canonical short-term working-memory bucket), `long-term/`, and `scratch/` stores
    - curated identity facts, preferences, habits, and dated logs
 
 4. **Skills**
@@ -57,6 +57,7 @@ The project aims to keep personal-agent construction simple:
 - load soul from `SOUL.md`
 - load voice guidance from `voice/README.md`
 - load memory index from `memory/`
+- keep `memory/daily/` as the checked-in short-term bucket while still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers
 - discover local skill folders from `skills/`
 - distinguish documented skills (`skills/<name>/SKILL.md`) from placeholder skill directories when computing `foundation.core` readiness
 - summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, exact helper-command bundles for scaffold/import/refresh work, both plain and `--refresh-foundation` manifest import shortcuts, an optional checked-in sample manifest command, that sample manifest's typed material mix, a shorter `import sample` starter command that wraps that manifest when it validates, the exact starter-manifest source path surfaced via `sampleStarterSource`, a checked-in sample text command, the keyed sample helper labels (`sample-message`, `sample-talk`, `sample-screenshot`), explicit invalid-intake repair bundles (`repair-invalid-bundle`, `repair-imported-invalid-bundle`), and the first actionable per-profile `update profile` / `update foundation` commands plus batch metadata helpers (`update-bundle`, `sync-bundle`)
@@ -87,6 +88,7 @@ The project aims to keep personal-agent construction simple:
 - render a separate `Foundation maintenance:` block in `PromptAssembler` so queued stale/incomplete profiles are visible by name before the aggregate rollup
 - attach refresh commands to `foundation.maintenance` (`update foundation --stale` plus per-profile `--person <id>`) so the maintenance view is actionable, not just descriptive
 - expose a canonical next-refresh target on `foundation.maintenance` (`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedDraftGapSummary`) so prompt assembly and the work loop can reuse one stable per-profile refresh recommendation instead of recomputing it from the queue order
+- carry aggregate and per-profile draft gap counts (`draftGapCountTotal`, `draftGapCounts`, `queuedProfiles[*].draftGapCount`, `queuedProfiles[*].draftGapCounts`) so stale profile ordering can favor the thinnest memory/skills/soul/voice bundle instead of only counting missing files
 - support targeted, stale-only, or bulk profile draft refreshes through `update foundation --person <id>`, `update foundation --stale`, and `update foundation --all`
 - support manifest-driven batch ingestion plus optional immediate draft refresh through `import manifest --file <path> --refresh-foundation`
 - support direct target-person metadata updates through `update profile --person <id> --display-name ... --summary ...`, with optional `--refresh-foundation` when those metadata edits should immediately regenerate identity-bearing drafts
@@ -97,7 +99,8 @@ The project aims to keep personal-agent construction simple:
 - keep per-channel / per-provider scaffold references in that same delivery summary (`implementationPath`, scaffold-present counts) so the prompt preview can point operators at the exact files to fill in next for Slack, Telegram, WhatsApp, Feishu, OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen
 - aggregate channel/provider status counts plus deduped auth env vars in the delivery summary so prompt previews can distinguish active vs planned vs candidate integrations without re-scanning raw manifests
 - expose both single-file and bundled delivery helper commands (`scaffoldChannelImplementationBundle`, `scaffoldProviderImplementationBundle`) so multi-file rollout work stays machine-readable in JSON and copy-pasteable in the prompt preview as `channel impl-all ...` / `provider impl-all ...`
-- make delivery work-loop routing leader-aware: only surface `cp .env.example .env` when the current queued channel/provider is truly blocked on missing env vars, otherwise promote manifest/implementation scaffolds and keep `paths` aligned with the actual command blast radius; during bootstrap that means `paths` keeps both `.env.example` and `.env` visible when `cp .env.example .env` is the active delivery step
+- make delivery work-loop routing leader-aware: only surface `cp .env.example .env` when the current queued channel/provider is truly blocked on missing env vars and no repo-local `.env` exists yet; once `.env` is already present, switch the blocked rollout step to the narrower `touch '.env' && ...` populate helper so `paths` narrows to `.env`, otherwise promote manifest/implementation scaffolds and keep `paths` aligned with the actual command blast radius; during bootstrap that means `paths` keeps both `.env.example` and `.env` visible when `cp .env.example .env` is the active delivery step
+- treat delivery priorities as `blocked` as soon as the rollout leader is auth-blocked and otherwise runtime-ready, even if later channels/providers still have missing implementation files; this keeps `currentPriority.status`, blocked counters, and prompt-preview wording aligned with the leader-first bootstrap command instead of downgrading the lane back to generic queued work
 - treat malformed `manifests/channels.json` or `manifests/providers.json` as delivery-foundation diagnostics instead of fatal errors, so summary generation falls back to built-in defaults while still surfacing the manifest issue inline
 - expose repo-core foundation diagnostics plus a compact coverage overview (`readyAreaCount`, `missingAreas`, `thinAreas`) for memory / skills / soul / voice
 - emit `foundation.core.overview.recommendedActions` so missing/thin repo scaffolding produces concrete next-step guidance instead of only a passive status summary

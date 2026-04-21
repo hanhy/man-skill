@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
+import { CHANNEL_ROLLOUT_ORDER, PROVIDER_ROLLOUT_ORDER, buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
@@ -158,25 +158,37 @@ function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCo
   return null;
 }
 
-function parseWorkLoopObjectiveLine(line: string): string | null {
-  const trimmedLine = line.replace(/^\uFEFF/, '').trim();
+function parseWorkLoopObjectiveLine(line: string): { objective: string; indent: number } | null {
+  const normalizedLine = line.replace(/^\uFEFF/, '');
+  const trimmedLine = normalizedLine.trim();
   if (trimmedLine.length === 0) {
     return null;
   }
 
+  const indent = normalizedLine.match(/^(\s*)/)?.[1].length ?? 0;
+
   const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
   if (numberedMatch?.[1]) {
-    return numberedMatch[1].trim();
+    return {
+      objective: numberedMatch[1].trim(),
+      indent,
+    };
   }
 
   const taskListMatch = trimmedLine.match(/^[-*+]\s+\[(?: |x|X)\]\s+(.+)$/);
   if (taskListMatch?.[1]) {
-    return taskListMatch[1].trim();
+    return {
+      objective: taskListMatch[1].trim(),
+      indent,
+    };
   }
 
   const plainBulletMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
   if (plainBulletMatch?.[1]) {
-    return plainBulletMatch[1].trim();
+    return {
+      objective: plainBulletMatch[1].trim(),
+      indent,
+    };
   }
 
   return null;
@@ -194,16 +206,28 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
   }
 
   const objectives: string[] = [];
+  let objectiveIndent: number | null = null;
   for (let index = heading.index + heading.lineCount; index < lines.length; index += 1) {
     const nextHeading = parseMarkdownHeadingAt(lines, index);
     if (nextHeading && nextHeading.level <= heading.level) {
       break;
     }
 
-    const objective = parseWorkLoopObjectiveLine(lines[index] ?? '');
-    if (objective) {
-      objectives.push(objective);
+    const parsedObjective = parseWorkLoopObjectiveLine(lines[index] ?? '');
+    if (!parsedObjective) {
+      continue;
     }
+
+    if (objectiveIndent === null) {
+      objectiveIndent = parsedObjective.indent;
+    }
+
+    if (parsedObjective.indent > objectiveIndent) {
+      continue;
+    }
+
+    objectiveIndent = parsedObjective.indent;
+    objectives.push(parsedObjective.objective);
   }
 
   return objectives;
@@ -223,6 +247,62 @@ function loadWorkLoopObjectives(rootDir: string): string[] {
     : [...configuredObjectives, progressObjective];
 }
 
+function collectObjectiveDeliveryPriorityIds(objectives: string[], supportedIds: readonly string[]): string[] {
+  const normalizedSupportedIds = orderStringsByPreferredSequence(supportedIds as unknown as string[], supportedIds);
+  const collectedIds: string[] = [];
+
+  objectives.forEach((objective) => {
+    const normalizedObjective = objective.toLowerCase();
+    const cueMatches = [
+      { cue: 'before', index: normalizedObjective.indexOf(' before ') },
+      { cue: 'after', index: normalizedObjective.indexOf(' after ') },
+      { cue: 'until', index: normalizedObjective.indexOf(' until ') },
+    ].filter((match) => match.index >= 0);
+    const firstCue = cueMatches.sort((left, right) => left.index - right.index)[0] ?? null;
+    const mentionedIds = normalizedSupportedIds
+      .map((id) => ({ id, index: normalizedObjective.indexOf(id.toLowerCase()) }))
+      .filter((match) => match.index >= 0)
+      .sort((left, right) => left.index - right.index);
+
+    if (mentionedIds.length === 0) {
+      return;
+    }
+
+    if (firstCue) {
+      const idsBeforeCue = mentionedIds.filter((match) => match.index < firstCue.index).map((match) => match.id);
+      const idsAfterCue = mentionedIds.filter((match) => match.index > firstCue.index).map((match) => match.id);
+
+      if (firstCue.cue === 'before') {
+        if (idsBeforeCue.length > 0) {
+          collectedIds.push(...idsBeforeCue);
+        }
+        return;
+      }
+
+      if (idsAfterCue.length > 0) {
+        collectedIds.push(...idsAfterCue);
+      }
+      return;
+    }
+
+    if (mentionedIds.length > 1 && /\b(?:prioriti(?:ze|s(?:e)?)|focus|ship|stage|validate|deliver)\b/u.test(normalizedObjective)) {
+      collectedIds.push(...mentionedIds.map((match) => match.id));
+      return;
+    }
+
+    if (mentionedIds.length === 1) {
+      collectedIds.push(mentionedIds[0].id);
+    }
+  });
+
+  return orderStringsByPreferredSequence(collectedIds, collectedIds);
+}
+
+function deriveDeliveryRolloutOrder(objectives: string[], defaultOrder: readonly string[]): string[] {
+  const prioritizedIds = collectObjectiveDeliveryPriorityIds(objectives, defaultOrder);
+  return orderStringsByPreferredSequence(defaultOrder as unknown as string[], prioritizedIds);
+}
+
 function promoteRuntimeReadyStatus(status?: string | null, implementationReady?: boolean): string {
   if (status === 'planned' && implementationReady) {
     return 'candidate';
@@ -234,21 +314,36 @@ function promoteRuntimeReadyStatus(status?: string | null, implementationReady?:
 function applyRuntimeReadyStatuses<
   TRecord extends DeliveryRecordLike,
   TSummary extends DeliverySummaryLike<TRecord>,
->(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
+>(
+  summary: TSummary,
+  queue: QueueLike[] = [],
+  collectionKey: DeliveryCollectionKey,
+  preferredOrder: readonly string[] = [],
+): TSummary {
   const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
   const queueById = new Map(
     queue
       .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
       .map((item) => [item.id, item]),
   );
-  const promotedRecords = records.map((record) => {
+  const orderIndex = new Map(preferredOrder.map((id, index) => [id, index]));
+  const promotedRecords = records.map((record, index) => {
     const queuedRecord = queueById.get(record.id ?? '');
     return {
       ...record,
       status: queuedRecord ? promoteRuntimeReadyStatus(queuedRecord.status, queuedRecord.implementationReady) : (record.status ?? 'unknown'),
       nextStep: queuedRecord?.implementationReady ? null : (record.nextStep ?? null),
+      __originalIndex: index,
     };
-  });
+  }).sort((left, right) => {
+    const leftOrder = orderIndex.get(left.id ?? '') ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = orderIndex.get(right.id ?? '') ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return left.__originalIndex - right.__originalIndex;
+  }).map(({ __originalIndex, ...record }) => record as TRecord);
   const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
   const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
   const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;
@@ -957,6 +1052,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
+  const importedStarterIntakeProfileCount = ingestionSummary?.importedStarterIntakeProfileCount ?? 0;
   const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
   const importedInvalidIntakeManifestProfileCount = ingestionSummary?.importedInvalidIntakeManifestProfileCount ?? 0;
   const status: WorkPriority['status'] = importedProfileCount > 0
@@ -981,6 +1077,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
     ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
     : '';
+  const importedStarterIntakeSummary = importedStarterIntakeProfileCount > 0
+    ? `, ${importedStarterIntakeProfileCount} imported intake starter scaffold${importedStarterIntakeProfileCount === 1 ? '' : 's'} available`
+    : '';
   const invalidMetadataOnlyIntakeSummary = (ingestionSummary?.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
     ? `, ${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount} invalid metadata-only intake manifest${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'}`
     : '';
@@ -992,7 +1091,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
     paths: recommendedPaths,
@@ -1182,10 +1281,19 @@ function buildDeliveryPriority({
     command = envConfigPopulateCommand;
   }
 
+  const leaderAuthBlocked = pendingCount > 0
+    && firstQueuedMissingEnvVars.length > 0
+    && manifestReady
+    && firstQueued?.implementationReady === true
+    && (
+      command === envTemplateCommand
+      || command === envTemplatePopulateCommand
+      || command === envConfigPopulateCommand
+    );
   const deliveryBlocked = pendingCount > 0
     && normalizedAuthBlockedCount > 0
     && manifestReady
-    && implementationReadyCount === pendingCount;
+    && (implementationReadyCount === pendingCount || leaderAuthBlocked);
 
   const resolvedPaths = command && command === envConfigPopulateCommand && envConfigPaths.length > 0
     ? envConfigPaths
@@ -1563,8 +1671,9 @@ export function buildSummary(rootDir: string) {
   });
 
   const memory = new MemoryStore({
-    shortTerm: memoryIndex.daily,
+    daily: memoryIndex.daily,
     longTerm: memoryIndex.longTerm,
+    scratch: memoryIndex.scratch,
   });
   const skills = new SkillRegistry(skillRecords);
   const channels = new ChannelRegistry();
@@ -1622,7 +1731,13 @@ export function buildSummary(rootDir: string) {
   const rawEnvTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
   const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
-  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
+  const channelRolloutOrder = deriveDeliveryRolloutOrder(workLoopObjectives, CHANNEL_ROLLOUT_ORDER);
+  const providerRolloutOrder = deriveDeliveryRolloutOrder(workLoopObjectives, PROVIDER_ROLLOUT_ORDER);
+  const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, {
+    rootDir,
+    channelRolloutOrder,
+    providerRolloutOrder,
+  });
   const promotedChannelQueue = baseDeliverySummary.channelQueue.map((channel) => ({
     ...channel,
     status: promoteRuntimeReadyStatus(channel.status, channel.implementationReady),
@@ -1631,8 +1746,8 @@ export function buildSummary(rootDir: string) {
     ...provider,
     status: promoteRuntimeReadyStatus(provider.status, provider.implementationReady),
   }));
-  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
-  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
+  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels', channelRolloutOrder);
+  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers', providerRolloutOrder);
   const envTemplateVarNames = orderStringsByPreferredSequence(rawEnvTemplateVarNames, baseDeliverySummary.requiredEnvVars);
   const envTemplateMissingRequiredVars = orderStringsByPreferredSequence(
     baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar)),

@@ -44,7 +44,7 @@ function seedMinimalRepo(rootDir) {
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), '# Scratch\n\nInvestigate provider parity.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay direct and grounded while validating delivery behavior.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay direct and grounded while validating delivery behavior.\n\n## Continuity\n- Prefer verified repo state over assumptions.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable operator workflows.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron skill\n\nUse this skill when validating recurring delivery loops.\n');
   ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
@@ -210,6 +210,15 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.deepEqual(summary.channels.channels.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.models.providers.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
   assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
   assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
 });
@@ -253,6 +262,58 @@ test('buildSummary keeps required delivery env coverage in rollout order even wh
   assert.equal(summary.delivery.envTemplateVarNames.length, 13);
   assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
   assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
+});
+
+test('buildSummary keeps active delivery integrations in the env repair backlog when credentials are missing', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { ...feishuChannelScaffold, status: 'active' },
+    { ...telegramChannelScaffold, status: 'active' },
+    { ...whatsappChannelScaffold, status: 'active' },
+    { ...slackChannelScaffold, status: 'active' },
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { ...openaiProviderScaffold, status: 'active' },
+    { ...anthropicProviderScaffold, status: 'active' },
+    { ...kimiProviderScaffold, status: 'active' },
+    { ...minimaxProviderScaffold, status: 'active' },
+    { ...glmProviderScaffold, status: 'active' },
+    { ...qwenProviderScaffold, status: 'active' },
+  ], null, 2));
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
+  assert.deepEqual(summary.delivery.missingChannelEnvVars, [
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+  ]);
+  assert.deepEqual(summary.delivery.missingProviderEnvVars, [
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ]);
+  assert.equal(summary.delivery.authBlockedChannelCount, 4);
+  assert.equal(summary.delivery.authBlockedProviderCount, 6);
+  assert.equal(
+    summary.delivery.helperCommands.populateChannelEnv,
+    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
+  assert.equal(
+    summary.delivery.helperCommands.populateProviderEnv,
+    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
 });
 
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
@@ -341,7 +402,7 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(summary.models.activeCount, 0);
   assert.equal(summary.models.plannedCount, 6);
   assert.equal(summary.models.candidateCount, 0);
-  assert.equal(summary.models.multimodalProviderCount, 5);
+  assert.equal(summary.models.multimodalProviderCount, 6);
   assert.deepEqual(summary.models.authEnvVars, [
     'ANTHROPIC_API_KEY',
     'GLM_API_KEY',
@@ -1050,14 +1111,20 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
     assert.deepEqual(
       minimax.buildChatRequest({
         messages: [{ role: 'user', content: 'hello from minimax' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         temperature: 0.4,
         maxOutputTokens: 180,
+        topP: 0.7,
         botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
       }),
       buildMinimaxChatRequest({
         messages: [{ role: 'user', content: 'hello from minimax' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         temperature: 0.4,
         maxOutputTokens: 180,
+        topP: 0.7,
         botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
       }),
     );
@@ -1066,10 +1133,17 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
         id: 'chatcmpl-minimax',
         model: 'minimax-text-01',
         choices: [{
-          finish_reason: 'stop',
+          finish_reason: 'tool_calls',
           message: {
             role: 'assistant',
             content: 'Minimax keeps it short.',
+            tool_calls: [{
+              id: 'call_minimax_1',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
           },
         }],
         usage: {
@@ -1082,10 +1156,17 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
         id: 'chatcmpl-minimax',
         model: 'minimax-text-01',
         choices: [{
-          finish_reason: 'stop',
+          finish_reason: 'tool_calls',
           message: {
             role: 'assistant',
             content: 'Minimax keeps it short.',
+            tool_calls: [{
+              id: 'call_minimax_1',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
           },
         }],
         usage: {
@@ -1323,9 +1404,9 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY.*ANTHROPIC_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*GLM_API_KEY.*QWEN_API_KEY/);
   assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: credentials present via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
   assert.doesNotMatch(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]:[^\n]*; next: hook tenant-app event subscriptions into inbound delivery flow/);
-  assert.match(summary.promptPreview, /Slack \[candidate, runtime-ready\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
   assert.match(summary.promptPreview, /Telegram \[candidate, runtime-ready\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-  assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[candidate, runtime-ready\], Feishu \[candidate(?:, configured)?, runtime-ready\]/);
+  assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[candidate, runtime-ready\], Slack \[candidate, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, runtime-ready\], WhatsApp \[candidate, runtime-ready\], Slack \[candidate, runtime-ready\]/);
   assert.match(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
   assert.doesNotMatch(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]:[^\n]*; next: implement chat\/tool request translation and response normalization/);
@@ -1498,7 +1579,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+    assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
     assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
     assert.match(summary.promptPreview, /Anthropic \[planned, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
@@ -1592,6 +1673,16 @@ test('buildSummary exposes delivery implementation readiness separately from sca
 test('buildSummary exposes delivery helper commands for first missing implementation scaffolds', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    '',
+  ].join('\n'));
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -1605,7 +1696,7 @@ test('buildSummary exposes delivery helper commands for first missing implementa
   const summary = buildSummary(rootDir);
 
   assert.deepEqual(summary.delivery.helperCommands, {
-    bootstrapEnv: 'cp .env.example .env',
+    bootstrapEnv: null,
     populateEnvTemplate: null,
     populateDeliveryEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     populateChannelEnv: null,
@@ -1618,13 +1709,23 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
   assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
-  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
 
 
 test('buildSummary delivery helper commands skip scaffolded queue leaders and target the first missing provider implementation', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    '',
+  ].join('\n'));
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -1645,7 +1746,7 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
   assert.equal(summary.delivery.providerQueue[1].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
-  assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
+  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
 });
 
 test('buildSummary prompt preview surfaces delivery implementation bundles when multiple scaffolds are missing', () => {
@@ -1734,11 +1835,11 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Slack \[active\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
-  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\], Discord \[candidate\]/);
+  assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Slack \[active, scaffold-only\], Discord \[candidate\]/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
-  assert.match(summary.promptPreview, /OpenAI \[active\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+  assert.match(summary.promptPreview, /OpenAI \[active, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
   assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\], DeepSeek \[candidate\]/);
 });
 
@@ -1872,7 +1973,7 @@ test('buildSummary merges channel and provider manifests onto the default founda
   assert.equal(summary.models.activeCount, 1);
   assert.equal(summary.models.plannedCount, 5);
   assert.equal(summary.models.candidateCount, 1);
-  assert.equal(summary.models.multimodalProviderCount, 5);
+  assert.equal(summary.models.multimodalProviderCount, 6);
   assert.equal(slack.status, 'active');
   assert.deepEqual(slack.auth, {
     type: 'bot-token',
