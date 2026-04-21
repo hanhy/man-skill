@@ -97,6 +97,10 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    readyBucketCount: 3,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily', 'long-term', 'scratch'],
+    emptyBuckets: [],
   });
 
   assert.deepEqual(skills.summary(), {
@@ -169,6 +173,10 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
   });
 });
 
@@ -889,6 +897,10 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    readyBucketCount: 2,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily', 'long-term'],
+    emptyBuckets: ['scratch'],
   });
 
   assert.deepEqual(summary.foundation.core.memory, {
@@ -955,7 +967,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, undefined);
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
-  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- coverage: daily yes, long-term yes, scratch no/);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- buckets: 2\/3 ready \(daily, long-term\), missing scratch/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
   assert.match(summary.promptPreview, /coverage: 1\/4 ready; thin memory, skills, soul/);

@@ -280,6 +280,10 @@ type MemorySummary = {
   shortTermPresent?: boolean;
   longTermPresent?: boolean;
   scratchPresent?: boolean;
+  readyBucketCount?: number;
+  totalBucketCount?: number;
+  populatedBuckets?: string[];
+  emptyBuckets?: string[];
   [key: string]: unknown;
 } | null;
 
@@ -1890,16 +1894,16 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
   const longTermEntries = memory.longTermEntries ?? 0;
   const scratchEntries = memory.scratchEntries ?? 0;
   const totalEntries = memory.totalEntries ?? (dailyEntries + longTermEntries + scratchEntries);
-  const dailyPresent = memory.dailyPresent ?? memory.shortTermPresent ?? false;
-  const longTermPresent = memory.longTermPresent ?? false;
-  const scratchPresent = memory.scratchPresent ?? false;
+  const bucketSummary = typeof memory.readyBucketCount === 'number' && typeof memory.totalBucketCount === 'number'
+    ? `- buckets: ${memory.readyBucketCount}/${memory.totalBucketCount} ready${Array.isArray(memory.populatedBuckets) && memory.populatedBuckets.length > 0 ? ` (${memory.populatedBuckets.join(', ')})` : ''}${Array.isArray(memory.emptyBuckets) && memory.emptyBuckets.length > 0 ? `, missing ${memory.emptyBuckets.join(', ')}` : ''}`
+    : `- coverage: daily ${(memory.dailyPresent ?? memory.shortTermPresent ?? false) ? 'yes' : 'no'}, long-term ${memory.longTermPresent ?? false ? 'yes' : 'no'}, scratch ${memory.scratchPresent ?? false ? 'yes' : 'no'}`;
 
   return [
     `- daily: ${dailyEntries}`,
     `- long-term: ${longTermEntries}`,
     `- scratch: ${scratchEntries}`,
     `- total: ${totalEntries}`,
-    `- coverage: daily ${dailyPresent ? 'yes' : 'no'}, long-term ${longTermPresent ? 'yes' : 'no'}, scratch ${scratchPresent ? 'yes' : 'no'}`,
+    bucketSummary,
   ].join('\n');
 }
 
