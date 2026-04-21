@@ -553,6 +553,62 @@ test('buildSummary treats quoted repo-local .env values with inline comments as 
   }
 });
 
+test('buildSummary reports fully active delivery readiness even when channel and provider queues are empty', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  const repoRoot = process.cwd();
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'channels.json'),
+    JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS.map((channel) => ({ ...channel, status: 'active' })), null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS.map((provider) => ({ ...provider, status: 'active' })), null, 2),
+  );
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'models', `${providerId}.js`),
+      path.join(rootDir, 'src', 'models', `${providerId}.js`),
+    );
+  });
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.pendingChannelCount, 0);
+  assert.equal(summary.delivery.pendingProviderCount, 0);
+  assert.equal(summary.delivery.configuredChannelCount, 4);
+  assert.equal(summary.delivery.configuredProviderCount, 6);
+  assert.equal(summary.delivery.readyChannelImplementationCount, 4);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 6);
+  assert.deepEqual(summary.delivery.channelQueue, []);
+  assert.deepEqual(summary.delivery.providerQueue, []);
+  assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
+  assert.match(summary.promptPreview, /auth readiness: 4\/4 channels configured, 6\/6 providers configured/);
+});
+
 test('buildSummary treats whitespace-only repo-local .env values as missing delivery auth', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);

@@ -1222,7 +1222,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- runtime implementations: ${delivery?.readyChannelImplementationCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderImplementationCount ?? 0}/${providerRecords.length} providers ready`
       : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
-      ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
+      ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelRecords.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerRecords.length} providers configured`
       : null,
     missingChannelEnvVars.length > 0
       ? `- channel env backlog: ${missingChannelEnvVars.join(', ')}`

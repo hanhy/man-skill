@@ -2823,7 +2823,7 @@ test('buildSummary work loop uses repo-local provider env repair commands once c
     assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
     assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateProviderEnv);
     assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
-    assert.equal(summary.delivery.configuredChannelCount, 0);
+    assert.equal(summary.delivery.configuredChannelCount, 4);
     assert.equal(summary.delivery.configuredProviderCount, 0);
     assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
     assert.match(summary.promptPreview, /next action: set OPENAI_API_KEY for gpt-5/);
