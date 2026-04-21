@@ -1203,7 +1203,7 @@ test('buildSummary skill preview shows descriptions and summarizes hidden skills
   assert.equal(summary.skills.skillCount, 4);
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 4\n- discovered: 4\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; intake \[discovered\]: Refresh target-person intake summaries\.; \+1 more/,
+    /Skill registry:\n- total: 4\n- discovered: 4\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; intake \[discovered\]: Refresh target-person intake summaries\.; \+1 more/,
   );
 });
 
@@ -1233,7 +1233,7 @@ test('buildSummary skill preview prefers described skills before placeholders', 
 
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered, missing\]/,
+    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered, missing\]/,
   );
 });
 
@@ -1290,7 +1290,7 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   assert.equal(summary.skills.skillCount, 2);
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
+    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
   );
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.undocumentedCount, 1);

@@ -1114,6 +1114,12 @@ test('PromptAssembler preserves root section count summaries when only aggregate
       emptyBuckets: ['long-term', 'scratch'],
     },
     skills: [],
+    skillsSummary: {
+      skillCount: 1,
+      discoveredCount: 1,
+      customCount: 0,
+      skills: [{ name: 'slack', status: 'discovered', description: 'Route thread replies safely.' }],
+    },
     channels: { channelCount: 0, channels: [] },
     models: { providerCount: 0, providers: [] },
     foundationCore: {
@@ -1121,6 +1127,8 @@ test('PromptAssembler preserves root section count summaries when only aggregate
         hasRootDocument: true,
         rootPath: 'memory/README.md',
         rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here'],
+        rootMissingSections: ['buckets'],
         rootReadySectionCount: 1,
         rootTotalSectionCount: 2,
         dailyCount: 1,
@@ -1136,6 +1144,8 @@ test('PromptAssembler preserves root section count summaries when only aggregate
         hasRootDocument: true,
         rootPath: 'skills/README.md',
         rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here'],
+        rootMissingSections: ['layout'],
         rootReadySectionCount: 1,
         rootTotalSectionCount: 2,
         count: 1,
@@ -1162,9 +1172,10 @@ test('PromptAssembler preserves root section count summaries when only aggregate
     },
   }).buildPreview(4000);
 
-  assert.match(prompt, /Memory store:\n- daily: 1\n- long-term: 0\n- scratch: 0\n- total: 1\n- buckets: 1\/3 ready \(daily\), missing long-term, scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md/);
+  assert.match(prompt, /Memory store:\n- daily: 1\n- long-term: 0\n- scratch: 0\n- total: 1\n- buckets: 1\/3 ready \(daily\), missing long-term, scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md\n- root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.match(prompt, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- root: Keep shared procedures discoverable\. @ skills\/README\.md\n- root sections: 1\/2 ready \(what-lives-here\), missing layout\n- top skills: slack \[discovered\]: Route thread replies safely\./);
   assert.match(prompt, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-20\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready/);
-  assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready; docs: skills\/slack\/SKILL\.md/);
+  assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/slack\/SKILL\.md/);
 });
 
 test('PromptAssembler preserves queued core-foundation root section counts when only aggregate counts are available', () => {

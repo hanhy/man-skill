@@ -1664,6 +1664,25 @@ function formatRootSectionSummary(
   return `; root sections ${resolvedReadySectionCount}/${resolvedTotalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
+function formatPreviewRootSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string | null {
+  const summary = formatRootSectionSummary(
+    readySections,
+    missingSections,
+    readySectionCount,
+    totalSectionCount,
+  );
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; root sections /, '- root sections: ');
+}
+
 function formatThinSectionProgress(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -2008,7 +2027,7 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
 
 function buildMemoryPreviewBlock(
   memory: MemorySummary,
-  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath'> | null,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount'> | null,
 ): string {
   if (!memory) {
     return '- unavailable';
@@ -2036,10 +2055,21 @@ function buildMemoryPreviewBlock(
     bucketSummary,
     formatMemoryAliasSummary(memory, '- aliases: '),
     rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationMemory
+      ? formatPreviewRootSectionSummary(
+        foundationMemory.rootReadySections,
+        foundationMemory.rootMissingSections,
+        foundationMemory.rootReadySectionCount,
+        foundationMemory.rootTotalSectionCount,
+      )
+      : null,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
-function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
+function buildSkillsPreviewBlock(
+  skills: SkillRegistrySummary,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount'> | null,
+): string {
   if (!skills) {
     return '- unavailable';
   }
@@ -2091,12 +2121,29 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
     ].join('; ')
     : 'none';
 
+  const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
+    ? foundationSkills.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationSkills?.rootPath === 'string' && foundationSkills.rootPath.trim().length > 0
+    ? foundationSkills.rootPath.trim()
+    : null;
+  const rootSectionSummary = foundationSkills
+    ? formatPreviewRootSectionSummary(
+      foundationSkills.rootReadySections,
+      foundationSkills.rootMissingSections,
+      foundationSkills.rootReadySectionCount,
+      foundationSkills.rootTotalSectionCount,
+    )
+    : null;
+
   return [
     `- total: ${skills.skillCount ?? 0}`,
     `- discovered: ${skills.discoveredCount ?? 0}`,
     `- custom: ${skills.customCount ?? 0}`,
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    rootSectionSummary,
     `- top skills: ${topSkills}`,
-  ].join('\n');
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function formatVoicePreviewItems(label: string, values: unknown): string {
@@ -2213,7 +2260,7 @@ export class PromptAssembler {
     const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
     const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
     const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary, this.foundationCore?.memory);
-    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
+    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary, this.foundationCore?.skills);
 
     return truncatePreview(
       [
