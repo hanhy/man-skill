@@ -196,6 +196,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
   assert.match(readme, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
+  assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /prompt preview surfaces the exact missing sections plus a runnable repair command/i);
@@ -248,6 +249,10 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(skillsDoc, /- <skill>\/SKILL\.md: per-skill workflow and guidance/);
   assert.match(skillsDoc, /- <category>\/<skill>\/SKILL\.md: grouped skill families for larger registries/);
   assert.match(skillsDoc, /- README\.md: shared conventions for the repo skills layer/);
+  assert.match(skillsDoc, /## Default checked-in catalog/);
+  assert.match(skillsDoc, /- channels: `channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`/);
+  assert.match(skillsDoc, /- providers: `providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`/);
+  assert.match(skillsDoc, /- utilities: `cron`/);
 
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);

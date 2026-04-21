@@ -16,6 +16,11 @@ They should be specific enough to be useful and narrow enough to stay maintainab
 - README.md: shared conventions for the repo skills layer
 - adjacent supporting files should stay close to the owning skill so behavior remains inspectable and maintainable
 
+## Default checked-in catalog
+- channels: `channels/feishu`, `channels/slack`, `channels/telegram`, `channels/whatsapp`
+- providers: `providers/anthropic`, `providers/glm`, `providers/kimi`, `providers/minimax`, `providers/openai`, `providers/qwen`
+- utilities: `cron`
+
 ## Good uses for skills
 - summarization workflows
 - coding and debugging routines

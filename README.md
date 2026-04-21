@@ -85,6 +85,7 @@ The current structured contract is:
 - `memory/README.md` explains `## What belongs here` and `## Buckets`, with `daily/` as the canonical short-term working-memory bucket
 - `src/core/fs-loader.js` folds legacy `memory/short-term/` files into that same canonical `daily` lane at load time, so older repos do not lose short-term memory coverage while the checked-in path stays `daily/`
 - `skills/README.md` explains `## What lives here` and `## Layout`
+- the default checked-in skill catalog stays explicit: 4 channel guides (`channels/feishu`, `channels/slack`, `channels/telegram`, `channels/whatsapp`), 6 provider guides (`providers/anthropic`, `providers/glm`, `providers/kimi`, `providers/minimax`, `providers/openai`, `providers/qwen`), plus `cron`
 - `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
