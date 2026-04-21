@@ -1081,9 +1081,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : 'populate imported intake starter manifests';
     recommendedCommand = null;
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
-    recommendedFollowUpCommand = firstImportedStarterIntakeProfile?.personId
-      ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
-      : null;
+    recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
+      ? helperCommands.importIntakeImportedAndRefresh
+      : (firstImportedStarterIntakeProfile?.personId
+        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
+        : null);
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);

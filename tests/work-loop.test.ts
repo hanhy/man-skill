@@ -1807,6 +1807,60 @@ test('buildSummary work loop surfaces imported starter-manifest edits as runnabl
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
 });
 
+test('buildSummary work loop uses the imported intake replay bundle when multiple imported starter manifests need edits', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+
+  for (const profile of [
+    {
+      person: 'harry-han',
+      sampleFile: 'samples/harry-post.txt',
+      sampleText: 'Ship the thin slice first.\n',
+    },
+    {
+      person: 'jane-doe',
+      sampleFile: 'samples/jane-post.txt',
+      sampleText: 'Turn sharp notes into the next visible step.\n',
+    },
+  ]) {
+    fs.writeFileSync(path.join(rootDir, profile.sampleFile), profile.sampleText);
+    runImportCommand(rootDir, 'text', {
+      person: profile.person,
+      file: path.join(rootDir, profile.sampleFile),
+      'refresh-foundation': true,
+    });
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.runnablePriority?.id, 'ingestion');
+  assert.equal(summary.workLoop.runnablePriority?.status, 'ready');
+  assert.equal(summary.workLoop.runnablePriority?.nextAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
+  assert.equal(summary.workLoop.runnablePriority?.command, null);
+  assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
+  assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
+    'profiles/harry-han/imports',
+    'profiles/harry-han/imports/README.md',
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
+    'profiles/jane-doe/imports',
+    'profiles/jane-doe/imports/README.md',
+    'profiles/jane-doe/imports/materials.template.json',
+    'profiles/jane-doe/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+  assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 2 imported, 0 metadata-only, drafts 2 ready, 0 queued for refresh, 2 imported intake starter scaffolds available/);
+  assert.match(summary.promptPreview, /runnable next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --imported --refresh-foundation/);
+});
+
 test('buildSummary work loop bundles imported invalid intake manifest repairs when multiple imported profiles are broken', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

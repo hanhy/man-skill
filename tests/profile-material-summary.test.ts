@@ -3078,6 +3078,61 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
+test('buildSummary uses the imported intake replay bundle after multiple imported starter manifests are edited', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  for (const profile of [
+    {
+      person: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+      sampleFile: 'samples/harry-post.txt',
+      sampleText: 'Ship the first slice before polishing the plan.\n',
+    },
+    {
+      person: 'jane-doe',
+      displayName: 'Jane Doe',
+      summary: 'Fast feedback beats polished drift.',
+      sampleFile: 'samples/jane-post.txt',
+      sampleText: 'Turn sharp notes into the next visible step.\n',
+    },
+  ]) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: profile.person,
+      'display-name': profile.displayName,
+      summary: profile.summary,
+    });
+    fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, profile.sampleFile), profile.sampleText);
+    ingestion.importTextDocument({
+      personId: profile.person,
+      sourceFile: path.join(rootDir, profile.sampleFile),
+    });
+    ingestion.refreshFoundationDrafts({ personId: profile.person });
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 2);
+  assert.equal(summary.ingestion.recommendedProfileId, 'harry-han');
+  assert.equal(summary.ingestion.recommendedAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
+  assert.equal(summary.ingestion.recommendedCommand, null);
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
+  assert.deepEqual(summary.ingestion.recommendedPaths, [
+    'profiles/harry-han/imports',
+    'profiles/harry-han/imports/README.md',
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
+    'profiles/jane-doe/imports',
+    'profiles/jane-doe/imports/README.md',
+    'profiles/jane-doe/imports/materials.template.json',
+    'profiles/jane-doe/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --imported --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
+});
+
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
   const rootDir = makeTempRepo();
 
