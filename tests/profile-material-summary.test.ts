@@ -2672,7 +2672,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
     importIntakeWithoutRefresh: null,
     importIntake: null,
-    importManifest: null,
+    importManifest: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
@@ -2760,7 +2760,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[samples\/harry-materials\.json\] for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /sample manifest: 2 entries for Harry Han \(harry-han\) \(message:1, text:1\) -> node src\/index\.js import manifest --file 'samples\/harry-materials\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /sample text: harry-han -> node src\/index\.js import text --person harry-han --file 'samples\/harry-post\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| soul 2\/4 ready \(core-truths, boundaries\), missing vibe\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| soul 2\/4 ready \(core-truths, boundaries\), missing vibe\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake missing — create imports, README\.md, materials\.template\.json, sample\.txt; scaffold node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.' \| import node src\/index\.js import message --person metadata-only --text <message> --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /\+1 more profile: Harry Han \(harry-han\)/);
 });
@@ -2783,9 +2783,10 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
 
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
+  assert.equal(summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han')?.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.match(summary.promptPreview, /imported intake: 0 ready, 1 starter template, 0 backfills, 0 invalid manifests/);
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Ship the first slice before polishing the plan\.\) \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Ship the first slice before polishing the plan\.\) \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
 });
 
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
@@ -3060,7 +3061,7 @@ test('buildSummary prefers a profile-local starter manifest once intake scaffold
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake starter template — add entries before import \| import node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake starter template — add entries before import \| manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
 });
 
 test('buildSummary surfaces the profile-local intake shortcut for imported profiles when the refresh shortcut is unavailable', () => {
@@ -3088,10 +3089,10 @@ test('buildSummary surfaces the profile-local intake shortcut for imported profi
   assert.ok(importedCommand);
   assert.equal(importedCommand.importIntakeWithoutRefreshCommand, null);
   assert.equal(importedCommand.importIntakeCommand, null);
-  assert.equal(importedCommand.importManifestCommand, null);
+  assert.equal(importedCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.match(
     summary.promptPreview,
-    /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Ship the thin slice first, then tighten it with real feedback\.\) \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/,
+    /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^,]+, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Ship the thin slice first, then tighten it with real feedback\.\) \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'harry-han' \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/,
   );
 });
 

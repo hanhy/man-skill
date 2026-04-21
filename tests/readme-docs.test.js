@@ -135,7 +135,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryCommand.intakeManifestPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(harryCommand.importIntakeWithoutRefreshCommand, null);
   assert.equal(harryCommand.importIntakeCommand, null);
-  assert.equal(harryCommand.importManifestCommand, null);
+  assert.equal(harryCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(harryCommand.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");

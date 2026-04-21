@@ -1474,12 +1474,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
         ? ` | shortcut ${intakeShortcutCommand}`
         : '';
+      const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
+        ? ` | manifest ${profile.importManifestCommand}`
+        : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${manifestSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
