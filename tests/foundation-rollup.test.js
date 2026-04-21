@@ -903,6 +903,113 @@ test('buildSummary handles multiline skill frontmatter descriptions with indenta
   assert.doesNotMatch(summary.promptPreview, /cron: >2/);
 });
 
+test('buildSummary ignores blockquoted admonition labels when deriving skill excerpts and descriptions', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep shared operator procedures discoverable.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable workflows.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    [
+      '# Delivery',
+      '',
+      '> [!NOTE]',
+      '> Keep handoffs crisp.',
+      '',
+      '> ## What this skill is for',
+      '> - Route work clearly.',
+      '',
+      '> ## Suggested workflow',
+      '> - Confirm context first.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.skills.skills, [
+    {
+      id: 'delivery',
+      name: 'delivery',
+      description: 'Keep handoffs crisp.',
+      status: 'discovered',
+      foundationStatus: 'ready',
+    },
+  ]);
+  assert.deepEqual(summary.foundation.core.skills.sampleExcerpts, ['delivery: Keep handoffs crisp.']);
+  assert.doesNotMatch(summary.promptPreview, /\[!NOTE\]/);
+  assert.doesNotMatch(summary.promptPreview, /> Keep handoffs crisp\./);
+  assert.match(summary.promptPreview, /top skills: delivery \[discovered\]: Keep handoffs crisp\./);
+});
+
+test('buildSummary keeps blockquoted structured skill docs thin until all required sections are filled', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep shared operator procedures discoverable.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable workflows.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    [
+      '# Delivery',
+      '',
+      '> Keep handoffs crisp.',
+      '',
+      '> ## What this skill is for',
+      '> - Route work clearly.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.skills.skills, [
+    {
+      id: 'delivery',
+      name: 'delivery',
+      description: null,
+      status: 'discovered',
+      foundationStatus: 'thin',
+    },
+  ]);
+  assert.equal(summary.foundation.core.skills.documentedCount, 0);
+  assert.equal(summary.foundation.core.skills.thinCount, 1);
+  assert.deepEqual(summary.foundation.core.skills.thinSample, ['delivery']);
+  assert.deepEqual(summary.foundation.core.skills.thinPaths, ['skills/delivery/SKILL.md']);
+  assert.equal(summary.foundation.core.maintenance.queuedAreas.length, 1);
+  assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.area, 'skills');
+  assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.status, 'thin');
+  assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.action, 'add missing sections to skills/delivery/SKILL.md: suggested-workflow');
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.paths, ['skills/delivery/SKILL.md']);
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinMissingSections, {
+    'skills/delivery/SKILL.md': ['suggested-workflow'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
+    'skills/delivery/SKILL.md': ['what-this-skill-is-for'],
+  });
+  assert.match(summary.foundation.core.maintenance.queuedAreas[0]?.command ?? '', /skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); thin docs: delivery sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/delivery\/SKILL\.md/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /next action: add missing sections to skills\/delivery\/SKILL\.md: suggested-workflow/);
+});
+
 test('buildSummary flags missing and thin core foundation areas in the prompt preview', () => {
   const rootDir = makeTempRepo();
 
