@@ -1377,6 +1377,18 @@ function assertExactlyOneBatchSelector(options: ParsedOptions, selectors: string
   }
 }
 
+function assertAllowedOptions(
+  options: ParsedOptions,
+  allowedOptions: readonly string[],
+  command: 'import' | 'update',
+  subcommand: string,
+) {
+  const unsupportedOption = Object.keys(options).find((key) => !allowedOptions.includes(key));
+  if (unsupportedOption) {
+    throw new Error(`Unsupported option --${unsupportedOption} for ${command} ${subcommand}`);
+  }
+}
+
 const supportedImportSubcommands = ['sample', 'intake', 'manifest', 'text', 'message', 'talk', 'screenshot'] as const;
 const supportedUpdateSubcommands = ['profile', 'intake', 'foundation'] as const;
 
@@ -1433,6 +1445,17 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
   if (!supportedImportSubcommands.includes(subcommand as (typeof supportedImportSubcommands)[number])) {
     throw new Error(`Unsupported import type: ${subcommand}`);
   }
+
+  const allowedImportOptions: Record<(typeof supportedImportSubcommands)[number], readonly string[]> = {
+    sample: ['file'],
+    intake: ['person', 'stale', 'imported', 'all', 'refresh-foundation'],
+    manifest: ['file', 'refresh-foundation'],
+    text: ['person', 'file', 'notes', 'refresh-foundation'],
+    message: ['person', 'text', 'notes', 'refresh-foundation'],
+    talk: ['person', 'text', 'notes', 'refresh-foundation'],
+    screenshot: ['person', 'file', 'notes', 'refresh-foundation'],
+  };
+  assertAllowedOptions(options, allowedImportOptions[subcommand as (typeof supportedImportSubcommands)[number]], 'import', subcommand);
 
   if (subcommand === 'manifest') {
     const manifestFile = readOptionalStringOption(options, 'file');
@@ -1555,6 +1578,13 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
     throw new Error(`Unsupported update type: ${subcommand}`);
   }
 
+  const allowedUpdateOptions: Record<(typeof supportedUpdateSubcommands)[number], readonly string[]> = {
+    profile: ['person', 'display-name', 'summary', 'refresh-foundation'],
+    intake: ['person', 'display-name', 'summary', 'stale', 'imported', 'all', 'refresh-foundation'],
+    foundation: ['person', 'stale', 'all'],
+  };
+  assertAllowedOptions(options, allowedUpdateOptions[subcommand as (typeof supportedUpdateSubcommands)[number]], 'update', subcommand);
+
   const maybeAttachFoundationRefresh = (result: any) => {
     if (!refreshFoundation) {
       return result;
@@ -1608,6 +1638,10 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
 
   if (subcommand === 'intake') {
     assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'update intake requires exactly one of --person, --stale, --imported, or --all');
+    const intakeModeAllowedOptions = typeof options.person === 'string' && options.person.trim().length > 0
+      ? ['person', 'display-name', 'summary', 'refresh-foundation']
+      : ['stale', 'imported', 'all', 'refresh-foundation'];
+    assertAllowedOptions(options, intakeModeAllowedOptions, 'update', subcommand);
 
     if (options.all) {
       return maybeAttachFoundationRefresh(ingestion.scaffoldAllProfileIntakes());

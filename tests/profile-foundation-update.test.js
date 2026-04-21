@@ -1147,6 +1147,60 @@ test('CLI unsupported import and update subcommands fail with family-level usage
   });
 });
 
+test('CLI import and update subcommands reject unsupported option combinations before acting', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'text', '--person', 'harry-han', '--file', 'sample.txt', '--all'],
+      expectedError: /Error: Unsupported option --all for import text/,
+      expectedUsage: /Usage: node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'text', '--person', 'harry-han', '--file', 'sample.txt', '--refresh-foundtion'],
+      expectedError: /Error: Unsupported option --refresh-foundtion for import text/,
+      expectedUsage: /Usage: node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'profile', '--person', 'harry-han', '--display-name', 'Harry Han', '--stale'],
+      expectedError: /Error: Unsupported option --stale for update profile/,
+      expectedUsage: /Usage: node src\/index\.js update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--stale', '--summary', 'ignored'],
+      expectedError: /Error: Unsupported option --summary for update intake/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--imported', '--display-name', 'Ignored'],
+      expectedError: /Error: Unsupported option --display-name for update intake/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'foundation', '--person', 'harry-han', '--notes', 'test'],
+      expectedError: /Error: Unsupported option --notes for update foundation/,
+      expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
+        assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
+        return true;
+      },
+    );
+  });
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
