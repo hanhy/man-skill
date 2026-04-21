@@ -528,6 +528,10 @@ function summarizeIntakeStatus(intake, manifestInspection = null) {
     return 'invalid manifest — repair materials.template.json';
   }
 
+  if (manifestInspection?.status === 'starter') {
+    return 'starter template — add entries before import';
+  }
+
   if (!intake || typeof intake !== 'object') {
     return 'missing — create imports, README.md, materials.template.json, sample.txt';
   }
@@ -559,6 +563,10 @@ function buildProfileCommands(profile, options: any = {}) {
 
   const materialCount = profile.materialCount ?? 0;
   const imported = materialCount > 0;
+  const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
+  const profileSampleTextPath = intake?.ready && typeof intake?.sampleTextPath === 'string' && intake.sampleTextPath.trim().length > 0
+    ? intake.sampleTextPath
+    : null;
   const importCommands = buildProfileImportCommands(profile.id, options);
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
@@ -572,18 +580,20 @@ function buildProfileCommands(profile, options: any = {}) {
   const runnableScreenshotImportCommand = typeof importCommands.screenshot === 'string' && !importCommands.screenshot.includes('<')
     ? importCommands.screenshot
     : null;
-  const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
   const intakeManifest = inspectProfileIntakeManifest(typeof options?.rootDir === 'string' ? options.rootDir : null, intake, profile.id);
   const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
     ? intake.starterManifestPath
     : null;
-  const intakeManifestRunnable = intakeManifest.status !== 'invalid';
+  const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
-  const intakeImportManifestCommand = intakeManifestPath && intakeManifestRunnable
+  const intakeImportManifestCommand = intakeManifestPath && intakeManifestCommandAvailable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
     : null;
   const preferredIntakeManifestCommand = intakeManifest.status === 'loaded'
     ? intakeImportManifestCommand
+    : null;
+  const profileStarterTextImportCommand = profileSampleTextPath
+    ? `node src/index.js import text --person ${profile.id} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
   const defaultImportCommand = imported
     ? null
@@ -594,7 +604,7 @@ function buildProfileCommands(profile, options: any = {}) {
         ?? runnableScreenshotImportCommand
         ?? runnableMessageImportCommand
         ?? runnableTalkImportCommand
-        ?? intakeImportManifestCommand
+        ?? profileStarterTextImportCommand
         ?? importCommands.message
         ?? importCommands.talk
         ?? importCommands.text);
@@ -602,10 +612,10 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${shellQuote(profile.id)}` : null;
-  const importIntakeWithoutRefreshCommand = intakeManifestRunnable
+  const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
-  const importIntakeCommand = (imported ? importedIntakeCommandsAvailable : intakeManifestRunnable)
+  const importIntakeCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
 
@@ -808,17 +818,22 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === false && profile?.updateIntakeCommand);
   const importedInvalidIntakeManifestProfiles = allProfileCommands
     .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const importedStarterIntakeProfiles = allProfileCommands
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'starter');
   const importedProfilesWithReadyIntake = allProfileCommands
-    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
+    .filter((profile) => (profile?.materialCount ?? 0) > 0 && profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded');
   const metadataInvalidIntakeManifestProfiles = metadataProfileCommands
     .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'invalid');
+  const metadataStarterIntakeProfiles = metadataProfileCommands
+    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'starter');
   const metadataOnlyProfilesWithImportReadyIntake = metadataProfileCommands
-    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus !== 'invalid');
+    .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded');
   const metadataOnlyProfilesWithPartialIntake = metadataProfileCommands
     .filter((profile) => profile?.intakeReady === false && profile?.intakeCompletion === 'partial');
   const metadataOnlyProfilesWithMissingIntake = metadataProfileCommands
     .filter((profile) => profile?.intakeReady === false && (profile?.intakeCompletion ?? 'missing') === 'missing');
   const intakeReadyProfileCount = metadataOnlyProfilesWithImportReadyIntake.length;
+  const intakeStarterProfileCount = metadataStarterIntakeProfiles.length;
   const intakePartialProfileCount = metadataOnlyProfilesWithPartialIntake.length;
   const intakeMissingProfileCount = metadataOnlyProfilesWithMissingIntake.length;
   const intakeScaffoldProfileCount = metadataOnlyProfileCount - intakeReadyProfileCount;
@@ -869,7 +884,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     importIntakeImportedAndRefresh: importedIntakeImportAndRefreshCommand,
     importIntakeBundle: buildCommandBundle(
       metadataProfileCommands
-        .filter((profile) => profile?.intakeReady === true)
+        .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded')
         .map((profile) => profile?.importIntakeCommand),
     ),
     updateProfileBundle: buildCommandBundle(
@@ -1092,6 +1107,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
             return [sampleTextPath];
           }
 
+          if (metadataOnlyProfile?.intakeReady === true && metadataOnlyProfile?.importCommands?.text === runnableImportCommand) {
+            return collectReadyIntakeImportPaths(metadataOnlyProfile, rootDir);
+          }
+
           return [];
         })();
     } else if (sampleManifestPresent && sampleManifest.status === 'loaded') {
@@ -1117,10 +1136,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     refreshProfileCount: importedProfiles.filter((profile) => profile.foundationDraftStatus?.needsRefresh).length,
     incompleteProfileCount: importedProfiles.filter((profile) => !profile.foundationDraftStatus?.complete).length,
     importedIntakeReadyProfileCount: importedProfilesWithReadyIntake.length,
+    importedStarterIntakeProfileCount: importedStarterIntakeProfiles.length,
     importedIntakeBackfillProfileCount: importedIntakeBackfillProfiles.length,
     importedInvalidIntakeManifestProfileCount: importedInvalidIntakeManifestProfiles.length,
     invalidMetadataOnlyIntakeManifestProfileCount: metadataInvalidIntakeManifestProfiles.length,
     intakeReadyProfileCount,
+    intakeStarterProfileCount,
     intakePartialProfileCount,
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,

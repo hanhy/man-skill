@@ -1252,7 +1252,7 @@ test('buildSummary work loop still scaffolds intake before inline sample talk im
   assert.match(summary.promptPreview, /sample talk: metadata-only -> node src\/index\.js import talk --person metadata-only --text 'Ship the first slice from the sample manifest\.' --refresh-foundation/);
 });
 
-test('buildSummary work loop prefers the profile-local starter manifest over fallback sample manifests for metadata-only profiles', () => {
+test('buildSummary work loop uses the seeded sample text for starter-only profile-local intake scaffolds even when fallback sample manifests exist', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
@@ -1290,17 +1290,14 @@ test('buildSummary work loop prefers the profile-local starter manifest over fal
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop prefers the profile-local starter manifest once intake scaffolding is ready', () => {
+test('buildSummary work loop uses the seeded sample text once profile-local intake scaffolding is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
 
@@ -1325,17 +1322,14 @@ test('buildSummary work loop prefers the profile-local starter manifest once int
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop ignores broken sample manifests when a profile-local starter manifest is ready', () => {
+test('buildSummary work loop ignores broken sample manifests when a starter-only profile-local intake scaffold already has a seeded sample text path', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
@@ -1373,13 +1367,10 @@ test('buildSummary work loop ignores broken sample manifests when a profile-loca
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
-  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/metadata-only/imports/materials.template.json',
-    'profiles/metadata-only/imports/sample.txt',
-  ]);
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'profiles/metadata-only/imports/sample.txt' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'profiles\/metadata-only\/imports\/sample\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /paths: samples\/harry-materials\.json/);
 });
 
@@ -1813,27 +1804,25 @@ test('buildSummary work loop prefers the exact ready-intake bundle when multiple
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Beta Ready (beta-ready)');
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle,
-    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+    "node src/index.js import intake --person 'beta-ready' --refresh-foundation",
   );
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+    "node src/index.js import manifest --file 'profiles/beta-ready/imports/materials.template.json' --refresh-foundation",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
-    'profiles/alpha-ready/imports/materials.template.json',
-    'profiles/alpha-ready/imports/sample.txt',
     'profiles/beta-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/sample.txt',
     'profiles/beta-ready/imports/beta-shot.png',
   ]);
-  assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
+  assert.match(summary.promptPreview, /next action: import source materials for Beta Ready \(beta-ready\)/);
   assert.match(
     summary.promptPreview,
-    /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/,
+    /command: node src\/index\.js import manifest --file 'profiles\/beta-ready\/imports\/materials\.template\.json' --refresh-foundation/,
   );
-  assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
 test('buildSummary work loop repairs the env template before channel scaffolding when leader credentials are missing', () => {

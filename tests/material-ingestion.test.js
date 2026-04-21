@@ -1190,7 +1190,7 @@ test('importProfileIntakeManifest rejects a profile-local manifest that targets 
   assert.deepEqual(materialFiles, []);
 });
 
-test('buildSummary prompt preview surfaces the profile-local intake shortcut for ready metadata-only profiles', () => {
+test('buildSummary prompt preview keeps starter-only metadata intake templates off the import-intake shortcut path', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1202,8 +1202,9 @@ test('buildSummary prompt preview surfaces the profile-local intake shortcut for
 
   const summary = buildSummary(rootDir);
 
-  assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\) \| shortcut node src\/index\.js import intake --person 'harry-han' --refresh-foundation \| import node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, null);
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 1 starter template, 0 partial, 0 missing/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {
@@ -1241,8 +1242,8 @@ test('buildSummary exposes bundled profile-specific intake scaffold and import c
   );
   assert.equal(
     summary.ingestion.helperCommands.importIntakeBundle,
-    "(node src/index.js import intake --person 'delta-ready' --refresh-foundation) && (node src/index.js import intake --person 'gamma-ready' --refresh-foundation)",
+    null,
   );
-  assert.match(summary.promptPreview, /helpers: .*scaffold-bundle \(node src\/index\.js update intake --person 'beta-partial'/);
-  assert.match(summary.promptPreview, /helpers: .*import-bundle \(node src\/index\.js import intake --person 'delta-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'gamma-ready' --refresh-foundation\)/);
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 2 starter templates, 1 partial, 1 missing/);
+  assert.doesNotMatch(summary.promptPreview, /import-bundle /);
 });
