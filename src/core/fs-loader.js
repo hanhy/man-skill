@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
 
 function readTextIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -236,6 +237,10 @@ function normalizeSetextHeadingLines(lines) {
   return normalizedLines;
 }
 
+function stripLeadingBlockquotePrefix(line) {
+  return line.replace(/^\s*(?:>\s*)+/, '');
+}
+
 function extractDocumentBodyLines(document) {
   if (!isNonEmptyString(document)) {
     return [];
@@ -250,26 +255,22 @@ function extractDocumentBodyLines(document) {
   return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
 }
 
+function extractVisibleDocumentBodyLines(document) {
+  const normalizedDocument = normalizeDocument(document);
+  if (!isNonEmptyString(normalizedDocument)) {
+    return [];
+  }
+
+  return collectVisibleDocumentLines(extractDocumentBodyLines(normalizedDocument).join('\n'));
+}
+
 function extractDocumentExcerpt(document, maxLength = 160) {
-  if (!isNonEmptyString(document)) {
-    return null;
-  }
-
-  const frontmatterDescription = extractFrontmatterDescription(document);
-  if (isNonEmptyString(frontmatterDescription)) {
-    return buildExcerpt(frontmatterDescription, maxLength);
-  }
-
-  const candidate = normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
-    .map((line) => line.trim())
-    .find((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
-
-  return buildExcerpt(candidate, maxLength);
+  return buildExcerpt(findDocumentExcerpt(document), maxLength);
 }
 
 function hasMeaningfulDocumentBody(document) {
-  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(extractDocumentBodyLines(document)))
-    .map((line) => line.trim())
+  return extractVisibleDocumentBodyLines(document)
+    .map((line) => normalizeAdmonitionLine(line.trim()))
     .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
 }
 
@@ -278,12 +279,16 @@ const SKILL_SECTION_DEFINITIONS = [
   { key: 'suggested-workflow', headings: ['suggested workflow'] },
 ];
 
+function isCurrentDefaultVoiceHeading(value) {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+}
+
 const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   voice: [
     { key: 'tone', headings: ['tone'] },
     { key: 'signature-moves', headings: ['signature moves', 'voice should capture'] },
     { key: 'avoid', headings: ['avoid', 'voice should not capture'] },
-    { key: 'language-hints', headings: ['language hints', 'current default for manskill'] },
+    { key: 'language-hints', headings: ['language hints', 'current default for manskill'], matchesHeading: isCurrentDefaultVoiceHeading },
   ],
   soul: [
     { key: 'core-truths', headings: ['core values', 'core truths'] },
@@ -307,7 +312,7 @@ function collectSkillSectionState(document) {
     };
   }
 
-  const lines = normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)));
+  const lines = extractVisibleDocumentBodyLines(document);
   const ready = [];
   const missing = [];
 
@@ -316,8 +321,8 @@ function collectSkillSectionState(document) {
     let hasContent = false;
     let sectionHeadingLevel = null;
     for (const rawLine of lines) {
-      const trimmed = rawLine.trim();
-      const heading = parseMarkdownHeading(trimmed);
+      const normalizedLine = normalizeAdmonitionLine(rawLine.trim());
+      const heading = parseMarkdownHeading(normalizedLine);
       if (heading) {
         if (heading.level >= 2 && section.headings.includes(heading.text)) {
           inSection = true;
@@ -331,7 +336,7 @@ function collectSkillSectionState(document) {
         }
       }
 
-      if (!inSection || trimmed.length === 0 || trimmed.startsWith('#')) {
+      if (!inSection || normalizedLine.length === 0 || normalizedLine.startsWith('#')) {
         continue;
       }
 
@@ -357,8 +362,8 @@ function hasStructuredSkillHeading(document) {
     return false;
   }
 
-  return normalizeSetextHeadingLines(filterOutsideMarkdownFences(document.split(/\r?\n/)))
-    .map((line) => parseMarkdownHeading(line))
+  return extractVisibleDocumentBodyLines(document)
+    .map((line) => parseMarkdownHeading(normalizeAdmonitionLine(line.trim())))
     .some((heading) => heading && heading.level >= 2 && SKILL_SECTION_DEFINITIONS.some((section) => section.headings.includes(heading.text)));
 }
 
@@ -691,7 +696,11 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     return null;
   }
 
-  const lines = filterOutsideMarkdownFences(resolvedContent.split(/\r?\n/));
+  const lines = normalizeSetextHeadingLines(
+    filterOutsideMarkdownFences(
+      extractDocumentBodyLines(resolvedContent).map((line) => stripLeadingBlockquotePrefix(line)),
+    ),
+  );
   const readySections = [];
   const missingSections = [];
 
@@ -703,7 +712,10 @@ function summarizeFoundationDraftSections(filePath, content = null) {
       const trimmed = rawLine.trim();
       const heading = parseMarkdownHeading(trimmed);
       if (heading) {
-        if (heading.level >= 2 && section.headings.includes(heading.text)) {
+        if (
+          heading.level >= 2
+          && (section.headings.includes(heading.text) || section.matchesHeading?.(heading.text) === true)
+        ) {
           inSection = true;
           hasContent = false;
           sectionHeadingLevel = heading.level;
@@ -914,6 +926,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: voiceMetadata.sourceCount,
           materialTypes: voiceMetadata.materialTypes,
           highlights: readMarkdownHighlights(voiceDraftPath),
+          ...(voiceSectionSummary ?? {}),
         }
       : {
           generated: false,
@@ -934,6 +947,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: soulMetadata.sourceCount,
           materialTypes: soulMetadata.materialTypes,
           highlights: readMarkdownHighlights(soulDraftPath),
+          ...(soulSectionSummary ?? {}),
         }
       : {
           generated: false,
@@ -954,6 +968,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           sourceCount: skillsMetadata.sourceCount,
           materialTypes: skillsMetadata.materialTypes,
           highlights: readMarkdownHighlights(skillsDraftPath),
+          ...(skillsSectionSummary ?? {}),
         }
       : {
           generated: false,

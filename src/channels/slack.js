@@ -18,21 +18,43 @@ export const slackChannelScaffold = {
   nextStep: 'implement inbound event handling and outbound thread replies',
 };
 
+function pickSlackMessageRecord(event = {}) {
+  if (event?.subtype === 'message_changed' && event.message && typeof event.message === 'object') {
+    return event.message;
+  }
+
+  return event;
+}
+
 export function normalizeSlackInboundEvent(payload = {}) {
   const event = payload?.event && typeof payload.event === 'object' ? payload.event : {};
+  const messageRecord = pickSlackMessageRecord(event);
+
+  const eventType = typeof event?.subtype === 'string' && event.subtype.length > 0
+    ? event.subtype
+    : (typeof event.type === 'string' && event.type.length > 0
+      ? event.type
+      : (typeof payload?.type === 'string' && payload.type.length > 0 ? payload.type : 'unknown'));
+  const ts = typeof messageRecord?.ts === 'string' && messageRecord.ts.length > 0
+    ? messageRecord.ts
+    : (typeof event?.ts === 'string' && event.ts.length > 0 ? event.ts : null);
 
   return {
     platform: 'slack',
-    eventType: typeof event.type === 'string' && event.type.length > 0
-      ? event.type
-      : (typeof payload?.type === 'string' && payload.type.length > 0 ? payload.type : 'unknown'),
-    channelId: typeof event.channel === 'string' && event.channel.length > 0 ? event.channel : null,
-    senderId: typeof event.user === 'string' && event.user.length > 0 ? event.user : null,
-    text: typeof event.text === 'string' && event.text.length > 0 ? event.text : null,
-    ts: typeof event.ts === 'string' && event.ts.length > 0 ? event.ts : null,
-    threadTs: typeof event.thread_ts === 'string' && event.thread_ts.length > 0
-      ? event.thread_ts
-      : (typeof event.ts === 'string' && event.ts.length > 0 ? event.ts : null),
+    eventType,
+    channelId: typeof messageRecord?.channel === 'string' && messageRecord.channel.length > 0
+      ? messageRecord.channel
+      : (typeof event?.channel === 'string' && event.channel.length > 0 ? event.channel : null),
+    senderId: typeof messageRecord?.user === 'string' && messageRecord.user.length > 0
+      ? messageRecord.user
+      : (typeof event?.user === 'string' && event.user.length > 0 ? event.user : null),
+    text: typeof messageRecord?.text === 'string' && messageRecord.text.length > 0 ? messageRecord.text : null,
+    ts,
+    threadTs: typeof messageRecord?.thread_ts === 'string' && messageRecord.thread_ts.length > 0
+      ? messageRecord.thread_ts
+      : (typeof event?.thread_ts === 'string' && event.thread_ts.length > 0
+        ? event.thread_ts
+        : ts),
     teamId: typeof payload?.team_id === 'string' && payload.team_id.length > 0
       ? payload.team_id
       : (typeof payload?.authorizations?.[0]?.team_id === 'string' && payload.authorizations[0].team_id.length > 0

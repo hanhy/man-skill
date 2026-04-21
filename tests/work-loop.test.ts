@@ -32,8 +32,14 @@ function seedReadyFoundationRepo(rootDir: string) {
     path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
     '# Cron\n\n## What this skill is for\n- Use cron carefully.\n\n## Suggested workflow\n- Add the exact recurring command.\n',
   );
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
-  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\nStable voice guidance.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Stay faithful to the source material.\n\n## Boundaries\n- Do not bluff or overspeculate.\n\n## Vibe\n- Keep the tone grounded and direct.\n\n## Continuity\n- Preserve durable lessons across runs.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
 }
 
 function writeFullDeliveryEnv(rootDir: string, fileName: '.env' | '.env.example' = '.env.example') {
@@ -122,7 +128,7 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   );
   assert.equal(summary.workLoop.priorities[0].status, 'ready');
   assert.match(summary.workLoop.priorities[2].summary, /4 pending, 0 configured, 4 auth-blocked/);
-  assert.deepEqual(summary.workLoop.priorities[2].paths, ['manifests/channels.json', 'src/channels/slack.js']);
+  assert.deepEqual(summary.workLoop.priorities[2].paths, ['manifests/channels.json', 'src/channels/feishu.js']);
   assert.match(summary.workLoop.priorities[3].summary, /6 pending, 0 configured, 6 auth-blocked/);
   assert.deepEqual(summary.workLoop.priorities[3].paths, ['manifests/providers.json', 'src/models/openai.js']);
   assert.match(summary.promptPreview, /Work loop:/);
@@ -132,6 +138,72 @@ test('buildSummary work loop advances to ingestion when the base foundation is r
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /objectives: strengthen the OpenClaw-like foundation around memory, skills, soul, and voice \| improve the user-facing ingestion\/update entrance for target-person materials \| add chat channels Feishu, Telegram, WhatsApp, and Slack \| add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen \| report progress in small verified increments/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
+});
+
+test('buildSummary work loop advances to ingestion when memory and skills root docs use alternate markdown heading styles', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\nWhat lives here\n---------------\n- Shared repo skill guidance.\n\nLayout\n------\n- skills/<name>/SKILL.md documents a reusable workflow.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.memory.rootReadySections, ['what-belongs-here', 'buckets']);
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.doesNotMatch(summary.promptPreview, /current: Foundation \[queued\]/);
+});
+
+test('buildSummary work loop keeps foundation current when soul and voice docs only contain unstructured prose after hidden scaffolds', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'next.md'), 'Scratch note.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    '# Cron\n\n## What this skill is for\n- Use cron carefully.\n\n## Suggested workflow\n- Add the exact recurring command.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n<!--\n## Core truths\n- Hidden placeholder should not count.\n## Boundaries\n- Hidden placeholder should not count.\n## Continuity\n- Hidden placeholder should not count.\n-->\n\nStay faithful after the hidden scaffold.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n<!--\n## Tone\nMuted placeholder.\n## Signature moves\n- Hidden placeholder should not count.\n## Avoid\n- Hidden placeholder should not count.\n## Language hints\n- Hidden placeholder should not count.\n-->\n\nStay direct after the hidden scaffold.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.match(summary.workLoop.currentPriority.summary, /core 2\/4 ready \(2 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.workLoop.currentPriority.nextAction ?? '', /repair thin core foundation areas — starting with add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity/);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, ['soul', 'voice']);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 2\/4 ready \(2 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: core-truths, boundaries, vibe, continuity @ SOUL\.md; context sections 0\/4 ready, missing core-truths, boundaries, vibe, continuity/);
+  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: tone, signature-moves, avoid, language-hints @ voice\/README\.md; context sections 0\/4 ready, missing tone, signature-moves, avoid, language-hints/);
+  assert.doesNotMatch(summary.promptPreview, /current: Ingestion \[queued\]/);
 });
 
 test('buildSummary loads work-loop objectives from USER.md when the repo defines a current product direction', () => {
@@ -278,6 +350,41 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: keep the memory \+ skills foundation explicit before more rollout work \| keep metadata-only intake refreshes obvious for imported profiles \| stage Slack after Telegram stays runtime-ready \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
 });
 
+test('buildSummary loads work-loop objectives from blockquoted USER.md current product direction headings and list items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '> ## Current product direction',
+      '>',
+      '> 1. keep blockquoted foundation priorities visible',
+      '> 2. keep blockquoted intake reruns explicit for imported profiles',
+      '> 3. stage Feishu after the core channels stay runtime-ready',
+      '> 4. validate GLM after the primary provider adapters stay green',
+      '',
+      '> ## Usage notes',
+      '>',
+      '> Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep blockquoted foundation priorities visible',
+    'keep blockquoted intake reruns explicit for imported profiles',
+    'stage Feishu after the core channels stay runtime-ready',
+    'validate GLM after the primary provider adapters stay green',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep blockquoted foundation priorities visible \| keep blockquoted intake reruns explicit for imported profiles \| stage Feishu after the core channels stay runtime-ready \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
 test('buildSummary loads work-loop objectives from USER.md when the current product direction heading is nested and uses parenthesized numbering', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -313,6 +420,41 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   ]);
   assert.equal(summary.workLoop.objectiveCount, 5);
   assert.match(summary.promptPreview, /objectives: keep the repo foundation guidance explicit before more rollout work \| keep intake updates obvious for partially imported profiles \| land WhatsApp after Slack and Telegram stay stable \| validate GLM after the primary provider adapters stay green \| report progress in small verified increments/);
+});
+
+test('buildSummary loads work-loop objectives from USER.md when the current product direction uses plain bullet items', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '- harden the memory + soul handoff before delivery rollout',
+      '- make intake reruns safe for partially imported profiles',
+      '- ship Telegram before the other chat surfaces',
+      '- validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Do not let this prose leak into the objective list.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
 });
 
 test('buildSummary ignores commented and fenced placeholder objectives in USER.md current product direction', () => {
@@ -360,6 +502,121 @@ test('buildSummary ignores commented and fenced placeholder objectives in USER.m
   assert.match(summary.promptPreview, /objectives: keep the visible foundation queue honest \| keep intake reruns explicit for imported profiles \| ship Slack after the visible delivery helpers are solid \| validate OpenAI after the visible provider scaffolds stay green \| report progress in small verified increments/);
   assert.doesNotMatch(summary.promptPreview, /placeholder foundation objective/);
   assert.doesNotMatch(summary.promptPreview, /placeholder channel objective/);
+});
+
+test('buildSummary loads work-loop objectives from task-list items in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '- [ ] harden the memory + voice bridge before rollout',
+      '- [x] make intake reruns safe for partially imported profiles',
+      '- [ ] land Telegram before Slack and WhatsApp',
+      '- [ ] validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + voice bridge before rollout',
+    'make intake reruns safe for partially imported profiles',
+    'land Telegram before Slack and WhatsApp',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ voice bridge before rollout \| make intake reruns safe for partially imported profiles \| land Telegram before Slack and WhatsApp \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+});
+
+test('buildSummary accepts starred and plus task-list objectives in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '* [ ] keep soul and voice guidance in lockstep',
+      '+ [x] keep intake reruns explicit for imported profiles',
+      '* [ ] stage Slack after Telegram stays stable',
+      '+ [ ] validate OpenAI before widening provider coverage',
+      '',
+      '## Usage notes',
+      '',
+      'Still a durable file.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep soul and voice guidance in lockstep',
+    'keep intake reruns explicit for imported profiles',
+    'stage Slack after Telegram stays stable',
+    'validate OpenAI before widening provider coverage',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
+});
+
+test('buildSummary ignores commented and fenced current product direction scaffolds in USER.md', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '<!--',
+      '## Current product direction',
+      '1. hidden foundation objective',
+      '2. hidden ingestion objective',
+      '-->',
+      '',
+      '```md',
+      '## Current product direction',
+      '1. fenced delivery objective',
+      '2. fenced provider objective',
+      '```',
+      '',
+      '## Current product direction',
+      '',
+      '- visible foundation objective',
+      '- visible ingestion objective',
+      '',
+      '## Usage notes',
+      '',
+      'Keep this durable.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'visible foundation objective',
+    'visible ingestion objective',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 3);
+  assert.match(summary.promptPreview, /objectives: visible foundation objective \| visible ingestion objective \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /hidden foundation objective/);
+  assert.doesNotMatch(summary.promptPreview, /fenced delivery objective/);
 });
 
 test('buildSummary falls back to the default work-loop objectives when USER.md has no numbered product direction items', () => {
@@ -416,7 +673,10 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
 
 test('buildSummary work loop uses missing-only foundation helper bundles when multiple core areas are absent', () => {
   const rootDir = makeTempRepo();
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\nStable soul guidance.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Stay faithful to the source material.\n\n## Boundaries\n- Do not bluff or overspeculate.\n\n## Vibe\n- Keep the tone grounded and direct.\n\n## Continuity\n- Preserve durable lessons across runs.\n',
+  );
 
   const summary = buildSummary(rootDir);
 
@@ -1180,6 +1440,59 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
 
+test('buildSummary marks profile-local intake manifests invalid when they target a different metadata-only profile', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'other-person',
+      entries: [
+        {
+          type: 'message',
+          text: 'This manifest should stay attached to the owning profile.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile: { personId: string }) => profile.personId === 'metadata-only');
+
+  assert.equal(metadataOnlyCommand?.intakeReady, true);
+  assert.equal(metadataOnlyCommand?.intakeManifestStatus, 'invalid');
+  assert.match(metadataOnlyCommand?.intakeManifestError ?? '', /targets a different profile/i);
+  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(metadataOnlyCommand?.importIntakeCommand, null);
+  assert.equal(metadataOnlyCommand?.importManifestCommand, null);
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+  ]);
+  assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
+});
+
 test('buildSummary work loop repairs invalid intake manifests for imported profiles before moving on to delivery work', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -1457,7 +1770,7 @@ test('buildSummary work loop includes manifest-backed file assets when a ready i
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
 });
 
-test('buildSummary work loop bundles ready intake manifest imports when multiple metadata-only profiles are ready', () => {
+test('buildSummary work loop prefers the exact ready-intake bundle when multiple metadata-only profiles are ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
 
@@ -1501,6 +1814,9 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for ready intake profiles — starting with Alpha Ready (alpha-ready)');
+  assert.equal(summary.ingestion.helperCommands.importIntakeBundle,
+    "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
+  );
   assert.equal(
     summary.workLoop.currentPriority.command,
     "(node src/index.js import intake --person 'alpha-ready' --refresh-foundation) && (node src/index.js import intake --person 'beta-ready' --refresh-foundation)",
@@ -1513,7 +1829,10 @@ test('buildSummary work loop bundles ready intake manifest imports when multiple
     'profiles/beta-ready/imports/beta-shot.png',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for ready intake profiles — starting with Alpha Ready \(alpha-ready\)/);
-  assert.match(summary.promptPreview, /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/);
+  assert.match(
+    summary.promptPreview,
+    /command: \(node src\/index\.js import intake --person 'alpha-ready' --refresh-foundation\) && \(node src\/index\.js import intake --person 'beta-ready' --refresh-foundation\)/,
+  );
   assert.match(summary.promptPreview, /paths: profiles\/alpha-ready\/imports\/materials\.template\.json, profiles\/alpha-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
 });
 
@@ -1535,39 +1854,39 @@ test('buildSummary work loop repairs the env template before channel scaffolding
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.deepEqual(summary.delivery.envTemplateVarNames, ['OPENAI_API_KEY', 'SLACK_BOT_TOKEN']);
+  assert.deepEqual(summary.delivery.envTemplateVarNames, ['SLACK_BOT_TOKEN', 'OPENAI_API_KEY']);
   assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, [
-    'ANTHROPIC_API_KEY',
     'FEISHU_APP_ID',
     'FEISHU_APP_SECRET',
-    'GLM_API_KEY',
-    'KIMI_API_KEY',
-    'MINIMAX_API_KEY',
-    'QWEN_API_KEY',
-    'SLACK_SIGNING_SECRET',
     'TELEGRAM_BOT_TOKEN',
     'WHATSAPP_ACCESS_TOKEN',
     'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_SIGNING_SECRET',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
   ]);
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.channelQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(
     summary.delivery.helperCommands.populateEnvTemplate,
-    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest missing, scaffolds 0\/4 present/);
-  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
+  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, SLACK_SIGNING_SECRET, ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY\)/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
-  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
 });
@@ -1611,17 +1930,17 @@ test('buildSummary work loop repairs the env template before channel credential 
   assert.equal(summary.models.manifest.status, 'loaded');
   assert.equal(summary.workLoop.priorities[2].status, 'blocked');
   assert.equal(summary.workLoop.priorities[3].status, 'blocked');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(
     summary.workLoop.currentPriority.command,
     summary.delivery.helperCommands.populateEnvTemplate,
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
-  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+  assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
-  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
 });
@@ -1681,7 +2000,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop includes both env template and target env paths during credential bootstrap', () => {
+test('buildSummary work loop keeps credential bootstrap paths scoped to the template source during env copy', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1711,19 +2030,20 @@ test('buildSummary work loop includes both env template and target env paths dur
   });
 
   const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
-  assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
+  assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
 });
 
-test('buildSummary work loop drops stale implementation follow-ups while keeping both env bootstrap paths once checked-in delivery modules are runtime-ready', () => {
+test('buildSummary work loop carries env bootstrap paths for both the template source and repo-local destination when checked-in delivery modules are runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -1762,6 +2082,7 @@ test('buildSummary work loop drops stale implementation follow-ups while keeping
   });
 
   const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
 
   assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
@@ -1770,12 +2091,13 @@ test('buildSummary work loop drops stale implementation follow-ups while keeping
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
-  assert.match(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
-  assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
+  assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
 });
 
 test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
@@ -1816,6 +2138,122 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.doesNotMatch(workLoopBlock, /- paths:/);
 });
 
+test('buildSummary work loop uses quoted repo-local .env credentials with inline comments before env bootstrap guidance', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env.example'), [
+    'SLACK_BOT_TOKEN=placeholder',
+    'SLACK_SIGNING_SECRET=placeholder',
+    'TELEGRAM_BOT_TOKEN=placeholder',
+    'WHATSAPP_ACCESS_TOKEN=placeholder',
+    'WHATSAPP_PHONE_NUMBER_ID=placeholder',
+    'FEISHU_APP_ID=placeholder',
+    'FEISHU_APP_SECRET=placeholder',
+    'OPENAI_API_KEY=placeholder',
+    'ANTHROPIC_API_KEY=placeholder',
+    'KIMI_API_KEY=placeholder',
+    'MINIMAX_API_KEY=placeholder',
+    'GLM_API_KEY=placeholder',
+    'QWEN_API_KEY=placeholder',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'export SLACK_BOT_TOKEN="repo-slack-token" # copied from vault',
+    "SLACK_SIGNING_SECRET='repo-slack-secret' # copied from vault",
+    'TELEGRAM_BOT_TOKEN=repo-telegram-token # copied from vault',
+    'WHATSAPP_ACCESS_TOKEN=repo-whatsapp-token # copied from vault',
+    'WHATSAPP_PHONE_NUMBER_ID=repo-whatsapp-phone',
+    'FEISHU_APP_ID=repo-feishu-id',
+    'FEISHU_APP_SECRET=repo-feishu-secret # copied from vault',
+    '',
+  ].join('\n'));
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'channels.json'), path.join(rootDir, 'manifests', 'channels.json'));
+  fs.copyFileSync(path.join(process.cwd(), 'manifests', 'providers.json'), path.join(rootDir, 'manifests', 'providers.json'));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(process.cwd(), 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.delivery.configuredChannelCount, 4);
+    assert.equal(summary.delivery.authBlockedChannelCount, 0);
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.status, 'queued');
+    assert.equal(summary.workLoop.currentPriority.command, null);
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'credentials present');
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json']);
+    assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+    assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
+  } finally {
+    if (typeof originalEnv.SLACK_BOT_TOKEN === 'string') {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    } else {
+      delete process.env.SLACK_BOT_TOKEN;
+    }
+    if (typeof originalEnv.SLACK_SIGNING_SECRET === 'string') {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    } else {
+      delete process.env.SLACK_SIGNING_SECRET;
+    }
+    if (typeof originalEnv.TELEGRAM_BOT_TOKEN === 'string') {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    } else {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    }
+    if (typeof originalEnv.WHATSAPP_ACCESS_TOKEN === 'string') {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    }
+    if (typeof originalEnv.WHATSAPP_PHONE_NUMBER_ID === 'string') {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    }
+    if (typeof originalEnv.FEISHU_APP_ID === 'string') {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    } else {
+      delete process.env.FEISHU_APP_ID;
+    }
+    if (typeof originalEnv.FEISHU_APP_SECRET === 'string') {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    } else {
+      delete process.env.FEISHU_APP_SECRET;
+    }
+  }
+});
+
 test('buildSummary work loop skips env bootstrap once a repo-local .env already exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -1853,14 +2291,164 @@ test('buildSummary work loop skips env bootstrap once a repo-local .env already 
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.channelQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
-  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+});
+
+test('buildSummary work loop uses repo-local channel env repair commands once a partial .env already exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  fs.writeFileSync(path.join(rootDir, '.env'), 'OPENAI_API_KEY=***\n');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    KIMI_API_KEY: process.env.KIMI_API_KEY,
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
+    GLM_API_KEY: process.env.GLM_API_KEY,
+    QWEN_API_KEY: process.env.QWEN_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.KIMI_API_KEY;
+  delete process.env.MINIMAX_API_KEY;
+  delete process.env.GLM_API_KEY;
+  delete process.env.QWEN_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.workLoop.currentPriority.id, 'channels');
+    assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateChannelEnv);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+    assert.equal(summary.delivery.envTemplateCommand, null);
+    assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
+    assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+    assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /paths: \.env/);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+  } finally {
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    }
+  }
+});
+
+test('buildSummary work loop uses repo-local provider env repair commands once channels are already configured', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    '',
+  ].join('\n'));
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    KIMI_API_KEY: process.env.KIMI_API_KEY,
+    MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
+    GLM_API_KEY: process.env.GLM_API_KEY,
+    QWEN_API_KEY: process.env.QWEN_API_KEY,
+  };
+  delete process.env.SLACK_BOT_TOKEN;
+  delete process.env.SLACK_SIGNING_SECRET;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.WHATSAPP_ACCESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.FEISHU_APP_ID;
+  delete process.env.FEISHU_APP_SECRET;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.KIMI_API_KEY;
+  delete process.env.MINIMAX_API_KEY;
+  delete process.env.GLM_API_KEY;
+  delete process.env.QWEN_API_KEY;
+
+  try {
+    const summary = buildSummary(rootDir);
+
+    assert.equal(summary.workLoop.currentPriority.id, 'providers');
+    assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
+    assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateProviderEnv);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+    assert.equal(summary.delivery.configuredChannelCount, 0);
+    assert.equal(summary.delivery.configuredProviderCount, 0);
+    assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
+    assert.match(summary.promptPreview, /next action: set OPENAI_API_KEY for gpt-5/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /paths: \.env/);
+    assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
+  } finally {
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (typeof value === 'string') {
+        process.env[key] = value;
+      } else {
+        delete process.env[key];
+      }
+    }
+  }
 });
 
 test('buildSummary work loop uses repo-local .env credentials before env bootstrap guidance', () => {
@@ -1938,7 +2526,7 @@ test('buildSummary work loop uses repo-local .env credentials before env bootstr
     assert.equal(summary.workLoop.currentPriority.command, null);
     assert.equal(summary.workLoop.currentPriority.nextAction, 'credentials present');
     assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json']);
-    assert.doesNotMatch(summary.promptPreview, /next action: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET/);
+    assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
     assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, 0 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
     assert.match(summary.promptPreview, /next action: credentials present/);
@@ -1985,24 +2573,24 @@ test('buildSummary work loop reports required env coverage from matching vars on
 
   const summary = buildSummary(rootDir);
 
-  assert.match(summary.promptPreview, /env template: \.env\.example \(1\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, OPENAI_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
+  assert.match(summary.promptPreview, /env template: \.env\.example \(1\/13 required vars; missing FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, SLACK_SIGNING_SECRET, OPENAI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY\)/);
 });
 
 test('buildSummary work loop scaffolds the channel manifest once the queue leader is already configured', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
-  fs.writeFileSync(path.join(rootDir, '.env.example'), 'SLACK_BOT_TOKEN=\nSLACK_SIGNING_SECRET=\n');
+  fs.writeFileSync(path.join(rootDir, '.env.example'), 'FEISHU_APP_ID=\nFEISHU_APP_SECRET=\n');
 
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
 
   const originalEnv = {
-    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
-    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
   };
 
-  process.env.SLACK_BOT_TOKEN = 'token';
-  process.env.SLACK_SIGNING_SECRET = 'secret';
+  process.env.FEISHU_APP_ID='***';
+  process.env.FEISHU_APP_SECRET='***';
 
   try {
     runImportCommand(rootDir, 'text', {
@@ -2014,23 +2602,23 @@ test('buildSummary work loop scaffolds the channel manifest once the queue leade
     const summary = buildSummary(rootDir);
 
     assert.equal(summary.workLoop.currentPriority.id, 'channels');
-    assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; credentials present; next: implement inbound event handling and outbound thread replies');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow');
     assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
-    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
-    assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; credentials present; next: implement inbound event handling and outbound thread replies/);
+    assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
+    assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow/);
     assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
-    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
-      delete process.env.SLACK_BOT_TOKEN;
+    if (originalEnv.FEISHU_APP_ID === undefined) {
+      delete process.env.FEISHU_APP_ID;
     } else {
-      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
     }
 
-    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
-      delete process.env.SLACK_SIGNING_SECRET;
+    if (originalEnv.FEISHU_APP_SECRET === undefined) {
+      delete process.env.FEISHU_APP_SECRET;
     } else {
-      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
     }
   }
 });
@@ -2051,10 +2639,10 @@ test('buildSummary work loop scaffolds the channel manifest when delivery setup 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create manifests/channels.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'manifests' && touch 'manifests/channels.json'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js']);
-  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
+  assert.match(summary.promptPreview, /next action: create manifests\/channels\.json; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /command: mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
 });
 
@@ -2094,20 +2682,20 @@ test('buildSummary work loop bundles missing channel implementations once the ch
 
     const summary = buildSummary(rootDir);
 
-    assert.equal(summary.delivery.helperCommands.scaffoldChannelImplementationBundle, "(mkdir -p 'src/channels' && touch 'src/channels/slack.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/feishu.js')");
+    assert.equal(summary.delivery.helperCommands.scaffoldChannelImplementationBundle, "(mkdir -p 'src/channels' && touch 'src/channels/feishu.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/slack.js')");
     assert.equal(summary.workLoop.currentPriority.id, 'channels');
-    assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/slack.js; credentials present; next: implement inbound event handling and outbound thread replies');
+    assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow');
     assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldChannelImplementationBundle);
     assert.deepEqual(summary.workLoop.currentPriority.paths, [
       'manifests/channels.json',
-      'src/channels/slack.js',
+      'src/channels/feishu.js',
       'src/channels/telegram.js',
       'src/channels/whatsapp.js',
-      'src/channels/feishu.js',
+      'src/channels/slack.js',
     ]);
     assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 4 configured, 0 auth-blocked, manifest ready, scaffolds 0\/4 present/);
-    assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/slack\.js; credentials present; next: implement inbound event handling and outbound thread replies/);
-    assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\)/);
+    assert.match(summary.promptPreview, /next action: create pending channel implementations — starting with src\/channels\/feishu\.js; credentials present; next: hook tenant-app event subscriptions into inbound delivery flow/);
+    assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/whatsapp\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\)/);
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -2188,10 +2776,10 @@ test('buildSummary work loop omits env bootstrap paths when implementation scaff
     assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldChannelImplementationBundle);
     assert.deepEqual(summary.workLoop.currentPriority.paths, [
       'manifests/channels.json',
-      'src/channels/slack.js',
+      'src/channels/feishu.js',
       'src/channels/telegram.js',
       'src/channels/whatsapp.js',
-      'src/channels/feishu.js',
+      'src/channels/slack.js',
     ]);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
@@ -2256,7 +2844,7 @@ test('buildSummary work loop repairs the env template when it misses the leader 
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateEnvTemplate);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
 });
 
@@ -2302,11 +2890,11 @@ test('buildSummary work loop keeps scaffold-only delivery files visible as runti
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.match(summary.workLoop.currentPriority.summary, /4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'implement pending channel integrations — starting with src/channels/slack.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'implement pending channel integrations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.equal(summary.workLoop.currentPriority.command, null);
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/slack.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/slack.js']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready/);
-  assert.match(summary.promptPreview, /next action: implement pending channel integrations — starting with src\/channels\/slack\.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /next action: implement pending channel integrations — starting with src\/channels\/feishu\.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
   assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
 });
@@ -2337,9 +2925,9 @@ test('buildSummary work loop still scaffolds missing delivery files before scaff
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
-  assert.equal(summary.workLoop.currentPriority.command, "(mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js') && (mkdir -p 'src/channels' && touch 'src/channels/feishu.js')");
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/telegram.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/telegram.js', 'src/channels/whatsapp.js', 'src/channels/feishu.js']);
+  assert.equal(summary.workLoop.currentPriority.command, "(mkdir -p 'src/channels' && touch 'src/channels/feishu.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/whatsapp.js')");
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending channel implementations — starting with src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js', 'src/channels/telegram.js', 'src/channels/whatsapp.js']);
 });
 
 test('buildSummary work loop paths follow the actual missing delivery file when a scaffold-only leader stays ahead of a single missing implementation', () => {
@@ -2371,7 +2959,7 @@ test('buildSummary work loop paths follow the actual missing delivery file when 
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, "mkdir -p 'src/channels' && touch 'src/channels/feishu.js'");
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/channels/feishu.js; set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create src/channels/feishu.js; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/channels.json', 'src/channels/feishu.js']);
   assert.match(summary.promptPreview, /command: mkdir -p 'src\/channels' && touch 'src\/channels\/feishu\.js'/);
   assert.match(summary.promptPreview, /paths: manifests\/channels\.json, src\/channels\/feishu\.js/);
@@ -2545,7 +3133,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh Harry Han (harry-han) — reasons profile metadata drift + draft metadata drift');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.maintenance.recommendedCommand);
-  assert.equal(summary.workLoop.currentPriority.command, 'node src/index.js update foundation --person harry-han');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update foundation --person 'harry-han'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, summary.foundation.maintenance.recommendedPaths);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/memory/long-term/foundation.json',
@@ -2555,7 +3143,7 @@ test('buildSummary work loop points foundation refreshes at the stale profile dr
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: refresh Harry Han \(harry-han\) — reasons profile metadata drift \+ draft metadata drift/);
-  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person harry-han/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'harry-han'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
 
@@ -2622,7 +3210,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   );
   assert.equal(
     summary.workLoop.currentPriority.command,
-    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
+    "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with jane-doe (missing drafts + new materials)');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
@@ -2636,7 +3224,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/voice/README.md',
   ]);
   assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with jane-doe \(missing drafts \+ new materials\)/);
-  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person jane-doe\) && \(node src\/index\.js update foundation --person harry-han\)/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'jane-doe'\) && \(node src\/index\.js update foundation --person 'harry-han'\)/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
@@ -2651,7 +3239,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   );
   assert.equal(
     summary.workLoop.priorities[1].command,
-    '(node src/index.js update foundation --person jane-doe) && (node src/index.js update foundation --person harry-han)',
+    "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
   assert.deepEqual(summary.workLoop.priorities[1].paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',

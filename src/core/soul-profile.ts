@@ -1,4 +1,4 @@
-import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
 
 export interface SoulProfileSummary {
   excerpt: string | null;
@@ -68,12 +68,16 @@ function mapSoulHeadingToSection(heading: string): SoulSection {
   }
 }
 
+const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+
 function cleanSoulLine(value: string) {
-  return value
-    .trim()
-    .replace(/^(?:[-*]|\d+\.)\s+/, '')
-    .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
-    .trim();
+  return normalizeAdmonitionLine(
+    value
+      .trim()
+      .replace(LIST_MARKER_PATTERN, '')
+      .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
+      .trim(),
+  ).trim();
 }
 
 function isStarterSoulGuidance(value: string) {

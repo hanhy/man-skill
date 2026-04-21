@@ -58,6 +58,36 @@ test('Slack channel runtime helpers cover readiness, inbound normalization, and 
   );
 
   assert.deepEqual(
+    channel.normalizeInboundEvent({
+      team_id: 'T-team',
+      event: {
+        type: 'message',
+        subtype: 'message_changed',
+        hidden: true,
+        channel: 'C123',
+        ts: '1710000001.100200',
+        message: {
+          type: 'message',
+          user: 'U789',
+          text: 'updated thread reply',
+          ts: '1710000001.000100',
+          thread_ts: '1710000000.000100',
+        },
+      },
+    }),
+    {
+      platform: 'slack',
+      eventType: 'message_changed',
+      channelId: 'C123',
+      senderId: 'U789',
+      text: 'updated thread reply',
+      ts: '1710000001.000100',
+      threadTs: '1710000000.000100',
+      teamId: 'T-team',
+    },
+  );
+
+  assert.deepEqual(
     channel.buildWebhookResponse({ type: 'url_verification', challenge: 'challenge-token' }),
     { challenge: 'challenge-token' },
   );

@@ -297,25 +297,49 @@ function collectMemorySampleEntries({
   ];
 }
 
-function summarizeRootSectionSummary(readySections: string[] | undefined, missingSections: string[] | undefined): string {
-  const normalizedReadySections = Array.isArray(readySections) ? readySections : [];
-  const normalizedMissingSections = Array.isArray(missingSections) ? missingSections : [];
-  const totalSectionCount = normalizedReadySections.length + normalizedMissingSections.length;
+export function summarizeRootSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string {
+  const normalizedReadySections = Array.isArray(readySections)
+    ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const normalizedMissingSections = Array.isArray(missingSections)
+    ? missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const resolvedTotalSectionCount = typeof totalSectionCount === 'number'
+    ? totalSectionCount
+    : normalizedReadySections.length + normalizedMissingSections.length;
+  const resolvedReadySectionCount = typeof readySectionCount === 'number'
+    ? readySectionCount
+    : normalizedReadySections.length;
 
-  if (totalSectionCount === 0) {
+  if (resolvedTotalSectionCount === 0) {
     return '';
   }
 
-  return `, root ${normalizedReadySections.length}/${totalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+  return `, root ${resolvedReadySectionCount}/${resolvedTotalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
 }
 
 function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
-  const rootSectionSummary = summarizeRootSectionSummary(memory.rootReadySections, memory.rootMissingSections);
+  const rootSectionSummary = summarizeRootSectionSummary(
+    memory.rootReadySections,
+    memory.rootMissingSections,
+    memory.rootReadySectionCount,
+    memory.rootTotalSectionCount,
+  );
   return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}${rootSectionSummary}`;
 }
 
 function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string {
-  const rootSectionSummary = summarizeRootSectionSummary(skills.rootReadySections, skills.rootMissingSections);
+  const rootSectionSummary = summarizeRootSectionSummary(
+    skills.rootReadySections,
+    skills.rootMissingSections,
+    skills.rootReadySectionCount,
+    skills.rootTotalSectionCount,
+  );
   const missingRootSummary = !skills.hasRootDocument && isNonEmptyString(skills.rootPath)
     ? `, root missing @ ${skills.rootPath}`
     : '';
@@ -377,6 +401,7 @@ function buildCoreFoundationMaintenance({
 }): CoreFoundationMaintenanceSummary {
   const queue: CoreFoundationMaintenanceQueueItem[] = [];
   const memoryRootThinMissingSections = Array.isArray(memory.rootMissingSections) ? memory.rootMissingSections : [];
+  const memoryRootThinReadySections = Array.isArray(memory.rootReadySections) ? memory.rootReadySections : [];
   const rootThinMissingSections = Array.isArray(skills.rootMissingSections) ? skills.rootMissingSections : [];
   const rootThinReadySections = Array.isArray(skills.rootReadySections) ? skills.rootReadySections : [];
   const skillsAction = buildSkillsMaintenanceAction({
@@ -417,6 +442,14 @@ function buildCoreFoundationMaintenance({
         emptyBuckets: memory.emptyBuckets,
       }),
       ...(memoryRootThinMissingSections.length > 0 ? { thinPaths: ['memory/README.md'] } : {}),
+      ...(memoryRootThinMissingSections.length > 0 ? { rootThinMissingSections: memoryRootThinMissingSections } : {}),
+      ...(memoryRootThinReadySections.length > 0 ? { rootThinReadySections: memoryRootThinReadySections } : {}),
+      ...((memoryRootThinReadySections.length > 0 || memoryRootThinMissingSections.length > 0)
+        ? {
+          rootThinReadySectionCount: memoryRootThinReadySections.length,
+          rootThinTotalSectionCount: memoryRootThinReadySections.length + memoryRootThinMissingSections.length,
+        }
+        : {}),
     },
     {
       area: 'skills',
@@ -440,6 +473,12 @@ function buildCoreFoundationMaintenance({
       ...(Object.keys(thinSkillReadySectionsByPath).length > 0 ? { thinReadySections: thinSkillReadySectionsByPath } : {}),
       ...(rootThinMissingSections.length > 0 ? { rootThinMissingSections: rootThinMissingSections } : {}),
       ...(rootThinReadySections.length > 0 ? { rootThinReadySections: rootThinReadySections } : {}),
+      ...((rootThinReadySections.length > 0 || rootThinMissingSections.length > 0)
+        ? {
+          rootThinReadySectionCount: rootThinReadySections.length,
+          rootThinTotalSectionCount: rootThinReadySections.length + rootThinMissingSections.length,
+        }
+        : {}),
     },
     {
       area: 'soul',
@@ -447,6 +486,14 @@ function buildCoreFoundationMaintenance({
       summary: summarizeDocumentFoundation(soul),
       action: soulAction,
       paths: ['SOUL.md'],
+      ...((soul.lineCount > 0 && (soul.readySections.length > 0 || soul.missingSections.length > 0))
+        ? {
+          rootThinReadySections: soul.readySections,
+          rootThinMissingSections: soul.missingSections,
+          rootThinReadySectionCount: soul.readySectionCount,
+          rootThinTotalSectionCount: soul.totalSectionCount,
+        }
+        : {}),
     },
     {
       area: 'voice',
@@ -454,6 +501,14 @@ function buildCoreFoundationMaintenance({
       summary: summarizeDocumentFoundation(voice),
       action: voiceAction,
       paths: ['voice/README.md'],
+      ...((voice.lineCount > 0 && (voice.readySections.length > 0 || voice.missingSections.length > 0))
+        ? {
+          rootThinReadySections: voice.readySections,
+          rootThinMissingSections: voice.missingSections,
+          rootThinReadySectionCount: voice.readySectionCount,
+          rootThinTotalSectionCount: voice.totalSectionCount,
+        }
+        : {}),
     },
   ];
 
@@ -480,7 +535,10 @@ function buildCoreFoundationMaintenance({
     soul: queue.find((area) => area.area === 'soul')?.command ?? null,
     voice: queue.find((area) => area.area === 'voice')?.command ?? null,
   };
-  const recommendedArea = queue[0]?.area ?? null;
+  const recommendedQueueItem = queue[0] ?? null;
+  const recommendedArea = recommendedQueueItem?.area ?? null;
+  const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
+  const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
   const recommendedPaths = queue.length > 1
     ? Array.from(new Set(queue.flatMap((area) => area.paths ?? [])))
     : [...(queue[0]?.paths ?? [])];
@@ -543,6 +601,8 @@ function buildCoreFoundationMaintenance({
     missingAreaCount: areas.filter((area) => area.status === 'missing').length,
     thinAreaCount: areas.filter((area) => area.status === 'thin').length,
     recommendedArea,
+    recommendedStatus,
+    recommendedSummary,
     recommendedAction,
     recommendedCommand,
     recommendedPaths,
@@ -557,6 +617,8 @@ export interface CoreMemoryFoundationSummary {
   rootExcerpt: string | null;
   rootMissingSections?: string[];
   rootReadySections?: string[];
+  rootReadySectionCount?: number;
+  rootTotalSectionCount?: number;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -574,6 +636,8 @@ export interface CoreSkillsFoundationSummary {
   rootExcerpt: string | null;
   rootMissingSections?: string[];
   rootReadySections?: string[];
+  rootReadySectionCount?: number;
+  rootTotalSectionCount?: number;
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -682,6 +746,25 @@ function hasStructuredHeading(document: string | null | undefined, headings: str
     .some((heading) => heading !== null && heading.level >= 2 && normalizedHeadings.includes(heading.text));
 }
 
+function hasStructuredHeadingMatcher(
+  document: string | null | undefined,
+  matcher: (headingText: string) => boolean,
+): boolean {
+  if (!isNonEmptyString(document)) {
+    return false;
+  }
+
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
+  return visibleDocument
+    .split('\n')
+    .map((line) => parseMarkdownHeading(line))
+    .some((heading) => heading !== null && heading.level >= 2 && matcher(heading.text));
+}
+
+function isCurrentDefaultVoiceHeading(value: string): boolean {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+}
+
 function summarizeStructuredSections(
   document: string | null | undefined,
   sections: Array<{ key: string; heading: string }>,
@@ -742,7 +825,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
       profile.vibe.length > 0 ? 'vibe' : null,
       profile.continuity.length > 0 ? 'continuity' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
+    : [];
   const missingSections = structured
     ? [
       profile.coreTruths.length > 0 ? null : 'core-truths',
@@ -750,7 +833,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
       profile.vibe.length > 0 ? null : 'vibe',
       profile.continuity.length > 0 ? null : 'continuity',
     ].filter((value): value is string => typeof value === 'string')
-    : [];
+    : (present ? ['core-truths', 'boundaries', 'vibe', 'continuity'] : []);
 
   const lineCount = countContentLines(document);
   const excerpt = profile.excerpt;
@@ -783,8 +866,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'language hints',
     'voice should capture',
     'voice should not capture',
-    'current default for manskill',
-  ]);
+  ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,
@@ -792,7 +874,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
       profile.constraints.length > 0 ? 'avoid' : null,
       profile.languageHints.length > 0 ? 'language-hints' : null,
     ].filter((value): value is string => typeof value === 'string')
-    : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
+    : [];
   const missingSections = structured
     ? [
       profile.hasToneGuidance ? null : 'tone',
@@ -800,7 +882,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
       profile.constraints.length > 0 ? null : 'avoid',
       profile.languageHints.length > 0 ? null : 'language-hints',
     ].filter((value): value is string => typeof value === 'string')
-    : [];
+    : (present ? ['tone', 'signature-moves', 'avoid', 'language-hints'] : []);
 
   const lineCount = countContentLines(document);
   const excerpt = profile.style === 'documented' ? profile.tone : null;
@@ -839,6 +921,10 @@ export interface CoreFoundationMaintenanceQueueItem {
   paths: string[];
   missingPaths?: string[];
   thinPaths?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   command?: string | null;
@@ -860,6 +946,8 @@ export interface CoreFoundationMaintenanceSummary {
   missingAreaCount: number;
   thinAreaCount: number;
   recommendedArea: string | null;
+  recommendedStatus: string | null;
+  recommendedSummary: string | null;
   recommendedAction: string | null;
   recommendedCommand: string | null;
   recommendedPaths: string[];
@@ -947,6 +1035,8 @@ export function buildCoreFoundationSummary({
     ...(memoryHasStructuredRootSections ? {
       rootMissingSections: memoryRootSections.missingSections,
       rootReadySections: memoryRootSections.readySections,
+      rootReadySectionCount: memoryRootSections.readySections.length,
+      rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
     dailyCount: daily.length,
     longTermCount: longTerm.length,
@@ -973,6 +1063,8 @@ export function buildCoreFoundationSummary({
     ...(skillsHasStructuredRootSections ? {
       rootMissingSections: skillsRootSections.missingSections,
       rootReadySections: skillsRootSections.readySections,
+      rootReadySectionCount: skillsRootSections.readySections.length,
+      rootTotalSectionCount: skillsRootSections.readySections.length + skillsRootSections.missingSections.length,
     } : {}),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,

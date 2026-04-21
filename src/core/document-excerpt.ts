@@ -148,7 +148,7 @@ function stripLeadingBlockquotePrefix(line: string): string {
   return line.replace(/^\s*(?:>\s*)+/, '');
 }
 
-function normalizeAdmonitionLine(line: string): string {
+export function normalizeAdmonitionLine(line: string): string {
   const trimmed = line.trim();
   const match = trimmed.match(/^\[!([A-Z][A-Z0-9-]*)\](?:\s+(.*))?$/);
   if (!match) {

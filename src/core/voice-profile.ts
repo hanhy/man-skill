@@ -1,4 +1,4 @@
-import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
 
 export interface VoiceProfileSummary {
   tone: string;
@@ -49,12 +49,16 @@ function parseStructuredHeading(line: string): { level: number; text: string } |
   };
 }
 
+const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+
 function cleanVoiceLine(value: string) {
-  return value
-    .trim()
-    .replace(/^(?:[-*]|\d+\.)\s+/, '')
-    .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
-    .trim();
+  return normalizeAdmonitionLine(
+    value
+      .trim()
+      .replace(LIST_MARKER_PATTERN, '')
+      .replace(/^\*\*(.+?)\*\*\s*/, '$1 ')
+      .trim(),
+  ).trim();
 }
 
 function looksLikeLanguageHint(value: string) {
@@ -64,6 +68,10 @@ function looksLikeLanguageHint(value: string) {
     || normalized.includes('multilingual')
     || normalized.includes('中文')
     || normalized.includes('english');
+}
+
+function isCurrentDefaultHeading(value: string) {
+  return value === 'current default for manskill' || /^current default for .+$/.test(value);
 }
 
 function pushUnique(target: string[], value: string) {
@@ -159,7 +167,7 @@ export class VoiceProfile {
           currentSectionHasContent = false;
           return;
         }
-        if (heading.text === 'current default for manskill') {
+        if (isCurrentDefaultHeading(heading.text)) {
           currentSection = 'current-default';
           currentSectionHasContent = false;
           return;
@@ -170,7 +178,7 @@ export class VoiceProfile {
         return;
       }
 
-      if (isListSection(currentSection) && !/^(?:[-*]|\d+\.)\s+/.test(line) && currentSectionHasContent) {
+      if (isListSection(currentSection) && !LIST_MARKER_PATTERN.test(line) && currentSectionHasContent) {
         currentSection = null;
         currentSectionHasContent = false;
         return;

@@ -22,7 +22,7 @@
 ### Current development focus
 1. strengthen the foundation around **memory / skills / soul / voice**
 2. improve the **material ingestion entrance**
-3. expand channels and model providers
+3. expand channels in the rollout order **Feishu → Telegram → WhatsApp → Slack** and providers in the rollout order **OpenAI → Anthropic → Kimi → Minimax → GLM → Qwen**
 
 ### Development rule
 - use **TypeScript-first** for new and migrated runtime code
@@ -46,6 +46,7 @@ node src/index.js update foundation --person harry-han
 node src/index.js update foundation --stale
 node src/index.js update foundation --all
 node src/index.js update intake --imported
+node src/index.js import intake --imported
 node src/index.js import intake --imported --refresh-foundation
 node src/index.js
 ```
@@ -59,20 +60,21 @@ The current operator-facing entrance is:
 - import checked-in starter material with `import sample`
 - import profile-local intake manifests with `import intake --person <id>`
 - bulk-import only first-run metadata-only intake manifests with `import intake --stale --refresh-foundation`
-- bulk-import only already-imported profile-local intake manifests with `import intake --imported --refresh-foundation`
+- bulk-import only already-imported profile-local intake manifests with `import intake --imported`
+- re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory / voice / soul / skills drafts
 - regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation`, `update foundation --person <id>`, or `update foundation --stale`
 
 `update intake` writes `profiles/<person-id>/imports/README.md`, `sample.txt`, and `materials.template.json` so a fresh target profile immediately has an obvious place for user-supplied materials before anything is imported. That scaffold includes per-type `entryTemplates`, direct `import text|message|talk|screenshot` command hints, and higher-level rerun shortcuts for `update intake`, `import intake`, and metadata sync. One-off imports and manifest/sample imports now keep that same profile-local intake scaffold present automatically, so the entrance stays discoverable even after the first materials have already landed.
 
 Re-running `update intake` preserves starter `entries[]`, customized `entryTemplates`, and the README's managed `Custom notes` block while still syncing generated commands plus top-level display name and summary metadata. If `materials.template.json` was edited into invalid JSON, the repair pass now snapshots the broken file to `materials.template.json.invalid-<timestamp>.bak` and returns `invalidStarterManifestBackupPath` in the CLI result before rebuilding the starter manifest, so operators can recover the last draft instead of losing it during intake repair. The repo also ships a starter manifest at `samples/harry-materials.json` plus checked-in sample assets, so there is a one-command bootstrap path via `node src/index.js import sample` as well as explicit sample helper commands in the summary/prompt preview.
 
-`node src/index.js --help` now prints a concise operator-facing usage guide instead of dumping the full summary JSON, and invalid CLI invocations fail with a short usage hint rather than a raw stack trace. The summary keeps advertising the richer ingestion helper bundles, the sample manifest's typed entry mix, and available display labels so operators can see which starter profiles and assets are covered before importing them.
+`node src/index.js --help` now prints a concise operator-facing usage guide instead of dumping the full summary JSON, and invalid CLI invocations fail with a short usage hint rather than a raw stack trace. The summary keeps advertising the richer ingestion helper bundles, including invalid-intake repair helpers, batch metadata sync helpers, the sample manifest's typed entry mix, and keyed non-text sample helpers (`sample-message`, `sample-talk`, `sample-screenshot`), so operators can see which starter profiles, repair paths, and assets are covered before importing them.
 
 ## Delivery foundation
 
-The repo now also carries a delivery layer for chat surfaces and model backends. The default channel catalog covers Slack, Telegram, WhatsApp, and Feishu, while the default provider catalog covers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen. The checked-in channel/provider modules now expose concrete runtime helpers, so the summary can distinguish three different states: missing files, scaffold-only files, and runtime-ready integrations that are still waiting on auth/configuration before they can serve traffic.
+The repo now also carries a delivery layer for chat surfaces and model backends. The canonical rollout order is Feishu, Telegram, WhatsApp, and Slack for channels, then OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen for providers. The default channel/provider catalogs and work-loop queue follow that same order, while the checked-in modules expose concrete runtime helpers so the summary can distinguish three different states: missing files, scaffold-only files, and runtime-ready integrations that are still waiting on auth/configuration before they can serve traffic.
 
-Per-repo rollout can override or extend those defaults through `manifests/channels.json` and `manifests/providers.json`. The summary/prompt preview keeps those manifest diagnostics, runtime-readiness counts, `.env.example` bootstrap hints, auth-readiness gaps, and next scaffold commands visible so the delivery backlog stays operator-facing instead of hidden in raw files.
+Per-repo rollout can override or extend those defaults through `manifests/channels.json` and `manifests/providers.json`. The summary/prompt preview keeps those manifest diagnostics, runtime-readiness counts, `.env.example` bootstrap hints, auth-readiness gaps, and next scaffold commands visible so the delivery backlog stays operator-facing instead of hidden in raw files. It also keeps the bootstrap blast radius explicit: when `cp .env.example .env` is the active next step, both `paths` and prompt helpers surface `.env.example` and `.env`, not only the template source.
 
 ## Foundation contract
 
@@ -84,7 +86,9 @@ The current structured contract is:
 - `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
-`buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command, so cron/operator runs can keep strengthening the foundation before moving on to ingestion, channels, or providers.
+`buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command; when all four repo-core layers are ready, that same block collapses to one compact `ready details` line so cron/operator runs keep the foundation visible without wasting preview budget before moving on to ingestion, channels, or providers.
+
+Those section-aware surfaces are also explicit in JSON: `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; plus `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount` and the parallel `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount`. Thin repo-core repair queue items keep the same progress machine-readable via `foundation.core.maintenance.queuedAreas[*].rootThinReadySections`, `rootThinMissingSections`, `rootThinReadySectionCount`, and `rootThinTotalSectionCount`, so prompt previews can still say `root sections 1/2 ready` even when only counts survive. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
 
 The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
 - `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair

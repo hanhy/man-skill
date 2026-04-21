@@ -1,6 +1,7 @@
 export function normalizeProviderToolArguments(argumentsValue) {
   if (typeof argumentsValue === 'string') {
-    return argumentsValue.length > 0 ? argumentsValue : '{}';
+    const trimmed = argumentsValue.trim();
+    return trimmed.length > 0 ? trimmed : '{}';
   }
 
   if (argumentsValue && typeof argumentsValue === 'object') {
@@ -118,6 +119,10 @@ function collectProviderTextFragments(content, fragments = []) {
     content.content.forEach((part) => collectProviderTextFragments(part, fragments));
   }
 
+  if (Array.isArray(content.parts)) {
+    content.parts.forEach((part) => collectProviderTextFragments(part, fragments));
+  }
+
   if (typeof content.value === 'string') {
     const trimmed = content.value.trim();
     if (trimmed.length > 0) {
@@ -135,4 +140,64 @@ export function extractProviderTextContent(content) {
     .trim();
 
   return text.length > 0 ? text : null;
+}
+
+export function resolveOpenAICompatibleResponseMessage(response = {}) {
+  const choice = Array.isArray(response.choices) ? response.choices[0] ?? {} : {};
+  const choiceMessage = choice?.message && typeof choice.message === 'object' ? choice.message : null;
+  if (choiceMessage) {
+    return choiceMessage;
+  }
+
+  const outputItems = Array.isArray(response.output) ? response.output : [];
+  const outputMessage = outputItems.find((item) => item && typeof item === 'object' && item.type === 'message');
+  if (outputMessage && typeof outputMessage === 'object') {
+    return {
+      role: typeof outputMessage.role === 'string' && outputMessage.role.length > 0 ? outputMessage.role : 'assistant',
+      content: outputMessage.content,
+      tool_calls: outputMessage.tool_calls,
+    };
+  }
+
+  return {};
+}
+
+export function resolveOpenAICompatibleToolCalls(response = {}) {
+  const choice = Array.isArray(response.choices) ? response.choices[0] ?? {} : {};
+  const choiceMessage = choice?.message && typeof choice.message === 'object' ? choice.message : {};
+  if (Array.isArray(choiceMessage.tool_calls) && choiceMessage.tool_calls.length > 0) {
+    return choiceMessage.tool_calls;
+  }
+
+  const outputItems = Array.isArray(response.output) ? response.output : [];
+  return outputItems
+    .filter((item) => item && typeof item === 'object' && item.type === 'function_call')
+    .map((item) => ({
+      id: typeof item.call_id === 'string' && item.call_id.length > 0
+        ? item.call_id
+        : (typeof item.id === 'string' && item.id.length > 0 ? item.id : null),
+      type: 'function',
+      function: {
+        name: typeof item.name === 'string' && item.name.length > 0 ? item.name : null,
+        arguments: item.arguments,
+      },
+    }));
+}
+
+export function normalizeOpenAICompatibleUsage(usage = {}) {
+  const promptTokens = Number.isFinite(usage?.prompt_tokens)
+    ? usage.prompt_tokens
+    : (Number.isFinite(usage?.input_tokens) ? usage.input_tokens : 0);
+  const completionTokens = Number.isFinite(usage?.completion_tokens)
+    ? usage.completion_tokens
+    : (Number.isFinite(usage?.output_tokens) ? usage.output_tokens : 0);
+  const totalTokens = Number.isFinite(usage?.total_tokens)
+    ? usage.total_tokens
+    : (promptTokens > 0 || completionTokens > 0 ? promptTokens + completionTokens : 0);
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+  };
 }

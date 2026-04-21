@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary, buildPopulateEnvCommand } from './core/delivery-summary.ts';
+import { buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
@@ -90,6 +90,7 @@ type QueueLike = {
 type DeliveryRecordLike = {
   id?: string | null;
   status?: string;
+  nextStep?: string | null;
 };
 
 type DeliverySummaryLike<TRecord extends DeliveryRecordLike> = {
@@ -157,6 +158,30 @@ function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCo
   return null;
 }
 
+function parseWorkLoopObjectiveLine(line: string): string | null {
+  const trimmedLine = line.replace(/^\uFEFF/, '').trim();
+  if (trimmedLine.length === 0) {
+    return null;
+  }
+
+  const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
+  if (numberedMatch?.[1]) {
+    return numberedMatch[1].trim();
+  }
+
+  const taskListMatch = trimmedLine.match(/^[-*+]\s+\[(?: |x|X)\]\s+(.+)$/);
+  if (taskListMatch?.[1]) {
+    return taskListMatch[1].trim();
+  }
+
+  const plainBulletMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
+  if (plainBulletMatch?.[1]) {
+    return plainBulletMatch[1].trim();
+  }
+
+  return null;
+}
+
 function extractWorkLoopObjectivesFromUserDocument(document: string | null | undefined): string[] {
   if (typeof document !== 'string' || document.trim().length === 0) {
     return [];
@@ -175,17 +200,7 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
       break;
     }
 
-    const trimmedLine = (lines[index] ?? '').replace(/^\uFEFF/, '').trim();
-    if (trimmedLine.length === 0) {
-      continue;
-    }
-
-    const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
-    if (!numberedMatch) {
-      continue;
-    }
-
-    const objective = numberedMatch[1]?.trim();
+    const objective = parseWorkLoopObjectiveLine(lines[index] ?? '');
     if (objective) {
       objectives.push(objective);
     }
@@ -221,15 +236,19 @@ function applyRuntimeReadyStatuses<
   TSummary extends DeliverySummaryLike<TRecord>,
 >(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
   const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
-  const promotedStatuses = new Map(
+  const queueById = new Map(
     queue
       .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
-      .map((item) => [item.id, promoteRuntimeReadyStatus(item.status, item.implementationReady)]),
+      .map((item) => [item.id, item]),
   );
-  const promotedRecords = records.map((record) => ({
-    ...record,
-    status: promotedStatuses.get(record.id ?? '') ?? record.status ?? 'unknown',
-  }));
+  const promotedRecords = records.map((record) => {
+    const queuedRecord = queueById.get(record.id ?? '');
+    return {
+      ...record,
+      status: queuedRecord ? promoteRuntimeReadyStatus(queuedRecord.status, queuedRecord.implementationReady) : (record.status ?? 'unknown'),
+      nextStep: queuedRecord?.implementationReady ? null : (record.nextStep ?? null),
+    };
+  });
   const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
   const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
   const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;
@@ -840,6 +859,38 @@ function collectSampleManifestPaths(ingestionSummary: any) {
   ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
+function stripEnvInlineComment(value: string) {
+  let result = '';
+  let quote: 'single' | 'double' | null = null;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+
+    if (character === "'" && quote !== 'double') {
+      quote = quote === 'single' ? null : 'single';
+      result += character;
+      continue;
+    }
+
+    if (character === '"' && quote !== 'single') {
+      quote = quote === 'double' ? null : 'double';
+      result += character;
+      continue;
+    }
+
+    if (character === '#' && quote === null) {
+      const previousCharacter = result[result.length - 1] ?? '';
+      if (result.trim().length === 0 || /\s/.test(previousCharacter)) {
+        break;
+      }
+    }
+
+    result += character;
+  }
+
+  return result.trimEnd();
+}
+
 function stripWrappingQuotes(value: string) {
   const trimmed = value.trim();
   if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
@@ -868,7 +919,7 @@ function readEnvFileValues(envFileAbsolutePath: string): NodeJS.ProcessEnv {
       }
 
       const [, envVar, rawValue] = match;
-      environment[envVar] = stripWrappingQuotes(rawValue);
+      environment[envVar] = stripWrappingQuotes(stripEnvInlineComment(rawValue));
       return environment;
     }, {});
 }
@@ -897,7 +948,7 @@ function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
       .filter((line) => line.length > 0 && !line.startsWith('#'))
       .map((line) => line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1] ?? null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
-  )).sort((left, right) => left.localeCompare(right));
+  ));
 }
 
 function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profiles: ProfileSummaryLike[] = []): WorkPriority {
@@ -974,11 +1025,12 @@ function buildDeliveryPriority({
   authBlockedCount,
   queue,
   envTemplatePath = null,
-  envConfigPath = '.env',
   envTemplateCommand = null,
   envTemplatePopulateCommand = null,
   envTemplateVarNames = [],
+  envConfigPath = '.env',
   envConfigPresent = false,
+  envConfigPopulateCommand = null,
   implementationBundleCommand = null,
 }: {
   id: 'channels' | 'providers';
@@ -988,11 +1040,12 @@ function buildDeliveryPriority({
   authBlockedCount?: number;
   queue: QueueLike[];
   envTemplatePath?: string | null;
-  envConfigPath?: string | null;
   envTemplateCommand?: string | null;
   envTemplatePopulateCommand?: string | null;
   envTemplateVarNames?: string[];
+  envConfigPath?: string | null;
   envConfigPresent?: boolean;
+  envConfigPopulateCommand?: string | null;
   implementationBundleCommand?: string | null;
 }): WorkPriority {
   const firstQueued = Array.isArray(queue) ? queue[0] : null;
@@ -1066,14 +1119,15 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  const envBootstrapPaths = [
-    envTemplatePath,
-    ...(needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
-      ? [envConfigPath]
-      : []),
+  const envBootstrapPaths = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
+    ? [envTemplatePath, envConfigPath ?? '.env']
+    : [envTemplatePath];
+  const normalizedEnvBootstrapPaths = envBootstrapPaths.filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const envConfigPaths = [
+    envConfigPath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const paths = includeEnvTemplatePath
-    ? envBootstrapPaths
+    ? normalizedEnvBootstrapPaths
     : [
       typeof firstQueued?.manifestPath === 'string' && firstQueued.manifestPath.length > 0 ? firstQueued.manifestPath : null,
       ...((shouldUseImplementationBundle || bundledImplementationBacklog) ? bundledImplementationPaths : []),
@@ -1116,12 +1170,26 @@ function buildDeliveryPriority({
         ? implementationBundleCommand
         : buildRelativeFileTouchCommand(implementationPath))
       : null;
+  } else if (
+    !command
+    && envConfigPresent
+    && manifestReady
+    && implementationReadyCount === pendingCount
+    && firstQueuedMissingEnvVars.length > 0
+    && typeof envConfigPopulateCommand === 'string'
+    && envConfigPopulateCommand.length > 0
+  ) {
+    command = envConfigPopulateCommand;
   }
 
   const deliveryBlocked = pendingCount > 0
     && normalizedAuthBlockedCount > 0
     && manifestReady
     && implementationReadyCount === pendingCount;
+
+  const resolvedPaths = command && command === envConfigPopulateCommand && envConfigPaths.length > 0
+    ? envConfigPaths
+    : paths;
 
   return {
     id,
@@ -1132,7 +1200,7 @@ function buildDeliveryPriority({
       : `${pendingCount} pending, ${configuredCount} configured`,
     nextAction,
     command,
-    paths,
+    paths: resolvedPaths,
   };
 }
 
@@ -1551,7 +1619,7 @@ export function buildSummary(rootDir: string) {
   const envConfigAbsolutePath = path.join(rootDir, '.env');
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
   const envConfigPresent = fs.existsSync(envConfigAbsolutePath);
-  const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
+  const rawEnvTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
   const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
   const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
@@ -1565,7 +1633,11 @@ export function buildSummary(rootDir: string) {
   }));
   const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
   const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
-  const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
+  const envTemplateVarNames = orderStringsByPreferredSequence(rawEnvTemplateVarNames, baseDeliverySummary.requiredEnvVars);
+  const envTemplateMissingRequiredVars = orderStringsByPreferredSequence(
+    baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar)),
+    baseDeliverySummary.requiredEnvVars,
+  );
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
     ? buildPopulateEnvCommand(envTemplateMissingRequiredVars, '.env.example')
@@ -1616,11 +1688,12 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedChannelCount,
         queue: deliverySummary.channelQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
-        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPath: envConfigPresent ? '.env' : null,
         envConfigPresent,
+        envConfigPopulateCommand: deliverySummary.helperCommands.populateChannelEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
       }),
       buildDeliveryPriority({
@@ -1631,11 +1704,12 @@ export function buildSummary(rootDir: string) {
         authBlockedCount: deliverySummary.authBlockedProviderCount,
         queue: deliverySummary.providerQueue,
         envTemplatePath: deliverySummary.envTemplatePresent ? deliverySummary.envTemplatePath : null,
-        envConfigPath: '.env',
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
+        envConfigPath: envConfigPresent ? '.env' : null,
         envConfigPresent,
+        envConfigPopulateCommand: deliverySummary.helperCommands.populateProviderEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
       }),
     ],
@@ -1679,7 +1753,7 @@ export function buildSummary(rootDir: string) {
     delivery: deliverySummary,
     profiles,
     workLoop: workLoopSummary,
-    promptPreview: prompt.buildPreview(60000),
+    promptPreview: prompt.buildPreview(120000),
   };
 }
 
@@ -1741,9 +1815,9 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
       'Usage: node src/index.js import intake --person <person-id> [--refresh-foundation] | --stale [--refresh-foundation] | --imported [--refresh-foundation] | --all [--refresh-foundation]',
       [
         "node src/index.js import intake --person 'harry-han' --refresh-foundation",
-        'node src/index.js import intake --stale --refresh-foundation',
-        'node src/index.js import intake --imported --refresh-foundation',
-        'node src/index.js import intake --all --refresh-foundation',
+        'node src/index.js import intake --stale',
+        'node src/index.js import intake --imported',
+        'node src/index.js import intake --all',
       ],
     );
   }

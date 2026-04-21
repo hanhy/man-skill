@@ -80,6 +80,18 @@ function buildCommandBundle(commands: Array<string | null | undefined> = []): st
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function buildFoundationRefreshCommand(profileId: string | null | undefined): string | null {
+  if (typeof profileId !== 'string' || profileId.length === 0) {
+    return null;
+  }
+
+  return `node src/index.js update foundation --person ${shellQuote(profileId)}`;
+}
+
 function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
   if (typeof profileId !== 'string' || profileId.length === 0) {
     return [];
@@ -103,11 +115,16 @@ function summarizeDraftGap(summary: any, key: string): string | null {
     ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
 
-  if (totalSectionCount <= 0 || missingSections.length === 0) {
+  if (totalSectionCount <= 0) {
     return null;
   }
 
-  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}, missing ${missingSections.join('/')}`;
+  const hasGap = missingSections.length > 0 || readySectionCount < totalSectionCount;
+  if (!hasGap) {
+    return null;
+  }
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
 }
 
 function summarizeMemoryDraftGap(profile: any): string | null {
@@ -137,9 +154,9 @@ function summarizeMemoryDraftGap(profile: any): string | null {
 function summarizeProfileDraftGaps(profile: any): string | null {
   const gapSummaries = [
     summarizeMemoryDraftGap(profile),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
     summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
+    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
@@ -161,7 +178,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
       latestMaterialAt: profile.latestMaterialAt ?? null,
       draftGapSummary: summarizeProfileDraftGaps(profile),
-      refreshCommand: profile.id ? `node src/index.js update foundation --person ${profile.id}` : null,
+      refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
     }))
     .sort((left, right) => {
       const missingDraftDifference = (right.missingDrafts?.length ?? 0) - (left.missingDrafts?.length ?? 0);
@@ -242,6 +259,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'voice'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'voice'),
+      repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {
           const generatedHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
@@ -257,6 +275,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'soul'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'soul'),
+      repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {
           const generatedHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
@@ -271,6 +290,8 @@ export function buildFoundationRollup(profiles: any[] = []) {
     skills: {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'skills'),
+      candidateProfileCount: countCandidateProfiles(safeProfiles, 'skills'),
+      repoStaleProfileCount: staleProfileCount,
       candidateCount: safeProfiles.reduce(
         (total, profile) => total + (profile.foundationReadiness?.skills?.candidateCount ?? 0),
         0,

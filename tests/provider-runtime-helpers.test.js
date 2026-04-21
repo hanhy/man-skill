@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { normalizeProviderToolArguments, extractProviderTextContent } from '../src/models/base-provider.js';
 import { createOpenAIProvider, normalizeOpenAIChatResponse } from '../src/models/openai.js';
 import { createAnthropicProvider, buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse } from '../src/models/anthropic.js';
 import { createKimiProvider, normalizeKimiChatResponse } from '../src/models/kimi.js';
@@ -49,6 +50,22 @@ test('provider runtime helpers expose required env vars and configuration checks
   assert.equal(openai.isConfigured({ OPENAI_API_KEY: '   ' }), false);
   assert.deepEqual(anthropic.missingEnvVars({}), ['ANTHROPIC_API_KEY']);
   assert.equal(anthropic.isConfigured({ ANTHROPIC_API_KEY: 'test-key' }), true);
+});
+
+test('base provider helpers normalize whitespace-only tool arguments and SDK-style parts arrays', () => {
+  assert.equal(normalizeProviderToolArguments('   '), '{}');
+  assert.equal(normalizeProviderToolArguments('  {"personId":"harry-han"}  '), '{"personId":"harry-han"}');
+  assert.equal(normalizeProviderToolArguments({ personId: 'harry-han' }), '{"personId":"harry-han"}');
+
+  assert.equal(
+    extractProviderTextContent({
+      parts: [
+        { text: 'Ship the thin slice' },
+        { text: { value: 'then tighten the loop.' } },
+      ],
+    }),
+    'Ship the thin slice then tighten the loop.',
+  );
 });
 
 test('anthropic provider runtime helpers build request payloads and normalize text/tool blocks compactly', () => {
@@ -129,7 +146,7 @@ test('openai-compatible provider runtime helpers normalize structured text conte
       type: 'function',
       function: {
         name: 'lookup_profile',
-        arguments: '{"personId":"harry-han"}',
+        arguments: '  {"personId":"harry-han"}  ',
       },
     }],
   });
@@ -283,4 +300,134 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
   assert.equal(normalizedGLM.toolCalls[0]?.arguments, '["voice","soul"]');
   assert.equal(normalizedQwen.text, 'Qwen nested responses normalize too.');
   assert.equal(normalizedQwen.toolCalls[0]?.arguments, '{"personId":"ready-pal","kinds":["talk","message"]}');
+});
+
+test('openai-compatible provider runtime helpers normalize responses-api output payloads', () => {
+  const openaiResponse = {
+    id: 'resp_openai_1',
+    model: 'gpt-5',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [
+          { type: 'output_text', text: 'Ship the verified slice.' },
+          { type: 'output_text', text: { value: 'Then tighten the prompt preview.' } },
+        ],
+      },
+      {
+        type: 'function_call',
+        call_id: 'fc_openai_1',
+        name: 'lookup_profile',
+        arguments: { personId: 'harry-han', includeDrafts: true },
+      },
+    ],
+    usage: {
+      input_tokens: 18,
+      output_tokens: 11,
+    },
+  };
+  const kimiResponse = {
+    id: 'resp_kimi_1',
+    model: 'moonshot-v1-32k',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Kimi can normalize output payloads too.' }],
+      },
+      {
+        type: 'function_call',
+        id: 'fc_kimi_1',
+        name: 'queue_refresh',
+        arguments: { personId: 'jane-doe' },
+      },
+    ],
+    usage: {
+      input_tokens: 9,
+      output_tokens: 4,
+      total_tokens: 13,
+    },
+  };
+  const glmResponse = {
+    id: 'resp_glm_1',
+    model: 'glm-4-plus',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'output_text', text: 'GLM uses output arrays in some SDKs.' }],
+      },
+      {
+        type: 'function_call',
+        call_id: 'fc_glm_1',
+        name: 'lookup_skill',
+        arguments: ['voice', 'soul'],
+      },
+    ],
+    usage: {
+      input_tokens: 7,
+      output_tokens: 5,
+    },
+  };
+  const qwenResponse = {
+    id: 'resp_qwen_1',
+    model: 'qwen-max',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: { value: 'Qwen output payloads stay readable.' } }],
+      },
+      {
+        type: 'function_call',
+        call_id: 'fc_qwen_1',
+        name: 'lookup_materials',
+        arguments: { personId: 'ready-pal', kinds: ['talk'] },
+      },
+    ],
+    usage: {
+      input_tokens: 6,
+      output_tokens: 3,
+    },
+  };
+
+  const normalizedOpenAI = normalizeOpenAIChatResponse(openaiResponse);
+  const normalizedKimi = normalizeKimiChatResponse(kimiResponse);
+  const normalizedGLM = normalizeGLMChatResponse(glmResponse);
+  const normalizedQwen = normalizeQwenChatResponse(qwenResponse);
+
+  assert.deepEqual(normalizedOpenAI, {
+    provider: 'openai',
+    id: 'resp_openai_1',
+    model: 'gpt-5',
+    role: 'assistant',
+    text: 'Ship the verified slice. Then tighten the prompt preview.',
+    finishReason: 'completed',
+    toolCalls: [{
+      id: 'fc_openai_1',
+      type: 'function',
+      name: 'lookup_profile',
+      arguments: '{"personId":"harry-han","includeDrafts":true}',
+    }],
+    usage: {
+      promptTokens: 18,
+      completionTokens: 11,
+      totalTokens: 29,
+    },
+  });
+  assert.equal(normalizedKimi.text, 'Kimi can normalize output payloads too.');
+  assert.equal(normalizedKimi.toolCalls[0]?.id, 'fc_kimi_1');
+  assert.equal(normalizedKimi.toolCalls[0]?.arguments, '{"personId":"jane-doe"}');
+  assert.deepEqual(normalizedKimi.usage, { promptTokens: 9, completionTokens: 4, totalTokens: 13 });
+  assert.equal(normalizedGLM.text, 'GLM uses output arrays in some SDKs.');
+  assert.equal(normalizedGLM.toolCalls[0]?.arguments, '["voice","soul"]');
+  assert.deepEqual(normalizedGLM.usage, { promptTokens: 7, completionTokens: 5, totalTokens: 12 });
+  assert.equal(normalizedQwen.text, 'Qwen output payloads stay readable.');
+  assert.equal(normalizedQwen.toolCalls[0]?.id, 'fc_qwen_1');
+  assert.deepEqual(normalizedQwen.usage, { promptTokens: 6, completionTokens: 3, totalTokens: 9 });
 });
