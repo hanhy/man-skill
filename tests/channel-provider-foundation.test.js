@@ -1648,6 +1648,15 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, scaffold-only\], Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\]/);
+    const channelsPriority = summary.workLoop.priorities.find((priority) => priority.id === 'channels');
+    assert.ok(channelsPriority);
+    assert.equal(channelsPriority.status, 'queued');
+    assert.equal(channelsPriority.command, 'cp .env.example .env');
+    assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
+    assert.equal(
+      channelsPriority.nextAction,
+      'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow',
+    );
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
