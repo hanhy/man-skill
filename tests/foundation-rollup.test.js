@@ -1585,6 +1585,128 @@ test('buildSummary surfaces soul and voice section context on thin document queu
   assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
 });
 
+test('buildSummary surfaces root heading alias context on thin memory and skills queue items', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What lives here\n- Keep durable notes here.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What belongs here\n- Keep reusable operator procedures here.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'memory',
+      status: 'thin',
+      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets',
+      action: 'add missing sections to memory/README.md: buckets',
+      paths: ['memory/README.md'],
+      thinPaths: ['memory/README.md'],
+      rootThinMissingSections: ['buckets'],
+      rootThinReadySections: ['what-belongs-here'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 2,
+      rootHeadingAliases: ['what-lives-here->what-belongs-here'],
+      command: buildCoreFoundationCommand({
+        area: 'memory',
+        status: 'thin',
+        paths: ['memory/README.md'],
+        thinPaths: ['memory/README.md'],
+      }),
+    },
+    {
+      area: 'skills',
+      status: 'thin',
+      summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
+      action: 'add missing sections to skills/README.md: layout',
+      paths: ['skills/README.md'],
+      thinPaths: ['skills/README.md'],
+      rootThinMissingSections: ['layout'],
+      rootThinReadySections: ['what-lives-here'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 2,
+      rootHeadingAliases: ['what-belongs-here->what-lives-here'],
+      command: buildCoreFoundationCommand({
+        area: 'skills',
+        status: 'thin',
+        paths: ['skills/README.md'],
+        thinPaths: ['skills/README.md'],
+      }),
+    },
+  ]);
+  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets \| root aliases what-lives-here->what-belongs-here; command /);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout \| root aliases what-belongs-here->what-lives-here; command /);
+});
+
+test('buildSummary surfaces root heading alias context on thin soul and voice queue items', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Stay faithful.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Voice should capture\n- Warm and grounded.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas, [
+    {
+      area: 'soul',
+      status: 'thin',
+      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity',
+      action: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
+      paths: ['SOUL.md'],
+      rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
+      rootThinReadySections: ['core-truths'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 4,
+      rootHeadingAliases: ['core-values->core-truths'],
+      command: buildCoreFoundationCommand({
+        area: 'soul',
+        status: 'thin',
+        paths: ['SOUL.md'],
+      }),
+    },
+    {
+      area: 'voice',
+      status: 'thin',
+      summary: 'present, 1 lines, sections 2/4 ready (tone, signature-moves), missing avoid, language-hints',
+      action: 'add missing sections to voice/README.md: avoid, language-hints',
+      paths: ['voice/README.md'],
+      rootThinMissingSections: ['avoid', 'language-hints'],
+      rootThinReadySections: ['tone', 'signature-moves'],
+      rootThinReadySectionCount: 2,
+      rootThinTotalSectionCount: 4,
+      rootHeadingAliases: ['voice-should-capture->signature-moves'],
+      command: buildCoreFoundationCommand({
+        area: 'voice',
+        status: 'thin',
+        paths: ['voice/README.md'],
+      }),
+    },
+  ]);
+  assert.match(summary.promptPreview, /soul \[thin\]: add missing sections to SOUL\.md: boundaries, vibe, continuity @ SOUL\.md; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity \| root aliases core-values->core-truths; command /);
+  assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: avoid, language-hints @ voice\/README\.md; context sections 2\/4 ready \(tone, signature-moves\), missing avoid, language-hints \| root aliases voice-should-capture->signature-moves; command /);
+});
+
 test('buildSummary compact queued-area remainder keeps root section context for hidden thin soul and voice docs', () => {
   const rootDir = makeTempRepo();
 

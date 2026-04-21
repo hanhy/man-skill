@@ -176,6 +176,7 @@ type FoundationCoreMaintenanceQueueItem = {
   rootThinReadySections?: string[];
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   command?: string | null;
 };
 
@@ -1850,6 +1851,11 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
   if (rootSummary) {
     const rootLabel = area.area === 'soul' || area.area === 'voice' ? '' : 'root ';
     contextParts.push(`${rootLabel}${rootSummary}`.trim());
+  }
+
+  const rootHeadingAliasSummary = formatHeadingAliasSummary(area.rootHeadingAliases, 'root aliases ');
+  if (rootHeadingAliasSummary) {
+    contextParts.push(rootHeadingAliasSummary);
   }
 
   const thinSectionPaths = new Set<string>([

@@ -462,6 +462,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: memoryRootThinReadySections.length + memoryRootThinMissingSections.length,
         }
         : {}),
+      ...(memory.headingAliases?.length > 0 ? { rootHeadingAliases: memory.headingAliases } : {}),
     },
     {
       area: 'skills',
@@ -493,6 +494,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: rootThinReadySections.length + rootThinMissingSections.length,
         }
         : {}),
+      ...(skills.headingAliases?.length > 0 ? { rootHeadingAliases: skills.headingAliases } : {}),
     },
     {
       area: 'soul',
@@ -508,6 +510,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: soul.totalSectionCount,
         }
         : {}),
+      ...(Array.isArray(soul.headingAliases) && soul.headingAliases.length > 0 ? { rootHeadingAliases: soul.headingAliases } : {}),
     },
     {
       area: 'voice',
@@ -523,6 +526,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: voice.totalSectionCount,
         }
         : {}),
+      ...(Array.isArray(voice.headingAliases) && voice.headingAliases.length > 0 ? { rootHeadingAliases: voice.headingAliases } : {}),
     },
   ];
 
@@ -992,6 +996,7 @@ export interface CoreFoundationMaintenanceQueueItem {
   rootThinReadySections?: string[];
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   thinReadySectionCounts?: Record<string, number>;
