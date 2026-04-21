@@ -471,6 +471,7 @@ type IngestionProfileCommand = {
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   starterImportCommand?: string | null;
+  followUpImportIntakeWithoutRefreshCommand?: string | null;
   followUpImportIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
@@ -1534,6 +1535,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
+      const followUpImportIntakeWithoutRefreshSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeWithoutRefreshCommand
+        ? ` | inspect-after-edit ${profile.followUpImportIntakeWithoutRefreshCommand}`
+        : '';
       const followUpImportIntakeSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeCommand
         ? ` | replay-after-edit ${profile.followUpImportIntakeCommand}`
         : '';
@@ -1577,7 +1581,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');

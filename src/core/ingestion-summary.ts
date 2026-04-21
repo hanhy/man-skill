@@ -650,6 +650,11 @@ function buildProfileCommands(profile, options: any = {}) {
   const importIntakeCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
+  const starterTemplateFollowUpImportIntakeWithoutRefreshCommand = imported
+    && intake?.ready === true
+    && intakeManifest.status === 'starter'
+    ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
+    : null;
   const starterTemplateFollowUpImportIntakeCommand = imported
     && intake?.ready === true
     && intakeManifest.status === 'starter'
@@ -685,6 +690,7 @@ function buildProfileCommands(profile, options: any = {}) {
     importIntakeWithoutRefreshCommand,
     importIntakeCommand,
     starterImportCommand,
+    followUpImportIntakeWithoutRefreshCommand: starterTemplateFollowUpImportIntakeWithoutRefreshCommand,
     followUpImportIntakeCommand: starterTemplateFollowUpImportIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
