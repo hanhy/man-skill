@@ -5,7 +5,7 @@ import { normalizeProviderToolArguments, extractProviderTextContent } from '../s
 import { createOpenAIProvider, normalizeOpenAIChatResponse } from '../src/models/openai.js';
 import { createAnthropicProvider, buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse } from '../src/models/anthropic.js';
 import { createKimiProvider, normalizeKimiChatResponse } from '../src/models/kimi.js';
-import { createMinimaxProvider, normalizeMinimaxChatResponse } from '../src/models/minimax.js';
+import { createMinimaxProvider, buildMinimaxChatRequest, normalizeMinimaxChatResponse } from '../src/models/minimax.js';
 import { createGLMProvider, normalizeGLMChatResponse } from '../src/models/glm.js';
 import { createQwenProvider, normalizeQwenChatResponse } from '../src/models/qwen.js';
 
@@ -243,6 +243,13 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
         ],
       },
     ],
+    toolCalls: [{
+      id: 'call_minimax_nested',
+      function: {
+        name: 'queue_refresh',
+        arguments: { personId: 'ready-pal', refresh: true },
+      },
+    }],
   });
   const glmResponse = createArrayTextResponse({
     id: 'chatcmpl-glm-nested',
@@ -296,10 +303,81 @@ test('openai-compatible provider runtime helpers normalize nested SDK-style text
   assert.equal(normalizedKimi.text, 'Kimi can unpack nested SDK text.');
   assert.equal(normalizedKimi.toolCalls[0]?.arguments, '{"personId":"jane-doe","refresh":true}');
   assert.equal(normalizedMinimax.text, 'Minimax nested blocks still read cleanly.');
+  assert.equal(normalizedMinimax.toolCalls[0]?.arguments, '{"personId":"ready-pal","refresh":true}');
   assert.equal(normalizedGLM.text, 'GLM keeps the full sentence.');
   assert.equal(normalizedGLM.toolCalls[0]?.arguments, '["voice","soul"]');
   assert.equal(normalizedQwen.text, 'Qwen nested responses normalize too.');
   assert.equal(normalizedQwen.toolCalls[0]?.arguments, '{"personId":"ready-pal","kinds":["talk","message"]}');
+});
+
+test('minimax provider runtime helpers mirror openai-compatible tool request and response payloads', () => {
+  const minimax = createMinimaxProvider();
+
+  assert.deepEqual(
+    minimax.buildChatRequest({
+      messages: [{ role: 'user', content: 'Ship it.' }],
+      tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+      toolChoice: 'auto',
+      temperature: 0.3,
+      maxOutputTokens: 256,
+      topP: 0.8,
+      botSetting: [{ bot_name: 'ManSkill', content: 'Stay direct.' }],
+    }),
+    buildMinimaxChatRequest({
+      messages: [{ role: 'user', content: 'Ship it.' }],
+      tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+      toolChoice: 'auto',
+      temperature: 0.3,
+      maxOutputTokens: 256,
+      topP: 0.8,
+      botSetting: [{ bot_name: 'ManSkill', content: 'Stay direct.' }],
+    }),
+  );
+
+  assert.deepEqual(
+    minimax.normalizeChatResponse({
+      id: 'chatcmpl-minimax-tools',
+      model: 'minimax-text-01',
+      choices: [{
+        finish_reason: 'tool_calls',
+        message: {
+          role: 'assistant',
+          content: 'Minimax wants to inspect the profile first.',
+          tool_calls: [{
+            id: 'call_minimax_1',
+            function: {
+              name: 'lookup_profile',
+              arguments: { personId: 'harry-han', includeDrafts: true },
+            },
+          }],
+        },
+      }],
+      usage: {
+        prompt_tokens: 21,
+        completion_tokens: 9,
+        total_tokens: 30,
+      },
+    }),
+    {
+      provider: 'minimax',
+      id: 'chatcmpl-minimax-tools',
+      model: 'minimax-text-01',
+      role: 'assistant',
+      text: 'Minimax wants to inspect the profile first.',
+      finishReason: 'tool_calls',
+      toolCalls: [{
+        id: 'call_minimax_1',
+        type: 'function',
+        name: 'lookup_profile',
+        arguments: '{"personId":"harry-han","includeDrafts":true}',
+      }],
+      usage: {
+        promptTokens: 21,
+        completionTokens: 9,
+        totalTokens: 30,
+      },
+    },
+  );
 });
 
 test('openai-compatible provider runtime helpers normalize responses-api output payloads', () => {

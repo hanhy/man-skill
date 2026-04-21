@@ -402,7 +402,7 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(summary.models.activeCount, 0);
   assert.equal(summary.models.plannedCount, 6);
   assert.equal(summary.models.candidateCount, 0);
-  assert.equal(summary.models.multimodalProviderCount, 5);
+  assert.equal(summary.models.multimodalProviderCount, 6);
   assert.deepEqual(summary.models.authEnvVars, [
     'ANTHROPIC_API_KEY',
     'GLM_API_KEY',
@@ -1111,14 +1111,20 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
     assert.deepEqual(
       minimax.buildChatRequest({
         messages: [{ role: 'user', content: 'hello from minimax' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         temperature: 0.4,
         maxOutputTokens: 180,
+        topP: 0.7,
         botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
       }),
       buildMinimaxChatRequest({
         messages: [{ role: 'user', content: 'hello from minimax' }],
+        tools: [{ type: 'function', function: { name: 'lookup_profile' } }],
+        toolChoice: 'auto',
         temperature: 0.4,
         maxOutputTokens: 180,
+        topP: 0.7,
         botSetting: [{ bot_name: 'ManSkill', content: 'Stay concise.' }],
       }),
     );
@@ -1127,10 +1133,17 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
         id: 'chatcmpl-minimax',
         model: 'minimax-text-01',
         choices: [{
-          finish_reason: 'stop',
+          finish_reason: 'tool_calls',
           message: {
             role: 'assistant',
             content: 'Minimax keeps it short.',
+            tool_calls: [{
+              id: 'call_minimax_1',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
           },
         }],
         usage: {
@@ -1143,10 +1156,17 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
         id: 'chatcmpl-minimax',
         model: 'minimax-text-01',
         choices: [{
-          finish_reason: 'stop',
+          finish_reason: 'tool_calls',
           message: {
             role: 'assistant',
             content: 'Minimax keeps it short.',
+            tool_calls: [{
+              id: 'call_minimax_1',
+              function: {
+                name: 'lookup_profile',
+                arguments: '{"personId":"harry-han"}',
+              },
+            }],
           },
         }],
         usage: {
@@ -1953,7 +1973,7 @@ test('buildSummary merges channel and provider manifests onto the default founda
   assert.equal(summary.models.activeCount, 1);
   assert.equal(summary.models.plannedCount, 5);
   assert.equal(summary.models.candidateCount, 1);
-  assert.equal(summary.models.multimodalProviderCount, 5);
+  assert.equal(summary.models.multimodalProviderCount, 6);
   assert.equal(slack.status, 'active');
   assert.deepEqual(slack.auth, {
     type: 'bot-token',
