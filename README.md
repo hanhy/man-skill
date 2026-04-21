@@ -102,6 +102,7 @@ Thin repo-core repair queue items keep the same progress machine-readable via `f
 
 The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
 - `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair; when the queue narrows to a single area, `recommendedStatus` and `recommendedSummary` carry that same target's detailed context, while `helperCommands.scaffoldAll|scaffoldMissing|scaffoldThin` keep the bundled multi-area repair entrances machine-readable
+- memory-bucket repairs now surface concrete seed-file targets in `recommendedPaths` / `queuedAreas[*].paths` (`memory/daily/$(date +%F).md`, `memory/long-term/notes.md`, `memory/scratch/draft.md`) so work-loop `paths` match the files the scaffold command actually touches instead of only the parent directories
 - `foundation.maintenance.recommendedProfileId`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next target-profile draft refresh
 - the prompt preview mirrors those as `next repair` and `next refresh` lines, so the same OpenClaw-like foundation contract stays actionable from both JSON and operator-facing text
 

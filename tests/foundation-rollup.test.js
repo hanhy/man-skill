@@ -1213,7 +1213,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     ],
   });
 
-  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'] });
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
@@ -1231,7 +1231,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     recommendedSummary: null,
     recommendedAction: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
     recommendedCommand: memoryCommand,
-    recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -1247,7 +1247,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         status: 'thin',
         summary: 'README yes, daily 0, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-        paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+        paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
         rootThinReadySections: ['what-belongs-here', 'buckets'],
         rootThinReadySectionCount: 2,
         rootThinTotalSectionCount: 2,
@@ -1284,14 +1284,14 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*skills\/starter/);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily, memory\/long-term, memory\/scratch/);
+  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
   assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.equal(summary.workLoop.currentPriority.command, scaffoldAllCommand);
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
 });
 
 test('buildSummary keeps memory foundation thin until daily, long-term, and scratch buckets are all seeded', () => {
@@ -1343,7 +1343,7 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     'README yes, daily 1, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
   );
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
@@ -1358,7 +1358,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
 
   const summary = buildSummary(rootDir);
-  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'] });
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
@@ -1369,7 +1369,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority?.nextAction, 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch');
   assert.equal(summary.workLoop.currentPriority?.command, scaffoldAllCommand);
-  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
 
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /skills\/starter/);
@@ -1596,7 +1596,7 @@ test('buildSummary compact queued-area remainder keeps root section context for 
 
   const summary = buildSummary(rootDir);
 
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 1 lines, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity\), voice \[thin\] \(present, 1 lines, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints\)/);
 });
 

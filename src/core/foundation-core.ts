@@ -94,6 +94,12 @@ function buildMemoryMaintenanceAction({
   return actions.join(' | ');
 }
 
+const MEMORY_BUCKET_SEED_PATHS: Record<string, string> = {
+  daily: 'memory/daily/$(date +%F).md',
+  'long-term': 'memory/long-term/notes.md',
+  scratch: 'memory/scratch/draft.md',
+};
+
 function buildMemoryMaintenancePaths({
   hasRootDocument,
   rootMissingSections,
@@ -110,7 +116,7 @@ function buildMemoryMaintenancePaths({
   }
 
   emptyBuckets
-    .map((bucket) => `memory/${bucket}`)
+    .map((bucket) => MEMORY_BUCKET_SEED_PATHS[bucket] ?? `memory/${bucket}`)
     .forEach((bucketPath) => {
       if (!paths.includes(bucketPath)) {
         paths.push(bucketPath);
