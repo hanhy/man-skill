@@ -115,10 +115,17 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(ingestionDoc, /when an already-imported profile's drafts are already fresh and it still only has the untouched `profiles\/<id>\/imports\/materials\.template\.json` starter scaffold, the same top-level recommendation keeps `recommendedCommand` empty but now exposes `recommendedEditPath` and `recommendedFollowUpCommand` so `next intake` can say which manifest to edit and which `import manifest --file \.\.\. --refresh-foundation` command comes after that edit/i);
   assert.match(ingestionDoc, /starter-template profile rows in the prompt preview now also keep `refresh-intake node src\/index\.js update intake --person \.{3}` visible beside manifest\/import actions/i);
   assert.match(profilesDoc, /profiles\/<person-id>\/imports\//);
+  assert.match(profilesDoc, /## User-facing ingestion entrance/);
   assert.match(profilesDoc, /`update intake` bootstraps `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json` as the profile-local user-facing landing zone/i);
   assert.match(profilesDoc, /plain `node src\/index\.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection/i);
   assert.match(profilesDoc, /`node src\/index\.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory \/ voice \/ soul \/ skills drafts/i);
+  assert.match(profilesDoc, /direct `import manifest --file \.\.\. --refresh-foundation` and one-off `import text\|message\|talk\|screenshot \.\.\.` paths/i);
   assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest and `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay/i);
+  assert.match(profilesDoc, /per-profile command palette still stays actionable in that starter-template state/i);
+  assert.match(profilesDoc, /`refresh-intake` via `node src\/index\.js update intake --person <id> \.\.\.`/i);
+  assert.match(profilesDoc, /`importManifestCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
+  assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
+  assert.match(profilesDoc, /`updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
 
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
