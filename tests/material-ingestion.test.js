@@ -927,12 +927,13 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
 
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
   assert.match(intakeReadme, /Direct import commands:/);
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
@@ -941,6 +942,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images')), true);
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
   const materialFiles = fs.existsSync(materialsDir)
@@ -1022,7 +1024,7 @@ test('scaffoldProfileIntake preserves existing starter entries and customized en
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
@@ -1084,7 +1086,7 @@ test('scaffoldProfileIntake preserves legacy array-form starter manifests on rer
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });

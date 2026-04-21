@@ -21,7 +21,7 @@
     },
     "screenshot": {
       "type": "screenshot",
-      "file": "<relative-path-to-image.png>",
+      "file": "images/chat.png",
       "notes": "chat screenshot"
     }
   }

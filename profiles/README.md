@@ -10,6 +10,7 @@ profiles/
     profile.json
     imports/
       README.md
+      images/
       sample.txt
       materials.template.json
     materials/
@@ -36,7 +37,7 @@ Imported materials land in `materials/`, and `node src/index.js update foundatio
 
 The top-level `ingestion` block keeps the profile entrance explicit even before the first target profile exists. It reports imported-vs-metadata-only counts, supported import types (`message`, `screenshot`, `talk`, `text`), a bootstrap `update intake` command, a sample one-shot text import with `--refresh-foundation`, an optional checked-in sample manifest command when `samples/harry-materials.json` exists, that sample manifest's typed entry mix, a shorter `node src/index.js import sample` starter command that wraps that checked-in manifest when it validates, plus ready-to-run `import manifest`, `update profile`, and `update foundation` commands that the prompt preview mirrors under `Ingestion entrance:`.
 
-`update intake` bootstraps `profiles/<person-id>/imports/README.md`, `sample.txt`, and `materials.template.json` as the profile-local user-facing landing zone before real materials are imported.
+`update intake` bootstraps `profiles/<person-id>/imports/README.md`, an `images/` folder for screenshot assets, `sample.txt`, and `materials.template.json` as the profile-local user-facing landing zone before real materials are imported.
 
 That same entrance also advertises:
 - a plain `node src/index.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection

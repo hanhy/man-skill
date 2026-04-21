@@ -121,8 +121,8 @@ test('README keeps the intake replay defaults aligned with the CLI entrance sema
 });
 
 test('checked-in intake scaffold stays aligned with the repo-level starter ingress for Harry Han', () => {
-  assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json`/);
-  assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/);
+  assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, creates `profiles\/<person-id>\/imports\/images\/` for screenshot assets, and seeds `sample\.txt` plus `materials\.template\.json`/i);
+  assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, an `images\/` folder for screenshot assets, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/i);
   assert.match(readme, /`materials\.template\.json` file paths resolve relative to `profiles\/<person-id>\/imports\/`, so local screenshots or attachments can live beside `sample\.txt` \(or under a small subdirectory like `imports\/images\/`\)/i);
   assert.match(ingestionDoc, /`materials\.template\.json` resolves `file` paths relative to `profiles\/<person-id>\/imports\/`, so operators can keep local assets beside `sample\.txt` or under a small sibling folder like `imports\/images\/`/i);
   assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath` and `recommendedFollowUpCommand`, so operators know which file to edit and which `import intake --person <id> --refresh-foundation` replay to run next/i);
@@ -132,7 +132,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(ingestionDoc, /per-profile command bundles now also carry `followUpImportIntakeCommand` for the `import intake --person <id> --refresh-foundation` replay that becomes runnable after editing a starter manifest/i);
   assert.match(profilesDoc, /profiles\/<person-id>\/imports\//);
   assert.match(profilesDoc, /## User-facing ingestion entrance/);
-  assert.match(profilesDoc, /`update intake` bootstraps `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json` as the profile-local user-facing landing zone/i);
+  assert.match(profilesDoc, /`update intake` bootstraps `profiles\/<person-id>\/imports\/README\.md`, an `images\/` folder for screenshot assets, `sample\.txt`, and `materials\.template\.json` as the profile-local user-facing landing zone/i);
   assert.match(profilesDoc, /plain `node src\/index\.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection/i);
   assert.match(profilesDoc, /`node src\/index\.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory \/ voice \/ soul \/ skills drafts/i);
   assert.match(profilesDoc, /direct `import manifest --file \.\.\. --refresh-foundation` and one-off `import text\|message\|talk\|screenshot \.\.\.` paths/i);
@@ -167,6 +167,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /text: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
   assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
   assert.match(harryIntakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 
@@ -178,7 +179,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryIntakeManifest.entryTemplates.text.file, 'sample.txt');
   assert.equal(harryIntakeManifest.entryTemplates.message.text, '<paste a representative short message>');
   assert.equal(harryIntakeManifest.entryTemplates.talk.text, '<paste a transcript snippet>');
-  assert.equal(harryIntakeManifest.entryTemplates.screenshot.file, '<relative-path-to-image.png>');
+  assert.equal(harryIntakeManifest.entryTemplates.screenshot.file, 'images/chat.png');
   assert.match(harryIntakeSample, /Replace this file with a real writing sample for Harry Han\./);
 
   const summary = buildSummary(repoRoot);

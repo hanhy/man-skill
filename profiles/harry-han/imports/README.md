@@ -4,6 +4,7 @@ Use this folder as the user-facing entrance for collecting target-person materia
 
 - Starter manifest: profiles/harry-han/imports/materials.template.json
 - Sample text placeholder: profiles/harry-han/imports/sample.txt
+- Starter image folder: profiles/harry-han/imports/images
 - Import after editing: node src/index.js import intake --person 'harry-han' --refresh-foundation
 
 Suggested flow:

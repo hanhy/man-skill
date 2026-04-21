@@ -495,6 +495,7 @@ function buildIntakePaths(personId) {
   const basePath = path.join('profiles', personId, 'imports');
   return {
     importsDir: basePath,
+    sampleImagesDirPath: path.join(basePath, 'images'),
     intakeReadmePath: path.join(basePath, 'README.md'),
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
@@ -641,6 +642,7 @@ function buildStarterManifestDocument({
   existingEntries = [],
   existingEntryTemplates = null,
   sampleTextPath = 'sample.txt',
+  sampleScreenshotPath = 'images/chat.png',
 }) {
   const defaultEntryTemplates = {
     text: {
@@ -660,7 +662,7 @@ function buildStarterManifestDocument({
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: sampleScreenshotPath,
       notes: 'chat screenshot',
     },
   };
@@ -721,6 +723,7 @@ function buildIntakeReadme({
   personId,
   starterManifestPath,
   sampleTextPath,
+  sampleImagesDirPath,
   importManifestCommand,
   importAfterEditingWithoutRefreshCommand,
   importAfterEditingCommand,
@@ -745,6 +748,7 @@ function buildIntakeReadme({
       ? `- Profile-local manifest: ${starterManifestPath}`
       : `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
+    `- Starter image folder: ${sampleImagesDirPath}`,
     `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',
@@ -882,6 +886,7 @@ export class MaterialIngestion {
     const profileUpdate = this.updateProfile({ personId, displayName, summary });
     const intakePaths = buildIntakePaths(profileUpdate.personId);
     ensureDir(this.resolve(intakePaths.importsDir));
+    ensureDir(this.resolve(intakePaths.sampleImagesDirPath));
     const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
     const importCommands = buildDirectImportCommands({
       personId: profileUpdate.personId,
@@ -901,6 +906,7 @@ export class MaterialIngestion {
       existingEntries: existingTemplate?.entries,
       existingEntryTemplates: existingTemplate?.entryTemplates,
       sampleTextPath: path.basename(relativeSampleTextPath),
+      sampleScreenshotPath: 'images/chat.png',
     });
     fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
@@ -949,6 +955,7 @@ export class MaterialIngestion {
         personId: profileUpdate.personId,
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
         sampleTextPath: relativeSampleTextPath,
+        sampleImagesDirPath: intakePaths.sampleImagesDirPath.split(path.sep).join('/'),
         importManifestCommand,
         importAfterEditingWithoutRefreshCommand,
         importAfterEditingCommand,

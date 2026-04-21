@@ -1936,7 +1936,7 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
@@ -2052,7 +2052,7 @@ test('CLI update intake preserves existing starter entries and customized entry 
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
@@ -2140,7 +2140,7 @@ test('CLI update intake preserves legacy array-form starter manifests on rerun',
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });

@@ -2142,7 +2142,7 @@ test('update intake backs up invalid starter manifests before rebuilding the sca
       },
       screenshot: {
         type: 'screenshot',
-        file: '<relative-path-to-image.png>',
+        file: 'images/chat.png',
         notes: 'chat screenshot',
       },
       talk: {
