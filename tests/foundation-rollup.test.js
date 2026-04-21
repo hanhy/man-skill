@@ -822,6 +822,7 @@ test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in 
     },
   ]);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root missing @ skills\/README\.md; docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
+  assert.match(summary.promptPreview, /- next repair: \[thin\] create skills\/README\.md; command mkdir -p 'skills'/);
   assert.doesNotMatch(summary.promptPreview, /cron: name: cron/);
 });
 

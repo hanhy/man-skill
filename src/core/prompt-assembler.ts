@@ -1931,8 +1931,11 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const recommendedRepairSummary = typeof maintenance?.recommendedSummary === 'string' && maintenance.recommendedSummary.length > 0
     ? maintenance.recommendedSummary
     : null;
+  const recommendedRepairStatus = typeof maintenance?.recommendedStatus === 'string' && maintenance.recommendedStatus.length > 0
+    ? maintenance.recommendedStatus
+    : null;
   const recommendedRepairLine = maintenance?.recommendedAction
-    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}${recommendedRepairSummary ? `; context ${recommendedRepairSummary}` : ''}`
+    ? `- next repair: ${recommendedRepairStatus ? `[${recommendedRepairStatus}] ` : ''}${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}${recommendedRepairSummary ? `; context ${recommendedRepairSummary}` : ''}`
     : null;
   const readyCoreFoundationDetails = overview
     && (overview.readyAreaCount ?? 0) === (overview.totalAreaCount ?? 0)
