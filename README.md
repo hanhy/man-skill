@@ -22,7 +22,7 @@
 ### Current development focus
 1. strengthen the foundation around **memory / skills / soul / voice**
 2. improve the **material ingestion entrance**
-3. expand channels and model providers
+3. expand channels in the rollout order **Feishu → Telegram → WhatsApp → Slack** and providers in the rollout order **OpenAI → Anthropic → Kimi → Minimax → GLM → Qwen**
 
 ### Development rule
 - use **TypeScript-first** for new and migrated runtime code
@@ -72,7 +72,7 @@ Re-running `update intake` preserves starter `entries[]`, customized `entryTempl
 
 ## Delivery foundation
 
-The repo now also carries a delivery layer for chat surfaces and model backends. The default channel catalog covers Slack, Telegram, WhatsApp, and Feishu, while the default provider catalog covers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen. The checked-in channel/provider modules now expose concrete runtime helpers, so the summary can distinguish three different states: missing files, scaffold-only files, and runtime-ready integrations that are still waiting on auth/configuration before they can serve traffic.
+The repo now also carries a delivery layer for chat surfaces and model backends. The canonical rollout order is Feishu, Telegram, WhatsApp, and Slack for channels, then OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen for providers. The default channel/provider catalogs and work-loop queue follow that same order, while the checked-in modules expose concrete runtime helpers so the summary can distinguish three different states: missing files, scaffold-only files, and runtime-ready integrations that are still waiting on auth/configuration before they can serve traffic.
 
 Per-repo rollout can override or extend those defaults through `manifests/channels.json` and `manifests/providers.json`. The summary/prompt preview keeps those manifest diagnostics, runtime-readiness counts, `.env.example` bootstrap hints, auth-readiness gaps, and next scaffold commands visible so the delivery backlog stays operator-facing instead of hidden in raw files.
 

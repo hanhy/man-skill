@@ -23,8 +23,9 @@ const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry
 
 test('README documents the default delivery foundation targets and repo manifests', () => {
   assert.match(readme, /Delivery foundation/i);
-  assert.match(readme, /Slack, Telegram, WhatsApp, and Feishu/);
+  assert.match(readme, /Feishu, Telegram, WhatsApp, and Slack/);
   assert.match(readme, /OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen/);
+  assert.match(readme, /work-loop queue follow that same order/i);
   assert.match(readme, /runtime-ready integrations that are still waiting on auth\/configuration/i);
   assert.match(readme, /\.env\.example/);
   assert.match(readme, /manifests\/channels\.json/);
@@ -32,6 +33,9 @@ test('README documents the default delivery foundation targets and repo manifest
 });
 
 test('architecture and ingestion docs explain work-loop leader/blocker semantics and sample-manifest entrypoints', () => {
+  assert.match(architectureDoc, /canonical rollout order: Feishu, Telegram, WhatsApp, Slack/);
+  assert.match(architectureDoc, /canonical rollout order: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen/);
+  assert.match(architectureDoc, /keep Feishu, Telegram, WhatsApp, and Slack adapter manifests\/implementations visible in the delivery summary/);
   assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the actionable `currentPriority`/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);

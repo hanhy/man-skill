@@ -32,11 +32,11 @@ The project aims to keep personal-agent construction simple:
 
 5. **Channels**
    - delivery adapters for chat platforms
-   - initial targets: Slack, Telegram, WhatsApp, Feishu
+   - canonical rollout order: Feishu, Telegram, WhatsApp, Slack
 
 6. **Models**
    - provider abstraction over multiple LLM backends
-   - initial targets: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen
+   - canonical rollout order: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen
 
 ## Current modules
 
@@ -118,7 +118,7 @@ The project aims to keep personal-agent construction simple:
 - add examples and templates for a real user profile
 
 ### Phase 3 — channels
-- keep Slack, Telegram, Feishu, and WhatsApp adapter manifests/implementations visible in the delivery summary
+- keep Feishu, Telegram, WhatsApp, and Slack adapter manifests/implementations visible in the delivery summary
 - tighten auth-readiness hints, manifest diagnostics, and scaffold helper commands for chat rollout work
 
 ### Phase 4 — model providers
