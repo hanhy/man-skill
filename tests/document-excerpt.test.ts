@@ -78,11 +78,11 @@ test('collectVisibleDocumentLines keeps tab-indented code blocks hidden until re
   const document = [
     '# Voice',
     '',
-    '	## Tone',
-    '	- Template heading that should stay hidden.',
+    '\t## Tone',
+    '\t- Template heading that should stay hidden.',
     '',
-    '	## Signature moves',
-    '	- Template heading that should stay hidden too.',
+    '\t## Signature moves',
+    '\t- Template heading that should stay hidden too.',
     '',
     'Keep replies direct once visible prose resumes.',
   ].join('\n');
@@ -93,4 +93,22 @@ test('collectVisibleDocumentLines keeps tab-indented code blocks hidden until re
     'Keep replies direct once visible prose resumes.',
   ]);
   assert.equal(findDocumentExcerpt(document), 'Keep replies direct once visible prose resumes.');
+});
+
+test('collectVisibleDocumentLines keeps blockquoted indented code blocks hidden until visible prose resumes', () => {
+  const document = [
+    '# Voice',
+    '',
+    '>     ## Tone',
+    '>     - Template heading that should stay hidden.',
+    '',
+    '> Visible prose resumes after the hidden sample block.',
+  ].join('\n');
+
+  assert.deepEqual(collectVisibleDocumentLines(document), [
+    '# Voice',
+    '',
+    'Visible prose resumes after the hidden sample block.',
+  ]);
+  assert.equal(findDocumentExcerpt(document), 'Visible prose resumes after the hidden sample block.');
 });

@@ -169,7 +169,22 @@ function normalizeSetextHeadings(lines: string[]): string[] {
 }
 
 function stripLeadingBlockquotePrefix(line: string): string {
-  return line.replace(/^\s*(?:>\s*)+/, '');
+  const leadingWhitespaceMatch = line.match(/^(\s*)/);
+  const leadingWhitespace = leadingWhitespaceMatch?.[1] ?? '';
+  let normalizedLine = line.slice(leadingWhitespace.length);
+
+  if (!normalizedLine.startsWith('>')) {
+    return line;
+  }
+
+  while (normalizedLine.startsWith('>')) {
+    normalizedLine = normalizedLine.slice(1);
+    if (normalizedLine.startsWith(' ')) {
+      normalizedLine = normalizedLine.slice(1);
+    }
+  }
+
+  return normalizedLine;
 }
 
 export function normalizeAdmonitionLine(line: string): string {
