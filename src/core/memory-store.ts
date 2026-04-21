@@ -24,16 +24,30 @@ export interface MemoryStoreOptions {
 }
 
 export class MemoryStore {
-  daily: unknown[];
-  shortTerm: unknown[];
+  private _daily: unknown[];
   longTerm: unknown[];
   scratch: unknown[];
 
   constructor({ daily, shortTerm, longTerm, scratch }: MemoryStoreOptions = {}) {
-    this.daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
-    this.shortTerm = this.daily;
+    this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+  }
+
+  get daily(): unknown[] {
+    return this._daily;
+  }
+
+  set daily(entries: unknown[]) {
+    this._daily = Array.isArray(entries) ? entries : [];
+  }
+
+  get shortTerm(): unknown[] {
+    return this._daily;
+  }
+
+  set shortTerm(entries: unknown[]) {
+    this.daily = entries;
   }
 
   addDaily(entry: unknown): void {

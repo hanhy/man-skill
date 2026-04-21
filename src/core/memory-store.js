@@ -1,9 +1,24 @@
 export class MemoryStore {
   constructor({ daily, shortTerm, longTerm, scratch } = {}) {
-    this.daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
-    this.shortTerm = this.daily;
+    this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+  }
+
+  get daily() {
+    return this._daily;
+  }
+
+  set daily(entries) {
+    this._daily = Array.isArray(entries) ? entries : [];
+  }
+
+  get shortTerm() {
+    return this._daily;
+  }
+
+  set shortTerm(entries) {
+    this.daily = entries;
   }
 
   addDaily(entry) {

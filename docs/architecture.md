@@ -58,6 +58,7 @@ The project aims to keep personal-agent construction simple:
 - load voice guidance from `voice/README.md`
 - load memory index from `memory/`
 - keep `memory/daily/` as the checked-in short-term bucket while still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers
+- keep the `MemoryStore` runtime alias honest too: `shortTerm` remains a writable compatibility alias of `daily` instead of a second mutable bucket
 - expose `memorySummary.canonicalShortTermBucket` plus `memorySummary.legacyShortTermAliases` so downstream tooling can see the canonical daily bucket and its compatibility field names without hard-coding the mapping
 - discover local skill folders from `skills/`
 - distinguish documented skills (`skills/<name>/SKILL.md`) from placeholder skill directories when computing `foundation.core` readiness

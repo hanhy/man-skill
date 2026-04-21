@@ -180,6 +180,66 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
   });
 });
 
+test('memory store keeps shortTerm as a writable alias of daily', () => {
+  const memory = new MemoryStore({
+    daily: [{ id: 'daily-1' }],
+  });
+  const replacementDaily = [{ id: 'daily-2' }];
+
+  memory.shortTerm = replacementDaily;
+  memory.addShortTerm({ id: 'daily-3' });
+
+  assert.equal(memory.shortTerm, memory.daily);
+  assert.deepEqual(memory.daily, [{ id: 'daily-2' }, { id: 'daily-3' }]);
+  assert.deepEqual(memory.summary(), {
+    dailyEntries: 2,
+    longTermEntries: 0,
+    scratchEntries: 0,
+    totalEntries: 2,
+    dailyPresent: true,
+    longTermPresent: false,
+    scratchPresent: false,
+    shortTermEntries: 2,
+    shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
+  });
+});
+
+test('memory store keeps daily and shortTerm in sync when daily is reassigned after construction', () => {
+  const memory = new MemoryStore({
+    shortTerm: [{ id: 'legacy-short-term' }],
+  });
+  const replacementDaily = [{ id: 'daily-1' }];
+
+  memory.daily = replacementDaily;
+  memory.addDaily({ id: 'daily-2' });
+
+  assert.equal(memory.shortTerm, memory.daily);
+  assert.deepEqual(memory.shortTerm, [{ id: 'daily-1' }, { id: 'daily-2' }]);
+  assert.deepEqual(memory.summary(), {
+    dailyEntries: 2,
+    longTermEntries: 0,
+    scratchEntries: 0,
+    totalEntries: 2,
+    dailyPresent: true,
+    longTermPresent: false,
+    scratchPresent: false,
+    shortTermEntries: 2,
+    shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
+  });
+});
+
 test('voice profile parses tone, signature moves, avoid, and language hints from voice docs', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Close with a concrete next step.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n`);
 
