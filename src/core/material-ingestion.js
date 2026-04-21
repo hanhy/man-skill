@@ -733,18 +733,24 @@ function buildIntakeReadme({
 }) {
   const label = normalizeText(displayName) ?? personId;
   const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
+  const hasReadyProfileLocalReplay = Boolean(importIntakeWithoutRefreshCommand || importIntakeCommand);
+
   return [
     `# Intake scaffold for ${label}`,
     '',
     'Use this folder as the user-facing entrance for collecting target-person materials before import.',
     '',
-    `- Starter manifest: ${starterManifestPath}`,
+    hasReadyProfileLocalReplay
+      ? `- Profile-local manifest: ${starterManifestPath}`
+      : `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
     `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
-    '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
+    hasReadyProfileLocalReplay
+      ? '2. Update materials.template.json entries (and any local assets) when the intake fixture changes.'
+      : '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
     '',
     'Recommended helper commands:',

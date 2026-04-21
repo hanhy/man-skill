@@ -1856,6 +1856,58 @@ test('buildSummary work loop surfaces imported starter-manifest edits as runnabl
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
 });
 
+test('buildSummary work loop prefers the profile-local intake shortcut for imported profiles with loaded manifests', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum and fast feedback loops.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'profile-local rerun fixture',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'ready');
+  assert.equal(summary.workLoop.runnablePriority?.id, 'ingestion');
+  assert.equal(summary.workLoop.runnablePriority?.status, 'ready');
+  assert.equal(summary.workLoop.runnablePriority?.nextAction, 'import source materials for Harry Han (harry-han)');
+  assert.equal(summary.workLoop.runnablePriority?.command, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(summary.workLoop.runnablePriority?.editPath, null);
+  assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
+  assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+  assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
+  assert.match(summary.promptPreview, /runnable next action: import source materials for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+});
+
 test('buildSummary work loop uses the imported intake replay bundle when multiple imported starter manifests need edits', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

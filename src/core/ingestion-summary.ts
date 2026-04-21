@@ -1089,6 +1089,31 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);
+  } else if (metadataOnlyProfileCount === 0 && importedProfilesWithReadyIntake.length > 0) {
+    const firstImportedReadyIntakeProfile = importedProfilesWithReadyIntake[0] ?? null;
+    recommendedProfileId = firstImportedReadyIntakeProfile?.personId ?? null;
+    recommendedLabel = firstImportedReadyIntakeProfile?.label ?? firstImportedReadyIntakeProfile?.personId ?? null;
+    recommendedAction = importedProfilesWithReadyIntake.length > 1
+      ? (recommendedLabel
+        ? `import source materials for imported intake replays — starting with ${recommendedLabel}`
+        : 'import source materials for imported intake replays')
+      : (recommendedLabel
+        ? `import source materials for ${recommendedLabel}`
+        : 'import source materials for imported intake replays');
+    recommendedCommand = importedProfilesWithReadyIntake.length > 1
+      ? (helperCommands.importIntakeImportedAndRefresh
+        ?? helperCommands.importIntakeBundle
+        ?? firstImportedReadyIntakeProfile?.importIntakeCommand
+        ?? firstImportedReadyIntakeProfile?.importManifestCommand
+        ?? null)
+      : (firstImportedReadyIntakeProfile?.importIntakeCommand
+        ?? firstImportedReadyIntakeProfile?.importManifestCommand
+        ?? firstImportedReadyIntakeProfile?.importMaterialCommand
+        ?? helperCommands.importIntakeImportedAndRefresh
+        ?? null);
+    recommendedPaths = importedProfilesWithReadyIntake.length > 1
+      ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+      : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir);
   } else if (metadataOnlyProfileCount > 0) {
     if (metadataOnlyProfileNeedingScaffold) {
       recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;
