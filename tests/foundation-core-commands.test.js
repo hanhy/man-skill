@@ -297,6 +297,54 @@ test('buildCoreFoundationCommand repairs thin memory README legacy sibling headi
   );
 });
 
+test('buildCoreFoundationCommand repairs thin memory README sections when only comments and fenced examples are present', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-memory-readme-invisible-content-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n<!-- explain the purpose here -->\n\n## Buckets\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n<!-- explain the purpose here -->\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+});
+
+test('buildCoreFoundationCommand ignores memory root section headings that only appear inside fenced code blocks', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-memory-readme-fenced-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n```md\n## What belongs here\n- Example only.\n\n## Buckets\n- Example only.\n```\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '# Memory\n\n```md\n## What belongs here\n- Example only.\n\n## Buckets\n- Example only.\n```\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs thin skills root README sections without clobbering the file', () => {
   assert.equal(
     buildCoreFoundationCommand({
