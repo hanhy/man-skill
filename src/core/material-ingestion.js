@@ -1494,7 +1494,10 @@ export class MaterialIngestion {
     });
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
-    const profileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const replayedProfileIds = [...new Set(validatedEntries.map((entry) => entry.normalizedPersonId))].sort();
+    const profileIds = refreshFoundation
+      ? replayedProfileIds
+      : [...new Set(results.map((entry) => entry.personId))].sort();
     const foundationRefresh = refreshFoundation
       ? {
           profileCount: profileIds.length,

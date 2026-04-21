@@ -481,8 +481,8 @@ test('CLI import intake --person reruns a ready profile-local starter manifest f
   assert.equal(secondResult.entryCount, 0);
   assert.equal(secondResult.manifestEntryCount, 1);
   assert.equal(secondResult.skippedEntryCount, 1);
-  assert.deepEqual(secondResult.profileIds, []);
-  assert.equal(secondResult.foundationRefresh.profileCount, 0);
+  assert.deepEqual(secondResult.profileIds, ['imported-already']);
+  assert.equal(secondResult.foundationRefresh.profileCount, 1);
 
   const materialRecords = fs
     .readdirSync(path.join(rootDir, 'profiles', 'imported-already', 'materials'))

@@ -681,7 +681,7 @@ test('importManifest profile summaries keep current manifest counts while surfac
   ]);
 });
 
-test('importManifest can refresh foundation drafts before returning profile summaries', () => {
+test('importManifest returns profile command summaries that stay aligned with manifest imports and profile metadata', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -737,6 +737,47 @@ test('importManifest can refresh foundation drafts before returning profile summ
       },
     },
   ]);
+});
+
+test('importManifest refreshes foundation drafts for unchanged replayed manifests when refreshFoundation is true', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        summary: 'Direct operator with a bias for momentum.',
+        entries: [
+          {
+            type: 'message',
+            text: 'Ship the thin slice first.',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath, refreshFoundation: true });
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath, refreshFoundation: true });
+
+  assert.equal(firstResult.foundationRefresh.profileCount, 1);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.results, []);
+  assert.deepEqual(secondResult.profileIds, ['harry-han']);
+  assert.equal(secondResult.foundationRefresh.profileCount, 1);
+  assert.equal(secondResult.foundationRefresh.results[0].personId, 'harry-han');
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(secondResult.profileSummaries[0].materialCount, 0);
+  assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+  assert.equal(secondResult.profileSummaries[0].needsRefresh, false);
+  assert.deepEqual(secondResult.profileSummaries[0].missingDrafts, []);
 });
 
 test('updateProfile stores display name and summary metadata for a target person', () => {
