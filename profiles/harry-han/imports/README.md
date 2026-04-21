@@ -4,7 +4,7 @@ Use this folder as the user-facing entrance for collecting target-person materia
 
 - Starter manifest: profiles/harry-han/imports/materials.template.json
 - Sample text placeholder: profiles/harry-han/imports/sample.txt
-- Import after editing: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation
+- Import after editing: node src/index.js import intake --person 'harry-han' --refresh-foundation
 
 Suggested flow:
 1. Replace sample.txt with a real writing sample or point the manifest at real files.

@@ -162,7 +162,7 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
 
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
-  assert.match(intakeReadme, /Import after editing: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut without refreshing drafts/);
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut and refresh drafts/);
   assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
@@ -2079,7 +2079,7 @@ test('CLI update intake preserves custom README notes on rerun while refreshing 
 
   const rerunReadme = fs.readFileSync(readmePath, 'utf8');
   assert.match(rerunReadme, /# Intake scaffold for Harry Forward/);
-  assert.match(rerunReadme, /node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(rerunReadme, /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(rerunReadme, /- Keep pulling from the founder memo folder\./);
   assert.match(rerunReadme, /- Weekly voice notes live in iCloud Drive\./);
 });

@@ -2058,7 +2058,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
         nextAction: 'bootstrap a target profile',
         command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
         editPath: 'profiles/harry-han/imports/materials.template.json',
-        followUpCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+        followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         paths: [],
       },
       priorities: [
@@ -2079,7 +2079,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           nextAction: 'bootstrap a target profile',
           command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
           editPath: 'profiles/harry-han/imports/materials.template.json',
-          followUpCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+          followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
           paths: [],
         },
         {
@@ -2111,7 +2111,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /next action: bootstrap a target profile/);
   assert.match(prompt, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(prompt, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
-  assert.match(prompt, /then run: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(prompt, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
 
@@ -2872,7 +2872,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(
     summary.ingestion.recommendedFollowUpCommand,
-    "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+    "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   );
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/harry-han/imports',
@@ -2880,7 +2880,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
