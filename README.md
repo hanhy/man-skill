@@ -81,14 +81,21 @@ Per-repo rollout can override or extend those defaults through `manifests/channe
 The repo-level foundation is intentionally OpenClaw-like: `memory/`, `skills/`, `SOUL.md`, and `voice/README.md` are treated as durable operator-facing surfaces, not just passive notes.
 
 The current structured contract is:
-- `memory/README.md` explains `## What belongs here` and `## Buckets`
+- `memory/README.md` explains `## What belongs here` and `## Buckets`, with `daily/` as the canonical short-term working-memory bucket
 - `skills/README.md` explains `## What lives here` and `## Layout`
 - `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
+The summary surfaces keep that contract machine-readable:
+- `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready
+- `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide
+- `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract
+- `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract
+- the top-level memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers even though `daily/` is the checked-in path
+
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command; when all four repo-core layers are ready, that same block collapses to one compact `ready details` line so cron/operator runs keep the foundation visible without wasting preview budget before moving on to ingestion, channels, or providers.
 
-Those section-aware surfaces are also explicit in JSON: `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount`; plus `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount` and the parallel `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, `totalSectionCount`. Thin repo-core repair queue items keep the same progress machine-readable via `foundation.core.maintenance.queuedAreas[*].rootThinReadySections`, `rootThinMissingSections`, `rootThinReadySectionCount`, and `rootThinTotalSectionCount`, so prompt previews can still say `root sections 1/2 ready` even when only counts survive. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
+Thin repo-core repair queue items keep the same progress machine-readable via `foundation.core.maintenance.queuedAreas[*].rootThinReadySections`, `rootThinMissingSections`, `rootThinReadySectionCount`, and `rootThinTotalSectionCount`, so prompt previews can still say `root sections 1/2 ready` even when only counts survive. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
 
 The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
 - `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair

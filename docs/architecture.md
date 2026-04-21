@@ -23,7 +23,7 @@ The project aims to keep personal-agent construction simple:
    - wording, rhythm, humor, directness, multilingual traits
 
 3. **Memory**
-   - short-term, long-term, and scratch stores
+   - `daily/` (the canonical short-term working-memory bucket), `long-term/`, and `scratch/` stores
    - curated identity facts, preferences, habits, and dated logs
 
 4. **Skills**
@@ -57,6 +57,7 @@ The project aims to keep personal-agent construction simple:
 - load soul from `SOUL.md`
 - load voice guidance from `voice/README.md`
 - load memory index from `memory/`
+- keep `memory/daily/` as the checked-in short-term bucket while still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers
 - discover local skill folders from `skills/`
 - distinguish documented skills (`skills/<name>/SKILL.md`) from placeholder skill directories when computing `foundation.core` readiness
 - summarize target-person ingestion status through a top-level `ingestion` block with imported-vs-metadata-only counts, default CLI entry commands, exact helper-command bundles for scaffold/import/refresh work, both plain and `--refresh-foundation` manifest import shortcuts, an optional checked-in sample manifest command, that sample manifest's typed material mix, a shorter `import sample` starter command that wraps that manifest when it validates, the exact starter-manifest source path surfaced via `sampleStarterSource`, a checked-in sample text command, the keyed sample helper labels (`sample-message`, `sample-talk`, `sample-screenshot`), explicit invalid-intake repair bundles (`repair-invalid-bundle`, `repair-imported-invalid-bundle`), and the first actionable per-profile `update profile` / `update foundation` commands plus batch metadata helpers (`update-bundle`, `sync-bundle`)
