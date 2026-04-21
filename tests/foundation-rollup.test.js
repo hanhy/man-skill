@@ -2365,7 +2365,7 @@ test('buildSummary treats memory headings with closing hashes as structured sect
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, aliases core-values->core-truths, decision-rules->continuity; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2395,7 +2395,7 @@ test('buildSummary treats memory headings with setext markdown as structured sec
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, aliases core-values->core-truths, decision-rules->continuity; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2505,6 +2505,7 @@ test('buildSummary exposes canonical heading alias metadata when legacy soul and
   ]);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
+  assert.match(summary.promptPreview, /ready details: .*soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, aliases core-values->core-truths, decision-rules->continuity; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, aliases voice-should-capture->signature-moves, voice-should-not-capture->avoid, current-default->language-hints/);
 });
 
 test('buildSummary surfaces legacy memory and skills root heading aliases while keeping the core foundation ready', () => {
@@ -2546,7 +2547,7 @@ test('buildSummary surfaces legacy memory and skills root heading aliases while 
   ]);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, aliases what-lives-here->what-belongs-here, layout->buckets; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, aliases what-belongs-here->what-lives-here, buckets->layout; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
 });
 
 test('buildSummary treats setext headings across root and profile foundation docs as structured sections', () => {
