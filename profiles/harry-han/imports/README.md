@@ -11,6 +11,37 @@ Suggested flow:
 2. Copy the entryTemplates from materials.template.json into entries and fill in real content.
 3. Run the import command above to ingest materials and refresh foundation drafts.
 
+Path rule:
+- `materials.template.json` resolves every `file` relative to `profiles/harry-han/imports/`.
+- Keep local screenshots or attachments next to `sample.txt` or inside a small subdirectory like `profiles/harry-han/imports/images/`.
+- Example: if you save a screenshot at `profiles/harry-han/imports/images/chat.png`, use `images/chat.png` inside the manifest.
+
+Starter entry examples:
+```json
+[
+  {
+    "type": "text",
+    "file": "sample.txt",
+    "notes": "long-form writing sample"
+  },
+  {
+    "type": "message",
+    "text": "Ship the thin slice first, then tighten it with real feedback.",
+    "notes": "representative short message"
+  },
+  {
+    "type": "talk",
+    "text": "If we can learn it in one run today, that beats polishing a big plan all week.",
+    "notes": "voice memo transcript"
+  },
+  {
+    "type": "screenshot",
+    "file": "images/chat.png",
+    "notes": "chat screenshot"
+  }
+]
+```
+
 Recommended helper commands:
 - refresh this intake scaffold: node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
 - edit target-profile metadata without refreshing drafts: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'

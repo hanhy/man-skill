@@ -123,6 +123,8 @@ test('README keeps the intake replay defaults aligned with the CLI entrance sema
 test('checked-in intake scaffold stays aligned with the repo-level starter ingress for Harry Han', () => {
   assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json`/);
   assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/);
+  assert.match(readme, /`materials\.template\.json` file paths resolve relative to `profiles\/<person-id>\/imports\/`, so local screenshots or attachments can live beside `sample\.txt` \(or under a small subdirectory like `imports\/images\/`\)/i);
+  assert.match(ingestionDoc, /`materials\.template\.json` resolves `file` paths relative to `profiles\/<person-id>\/imports\/`, so operators can keep local assets beside `sample\.txt` or under a small sibling folder like `imports\/images\/`/i);
   assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath` and `recommendedFollowUpCommand`, so operators know which file to edit and which `import intake --person <id> --refresh-foundation` replay to run next/i);
   assert.match(readme, /per-profile prompt-preview line now also keeps the local scaffold refresh visible as `refresh-intake node src\/index\.js update intake --person \.{3}` and a matching `replay-after-edit node src\/index\.js import intake --person \.{3} --refresh-foundation` follow-up/i);
   assert.match(ingestionDoc, /when an already-imported profile's drafts are already fresh and it still only has the untouched `profiles\/<id>\/imports\/materials\.template\.json` starter scaffold, the same top-level recommendation keeps `recommendedCommand` empty but now exposes `recommendedEditPath` and `recommendedFollowUpCommand` so `next intake` can say which manifest to edit and which `import intake --person <id> --refresh-foundation` replay comes after that edit/i);
@@ -147,6 +149,13 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(harryIntakeReadme, /Sample text placeholder: profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(harryIntakeReadme, /`materials\.template\.json` resolves every `file` relative to `profiles\/harry-han\/imports\/`\./);
+  assert.match(harryIntakeReadme, /if you save a screenshot at `profiles\/harry-han\/imports\/images\/chat\.png`, use `images\/chat\.png` inside the manifest/i);
+  assert.match(harryIntakeReadme, /Starter entry examples:/);
+  assert.match(harryIntakeReadme, /"file": "sample\.txt"/);
+  assert.match(harryIntakeReadme, /"text": "Ship the thin slice first, then tighten it with real feedback\."/);
+  assert.match(harryIntakeReadme, /"text": "If we can learn it in one run today, that beats polishing a big plan all week\."/);
+  assert.match(harryIntakeReadme, /"file": "images\/chat\.png"/);
   assert.match(harryIntakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(harryIntakeReadme, /edit target-profile metadata without refreshing drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(harryIntakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
