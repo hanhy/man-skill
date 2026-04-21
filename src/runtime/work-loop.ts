@@ -20,6 +20,7 @@ export interface WorkLoopSummary {
   blockedPriorityCount: number;
   leadingPriority: WorkPriority | null;
   currentPriority: WorkPriority | null;
+  actionableReadyPriority: WorkPriority | null;
   priorities: WorkPriority[];
 }
 
@@ -27,6 +28,11 @@ export interface WorkLoopOptions {
   intervalMinutes?: number;
   objectives?: string[];
   priorities?: WorkPriority[];
+}
+
+function isActionableReadyPriority(priority: WorkPriority): boolean {
+  return priority.status === 'ready'
+    && Boolean(priority.nextAction || priority.command || priority.editPath || priority.followUpCommand);
 }
 
 export class WorkLoop {
@@ -46,6 +52,7 @@ export class WorkLoop {
     const blockedPriorityCount = this.priorities.filter((priority) => priority.status === 'blocked').length;
     const leadingPriority = this.priorities[0] ?? null;
     const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
+    const actionableReadyPriority = this.priorities.find((priority) => isActionableReadyPriority(priority)) ?? null;
 
     return {
       intervalMinutes: this.intervalMinutes,
@@ -57,6 +64,7 @@ export class WorkLoop {
       blockedPriorityCount,
       leadingPriority,
       currentPriority,
+      actionableReadyPriority,
       priorities: this.priorities,
     };
   }
