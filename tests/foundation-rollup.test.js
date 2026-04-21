@@ -1227,8 +1227,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     missingAreaCount: 2,
     thinAreaCount: 2,
     recommendedArea: 'memory',
-    recommendedStatus: 'thin',
-    recommendedSummary: 'README yes, daily 0, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
+    recommendedStatus: null,
+    recommendedSummary: null,
     recommendedAction: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
     recommendedCommand: memoryCommand,
     recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
@@ -1286,7 +1286,8 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily, memory\/long-term, memory\/scratch; context README yes, daily 0, long-term 0, scratch 0, root 2\/2 sections ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily, memory\/long-term, memory\/scratch/);
+  assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.equal(summary.workLoop.currentPriority.command, scaffoldAllCommand);

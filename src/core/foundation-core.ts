@@ -545,8 +545,8 @@ function buildCoreFoundationMaintenance({
   };
   const recommendedQueueItem = queue[0] ?? null;
   const recommendedArea = recommendedQueueItem?.area ?? null;
-  const recommendedStatus = recommendedQueueItem?.status ?? null;
-  const recommendedSummary = recommendedQueueItem?.summary ?? null;
+  const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
+  const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
   const recommendedPaths = [...(recommendedQueueItem?.paths ?? [])];
   const queuedStatuses = new Set(queue.map((area) => area.status));
   const recommendedCommand = recommendedQueueItem?.command ?? null;

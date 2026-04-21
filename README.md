@@ -100,7 +100,7 @@ The summary surfaces keep that contract machine-readable:
 Thin repo-core repair queue items keep the same progress machine-readable via `foundation.core.maintenance.queuedAreas[*].rootThinReadySections`, `rootThinMissingSections`, `rootThinReadySectionCount`, and `rootThinTotalSectionCount`, so prompt previews can still say `root sections 1/2 ready` even when only counts survive. That keeps both fully ready and partially structured foundation docs inspectable without reopening the markdown files.
 
 The summary now also exposes canonical repair/refresh entrances instead of forcing downstream tooling to guess from queue order:
-- `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedStatus`, and `recommendedSummary` point at the next repo-core memory/skills/soul/voice repair, while `helperCommands.scaffoldAll|scaffoldMissing|scaffoldThin` keep the bundled multi-area repair entrances machine-readable
+- `foundation.core.maintenance.recommendedArea`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next repo-core memory/skills/soul/voice repair; when the queue narrows to a single area, `recommendedStatus` and `recommendedSummary` carry that same target's detailed context, while `helperCommands.scaffoldAll|scaffoldMissing|scaffoldThin` keep the bundled multi-area repair entrances machine-readable
 - `foundation.maintenance.recommendedProfileId`, `recommendedAction`, `recommendedCommand`, and `recommendedPaths` point at the next target-profile draft refresh
 - the prompt preview mirrors those as `next repair` and `next refresh` lines, so the same OpenClaw-like foundation contract stays actionable from both JSON and operator-facing text
 
