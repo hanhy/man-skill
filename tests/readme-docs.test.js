@@ -143,6 +143,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryCommand.intakeManifestPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(harryCommand.importIntakeWithoutRefreshCommand, null);
   assert.equal(harryCommand.importIntakeCommand, null);
+  assert.equal(harryCommand.starterImportCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(harryCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(harryCommand.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
@@ -207,6 +208,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount/i);
   assert.match(ingestionDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
   assert.match(ingestionDoc, /when the queue narrows to one area, the additive `recommendedStatus` and `recommendedSummary` fields carry that single target's detailed context/i);
+  assert.match(ingestionDoc, /starterImportCommand.*helperCommands` block .*starterImport/i);
   assert.match(ingestionDoc, /checked-in root docs stay parser-aligned: `SOUL\.md` should keep `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`, while `voice\/README\.md` should keep `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
 
   assert.match(memoryDoc, /## What belongs here/);

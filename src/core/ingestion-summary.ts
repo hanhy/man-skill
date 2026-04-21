@@ -618,6 +618,19 @@ function buildProfileCommands(profile, options: any = {}) {
   const importIntakeCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
+  const starterImportCommand = imported
+    && intake?.ready === true
+    && intakeManifest.status === 'starter'
+    && !importIntakeWithoutRefreshCommand
+    && !importIntakeCommand
+    ? (
+      profileStarterTextImportCommand
+      ?? runnableTextImportCommand
+      ?? runnableScreenshotImportCommand
+      ?? runnableMessageImportCommand
+      ?? runnableTalkImportCommand
+    )
+    : null;
 
   return {
     personId: profile.id,
@@ -634,6 +647,7 @@ function buildProfileCommands(profile, options: any = {}) {
     updateIntakeCommand,
     importIntakeWithoutRefreshCommand,
     importIntakeCommand,
+    starterImportCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
     intakeStatusSummary: summarizeIntakeStatus(intake, intakeManifest),
@@ -650,6 +664,7 @@ function buildProfileCommands(profile, options: any = {}) {
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: intakeImportManifestCommand,
+      starterImport: starterImportCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,

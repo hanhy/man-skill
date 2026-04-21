@@ -2701,6 +2701,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(janeCommand.updateProfileCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'");
   assert.equal(janeCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation");
   assert.equal(janeCommand.refreshFoundationCommand, "node src/index.js update foundation --person 'jane-doe'");
+  assert.equal(janeCommand.starterImportCommand, "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation");
   assert.equal(janeCommand.importMaterialCommand, null);
   assert.deepEqual(janeCommand.importCommands, {
     text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
@@ -2713,6 +2714,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importIntakeWithoutRefresh: null,
     importIntake: null,
     importManifest: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation",
+    starterImport: "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
@@ -2739,6 +2741,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     updateIntakeCommand: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     importIntakeWithoutRefreshCommand: null,
     importIntakeCommand: null,
+    starterImportCommand: null,
     intakeReady: false,
     intakeCompletion: 'missing',
     intakeStatusSummary: 'missing — create imports, README.md, materials.template.json, sample.txt',
@@ -2770,6 +2773,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
       importIntakeWithoutRefresh: null,
       importIntake: null,
       importManifest: null,
+      starterImport: null,
       updateProfile: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
       updateProfileAndRefresh: null,
       refreshFoundation: null,
@@ -2827,6 +2831,7 @@ test('buildSummary keeps imported profiles free of missing-intake warnings after
 
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
+  assert.equal(summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han')?.starterImportCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han')?.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.match(summary.promptPreview, /imported intake: 0 ready, 1 starter template, 0 backfills, 0 invalid manifests/);
   assert.doesNotMatch(summary.promptPreview, /intake missing — create imports/);

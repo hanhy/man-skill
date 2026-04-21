@@ -458,6 +458,7 @@ type IngestionProfileCommand = {
   updateIntakeCommand?: string | null;
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
+  starterImportCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -1516,7 +1517,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
-      const starterImportCommand = (() => {
+      const starterImportCommand = profile.starterImportCommand ?? (() => {
         if (profile.intakeReady !== true || intakeShortcutCommand || actionLabel === 'import') {
           return null;
         }
