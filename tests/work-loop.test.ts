@@ -2249,6 +2249,45 @@ test('buildSummary work loop carries env bootstrap paths for both the template s
   assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
 });
 
+test('buildSummary work loop marks delivery blocked when the rollout leader is auth-blocked even if later channel implementations are still missing', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'telegram.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'whatsapp.js'));
+  fs.rmSync(path.join(rootDir, 'src', 'channels', 'slack.js'));
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.channelQueue[0].id, 'feishu');
+  assert.equal(summary.delivery.channelQueue[0].implementationStatus, 'ready');
+  assert.equal(summary.delivery.channelQueue[1].id, 'telegram');
+  assert.equal(summary.delivery.channelQueue[1].implementationStatus, 'missing');
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.priorities[2].status, 'blocked');
+  assert.equal(summary.workLoop.blockedPriorityCount, 2);
+  assert.equal(summary.workLoop.queuedPriorityCount, 0);
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1/4 present, implementations 1/4 ready');
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1\/4 present, implementations 1\/4 ready/);
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
+});
+
 test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

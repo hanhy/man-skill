@@ -1281,10 +1281,19 @@ function buildDeliveryPriority({
     command = envConfigPopulateCommand;
   }
 
+  const leaderAuthBlocked = pendingCount > 0
+    && firstQueuedMissingEnvVars.length > 0
+    && manifestReady
+    && firstQueued?.implementationReady === true
+    && (
+      command === envTemplateCommand
+      || command === envTemplatePopulateCommand
+      || command === envConfigPopulateCommand
+    );
   const deliveryBlocked = pendingCount > 0
     && normalizedAuthBlockedCount > 0
     && manifestReady
-    && implementationReadyCount === pendingCount;
+    && (implementationReadyCount === pendingCount || leaderAuthBlocked);
 
   const resolvedPaths = command && command === envConfigPopulateCommand && envConfigPaths.length > 0
     ? envConfigPaths
