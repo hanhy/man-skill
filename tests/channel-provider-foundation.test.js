@@ -44,7 +44,7 @@ function seedMinimalRepo(rootDir) {
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), '# Scratch\n\nInvestigate provider parity.\n');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operational takeaway.\n\n## Avoid\n- Avoid vague filler.\n\n## Language hints\n- Prefer plain English unless source material clearly code-switches.\n');
-  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay direct and grounded while validating delivery behavior.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay direct and grounded while validating delivery behavior.\n\n## Continuity\n- Prefer verified repo state over assumptions.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents reusable operator workflows.\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron skill\n\nUse this skill when validating recurring delivery loops.\n');
   ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
@@ -210,6 +210,13 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
 
   const summary = buildSummary(rootDir);
 
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
   assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
 });
