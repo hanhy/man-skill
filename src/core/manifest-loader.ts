@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function stripLeadingUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 export interface ManifestSummary<T = Record<string, unknown>> {
   path: string;
   status: 'loaded' | 'missing' | 'invalid';
@@ -24,7 +28,7 @@ function loadManifestFile<T = Record<string, unknown>>(rootDir: string, fileName
   }
 
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    const parsed: unknown = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absolutePath, 'utf8')));
     if (!Array.isArray(parsed)) {
       return {
         path: relativePath,

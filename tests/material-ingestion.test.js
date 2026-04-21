@@ -256,6 +256,35 @@ test('importManifest imports mixed material entries across profiles from a JSON 
   assert.equal(janeMaterials.length, 1);
 });
 
+test('importManifest accepts UTF-8 BOM-prefixed manifest files', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    `\uFEFF${JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post.txt',
+          notes: 'blog fragment',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['harry-han']);
+});
+
 test('importManifest skips unchanged entries when the same manifest is rerun', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

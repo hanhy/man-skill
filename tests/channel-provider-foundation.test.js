@@ -95,6 +95,40 @@ test('JS manifest loader shim stays aligned with the TypeScript implementation',
   assert.deepEqual(jsLoader.loadProviderManifest(), tsLoader.loadProviderManifest());
 });
 
+test('manifest loaders accept UTF-8 BOM-prefixed manifest files', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'channels.json'),
+    `\uFEFF${JSON.stringify([{ id: 'slack', status: 'planned' }], null, 2)}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    `\uFEFF${JSON.stringify([{ id: 'openai', status: 'active' }], null, 2)}`,
+  );
+
+  const jsLoader = new JsManifestLoader(rootDir);
+  const tsLoader = new TsManifestLoader(rootDir);
+
+  assert.deepEqual(jsLoader.loadChannelManifestSummary(), {
+    path: 'manifests/channels.json',
+    status: 'loaded',
+    entryCount: 1,
+    error: null,
+    records: [{ id: 'slack', status: 'planned' }],
+  });
+  assert.deepEqual(jsLoader.loadProviderManifestSummary(), {
+    path: 'manifests/providers.json',
+    status: 'loaded',
+    entryCount: 1,
+    error: null,
+    records: [{ id: 'openai', status: 'active' }],
+  });
+  assert.deepEqual(jsLoader.loadChannelManifestSummary(), tsLoader.loadChannelManifestSummary());
+  assert.deepEqual(jsLoader.loadProviderManifestSummary(), tsLoader.loadProviderManifestSummary());
+});
+
 test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
     slackChannelScaffold,

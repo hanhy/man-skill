@@ -3080,6 +3080,41 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
+test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests', () => {
+  const rootDir = makeTempRepo();
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the first slice before polishing the plan.\n');
+
+  const ingestion = new MaterialIngestion(rootDir);
+  ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: path.join(rootDir, 'samples', 'harry-post.txt'),
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
+
+  const intakeManifestPath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json');
+  fs.writeFileSync(
+    intakeManifestPath,
+    `\uFEFF${fs.readFileSync(intakeManifestPath, 'utf8')}`,
+  );
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.ok(harry);
+  assert.equal(harry.intakeManifestStatus, 'starter');
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 0);
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+});
+
 test('buildSummary uses the imported intake replay bundle after multiple imported starter manifests are edited', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

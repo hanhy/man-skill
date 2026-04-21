@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function stripLeadingUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function buildFallbackDisplayName(profileId) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return null;
@@ -439,7 +443,7 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
   const absoluteManifestPath = path.join(rootDir, starterManifestPath);
   let parsedManifest: any;
   try {
-    parsedManifest = JSON.parse(fs.readFileSync(absoluteManifestPath, 'utf8'));
+    parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));
   } catch (error) {
     return {
       status: 'invalid',

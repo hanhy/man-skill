@@ -6,13 +6,21 @@ import {
   loadFoundationDraftStatus,
 } from './fs-loader.js';
 
+function stripLeadingUtf8Bom(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
   }
 
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(filePath, 'utf8')));
   } catch {
     return null;
   }
@@ -30,7 +38,7 @@ function readJsonFileState(filePath) {
   try {
     return {
       exists: true,
-      parsed: JSON.parse(fs.readFileSync(filePath, 'utf8')),
+      parsed: JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(filePath, 'utf8'))),
       parseError: null,
     };
   } catch (error) {
