@@ -1015,6 +1015,19 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
       ? Array.from(new Set(importedInvalidIntakeManifestProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
       : (firstInvalidImportedIntakeProfile?.intakeManifestPath ? [firstInvalidImportedIntakeProfile.intakeManifestPath] : []);
+  } else if (importedStarterIntakeProfiles.length > 0) {
+    const firstImportedStarterIntakeProfile = importedStarterIntakeProfiles[0] ?? null;
+    recommendedProfileId = firstImportedStarterIntakeProfile?.personId ?? null;
+    recommendedLabel = firstImportedStarterIntakeProfile?.label ?? firstImportedStarterIntakeProfile?.personId ?? null;
+    recommendedAction = recommendedLabel
+      ? (importedStarterIntakeProfiles.length > 1
+        ? `populate imported intake starter manifests — starting with ${recommendedLabel}`
+        : `populate the imported intake starter manifest for ${recommendedLabel}`)
+      : 'populate imported intake starter manifests';
+    recommendedCommand = null;
+    recommendedPaths = importedStarterIntakeProfiles.length > 1
+      ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
+      : collectProfileIntakePaths(firstImportedStarterIntakeProfile);
   } else if (metadataOnlyProfileCount > 0) {
     if (metadataOnlyProfileNeedingScaffold) {
       recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;
