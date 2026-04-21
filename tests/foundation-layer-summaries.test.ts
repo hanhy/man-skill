@@ -10,7 +10,7 @@ import { MemoryStore } from '../src/core/memory-store.ts';
 import { SkillRegistry } from '../src/core/skill-registry.ts';
 import { SoulProfile } from '../src/core/soul-profile.ts';
 import { VoiceProfile } from '../src/core/voice-profile.ts';
-import { summarizeRootSectionSummary } from '../src/core/foundation-core.ts';
+import { buildCoreFoundationSummary, summarizeRootSectionSummary } from '../src/core/foundation-core.ts';
 import { buildSummary } from '../src/index.js';
 
 function makeTempRepo() {
@@ -463,6 +463,27 @@ test('voice profile treats target-specific current default headings as legacy la
     languageHintCount: 1,
     hasGuidance: true,
   });
+});
+
+test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
+  const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Keep the answer concise.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Keep the answer concise.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Keep the answer concise.'],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
 });
 
 test('voice profile accepts prose lines inside signature, avoid, and language hint sections', () => {
