@@ -1619,8 +1619,9 @@ export function buildSummary(rootDir: string) {
   });
 
   const memory = new MemoryStore({
-    shortTerm: memoryIndex.daily,
+    daily: memoryIndex.daily,
     longTerm: memoryIndex.longTerm,
+    scratch: memoryIndex.scratch,
   });
   const skills = new SkillRegistry(skillRecords);
   const channels = new ChannelRegistry();

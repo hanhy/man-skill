@@ -271,11 +271,15 @@ type VoiceSummary = {
 } | null;
 
 type MemorySummary = {
+  dailyEntries?: number;
   shortTermEntries?: number;
   longTermEntries?: number;
+  scratchEntries?: number;
   totalEntries?: number;
+  dailyPresent?: boolean;
   shortTermPresent?: boolean;
   longTermPresent?: boolean;
+  scratchPresent?: boolean;
   [key: string]: unknown;
 } | null;
 
@@ -1882,15 +1886,20 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
     return '- unavailable';
   }
 
-  const shortTermEntries = memory.shortTermEntries ?? 0;
+  const dailyEntries = memory.dailyEntries ?? memory.shortTermEntries ?? 0;
   const longTermEntries = memory.longTermEntries ?? 0;
-  const totalEntries = memory.totalEntries ?? (shortTermEntries + longTermEntries);
+  const scratchEntries = memory.scratchEntries ?? 0;
+  const totalEntries = memory.totalEntries ?? (dailyEntries + longTermEntries + scratchEntries);
+  const dailyPresent = memory.dailyPresent ?? memory.shortTermPresent ?? false;
+  const longTermPresent = memory.longTermPresent ?? false;
+  const scratchPresent = memory.scratchPresent ?? false;
 
   return [
-    `- short-term: ${shortTermEntries}`,
+    `- daily: ${dailyEntries}`,
     `- long-term: ${longTermEntries}`,
+    `- scratch: ${scratchEntries}`,
     `- total: ${totalEntries}`,
-    `- coverage: short-term ${memory.shortTermPresent ? 'yes' : 'no'}, long-term ${memory.longTermPresent ? 'yes' : 'no'}`,
+    `- coverage: daily ${dailyPresent ? 'yes' : 'no'}, long-term ${longTermPresent ? 'yes' : 'no'}, scratch ${scratchPresent ? 'yes' : 'no'}`,
   ].join('\n');
 }
 
