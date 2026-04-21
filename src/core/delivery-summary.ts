@@ -304,6 +304,32 @@ function buildProviderSetupHint(record: ProviderSummaryRecord, environment: Node
   return 'choose auth and default model';
 }
 
+const CHANNEL_ROLLOUT_ORDER = ['feishu', 'telegram', 'whatsapp', 'slack'] as const;
+const PROVIDER_ROLLOUT_ORDER = ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'] as const;
+
+function compareRolloutOrder(
+  leftId: string | null | undefined,
+  rightId: string | null | undefined,
+  rolloutOrder: readonly string[],
+) {
+  const leftIndex = typeof leftId === 'string' ? rolloutOrder.indexOf(leftId) : -1;
+  const rightIndex = typeof rightId === 'string' ? rolloutOrder.indexOf(rightId) : -1;
+
+  if (leftIndex !== -1 || rightIndex !== -1) {
+    if (leftIndex === -1) {
+      return 1;
+    }
+    if (rightIndex === -1) {
+      return -1;
+    }
+    if (leftIndex !== rightIndex) {
+      return leftIndex - rightIndex;
+    }
+  }
+
+  return (leftId ?? '').localeCompare(rightId ?? '');
+}
+
 export function buildDeliverySummary(
   channels: ChannelsSummary = null,
   models: ModelsSummary = null,
@@ -359,7 +385,8 @@ export function buildDeliverySummary(
           scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
-    });
+    })
+    .sort((left, right) => compareRolloutOrder(left.id, right.id, CHANNEL_ROLLOUT_ORDER));
   const providerQueue = (models?.providers ?? [])
     .filter((provider) => provider?.status !== 'active')
     .map((provider) => {
@@ -399,7 +426,8 @@ export function buildDeliverySummary(
           scaffoldImplementation: implementationState.present === false ? buildRelativeFileTouchCommand(implementationScaffoldPath) : null,
         },
       };
-    });
+    })
+    .sort((left, right) => compareRolloutOrder(left.id, right.id, PROVIDER_ROLLOUT_ORDER));
 
   const requiredEnvVars = [
     ...(channels?.channels ?? []).flatMap((channel) => (channel.auth?.envVars ?? []).filter(Boolean)),

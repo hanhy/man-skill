@@ -201,6 +201,19 @@ test('default registries merge delivery overrides without mutating canonical sca
   assert.deepEqual(openaiRecord.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-4.1-mini']);
 });
 
+test('buildSummary keeps delivery queues aligned with the canonical rollout order', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS, null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS, null, 2));
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
+});
+
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
   const channelScaffolds = [
     slackChannelScaffold,
@@ -1267,12 +1280,12 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
   assert.match(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET.*TELEGRAM_BOT_TOKEN.*WHATSAPP_ACCESS_TOKEN.*WHATSAPP_PHONE_NUMBER_ID/);
   assert.match(summary.promptPreview, /provider env backlog: .*ANTHROPIC_API_KEY.*GLM_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*OPENAI_API_KEY.*QWEN_API_KEY/);
-  assert.match(summary.promptPreview, /Slack \[candidate, runtime-ready\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events/);
-  assert.doesNotMatch(summary.promptPreview, /Slack \[candidate, runtime-ready\]:[^\n]*; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: credentials present via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
+  assert.doesNotMatch(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]:[^\n]*; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /Slack \[candidate, runtime-ready\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
   assert.match(summary.promptPreview, /Telegram \[candidate, runtime-ready\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
   assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[candidate, runtime-ready\], Feishu \[candidate(?:, configured)?, runtime-ready\]/);
-  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, runtime-ready\], WhatsApp \[candidate, runtime-ready\], Feishu \[candidate(?:, configured)?, runtime-ready\]/);
+  assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, runtime-ready\], WhatsApp \[candidate, runtime-ready\], Slack \[candidate, runtime-ready\]/);
   assert.match(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
   assert.doesNotMatch(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]:[^\n]*; next: implement chat\/tool request translation and response normalization/);
   assert.match(summary.promptPreview, /OpenAI \[candidate, runtime-ready\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
@@ -1371,8 +1384,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
       populateEnvTemplate: null,
-      populateDeliveryEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
-      populateChannelEnv: "touch '.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateDeliveryEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateChannelEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
       scaffoldProviderManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
@@ -1382,30 +1395,30 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       scaffoldProviderImplementationBundle: null,
     });
     assert.deepEqual(summary.delivery.channelQueue[0], {
-      id: 'slack',
-      name: 'Slack',
+      id: 'feishu',
+      name: 'Feishu',
       status: 'planned',
-      authType: 'bot-token',
-      authEnvVars: ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET'],
-      capabilities: ['threads', 'mentions', 'bot-token'],
-      deliveryModes: ['events-api', 'web-api'],
-      inboundPath: '/hooks/slack/events',
-      outboundMode: 'thread-reply',
-      implementationPath: 'src/channels/slack.js',
+      authType: 'tenant-app',
+      authEnvVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
+      capabilities: ['tenant-app', 'docs', 'bot'],
+      deliveryModes: ['event-subscription', 'webhook'],
+      inboundPath: '/hooks/feishu/events',
+      outboundMode: 'bot-message',
+      implementationPath: 'src/channels/feishu.js',
       implementationPresent: true,
       implementationReady: false,
       implementationStatus: 'scaffold',
-      implementationScaffoldPath: 'src/channels/slack.js',
-      configured: true,
-      missingEnvVars: [],
+      implementationScaffoldPath: 'src/channels/feishu.js',
+      configured: false,
+      missingEnvVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
       manifestPath: 'manifests/channels.json',
       manifestPresent: false,
       manifestScaffoldPath: 'manifests/channels.json',
-      setupHint: 'credentials present',
-      nextStep: 'implement inbound event handling and outbound thread replies',
+      setupHint: 'set FEISHU_APP_ID, FEISHU_APP_SECRET',
+      nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
       helperCommands: {
-        bootstrapEnv: null,
-        populateEnv: null,
+        bootstrapEnv: 'cp .env.example .env',
+        populateEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
         scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
         scaffoldImplementation: null,
       },
@@ -1442,7 +1455,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
-    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
     assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
@@ -1451,8 +1464,8 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
     assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\]: credentials present; next: implement inbound event handling and outbound thread replies via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token; caps threads, mentions, bot-token\] @ src\/channels\/slack\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
-    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\]/);
+    assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Slack \[planned, configured, scaffold-only\]/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
@@ -1521,7 +1534,7 @@ test('buildSummary exposes delivery implementation readiness separately from sca
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
   assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
   assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Slack \[planned, scaffold-only\]: set SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET; next: implement inbound event handling and outbound thread replies/);
+  assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /provider queue: 6 pending \(6 auth-blocked\), manifest ready, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
   assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
   } finally {
@@ -1618,13 +1631,13 @@ test('buildSummary prompt preview surfaces delivery implementation bundles when 
 
   assert.equal(
     summary.delivery.helperCommands.scaffoldChannelImplementationBundle,
-    "(mkdir -p 'src/channels' && touch 'src/channels/slack.js') && (mkdir -p 'src/channels' && touch 'src/channels/telegram.js')",
+    "(mkdir -p 'src/channels' && touch 'src/channels/telegram.js') && (mkdir -p 'src/channels' && touch 'src/channels/slack.js')",
   );
   assert.equal(
     summary.delivery.helperCommands.scaffoldProviderImplementationBundle,
     "(mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js')",
   );
-  assert.match(summary.promptPreview, /channel impl-all \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\)/);
+  assert.match(summary.promptPreview, /channel impl-all \(mkdir -p 'src\/channels' && touch 'src\/channels\/telegram\.js'\) && \(mkdir -p 'src\/channels' && touch 'src\/channels\/slack\.js'\)/);
   assert.match(summary.promptPreview, /provider impl-all \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\)/);
 });
 
