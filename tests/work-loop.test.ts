@@ -2362,6 +2362,38 @@ test('buildSummary work loop switches blocked provider rollout to the repo-local
   assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
 });
 
+test('buildSummary work loop repairs missing credentials for active delivery integrations before claiming the rollout is ready', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.readyPriorityCount, 2);
+  assert.equal(summary.workLoop.queuedPriorityCount, 0);
+  assert.equal(summary.workLoop.blockedPriorityCount, 2);
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4/4 present, implementations 4/4 ready');
+  assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
+  assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
+});
+
 test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -3230,6 +3262,7 @@ test('buildSummary work loop paths follow the actual missing delivery file when 
 test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -3252,17 +3285,18 @@ test('buildSummary work loop bundles missing provider implementations once the p
 
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "(mkdir -p 'src/models' && touch 'src/models/openai.js') && (mkdir -p 'src/models' && touch 'src/models/anthropic.js') && (mkdir -p 'src/models' && touch 'src/models/kimi.js') && (mkdir -p 'src/models' && touch 'src/models/minimax.js') && (mkdir -p 'src/models' && touch 'src/models/glm.js') && (mkdir -p 'src/models' && touch 'src/models/qwen.js')");
   assert.equal(summary.workLoop.currentPriority.id, 'providers');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; set OPENAI_API_KEY for gpt-5; next: implement chat/tool request translation and response normalization');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'create pending provider implementations — starting with src/models/openai.js; auth configured for gpt-5; next: implement chat/tool request translation and response normalization');
   assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.scaffoldProviderImplementationBundle);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['manifests/providers.json', 'src/models/openai.js', 'src/models/anthropic.js', 'src/models/kimi.js', 'src/models/minimax.js', 'src/models/glm.js', 'src/models/qwen.js']);
-  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 0\/6 present/);
-  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /current: Providers \[queued\] — 6 pending, 6 configured, 0 auth-blocked, manifest ready, scaffolds 0\/6 present/);
+  assert.match(summary.promptPreview, /next action: create pending provider implementations — starting with src\/models\/openai\.js; auth configured for gpt-5; next: implement chat\/tool request translation and response normalization/);
   assert.match(summary.promptPreview, /command: \(mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/kimi\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/minimax\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/glm\.js'\) && \(mkdir -p 'src\/models' && touch 'src\/models\/qwen\.js'\)/);
 });
 
 test('buildSummary work loop refuses to scaffold outside-repo provider implementation paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },
@@ -3313,6 +3347,7 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
 test('buildSummary work loop omits outside-repo implementation paths when bundling provider scaffolds', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
     { id: 'slack', status: 'active' },

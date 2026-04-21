@@ -398,8 +398,7 @@ export function buildDeliverySummary(
   const envTemplateCommand = envTemplatePresent && envTemplatePath ? `cp ${envTemplatePath} .env` : null;
   const allChannelRecords = channels?.channels ?? [];
   const allProviderRecords = models?.providers ?? [];
-  const channelQueue = (channels?.channels ?? [])
-    .filter((channel) => channel?.status !== 'active')
+  const allChannelQueueRecords = (channels?.channels ?? [])
     .map((channel) => {
       const authEnvVars = (channel.auth?.envVars ?? []).filter(Boolean);
       const missingEnvVars = collectMissingEnvVars(authEnvVars, environment);
@@ -441,8 +440,9 @@ export function buildDeliverySummary(
       };
     })
     .sort((left, right) => compareRolloutOrder(left.id, right.id, channelRolloutOrder));
-  const providerQueue = (models?.providers ?? [])
-    .filter((provider) => provider?.status !== 'active')
+  const channelQueue = allChannelQueueRecords
+    .filter((channel) => channel?.status !== 'active' || channel.missingEnvVars.length > 0);
+  const allProviderQueueRecords = (models?.providers ?? [])
     .map((provider) => {
       const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
       const implementationPath = provider.implementationPath ?? null;
@@ -482,6 +482,8 @@ export function buildDeliverySummary(
       };
     })
     .sort((left, right) => compareRolloutOrder(left.id, right.id, providerRolloutOrder));
+  const providerQueue = allProviderQueueRecords
+    .filter((provider) => provider?.status !== 'active' || provider.missingEnvVars.length > 0);
 
   const orderedChannelEnvVars = collectOrderedChannelEnvVars(allChannelRecords, channelRolloutOrder);
   const orderedProviderEnvVars = collectOrderedProviderEnvVars(allProviderRecords, providerRolloutOrder);
