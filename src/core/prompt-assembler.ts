@@ -97,6 +97,8 @@ type MaintenanceQueueItem = {
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
+  draftGapCount?: number;
+  draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
   refreshCommand?: string | null;
 };
@@ -106,6 +108,8 @@ type FoundationMaintenance = {
   readyProfileCount?: number;
   refreshProfileCount?: number;
   incompleteProfileCount?: number;
+  draftGapCountTotal?: number;
+  draftGapCounts?: Record<string, number>;
   missingDraftCounts?: Record<string, number>;
   refreshReasonCounts?: Record<string, number>;
   refreshAllCommand?: string | null;
@@ -872,6 +876,10 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
     ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
+  const draftGapCountSummary = Number.isFinite(maintenance.draftGapCountTotal) && (maintenance.draftGapCountTotal ?? 0) > 0
+    ? `${maintenance.draftGapCountTotal} total`
+    : null;
+  const draftGapBreakdown = formatCountMap(maintenance.draftGapCounts);
   const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
   const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
@@ -881,10 +889,14 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const coverageSuffix = Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)
       ? `, ${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts generated`
       : '';
+    const draftGapBreakdownSuffix = formatCountMap(profile.draftGapCounts);
+    const draftGapCountSuffix = Number.isFinite(profile.draftGapCount) && (profile.draftGapCount ?? 0) > 0
+      ? `, ${profile.draftGapCount} draft gap${profile.draftGapCount === 1 ? '' : 's'}${draftGapBreakdownSuffix ? ` (${draftGapBreakdownSuffix})` : ''}`
+      : '';
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
@@ -898,6 +910,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
 
   return [
     `- ${maintenance.readyProfileCount ?? 0} ready, ${maintenance.refreshProfileCount ?? 0} queued for refresh, ${maintenance.incompleteProfileCount ?? 0} incomplete`,
+    draftGapCountSummary ? `- draft gaps: ${draftGapCountSummary}${draftGapBreakdown ? ` (${draftGapBreakdown})` : ''}` : null,
     missingDraftSummary ? `- missing drafts: ${missingDraftSummary}` : null,
     refreshReasonSummary ? `- refresh reasons: ${refreshReasonSummary}` : null,
     helperLine ? `- helpers: ${helperLine}` : null,

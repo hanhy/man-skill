@@ -199,6 +199,13 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    draftGapCountTotal: 8,
+    draftGapCounts: {
+      memory: 1,
+      skills: 2,
+      soul: 2,
+      voice: 3,
+    },
     missingDraftCounts: {
       memory: 1,
       skills: 1,
@@ -240,6 +247,13 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
+        draftGapCount: 8,
+        draftGapCounts: {
+          memory: 1,
+          skills: 2,
+          soul: 2,
+          voice: 3,
+        },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
       },
@@ -316,6 +330,69 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
     rollup.maintenance.queuedProfiles[0]?.draftGapSummary,
     'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
   );
+});
+
+test('buildFoundationRollup prioritizes stale profiles with more structured draft gaps when missing draft counts tie', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'alpha-gap-heavy',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-20T10:00:00.000Z',
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        skills: { generated: true, readySectionCount: 1, totalSectionCount: 3, readySections: ['candidate-skills'] },
+        soul: { generated: true, readySectionCount: 1, totalSectionCount: 4, readySections: ['core-truths'] },
+        voice: { generated: true, readySectionCount: 1, totalSectionCount: 4, readySections: ['tone'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the loop short.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Protect operator context.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep it direct.'] },
+      },
+    },
+    {
+      id: 'beta-gap-light',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-20T10:05:00.000Z',
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        skills: { generated: true, readySectionCount: 2, totalSectionCount: 3, readySections: ['candidate-skills', 'evidence'] },
+        soul: { generated: true, readySectionCount: 3, totalSectionCount: 4, readySections: ['core-truths', 'boundaries', 'vibe'] },
+        voice: { generated: true, readySectionCount: 3, totalSectionCount: 4, readySections: ['tone', 'signature-moves', 'avoid'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the loop short.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Protect operator context.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep it direct.'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'alpha-gap-heavy');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.id, 'alpha-gap-heavy');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.draftGapCount, 9);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.draftGapCounts, {
+    memory: 1,
+    skills: 2,
+    soul: 3,
+    voice: 3,
+  });
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.id, 'beta-gap-light');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.draftGapCount, 4);
 });
 
 test('PromptAssembler foundation rollup keeps repo-stale counts visible across voice, soul, and skills', () => {
@@ -446,6 +523,13 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     readyProfileCount: 1,
     refreshProfileCount: 1,
     incompleteProfileCount: 1,
+    draftGapCountTotal: 12,
+    draftGapCounts: {
+      memory: 1,
+      skills: 3,
+      soul: 4,
+      voice: 4,
+    },
     missingDraftCounts: {
       memory: 1,
       skills: 1,
@@ -488,6 +572,13 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+        draftGapCount: 12,
+        draftGapCounts: {
+          memory: 1,
+          skills: 3,
+          soul: 4,
+          voice: 4,
+        },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
       },
