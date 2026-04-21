@@ -952,6 +952,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLabel: string | null = null;
   let recommendedAction: string | null = null;
   let recommendedCommand: string | null = null;
+  let recommendedEditPath: string | null = null;
+  let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
 
   if (safeProfiles.length === 0) {
@@ -1025,6 +1027,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
     recommendedCommand = null;
+    recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
+    recommendedFollowUpCommand = firstImportedStarterIntakeProfile?.importManifestCommand ?? null;
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);
@@ -1207,6 +1211,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLabel,
     recommendedAction,
     recommendedCommand,
+    recommendedEditPath,
+    recommendedFollowUpCommand,
     recommendedPaths,
     helperCommands,
     profileCommands: orderedProfileCommands,

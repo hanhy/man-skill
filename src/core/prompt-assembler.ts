@@ -569,6 +569,8 @@ type IngestionSummary = {
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
+  recommendedEditPath?: string | null;
+  recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
@@ -1360,8 +1362,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
     ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
+    ? ingestion.recommendedEditPath
+    : null;
+  const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
+    ? ingestion.recommendedFollowUpCommand
+    : null;
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [

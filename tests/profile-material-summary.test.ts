@@ -2858,13 +2858,18 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.equal(summary.ingestion.recommendedLabel, 'Harry Han (harry-han)');
   assert.equal(summary.ingestion.recommendedAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');
   assert.equal(summary.ingestion.recommendedCommand, null);
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(
+    summary.ingestion.recommendedFollowUpCommand,
+    "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+  );
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
@@ -3366,6 +3371,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedLabel: null,
     recommendedAction: 'bootstrap a target profile',
     recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+    recommendedEditPath: null,
+    recommendedFollowUpCommand: null,
     recommendedPaths: [],
     helperCommands: {
       bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
