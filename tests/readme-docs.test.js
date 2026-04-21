@@ -206,6 +206,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
+  assert.match(readme, /top-level `Soul profile:` and `Voice profile:` preview blocks.*foundation\.core\.soul\|voice\.rootExcerpt.*rootPath.*heading aliases/i);
   assert.match(readme, /prompt preview surfaces the exact missing sections plus a runnable repair command/i);
   assert.match(readme, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(readme, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
@@ -231,6 +232,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
   assert.match(architectureDoc, /single-target-only detail fields \(`recommendedStatus`, `recommendedSummary` when exactly one area is queued\)/i);
+  assert.match(architectureDoc, /mirror those same `foundation\.core\.soul\|voice` root excerpts, section counts, and optional heading aliases into the compact top-level `Soul profile:` \/ `Voice profile:` prompt blocks/i);
   assert.match(architectureDoc, /checked-in root `SOUL\.md` stable on `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`/i);
   assert.match(architectureDoc, /checked-in root `voice\/README\.md` stable on `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
@@ -306,6 +308,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
+  assert.match(summary.promptPreview, /Soul profile:\n- excerpt: .*\n- core truths: \d+\n- boundaries: \d+\n- vibe: \d+\n- continuity: \d+\n- root: .* @ SOUL\.md\n- sections: 4\/4 ready \(core-truths, boundaries, vibe, continuity\)/);
+  assert.match(summary.promptPreview, /Voice profile:\n- tone: .*\n- style: documented\n- constraints: \d+ \(.*\)\n- signatures: \d+ \(.*\)\n- language hints: \d+ \(.*\)\n- root: .* @ voice\/README\.md\n- sections: 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: This directory stores the agent's durable and working memory in plain files\. @ memory\/README\.md\n- root sections: 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 11\/11 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);

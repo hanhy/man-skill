@@ -2556,6 +2556,53 @@ test('buildSummary surfaces legacy memory and skills root heading aliases while 
   assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, aliases what-lives-here->what-belongs-here, layout->buckets; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, aliases what-belongs-here->what-lives-here, buckets->layout; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
 });
 
+test('buildSummary surfaces legacy soul and voice heading aliases in compact preview blocks', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Voice should capture\n- Keep replies direct.\n\n## Signature moves\n- Lead with the operating takeaway.\n\n## Voice should not capture\n- Avoid vague filler.\n\n## Current default for Harry\n- Prefer plain English unless source material clearly code-switches.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.headingAliases, [
+    'core-values->core-truths',
+    'decision-rules->continuity',
+  ]);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.headingAliases, [
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
+  assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Preserve durable operator intent\.\n- core truths: 1\n- boundaries: 1\n- vibe: 1\n- continuity: 1\n- root: Preserve durable operator intent\. @ SOUL\.md\n- sections: 4\/4 ready \(core-truths, boundaries, vibe, continuity\)\n- root heading aliases: core-values->core-truths, decision-rules->continuity/);
+  assert.match(summary.promptPreview, /Voice profile:\n- tone: Keep replies direct\.\n- style: documented\n- constraints: 1 \(Avoid vague filler\.\)\n- signatures: 2 \(Keep replies direct\.\; Lead with the operating takeaway\.\)\n- language hints: 1 \(Prefer plain English unless source material clearly code-switches\.\)\n- root: Keep replies direct\. @ voice\/README\.md\n- sections: 4\/4 ready \(tone, signature-moves, avoid, language-hints\)\n- root heading aliases: voice-should-capture->signature-moves, voice-should-not-capture->avoid, current-default->language-hints/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, aliases core-values->core-truths, decision-rules->continuity; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, aliases voice-should-capture->signature-moves, voice-should-not-capture->avoid, current-default->language-hints/);
+});
+
 test('buildSummary treats setext headings across root and profile foundation docs as structured sections', () => {
   const rootDir = makeTempRepo();
 

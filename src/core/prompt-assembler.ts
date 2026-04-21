@@ -1688,6 +1688,25 @@ function formatPreviewRootSectionSummary(
   return summary.replace(/^; root sections /, '- root sections: ');
 }
 
+function formatPreviewSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string | null {
+  const summary = formatRootSectionSummary(
+    readySections,
+    missingSections,
+    readySectionCount,
+    totalSectionCount,
+  );
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; root sections /, '- sections: ');
+}
+
 function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | undefined): string | null {
   const summary = formatHeadingAliasSummary(headingAliases);
   if (!summary) {
@@ -2042,7 +2061,10 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   ].filter(Boolean).join('\n');
 }
 
-function buildSoulPreviewBlock(soul: SoulSummary): string {
+function buildSoulPreviewBlock(
+  soul: SoulSummary,
+  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+): string {
   if (!soul) {
     return '- unavailable';
   }
@@ -2052,6 +2074,12 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
   const boundaryCount = Array.isArray(soul.boundaries) ? soul.boundaries.length : 0;
   const vibeCount = Array.isArray(soul.vibe) ? soul.vibe.length : 0;
   const continuityCount = Array.isArray(soul.continuity) ? soul.continuity.length : 0;
+  const rootExcerpt = typeof foundationSoul?.rootExcerpt === 'string' && foundationSoul.rootExcerpt.trim().length > 0
+    ? foundationSoul.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationSoul?.rootPath === 'string' && foundationSoul.rootPath.trim().length > 0
+    ? foundationSoul.rootPath.trim()
+    : null;
 
   return [
     `- excerpt: ${excerpt}`,
@@ -2059,7 +2087,17 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
     `- boundaries: ${boundaryCount}`,
     `- vibe: ${vibeCount}`,
     `- continuity: ${continuityCount}`,
-  ].join('\n');
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationSoul
+      ? formatPreviewSectionSummary(
+        foundationSoul.readySections,
+        foundationSoul.missingSections,
+        foundationSoul.readySectionCount,
+        foundationSoul.totalSectionCount,
+      )
+      : null,
+    formatPreviewHeadingAliasSummary(foundationSoul?.headingAliases),
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildMemoryPreviewBlock(
@@ -2194,13 +2232,22 @@ function formatVoicePreviewItems(label: string, values: unknown): string {
     : `- ${label}: 0`;
 }
 
-function buildVoicePreviewBlock(voice: VoiceSummary): string {
+function buildVoicePreviewBlock(
+  voice: VoiceSummary,
+  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+): string {
   if (!voice) {
     return '- unavailable';
   }
 
   const tone = typeof voice.tone === 'string' && voice.tone.length > 0 ? voice.tone : 'n/a';
   const style = typeof voice.style === 'string' && voice.style.length > 0 ? voice.style : 'unknown';
+  const rootExcerpt = typeof foundationVoice?.rootExcerpt === 'string' && foundationVoice.rootExcerpt.trim().length > 0
+    ? foundationVoice.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationVoice?.rootPath === 'string' && foundationVoice.rootPath.trim().length > 0
+    ? foundationVoice.rootPath.trim()
+    : null;
 
   return [
     `- tone: ${tone}`,
@@ -2208,7 +2255,17 @@ function buildVoicePreviewBlock(voice: VoiceSummary): string {
     formatVoicePreviewItems('constraints', voice.constraints),
     formatVoicePreviewItems('signatures', voice.signatures),
     formatVoicePreviewItems('language hints', voice.languageHints),
-  ].join('\n');
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationVoice
+      ? formatPreviewSectionSummary(
+        foundationVoice.readySections,
+        foundationVoice.missingSections,
+        foundationVoice.readySectionCount,
+        foundationVoice.totalSectionCount,
+      )
+      : null,
+    formatPreviewHeadingAliasSummary(foundationVoice?.headingAliases),
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function truncatePreview(text: string, maxLength: number): string {
@@ -2296,8 +2353,8 @@ export class PromptAssembler {
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
-    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
-    const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
+    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile, this.foundationCore?.soul);
+    const voicePreviewBlock = buildVoicePreviewBlock(this.voice, this.foundationCore?.voice);
     const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary, this.foundationCore?.memory);
     const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary, this.foundationCore?.skills);
 
