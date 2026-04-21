@@ -158,25 +158,37 @@ function findWorkLoopObjectivesHeading(lines: string[]): { index: number; lineCo
   return null;
 }
 
-function parseWorkLoopObjectiveLine(line: string): string | null {
-  const trimmedLine = line.replace(/^\uFEFF/, '').trim();
+function parseWorkLoopObjectiveLine(line: string): { objective: string; indent: number } | null {
+  const normalizedLine = line.replace(/^\uFEFF/, '');
+  const trimmedLine = normalizedLine.trim();
   if (trimmedLine.length === 0) {
     return null;
   }
 
+  const indent = normalizedLine.match(/^(\s*)/)?.[1].length ?? 0;
+
   const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
   if (numberedMatch?.[1]) {
-    return numberedMatch[1].trim();
+    return {
+      objective: numberedMatch[1].trim(),
+      indent,
+    };
   }
 
   const taskListMatch = trimmedLine.match(/^[-*+]\s+\[(?: |x|X)\]\s+(.+)$/);
   if (taskListMatch?.[1]) {
-    return taskListMatch[1].trim();
+    return {
+      objective: taskListMatch[1].trim(),
+      indent,
+    };
   }
 
   const plainBulletMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
   if (plainBulletMatch?.[1]) {
-    return plainBulletMatch[1].trim();
+    return {
+      objective: plainBulletMatch[1].trim(),
+      indent,
+    };
   }
 
   return null;
@@ -194,16 +206,28 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
   }
 
   const objectives: string[] = [];
+  let objectiveIndent: number | null = null;
   for (let index = heading.index + heading.lineCount; index < lines.length; index += 1) {
     const nextHeading = parseMarkdownHeadingAt(lines, index);
     if (nextHeading && nextHeading.level <= heading.level) {
       break;
     }
 
-    const objective = parseWorkLoopObjectiveLine(lines[index] ?? '');
-    if (objective) {
-      objectives.push(objective);
+    const parsedObjective = parseWorkLoopObjectiveLine(lines[index] ?? '');
+    if (!parsedObjective) {
+      continue;
     }
+
+    if (objectiveIndent === null) {
+      objectiveIndent = parsedObjective.indent;
+    }
+
+    if (parsedObjective.indent > objectiveIndent) {
+      continue;
+    }
+
+    objectiveIndent = parsedObjective.indent;
+    objectives.push(parsedObjective.objective);
   }
 
   return objectives;

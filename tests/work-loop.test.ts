@@ -696,6 +696,44 @@ test('buildSummary accepts starred and plus task-list objectives in USER.md curr
   assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
 });
 
+test('buildSummary ignores nested bullet details under current product direction objectives in USER.md', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. harden the memory + soul handoff before delivery rollout',
+      '   - keep the root docs and bucket notes aligned while doing it',
+      '2. make intake reruns safe for partially imported profiles',
+      '   - prefer explicit reruns over broad stale sweeps',
+      '3. ship Telegram before the other chat surfaces',
+      '4. validate Anthropic before broad provider expansion',
+      '',
+      '## Usage notes',
+      '',
+      'Indented details should stay attached to their parent objective.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'harden the memory + soul handoff before delivery rollout',
+    'make intake reruns safe for partially imported profiles',
+    'ship Telegram before the other chat surfaces',
+    'validate Anthropic before broad provider expansion',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: harden the memory \+ soul handoff before delivery rollout \| make intake reruns safe for partially imported profiles \| ship Telegram before the other chat surfaces \| validate Anthropic before broad provider expansion \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /prefer explicit reruns over broad stale sweeps/);
+});
+
 test('buildSummary ignores commented and fenced current product direction scaffolds in USER.md', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
