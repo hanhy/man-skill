@@ -118,6 +118,12 @@ function filterOutsideMarkdownFences(lines: string[]): string[] {
     }
 
     const normalizedLine = visibleLine;
+    const rawLineWasBlank = rawLine.trim().length === 0;
+    const becameEmptyAfterFiltering = normalizedLine.trim().length === 0 && !rawLineWasBlank;
+    if (becameEmptyAfterFiltering) {
+      continue;
+    }
+
     const isBlankLine = normalizedLine.trim().length === 0;
     const isIndentedCodeLine = lineStartsIndentedCodeBlock(normalizedLine);
     const previousVisibleLine = visibleLines.at(-1) ?? '';

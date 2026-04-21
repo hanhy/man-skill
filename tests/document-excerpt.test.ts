@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { collectVisibleDocumentLines, findDocumentExcerpt } from '../src/core/document-excerpt.ts';
+import { collectVisibleDocumentLines, extractFrontmatterDescription, findDocumentExcerpt } from '../src/core/document-excerpt.ts';
 
 test('findDocumentExcerpt skips standalone admonition labels before prose guidance', () => {
   const excerpt = findDocumentExcerpt([
@@ -111,4 +111,58 @@ test('collectVisibleDocumentLines keeps blockquoted indented code blocks hidden 
     'Visible prose resumes after the hidden sample block.',
   ]);
   assert.equal(findDocumentExcerpt(document), 'Visible prose resumes after the hidden sample block.');
+});
+
+test('collectVisibleDocumentLines normalizes visible blockquoted setext headings while hiding matching commented and fenced templates', () => {
+  const document = [
+    '# Soul',
+    '',
+    '> Living guidance',
+    '> --------------',
+    '> Keep the active contract visible.',
+    '',
+    '> <!-- Hidden template heading',
+    '> Future guidance',
+    '> ---------------',
+    '> -->',
+    '',
+    '> ```md',
+    '> Hidden sample',
+    '> -------------',
+    '> ```',
+  ].join('\n');
+
+  assert.deepEqual(collectVisibleDocumentLines(document), [
+    '# Soul',
+    '',
+    '## Living guidance',
+    'Keep the active contract visible.',
+    '',
+    '',
+  ]);
+  assert.equal(findDocumentExcerpt(document), 'Keep the active contract visible.');
+});
+
+test('extractFrontmatterDescription prefers multiline description blocks before body scaffolds', () => {
+  const document = [
+    '---',
+    'description: >-',
+    '  Keep durable repo knowledge organized',
+    '  without leaking scaffold headings.',
+    'name: foundation-memory',
+    '---',
+    '',
+    '# Memory',
+    '',
+    '<!-- ## Hidden heading -->',
+  ].join('\n');
+
+  assert.equal(
+    extractFrontmatterDescription(document),
+    'Keep durable repo knowledge organized\nwithout leaking scaffold headings.',
+  );
+  assert.equal(
+    findDocumentExcerpt(document),
+    'Keep durable repo knowledge organized\nwithout leaking scaffold headings.',
+  );
 });
