@@ -933,13 +933,13 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
   ]
     .filter((value): value is number => Number.isFinite(value))
     .reduce((maxValue, value) => Math.max(maxValue, value), 0);
-
   if (totalProfiles === 0) {
     return null;
   }
 
   const skillsCandidateCount = skills?.candidateCount ?? 0;
-  const skillsCandidateLabel = formatCountLabel(skillsCandidateCount, 'candidate');
+  const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
+  const skillsCandidateProfileLabel = formatCountLabel(skills?.candidateProfileCount ?? 0, 'candidate profile');
 
   return [
     memory
@@ -952,7 +952,7 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
       ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
-      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
+      ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
 }

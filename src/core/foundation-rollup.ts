@@ -288,6 +288,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
     skills: {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'skills'),
+      candidateProfileCount: countCandidateProfiles(safeProfiles, 'skills'),
       candidateCount: safeProfiles.reduce(
         (total, profile) => total + (profile.foundationReadiness?.skills?.candidateCount ?? 0),
         0,

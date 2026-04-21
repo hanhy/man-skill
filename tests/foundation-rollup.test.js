@@ -186,6 +186,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
   assert.deepEqual(rollup.skills, {
     profileCount: 2,
     generatedProfileCount: 1,
+    candidateProfileCount: 2,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });
@@ -358,6 +359,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.deepEqual(summary.foundation.skills, {
     profileCount: 2,
     generatedProfileCount: 1,
+    candidateProfileCount: 2,
     candidateCount: 2,
     highlights: ['execution heuristic', 'feedback-loop heuristic'],
   });

@@ -863,6 +863,7 @@ test('PromptAssembler singularizes foundation rollup candidate and stale-profile
       skills: {
         profileCount: 1,
         generatedProfileCount: 0,
+        candidateProfileCount: 1,
         candidateCount: 1,
         highlights: ['execution heuristic'],
       },
@@ -872,7 +873,7 @@ test('PromptAssembler singularizes foundation rollup candidate and stale-profile
   assert.match(prompt, /memory: 0\/1 generated, 1 candidate profile, 1 repo-stale profile, 1 entries, highlights: Keep loops short\./);
   assert.match(prompt, /voice: 0\/1 generated, 1 candidate profile, highlights: Warm and grounded\./);
   assert.match(prompt, /soul: 0\/1 generated, 1 candidate profile, highlights: Protect the operator loop\./);
-  assert.match(prompt, /skills: 0\/1 generated, 1 candidate, highlights: execution heuristic/);
+  assert.match(prompt, /skills: 0\/1 generated, 1 candidate profile, 1 candidate, highlights: execution heuristic/);
 });
 
 test('PromptAssembler includes compact profile foundation snapshots when provided', () => {
@@ -996,6 +997,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
       skills: {
         profileCount: 2,
         generatedProfileCount: 0,
+        candidateProfileCount: 1,
         candidateCount: 1,
         highlights: ['execution heuristic'],
       },
@@ -1005,7 +1007,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /Foundation rollup:/);
   assert.match(prompt, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 3 entries/);
   assert.match(prompt, /voice: 1\/2 generated, 2 candidate profiles/);
-  assert.match(prompt, /skills: 0\/2 generated, 1 candidate, highlights: execution heuristic/);
+  assert.match(prompt, /skills: 0\/2 generated, 1 candidate profile, 1 candidate, highlights: execution heuristic/);
   assert.match(prompt, /Profiles:/);
   assert.match(prompt, /"jane-doe"/);
   assert.match(prompt, /Profile foundation snapshots:/);

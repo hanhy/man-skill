@@ -208,7 +208,7 @@ Running `node src/index.js` now exposes per-profile ingestion summaries in the t
   - freshness uses `latestMaterialId` as a tie-breaker, so same-timestamp imports still show up as stale when drafts lag behind
 - `foundationDraftSummaries.memory` generated entry counts, provenance metadata (`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`), plus latest textual summaries
 - `foundationDraftSummaries.voice|soul|skills` top markdown bullet highlights from generated drafts; when a markdown draft exists but is structurally thin, those summaries also surface `readySectionCount`, `totalSectionCount`, and `missingSections` so stale profile snapshots can call out exact section gaps
-- top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, stale draft counts, and high-signal highlights across all imported target profiles
+- top-level `foundation.memory|voice|soul|skills` repo rollups that aggregate generated coverage, candidate-profile coverage, stale draft counts, and high-signal highlights across all imported target profiles
 - top-level `foundation.maintenance` queue data (`readyProfileCount`, `refreshProfileCount`, `incompleteProfileCount`, `refreshAllCommand`, `staleRefreshCommand`, `helperCommands`, `queuedProfiles`) so stale or incomplete target profiles can be surfaced directly in the prompt preview before the detailed rollup
   - the same maintenance rollup now also exposes a canonical next-refresh target (`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedDraftGapSummary`) so the work loop and prompt preview can point at one stable per-profile refresh entry without re-deriving it from `queuedProfiles[0]`
   - each queued profile now includes its own `refreshCommand`, which keeps the user-facing ingestion/update entrance operational instead of requiring operators to reconstruct the right CLI call by hand
@@ -295,5 +295,5 @@ Running `node src/index.js` will also expose these generated draft paths under `
 
 ## Current limitation
 
-The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup, including memory candidate coverage when some profiles still need draft refreshes.
+The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup, including memory and skills candidate-profile coverage when some profiles still need draft refreshes.
 They are still heuristic draft artifacts rather than a fully learned memory store, reusable skill schema, or production channel/provider runtime.
