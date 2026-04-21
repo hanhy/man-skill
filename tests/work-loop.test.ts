@@ -2288,6 +2288,80 @@ test('buildSummary work loop marks delivery blocked when the rollout leader is a
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
 });
 
+test('buildSummary work loop switches blocked channel rollout to the repo-local env populate command once .env exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), 'SLACK_BOT_TOKEN=\nOPENAI_API_KEY=\n');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
+
+  assert.equal(summary.workLoop.currentPriority.id, 'channels');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(workLoopBlock, /paths: \.env/);
+  assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
+});
+
+test('buildSummary work loop switches blocked provider rollout to the repo-local env populate command once channels are active and .env exists', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env.example');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'OPENAI_API_KEY=',
+    '',
+  ].join('\n'));
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+    'refresh-foundation': true,
+  });
+
+  const summary = buildSummary(rootDir);
+  const workLoopBlock = summary.promptPreview.match(/Work loop:\n([\s\S]*?)\nCore foundation:/)?.[1] ?? '';
+
+  assert.equal(summary.workLoop.currentPriority.id, 'providers');
+  assert.equal(summary.workLoop.currentPriority.status, 'blocked');
+  assert.equal(
+    summary.workLoop.currentPriority.command,
+    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+  );
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
+  assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(workLoopBlock, /paths: \.env/);
+  assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
+});
+
 test('buildSummary work loop stays on the leading ready priority once every priority is ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -44,6 +44,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(architectureDoc, /bootstrap that means `paths` keeps both `\.env\.example` and `\.env` visible when `cp \.env\.example \.env` is the active delivery step/i);
+  assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
   assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
@@ -61,6 +62,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command and surface both `\.env\.example` and `\.env` when the bootstrap step writes the repo-local env file/);
+  assert.match(ingestionDoc, /once `\.env` already exists, the blocked delivery step narrows to the repo-local `touch '\.env' && \.{3}` populate helper so `paths` drops back to `\.env`/i);
   assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
