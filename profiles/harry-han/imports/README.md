@@ -44,6 +44,8 @@ Starter entry examples:
 
 Recommended helper commands:
 - refresh this intake scaffold: node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
+- after editing, replay the profile-local intake without refreshing drafts: node src/index.js import intake --person 'harry-han'
+- after editing, replay the profile-local intake and refresh drafts: node src/index.js import intake --person 'harry-han' --refresh-foundation
 - edit target-profile metadata without refreshing drafts: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
 - sync target-profile metadata and refresh drafts: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation
 

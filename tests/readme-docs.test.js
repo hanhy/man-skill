@@ -139,6 +139,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest and `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay/i);
   assert.match(profilesDoc, /per-profile command palette still stays actionable in that starter-template state/i);
   assert.match(profilesDoc, /`refresh-intake` via `node src\/index\.js update intake --person <id> \.\.\.`/i);
+  assert.match(profilesDoc, /`after-editing import` via `node src\/index\.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet/i);
+  assert.match(profilesDoc, /`after-editing import\+refresh` via `node src\/index\.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory \/ voice \/ soul \/ skills drafts/i);
   assert.match(profilesDoc, /`importManifestCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
   assert.match(profilesDoc, /`followUpImportIntakeCommand` for the `import intake --person <id> --refresh-foundation` replay that becomes runnable after editing the starter manifest/i);
@@ -157,6 +159,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /"text": "If we can learn it in one run today, that beats polishing a big plan all week\."/);
   assert.match(harryIntakeReadme, /"file": "images\/chat\.png"/);
   assert.match(harryIntakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(harryIntakeReadme, /after editing, replay the profile-local intake without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(harryIntakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(harryIntakeReadme, /edit target-profile metadata without refreshing drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(harryIntakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);

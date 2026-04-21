@@ -722,6 +722,7 @@ function buildIntakeReadme({
   starterManifestPath,
   sampleTextPath,
   importManifestCommand,
+  importAfterEditingWithoutRefreshCommand,
   importAfterEditingCommand,
   importCommands,
   updateIntakeCommand,
@@ -755,6 +756,12 @@ function buildIntakeReadme({
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
+    !hasReadyProfileLocalReplay && importAfterEditingWithoutRefreshCommand
+      ? `- after editing, replay the profile-local intake without refreshing drafts: ${importAfterEditingWithoutRefreshCommand}`
+      : null,
+    !hasReadyProfileLocalReplay && importAfterEditingCommand
+      ? `- after editing, replay the profile-local intake and refresh drafts: ${importAfterEditingCommand}`
+      : null,
     importIntakeWithoutRefreshCommand
       ? `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`
       : null,
@@ -933,6 +940,7 @@ export class MaterialIngestion {
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
+    const importAfterEditingWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
     const importAfterEditingCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
     fs.writeFileSync(
       this.resolve(intakePaths.intakeReadmePath),
@@ -942,6 +950,7 @@ export class MaterialIngestion {
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
         sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
+        importAfterEditingWithoutRefreshCommand,
         importAfterEditingCommand,
         importCommands,
         updateIntakeCommand,
