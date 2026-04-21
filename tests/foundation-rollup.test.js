@@ -1164,6 +1164,8 @@ test('buildSummary keeps blockquoted structured skill docs thin until all requir
   assert.equal(summary.foundation.core.skills.thinCount, 1);
   assert.deepEqual(summary.foundation.core.skills.thinSample, ['delivery']);
   assert.deepEqual(summary.foundation.core.skills.thinPaths, ['skills/delivery/SKILL.md']);
+  assert.deepEqual(summary.foundation.core.skills.thinReadySectionCounts, { delivery: 1 });
+  assert.deepEqual(summary.foundation.core.skills.thinTotalSectionCounts, { delivery: 2 });
   assert.equal(summary.foundation.core.maintenance.queuedAreas.length, 1);
   assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.area, 'skills');
   assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.status, 'thin');
@@ -1174,6 +1176,12 @@ test('buildSummary keeps blockquoted structured skill docs thin until all requir
   });
   assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
     'skills/delivery/SKILL.md': ['what-this-skill-is-for'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySectionCounts, {
+    'skills/delivery/SKILL.md': 1,
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinTotalSectionCounts, {
+    'skills/delivery/SKILL.md': 2,
   });
   assert.match(summary.foundation.core.maintenance.queuedAreas[0]?.command ?? '', /skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); thin docs: delivery sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/delivery\/SKILL\.md/);
@@ -1834,6 +1842,12 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     thinReadySections: {
       delivery: [],
     },
+    thinReadySectionCounts: {
+      delivery: 0,
+    },
+    thinTotalSectionCounts: {
+      delivery: 2,
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -1875,6 +1889,12 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
         },
         thinReadySections: {
           'skills/delivery/SKILL.md': [],
+        },
+        thinReadySectionCounts: {
+          'skills/delivery/SKILL.md': 0,
+        },
+        thinTotalSectionCounts: {
+          'skills/delivery/SKILL.md': 2,
         },
         command: skillsCommand,
       },
@@ -2010,6 +2030,12 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     thinReadySections: {
       slack: [],
     },
+    thinReadySectionCounts: {
+      slack: 0,
+    },
+    thinTotalSectionCounts: {
+      slack: 2,
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -2051,6 +2077,12 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
         },
         thinReadySections: {
           'skills/slack/SKILL.md': [],
+        },
+        thinReadySectionCounts: {
+          'skills/slack/SKILL.md': 0,
+        },
+        thinTotalSectionCounts: {
+          'skills/slack/SKILL.md': 2,
         },
         command: skillsCommand,
       },
