@@ -90,8 +90,8 @@ The summary surfaces keep that contract machine-readable:
 - `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready
 - `foundation.core.memory.canonicalShortTermBucket` and `foundation.core.memory.legacyShortTermAliases` mirror the same daily-vs-legacy mapping inside the repo-core foundation contract
 - `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide
-- `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract
-- `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract
+- `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract, while optional `headingAliases` makes legacy root headings like `Core values` / `Decision rules` visible when they still map onto the canonical OpenClaw sections
+- `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract, while optional `headingAliases` makes fallback headings like `Voice should capture` / `Current default for ...` visible when they still back the canonical voice sections
 - the top-level memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers even though `daily/` is the checked-in path
 - the `MemoryStore` runtime keeps `shortTerm` as a compatibility alias of `daily`, so either property can be reassigned without drifting into two separate short-term buckets
 - `memorySummary.canonicalShortTermBucket` and `memorySummary.legacyShortTermAliases` make that daily-vs-legacy mapping explicit for downstream tooling instead of forcing callers to infer it from field names alone

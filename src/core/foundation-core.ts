@@ -632,7 +632,39 @@ export interface CoreDocumentFoundationSummary {
   totalSectionCount: number;
   readySections: string[];
   missingSections: string[];
+  headingAliases?: string[];
 }
+
+type HeadingAliasDefinition = {
+  label: string;
+  matches: (headingText: string) => boolean;
+};
+
+const SOUL_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'core-values->core-truths',
+    matches: (headingText) => headingText === 'core values',
+  },
+  {
+    label: 'decision-rules->continuity',
+    matches: (headingText) => headingText === 'decision rules',
+  },
+];
+
+const VOICE_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'voice-should-capture->signature-moves',
+    matches: (headingText) => headingText === 'voice should capture',
+  },
+  {
+    label: 'voice-should-not-capture->avoid',
+    matches: (headingText) => headingText === 'voice should not capture',
+  },
+  {
+    label: 'current-default->language-hints',
+    matches: (headingText) => isCurrentDefaultVoiceHeading(headingText),
+  },
+];
 
 function normalizeSetextHeadingLines(lines: string[]): string[] {
   const normalizedLines: string[] = [];
@@ -781,10 +813,41 @@ function summarizeStructuredSections(
   return { readySections, missingSections };
 }
 
+function collectHeadingAliases(
+  document: string | null | undefined,
+  aliasDefinitions: HeadingAliasDefinition[],
+): string[] {
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
+  if (!isNonEmptyString(visibleDocument) || aliasDefinitions.length === 0) {
+    return [];
+  }
+
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+
+  visibleDocument.split('\n').forEach((line) => {
+    const heading = parseMarkdownHeading(line);
+    if (!heading || heading.level < 2) {
+      return;
+    }
+
+    const matchedAlias = aliasDefinitions.find((definition) => definition.matches(heading.text));
+    if (!matchedAlias || seen.has(matchedAlias.label)) {
+      return;
+    }
+
+    seen.add(matchedAlias.label);
+    aliases.push(matchedAlias.label);
+  });
+
+  return aliases;
+}
+
 function buildSoulDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
   const profile = SoulProfile.fromDocument(document ?? '');
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
+  const headingAliases = collectHeadingAliases(document, SOUL_HEADING_ALIAS_DEFINITIONS);
   const readySections = structured
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
@@ -820,6 +883,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     totalSectionCount: 4,
     readySections,
     missingSections,
+    ...(headingAliases.length > 0 ? { headingAliases } : {}),
   };
 }
 
@@ -834,6 +898,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'voice should capture',
     'voice should not capture',
   ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
+  const headingAliases = collectHeadingAliases(document, VOICE_HEADING_ALIAS_DEFINITIONS);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,
@@ -869,6 +934,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     totalSectionCount: 4,
     readySections,
     missingSections,
+    ...(headingAliases.length > 0 ? { headingAliases } : {}),
   };
 }
 
