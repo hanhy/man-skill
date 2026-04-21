@@ -201,6 +201,44 @@ test('buildIngestionSummary keeps starter-only metadata intake templates off the
   assert.deepEqual(summary.recommendedPaths, []);
 });
 
+test('buildIngestionSummary shell-quotes profile-local starter sample commands when person ids contain spaces and apostrophes', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: "o'brien lane",
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: "O'Brien Lane",
+        summary: 'Starter intake is ready to import.',
+      },
+      intake: {
+        ready: true,
+        completion: 'ready',
+        importsDir: "profiles/o'brien lane/imports",
+        intakeReadmePath: "profiles/o'brien lane/imports/README.md",
+        starterManifestPath: "profiles/o'brien lane/imports/materials.template.json",
+        sampleTextPath: "profiles/o'brien lane/imports/sample note.txt",
+        missingPaths: [],
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+  ]);
+
+  assert.equal(summary.recommendedAction, "import source materials for O'Brien Lane (o'brien lane)");
+  assert.equal(
+    summary.recommendedCommand,
+    "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'profiles/o'\"'\"'brien lane/imports/sample note.txt' --refresh-foundation",
+  );
+  assert.equal(
+    summary.metadataProfileCommands[0]?.importMaterialCommand,
+    "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'profiles/o'\"'\"'brien lane/imports/sample note.txt' --refresh-foundation",
+  );
+});
+
 test('buildIngestionSummary shell-quotes sample import commands when person ids contain spaces and apostrophes', () => {
   const summary = buildTsIngestionSummary([
     {

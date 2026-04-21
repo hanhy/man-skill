@@ -593,7 +593,7 @@ function buildProfileCommands(profile, options: any = {}) {
     ? intakeImportManifestCommand
     : null;
   const profileStarterTextImportCommand = profileSampleTextPath
-    ? `node src/index.js import text --person ${profile.id} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
+    ? `node src/index.js import text --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
   const defaultImportCommand = imported
     ? null
