@@ -884,12 +884,16 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? ` (${thinAreaCount} thin, ${missingAreaCount} missing)`
     : '';
   const hasQueuedCoreFoundation = queuedAreas.length > 0;
-  const coreNextAction = recommendedCoreAction ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldLabel : (queuedArea?.action ?? null));
-  const coreCommand = recommendedCoreCommand ?? (useBulkCoreScaffoldCommand ? bulkCoreScaffoldCommand : queuedAreaCommand);
-  const corePaths = recommendedCorePaths.length > 0
-    ? recommendedCorePaths
-    : (useBulkCoreScaffoldCommand
-      ? bulkCoreScaffoldPaths
+  const coreNextAction = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldLabel
+    : (recommendedCoreAction ?? queuedArea?.action ?? null);
+  const coreCommand = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldCommand
+    : (recommendedCoreCommand ?? queuedAreaCommand);
+  const corePaths = useBulkCoreScaffoldCommand
+    ? bulkCoreScaffoldPaths
+    : (recommendedCorePaths.length > 0
+      ? recommendedCorePaths
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
   const profileNextAction = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand ? bulkRefreshLabel : (recommendedProfileAction ?? buildFoundationRefreshLabel(recommendedProfile, queuedProfileLabel)))
@@ -1070,6 +1074,12 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
+  const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
+    ? ingestionSummary.recommendedEditPath
+    : null;
+  const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
+    ? ingestionSummary.recommendedFollowUpCommand
+    : null;
   const recommendedPaths = Array.isArray(ingestionSummary?.recommendedPaths)
     ? ingestionSummary.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1094,6 +1104,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
+    editPath: recommendedEditPath,
+    followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,
   };
 }
@@ -1373,6 +1385,33 @@ function assertExactlyOneBatchSelector(options: ParsedOptions, selectors: string
   }
 }
 
+function assertAllowedOptions(
+  options: ParsedOptions,
+  allowedOptions: readonly string[],
+  command: 'import' | 'update',
+  subcommand: string,
+) {
+  const unsupportedOption = Object.keys(options).find((key) => !allowedOptions.includes(key));
+  if (unsupportedOption) {
+    throw new Error(`Unsupported option --${unsupportedOption} for ${command} ${subcommand}`);
+  }
+}
+
+const supportedImportSubcommands = ['sample', 'intake', 'manifest', 'text', 'message', 'talk', 'screenshot'] as const;
+const supportedUpdateSubcommands = ['profile', 'intake', 'foundation'] as const;
+
+function buildCommandFamilyUsageHint(command: 'import' | 'update'): string | null {
+  const familyLines = buildCliUsageLines()
+    .filter((line) => line.startsWith(`  node src/index.js ${command} `))
+    .map((line) => line.trim());
+
+  if (familyLines.length === 0) {
+    return null;
+  }
+
+  return ['Usage:', ...familyLines].join('\n');
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1406,6 +1445,25 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
       : {}),
     results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
   });
+
+  if (!subcommand) {
+    throw new Error('Missing import type');
+  }
+
+  if (!supportedImportSubcommands.includes(subcommand as (typeof supportedImportSubcommands)[number])) {
+    throw new Error(`Unsupported import type: ${subcommand}`);
+  }
+
+  const allowedImportOptions: Record<(typeof supportedImportSubcommands)[number], readonly string[]> = {
+    sample: ['file'],
+    intake: ['person', 'stale', 'imported', 'all', 'refresh-foundation'],
+    manifest: ['file', 'refresh-foundation'],
+    text: ['person', 'file', 'notes', 'refresh-foundation'],
+    message: ['person', 'text', 'notes', 'refresh-foundation'],
+    talk: ['person', 'text', 'notes', 'refresh-foundation'],
+    screenshot: ['person', 'file', 'notes', 'refresh-foundation'],
+  };
+  assertAllowedOptions(options, allowedImportOptions[subcommand as (typeof supportedImportSubcommands)[number]], 'import', subcommand);
 
   if (subcommand === 'manifest') {
     const manifestFile = readOptionalStringOption(options, 'file');
@@ -1520,6 +1578,21 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   const personId = readOptionalStringOption(options, 'person');
   const refreshFoundation = Boolean(options['refresh-foundation']);
 
+  if (!subcommand) {
+    throw new Error('Missing update type');
+  }
+
+  if (!supportedUpdateSubcommands.includes(subcommand as (typeof supportedUpdateSubcommands)[number])) {
+    throw new Error(`Unsupported update type: ${subcommand}`);
+  }
+
+  const allowedUpdateOptions: Record<(typeof supportedUpdateSubcommands)[number], readonly string[]> = {
+    profile: ['person', 'display-name', 'summary', 'refresh-foundation'],
+    intake: ['person', 'display-name', 'summary', 'stale', 'imported', 'all', 'refresh-foundation'],
+    foundation: ['person', 'stale', 'all'],
+  };
+  assertAllowedOptions(options, allowedUpdateOptions[subcommand as (typeof supportedUpdateSubcommands)[number]], 'update', subcommand);
+
   const maybeAttachFoundationRefresh = (result: any) => {
     if (!refreshFoundation) {
       return result;
@@ -1573,6 +1646,10 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
 
   if (subcommand === 'intake') {
     assertExactlyOneBatchSelector(options, ['person', 'stale', 'imported', 'all'], 'update intake requires exactly one of --person, --stale, --imported, or --all');
+    const intakeModeAllowedOptions = typeof options.person === 'string' && options.person.trim().length > 0
+      ? ['person', 'display-name', 'summary', 'refresh-foundation']
+      : ['stale', 'imported', 'all', 'refresh-foundation'];
+    assertAllowedOptions(options, intakeModeAllowedOptions, 'update', subcommand);
 
     if (options.all) {
       return maybeAttachFoundationRefresh(ingestion.scaffoldAllProfileIntakes());
@@ -1981,7 +2058,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' || command === 'update') {
-    return buildCliUsageLines().find((line) => line.startsWith(`  node src/index.js ${command} `))?.trim() ?? null;
+    return buildCommandFamilyUsageHint(command);
   }
 
   return null;

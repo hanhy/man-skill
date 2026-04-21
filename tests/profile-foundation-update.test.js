@@ -162,7 +162,7 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
 
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
-  assert.match(intakeReadme, /Import after editing: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut without refreshing drafts/);
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut and refresh drafts/);
   assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
@@ -481,8 +481,8 @@ test('CLI import intake --person reruns a ready profile-local starter manifest f
   assert.equal(secondResult.entryCount, 0);
   assert.equal(secondResult.manifestEntryCount, 1);
   assert.equal(secondResult.skippedEntryCount, 1);
-  assert.deepEqual(secondResult.profileIds, []);
-  assert.equal(secondResult.foundationRefresh.profileCount, 0);
+  assert.deepEqual(secondResult.profileIds, ['imported-already']);
+  assert.equal(secondResult.foundationRefresh.profileCount, 1);
 
   const materialRecords = fs
     .readdirSync(path.join(rootDir, 'profiles', 'imported-already', 'materials'))
@@ -1091,6 +1091,110 @@ test('CLI import command errors keep usage hints aligned with optional refresh a
         assert.match(error.stderr, expectedError);
         assert.match(error.stderr, expectedUsage);
         assert.doesNotMatch(error.stderr, /at runImportCommand/);
+        return true;
+      },
+    );
+  });
+});
+
+test('CLI unsupported import and update subcommands fail with family-level usage hints', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'csv'],
+      expectedError: /Error: Unsupported import type: csv/,
+      expectedUsageLines: [
+        /Usage:/,
+        /node src\/index\.js import sample \[--file <manifest\.json>\]/,
+        /node src\/index\.js import intake --person <person-id> \[--refresh-foundation\]/,
+        /node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+        /node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+      ],
+      stackTracePattern: /at runImportCommand/,
+    },
+    {
+      args: ['update', 'csv'],
+      expectedError: /Error: Unsupported update type: csv/,
+      expectedUsageLines: [
+        /Usage:/,
+        /node src\/index\.js update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+        /node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+        /node src\/index\.js update intake --stale \[--refresh-foundation\]/,
+        /node src\/index\.js update foundation --all/,
+      ],
+      stackTracePattern: /at runUpdateCommand/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsageLines, stackTracePattern }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        expectedUsageLines.forEach((pattern) => {
+          assert.match(error.stderr, pattern);
+        });
+        assert.doesNotMatch(error.stderr, stackTracePattern);
+        return true;
+      },
+    );
+  });
+});
+
+test('CLI import and update subcommands reject unsupported option combinations before acting', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'text', '--person', 'harry-han', '--file', 'sample.txt', '--all'],
+      expectedError: /Error: Unsupported option --all for import text/,
+      expectedUsage: /Usage: node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['import', 'text', '--person', 'harry-han', '--file', 'sample.txt', '--refresh-foundtion'],
+      expectedError: /Error: Unsupported option --refresh-foundtion for import text/,
+      expectedUsage: /Usage: node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'profile', '--person', 'harry-han', '--display-name', 'Harry Han', '--stale'],
+      expectedError: /Error: Unsupported option --stale for update profile/,
+      expectedUsage: /Usage: node src\/index\.js update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--stale', '--summary', 'ignored'],
+      expectedError: /Error: Unsupported option --summary for update intake/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'intake', '--imported', '--display-name', 'Ignored'],
+      expectedError: /Error: Unsupported option --display-name for update intake/,
+      expectedUsage: /Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/,
+    },
+    {
+      args: ['update', 'foundation', '--person', 'harry-han', '--notes', 'test'],
+      expectedError: /Error: Unsupported option --notes for update foundation/,
+      expectedUsage: /Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsage }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, expectedUsage);
+        assert.doesNotMatch(error.stderr, /at (runImportCommand|runUpdateCommand)/);
         return true;
       },
     );
@@ -1975,7 +2079,7 @@ test('CLI update intake preserves custom README notes on rerun while refreshing 
 
   const rerunReadme = fs.readFileSync(readmePath, 'utf8');
   assert.match(rerunReadme, /# Intake scaffold for Harry Forward/);
-  assert.match(rerunReadme, /node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(rerunReadme, /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(rerunReadme, /- Keep pulling from the founder memo folder\./);
   assert.match(rerunReadme, /- Weekly voice notes live in iCloud Drive\./);
 });

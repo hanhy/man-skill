@@ -94,6 +94,12 @@ function buildMemoryMaintenanceAction({
   return actions.join(' | ');
 }
 
+const MEMORY_BUCKET_SEED_PATHS: Record<string, string> = {
+  daily: 'memory/daily/$(date +%F).md',
+  'long-term': 'memory/long-term/notes.md',
+  scratch: 'memory/scratch/draft.md',
+};
+
 function buildMemoryMaintenancePaths({
   hasRootDocument,
   rootMissingSections,
@@ -110,7 +116,7 @@ function buildMemoryMaintenancePaths({
   }
 
   emptyBuckets
-    .map((bucket) => `memory/${bucket}`)
+    .map((bucket) => MEMORY_BUCKET_SEED_PATHS[bucket] ?? `memory/${bucket}`)
     .forEach((bucketPath) => {
       if (!paths.includes(bucketPath)) {
         paths.push(bucketPath);
@@ -421,6 +427,12 @@ function buildCoreFoundationMaintenance({
   const thinSkillReadySectionsByPath = Object.fromEntries(
     thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinReadySections?.[skillName] ?? []]),
   );
+  const thinSkillReadySectionCountsByPath = Object.fromEntries(
+    thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinReadySectionCounts?.[skillName] ?? 0]),
+  );
+  const thinSkillTotalSectionCountsByPath = Object.fromEntries(
+    thinSkillNames.map((skillName) => [`skills/${skillName}/SKILL.md`, skills.thinTotalSectionCounts?.[skillName] ?? 0]),
+  );
   const soulAction = buildDocumentMaintenanceAction(soul);
   const voiceAction = buildDocumentMaintenanceAction(voice);
 
@@ -471,6 +483,8 @@ function buildCoreFoundationMaintenance({
       ...(thinSkillPaths.length > 0 || thinRootPaths.length > 0 ? { thinPaths: [...thinRootPaths, ...thinSkillPaths] } : {}),
       ...(Object.keys(thinSkillMissingSectionsByPath).length > 0 ? { thinMissingSections: thinSkillMissingSectionsByPath } : {}),
       ...(Object.keys(thinSkillReadySectionsByPath).length > 0 ? { thinReadySections: thinSkillReadySectionsByPath } : {}),
+      ...(Object.keys(thinSkillReadySectionCountsByPath).length > 0 ? { thinReadySectionCounts: thinSkillReadySectionCountsByPath } : {}),
+      ...(Object.keys(thinSkillTotalSectionCountsByPath).length > 0 ? { thinTotalSectionCounts: thinSkillTotalSectionCountsByPath } : {}),
       ...(rootThinMissingSections.length > 0 ? { rootThinMissingSections: rootThinMissingSections } : {}),
       ...(rootThinReadySections.length > 0 ? { rootThinReadySections: rootThinReadySections } : {}),
       ...((rootThinReadySections.length > 0 || rootThinMissingSections.length > 0)
@@ -539,61 +553,10 @@ function buildCoreFoundationMaintenance({
   const recommendedArea = recommendedQueueItem?.area ?? null;
   const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
   const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
-  const recommendedPaths = queue.length > 1
-    ? Array.from(new Set(queue.flatMap((area) => area.paths ?? [])))
-    : [...(queue[0]?.paths ?? [])];
+  const recommendedPaths = [...(recommendedQueueItem?.paths ?? [])];
   const queuedStatuses = new Set(queue.map((area) => area.status));
-  const recommendedCommand = (() => {
-    if (queue.length === 0) {
-      return null;
-    }
-
-    if (queue.length === 1) {
-      return queue[0]?.command ?? null;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('missing') && helperCommands.scaffoldMissing) {
-      return helperCommands.scaffoldMissing;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('thin') && helperCommands.scaffoldThin) {
-      return helperCommands.scaffoldThin;
-    }
-
-    return helperCommands.scaffoldAll;
-  })();
-  const recommendedAction = (() => {
-    const firstAction = queue[0]?.action ?? null;
-    if (queue.length === 0) {
-      return null;
-    }
-
-    if (queue.length === 1) {
-      return firstAction;
-    }
-
-    if (!firstAction) {
-      if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
-        return 'scaffold missing core foundation areas';
-      }
-
-      if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
-        return 'repair thin core foundation areas';
-      }
-
-      return 'scaffold missing or thin core foundation areas';
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
-      return `scaffold missing core foundation areas — starting with ${firstAction}`;
-    }
-
-    if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
-      return `repair thin core foundation areas — starting with ${firstAction}`;
-    }
-
-    return `scaffold missing or thin core foundation areas — starting with ${firstAction}`;
-  })();
+  const recommendedCommand = recommendedQueueItem?.command ?? null;
+  const recommendedAction = recommendedQueueItem?.action ?? null;
 
   return {
     areaCount: areas.length,
@@ -619,6 +582,8 @@ export interface CoreMemoryFoundationSummary {
   rootReadySections?: string[];
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
+  canonicalShortTermBucket: 'daily';
+  legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -651,6 +616,8 @@ export interface CoreSkillsFoundationSummary {
   thinPaths: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
+  thinReadySectionCounts?: Record<string, number>;
+  thinTotalSectionCounts?: Record<string, number>;
 }
 
 export interface CoreDocumentFoundationSummary {
@@ -665,7 +632,39 @@ export interface CoreDocumentFoundationSummary {
   totalSectionCount: number;
   readySections: string[];
   missingSections: string[];
+  headingAliases?: string[];
 }
+
+type HeadingAliasDefinition = {
+  label: string;
+  matches: (headingText: string) => boolean;
+};
+
+const SOUL_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'core-values->core-truths',
+    matches: (headingText) => headingText === 'core values',
+  },
+  {
+    label: 'decision-rules->continuity',
+    matches: (headingText) => headingText === 'decision rules',
+  },
+];
+
+const VOICE_HEADING_ALIAS_DEFINITIONS: HeadingAliasDefinition[] = [
+  {
+    label: 'voice-should-capture->signature-moves',
+    matches: (headingText) => headingText === 'voice should capture',
+  },
+  {
+    label: 'voice-should-not-capture->avoid',
+    matches: (headingText) => headingText === 'voice should not capture',
+  },
+  {
+    label: 'current-default->language-hints',
+    matches: (headingText) => isCurrentDefaultVoiceHeading(headingText),
+  },
+];
 
 function normalizeSetextHeadingLines(lines: string[]): string[] {
   const normalizedLines: string[] = [];
@@ -814,10 +813,41 @@ function summarizeStructuredSections(
   return { readySections, missingSections };
 }
 
+function collectHeadingAliases(
+  document: string | null | undefined,
+  aliasDefinitions: HeadingAliasDefinition[],
+): string[] {
+  const visibleDocument = stripNonVisibleMarkdownContent(document);
+  if (!isNonEmptyString(visibleDocument) || aliasDefinitions.length === 0) {
+    return [];
+  }
+
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+
+  visibleDocument.split('\n').forEach((line) => {
+    const heading = parseMarkdownHeading(line);
+    if (!heading || heading.level < 2) {
+      return;
+    }
+
+    const matchedAlias = aliasDefinitions.find((definition) => definition.matches(heading.text));
+    if (!matchedAlias || seen.has(matchedAlias.label)) {
+      return;
+    }
+
+    seen.add(matchedAlias.label);
+    aliases.push(matchedAlias.label);
+  });
+
+  return aliases;
+}
+
 function buildSoulDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
   const profile = SoulProfile.fromDocument(document ?? '');
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
+  const headingAliases = collectHeadingAliases(document, SOUL_HEADING_ALIAS_DEFINITIONS);
   const readySections = structured
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
@@ -853,6 +883,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     totalSectionCount: 4,
     readySections,
     missingSections,
+    ...(headingAliases.length > 0 ? { headingAliases } : {}),
   };
 }
 
@@ -867,6 +898,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'voice should capture',
     'voice should not capture',
   ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
+  const headingAliases = collectHeadingAliases(document, VOICE_HEADING_ALIAS_DEFINITIONS);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,
@@ -902,6 +934,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     totalSectionCount: 4,
     readySections,
     missingSections,
+    ...(headingAliases.length > 0 ? { headingAliases } : {}),
   };
 }
 
@@ -927,6 +960,8 @@ export interface CoreFoundationMaintenanceQueueItem {
   rootThinTotalSectionCount?: number;
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
+  thinReadySectionCounts?: Record<string, number>;
+  thinTotalSectionCounts?: Record<string, number>;
   command?: string | null;
 }
 
@@ -1020,6 +1055,23 @@ export function buildCoreFoundationSummary({
     : [];
   const thinSkillMissingSections = skillInventory?.thinMissingSections ?? {};
   const thinSkillReadySections = skillInventory?.thinReadySections ?? {};
+  const thinSkillReadySectionCounts = Object.fromEntries(
+    thinSkillNames.map((skillName) => [
+      skillName,
+      Array.isArray(thinSkillReadySections?.[skillName])
+        ? thinSkillReadySections[skillName].filter((value): value is string => isNonEmptyString(value)).length
+        : 0,
+    ]),
+  );
+  const thinSkillTotalSectionCounts = Object.fromEntries(
+    thinSkillNames.map((skillName) => {
+      const readyCount = thinSkillReadySectionCounts[skillName] ?? 0;
+      const missingCount = Array.isArray(thinSkillMissingSections?.[skillName])
+        ? thinSkillMissingSections[skillName].filter((value): value is string => isNonEmptyString(value)).length
+        : 0;
+      return [skillName, readyCount + missingCount];
+    }),
+  );
   const undocumentedSkillNames = Array.from(new Set(missingSkillNames));
   const memoryRootSections = isNonEmptyString(memoryIndex?.root)
     ? summarizeStructuredSections(memoryIndex?.root, [
@@ -1038,6 +1090,8 @@ export function buildCoreFoundationSummary({
       rootReadySectionCount: memoryRootSections.readySections.length,
       rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
+    canonicalShortTermBucket: 'daily' as const,
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,
@@ -1100,6 +1154,8 @@ export function buildCoreFoundationSummary({
             : [],
         ]),
       ),
+      thinReadySectionCounts: thinSkillReadySectionCounts,
+      thinTotalSectionCounts: thinSkillTotalSectionCounts,
     } : {}),
   };
   const soul = buildSoulDocumentSummary(soulDocument);

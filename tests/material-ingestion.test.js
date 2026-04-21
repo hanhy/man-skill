@@ -681,7 +681,7 @@ test('importManifest profile summaries keep current manifest counts while surfac
   ]);
 });
 
-test('importManifest can refresh foundation drafts before returning profile summaries', () => {
+test('importManifest returns profile command summaries that stay aligned with manifest imports and profile metadata', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -737,6 +737,47 @@ test('importManifest can refresh foundation drafts before returning profile summ
       },
     },
   ]);
+});
+
+test('importManifest refreshes foundation drafts for unchanged replayed manifests when refreshFoundation is true', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        summary: 'Direct operator with a bias for momentum.',
+        entries: [
+          {
+            type: 'message',
+            text: 'Ship the thin slice first.',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath, refreshFoundation: true });
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath, refreshFoundation: true });
+
+  assert.equal(firstResult.foundationRefresh.profileCount, 1);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.results, []);
+  assert.deepEqual(secondResult.profileIds, ['harry-han']);
+  assert.equal(secondResult.foundationRefresh.profileCount, 1);
+  assert.equal(secondResult.foundationRefresh.results[0].personId, 'harry-han');
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(secondResult.profileSummaries[0].materialCount, 0);
+  assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+  assert.equal(secondResult.profileSummaries[0].needsRefresh, false);
+  assert.deepEqual(secondResult.profileSummaries[0].missingDrafts, []);
 });
 
 test('updateProfile stores display name and summary metadata for a target person', () => {
@@ -1204,7 +1245,7 @@ test('buildSummary prompt preview keeps starter-only metadata intake templates o
 
   assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, null);
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 1 starter template, 0 partial, 0 missing/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {

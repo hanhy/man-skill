@@ -17,6 +17,8 @@ function quotePaths(paths: string[]): string {
 }
 
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
+const LONG_TERM_MEMORY_SEED_PATH = 'memory/long-term/notes.md';
+const SCRATCH_MEMORY_SEED_PATH = 'memory/scratch/draft.md';
 const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n';
 const MEMORY_README_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
 const MEMORY_README_SECTIONS = [
@@ -191,9 +193,15 @@ function buildMemorySeedCommand(paths: string[]): string | null {
   const normalizedPaths = Array.from(new Set(paths));
   const needsRootDocument = normalizedPaths.includes('memory/README.md');
   const bucketSeedFiles = [
-    normalizedPaths.includes('memory/daily') ? 'memory/daily/$(date +%F).md' : null,
-    normalizedPaths.includes('memory/long-term') ? 'memory/long-term/notes.md' : null,
-    normalizedPaths.includes('memory/scratch') ? 'memory/scratch/draft.md' : null,
+    normalizedPaths.some((value) => value === 'memory/daily' || value === DAILY_MEMORY_SEED_PATH)
+      ? DAILY_MEMORY_SEED_PATH
+      : null,
+    normalizedPaths.some((value) => value === 'memory/long-term' || value === LONG_TERM_MEMORY_SEED_PATH)
+      ? LONG_TERM_MEMORY_SEED_PATH
+      : null,
+    normalizedPaths.some((value) => value === 'memory/scratch' || value === SCRATCH_MEMORY_SEED_PATH)
+      ? SCRATCH_MEMORY_SEED_PATH
+      : null,
   ].filter((value): value is string => typeof value === 'string');
 
   if (!needsRootDocument && bucketSeedFiles.length === 0) {

@@ -696,6 +696,7 @@ function buildIntakeReadme({
   starterManifestPath,
   sampleTextPath,
   importManifestCommand,
+  importAfterEditingCommand,
   importCommands,
   updateIntakeCommand,
   importIntakeWithoutRefreshCommand,
@@ -713,7 +714,7 @@ function buildIntakeReadme({
     '',
     `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
-    `- Import after editing: ${importManifestCommand}`,
+    `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
@@ -899,6 +900,7 @@ export class MaterialIngestion {
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
+    const importAfterEditingCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
     fs.writeFileSync(
       this.resolve(intakePaths.intakeReadmePath),
       buildIntakeReadme({
@@ -907,6 +909,7 @@ export class MaterialIngestion {
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
         sampleTextPath: relativeSampleTextPath,
         importManifestCommand,
+        importAfterEditingCommand,
         importCommands,
         updateIntakeCommand,
         importIntakeWithoutRefreshCommand,
@@ -1494,7 +1497,10 @@ export class MaterialIngestion {
     });
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
-    const profileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const replayedProfileIds = [...new Set(validatedEntries.map((entry) => entry.normalizedPersonId))].sort();
+    const profileIds = refreshFoundation
+      ? replayedProfileIds
+      : [...new Set(results.map((entry) => entry.personId))].sort();
     const foundationRefresh = refreshFoundation
       ? {
           profileCount: profileIds.length,

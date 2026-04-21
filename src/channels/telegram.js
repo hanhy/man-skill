@@ -61,7 +61,9 @@ export function normalizeTelegramInboundEvent(payload = {}) {
     senderId: Number.isFinite(sender?.id) ? sender.id : null,
     text: typeof event?.text === 'string' && event.text.length > 0
       ? event.text
-      : (typeof event?.caption === 'string' && event.caption.length > 0 ? event.caption : null),
+      : (typeof event?.caption === 'string' && event.caption.length > 0
+          ? event.caption
+          : (typeof event?.data === 'string' && event.data.length > 0 ? event.data : null)),
     messageId: Number.isFinite(event?.message_id) ? event.message_id : null,
     threadId: Number.isFinite(event?.message_thread_id) ? event.message_thread_id : null,
     chatType: typeof chat?.type === 'string' && chat.type.length > 0 ? chat.type : null,

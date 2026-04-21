@@ -588,7 +588,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
@@ -651,6 +651,8 @@ test('buildSummary keeps ready core foundation areas visible in the prompt previ
     rootReadySections: ['what-belongs-here', 'buckets'],
     rootReadySectionCount: 2,
     rootTotalSectionCount: 2,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 1,
@@ -859,7 +861,7 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
   assert.doesNotMatch(summary.promptPreview, /root: >/);
@@ -1162,6 +1164,8 @@ test('buildSummary keeps blockquoted structured skill docs thin until all requir
   assert.equal(summary.foundation.core.skills.thinCount, 1);
   assert.deepEqual(summary.foundation.core.skills.thinSample, ['delivery']);
   assert.deepEqual(summary.foundation.core.skills.thinPaths, ['skills/delivery/SKILL.md']);
+  assert.deepEqual(summary.foundation.core.skills.thinReadySectionCounts, { delivery: 1 });
+  assert.deepEqual(summary.foundation.core.skills.thinTotalSectionCounts, { delivery: 2 });
   assert.equal(summary.foundation.core.maintenance.queuedAreas.length, 1);
   assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.area, 'skills');
   assert.equal(summary.foundation.core.maintenance.queuedAreas[0]?.status, 'thin');
@@ -1172,6 +1176,12 @@ test('buildSummary keeps blockquoted structured skill docs thin until all requir
   });
   assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySections, {
     'skills/delivery/SKILL.md': ['what-this-skill-is-for'],
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinReadySectionCounts, {
+    'skills/delivery/SKILL.md': 1,
+  });
+  assert.deepEqual(summary.foundation.core.maintenance.queuedAreas[0]?.thinTotalSectionCounts, {
+    'skills/delivery/SKILL.md': 2,
   });
   assert.match(summary.foundation.core.maintenance.queuedAreas[0]?.command ?? '', /skills\/delivery\/SKILL\.md/);
   assert.match(summary.promptPreview, /skills: 1 registered, 0 documented \(delivery\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); thin docs: delivery sections 1\/2 ready \(what-this-skill-is-for\), missing suggested-workflow @ skills\/delivery\/SKILL\.md/);
@@ -1203,7 +1213,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     ],
   });
 
-  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'] });
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
@@ -1219,9 +1229,9 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     recommendedArea: 'memory',
     recommendedStatus: null,
     recommendedSummary: null,
-    recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-    recommendedCommand: scaffoldAllCommand,
-    recommendedPaths: ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md'],
+    recommendedAction: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+    recommendedCommand: memoryCommand,
+    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -1237,7 +1247,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
         status: 'thin',
         summary: 'README yes, daily 0, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
         action: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-        paths: ['memory/daily', 'memory/long-term', 'memory/scratch'],
+        paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
         rootThinReadySections: ['what-belongs-here', 'buckets'],
         rootThinReadySectionCount: 2,
         rootThinTotalSectionCount: 2,
@@ -1274,12 +1284,14 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*skills\/starter/);
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /- next repair: scaffold missing or thin core foundation areas — starting with add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command /);
-  assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context README yes, daily 0, long-term 0, scratch 0/);
+  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
+  assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.equal(summary.workLoop.currentPriority.command, scaffoldAllCommand);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
 });
 
 test('buildSummary keeps memory foundation thin until daily, long-term, and scratch buckets are all seeded', () => {
@@ -1307,6 +1319,8 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     rootReadySections: ['what-belongs-here', 'buckets'],
     rootReadySectionCount: 2,
     rootTotalSectionCount: 2,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     dailyCount: 1,
     longTermCount: 0,
     scratchCount: 0,
@@ -1329,8 +1343,8 @@ test('buildSummary keeps memory foundation thin until daily, long-term, and scra
     'README yes, daily 1, long-term 0, scratch 0, root 2/2 sections ready (what-belongs-here, buckets)',
   );
   assert.match(summary.promptPreview, /coverage: 3\/4 ready; thin memory/);
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/long-term and memory\/scratch @ memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/long-term' 'memory\/scratch' && touch 'memory\/long-term\/notes\.md' 'memory\/scratch\/draft\.md'/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-16\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /next actions: add at least one entry under memory\/long-term and memory\/scratch/);
 });
 
@@ -1344,7 +1358,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul');
 
   const summary = buildSummary(rootDir);
-  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily', 'memory/long-term', 'memory/scratch'] });
+  const memoryCommand = buildCoreFoundationCommand({ area: 'memory', status: 'thin', paths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'] });
   const skillsCommand = buildCoreFoundationCommand({ area: 'skills', status: 'missing', paths: ['skills/starter/SKILL.md'] });
   const soulCommand = buildCoreFoundationCommand({ area: 'soul', status: 'thin', paths: ['SOUL.md'] });
   const voiceCommand = buildCoreFoundationCommand({ area: 'voice', status: 'missing', paths: ['voice/README.md'] });
@@ -1355,7 +1369,7 @@ test('buildSummary work loop surfaces a bundled scaffold command when multiple c
   assert.equal(summary.workLoop.currentPriority?.id, 'foundation');
   assert.equal(summary.workLoop.currentPriority?.nextAction, 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch');
   assert.equal(summary.workLoop.currentPriority?.command, scaffoldAllCommand);
-  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily', 'memory/long-term', 'memory/scratch', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
+  assert.deepEqual(summary.workLoop.currentPriority?.paths, ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
 
   assert.match(summary.promptPreview, /helpers: scaffold-all /);
   assert.match(summary.promptPreview, /skills\/starter/);
@@ -1505,7 +1519,7 @@ test('buildSummary surfaces memory root section context on thin memory queue ite
     },
   ]);
   assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets; command /);
-  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-16\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
 });
 
 test('buildSummary surfaces soul and voice section context on thin document queue items', () => {
@@ -1582,7 +1596,7 @@ test('buildSummary compact queued-area remainder keeps root section context for 
 
   const summary = buildSummary(rootDir);
 
-  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily, memory\/long-term, memory\/scratch; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
+  assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 1 lines, sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity; context sections 1\/4 ready \(core-truths\), missing boundaries, vibe, continuity\), voice \[thin\] \(present, 1 lines, sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints\)/);
 });
 
@@ -1829,6 +1843,12 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
     thinReadySections: {
       delivery: [],
     },
+    thinReadySectionCounts: {
+      delivery: 0,
+    },
+    thinTotalSectionCounts: {
+      delivery: 2,
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -1870,6 +1890,12 @@ test('buildSummary treats heading-only SKILL docs as thin core foundation covera
         },
         thinReadySections: {
           'skills/delivery/SKILL.md': [],
+        },
+        thinReadySectionCounts: {
+          'skills/delivery/SKILL.md': 0,
+        },
+        thinTotalSectionCounts: {
+          'skills/delivery/SKILL.md': 2,
         },
         command: skillsCommand,
       },
@@ -2005,6 +2031,12 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
     thinReadySections: {
       slack: [],
     },
+    thinReadySectionCounts: {
+      slack: 0,
+    },
+    thinTotalSectionCounts: {
+      slack: 2,
+    },
   });
   assert.deepEqual(summary.foundation.core.overview, {
     readyAreaCount: 3,
@@ -2046,6 +2078,12 @@ test('buildSummary keeps mixed documented and heading-only SKILL docs queued as 
         },
         thinReadySections: {
           'skills/slack/SKILL.md': [],
+        },
+        thinReadySectionCounts: {
+          'skills/slack/SKILL.md': 0,
+        },
+        thinTotalSectionCounts: {
+          'skills/slack/SKILL.md': 2,
         },
         command: skillsCommand,
       },
@@ -2327,7 +2365,7 @@ test('buildSummary treats memory headings with closing hashes as structured sect
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2357,7 +2395,7 @@ test('buildSummary treats memory headings with setext markdown as structured sec
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1/);
 });
 
@@ -2389,7 +2427,7 @@ test('buildSummary treats soul and voice headings with closing hashes as structu
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /soul: present, \d+ lines/);
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines/);
 });
@@ -2424,8 +2462,49 @@ test('buildSummary treats target-specific current default voice headings as stru
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\./);
+});
+
+test('buildSummary exposes canonical heading alias metadata when legacy soul and voice headings still back the root foundation docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Voice should capture\n- Lead with the operating takeaway.\n\n## Voice should not capture\n- Avoid vague filler.\n\n## Current default for Harry Han\n- concise by default\n- preserve 中文 and English switching when the source does\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core values\n- Preserve durable operator intent.\n\n## Boundaries\n- Do not invent source material.\n\n## Vibe\n- Stay grounded and practical.\n\n## Decision rules\n- Prefer verified repo state over assumptions.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.foundation.core.soul.headingAliases, [
+    'core-values->core-truths',
+    'decision-rules->continuity',
+  ]);
+  assert.deepEqual(summary.foundation.core.voice.headingAliases, [
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
 });
 
 test('buildSummary treats setext headings across root and profile foundation docs as structured sections', () => {

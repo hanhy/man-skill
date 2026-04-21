@@ -210,6 +210,8 @@ type FoundationCore = {
     rootReadySections?: string[];
     rootReadySectionCount?: number;
     rootTotalSectionCount?: number;
+    canonicalShortTermBucket?: string;
+    legacyShortTermAliases?: string[];
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -280,6 +282,12 @@ type MemorySummary = {
   shortTermPresent?: boolean;
   longTermPresent?: boolean;
   scratchPresent?: boolean;
+  canonicalShortTermBucket?: string;
+  legacyShortTermAliases?: string[];
+  readyBucketCount?: number;
+  totalBucketCount?: number;
+  populatedBuckets?: string[];
+  emptyBuckets?: string[];
   [key: string]: unknown;
 } | null;
 
@@ -450,6 +458,7 @@ type IngestionProfileCommand = {
   updateIntakeCommand?: string | null;
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
+  starterImportCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -561,6 +570,8 @@ type IngestionSummary = {
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
+  recommendedEditPath?: string | null;
+  recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
@@ -575,6 +586,8 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  editPath?: string | null;
+  followUpCommand?: string | null;
   paths?: string[];
 };
 
@@ -1209,7 +1222,7 @@ function buildDeliveryFoundationBlock(channels: ChannelsSummary = null, models: 
       ? `- runtime implementations: ${delivery?.readyChannelImplementationCount ?? 0}/${channelRecords.length} channels, ${delivery?.readyProviderImplementationCount ?? 0}/${providerRecords.length} providers ready`
       : null,
     (delivery?.configuredChannelCount !== undefined || delivery?.configuredProviderCount !== undefined)
-      ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelQueue.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerQueue.length} providers configured`
+      ? `- auth readiness: ${delivery?.configuredChannelCount ?? 0}/${channelRecords.length} channels configured, ${delivery?.configuredProviderCount ?? 0}/${providerRecords.length} providers configured`
       : null,
     missingChannelEnvVars.length > 0
       ? `- channel env backlog: ${missingChannelEnvVars.join(', ')}`
@@ -1352,8 +1365,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
     ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
+    ? ingestion.recommendedEditPath
+    : null;
+  const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
+    ? ingestion.recommendedFollowUpCommand
+    : null;
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -1484,8 +1503,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
         ? `; gaps ${profile.draftGapSummary}`
         : '';
+      const isStarterTemplateProfile = profile.intakeReady === true
+        && typeof profile.intakeStatusSummary === 'string'
+        && profile.intakeStatusSummary.includes('starter template');
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
+        : '';
+      const refreshIntakeSegment = isStarterTemplateProfile && profile.updateIntakeCommand
+        ? ` | refresh-intake ${profile.updateIntakeCommand}`
         : '';
       const intakeShortcutCommand = profile.importIntakeCommand ?? profile.importIntakeWithoutRefreshCommand ?? null;
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
@@ -1494,12 +1519,47 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
+      const starterImportCommand = profile.starterImportCommand ?? (() => {
+        if (profile.intakeReady !== true || intakeShortcutCommand || actionLabel === 'import') {
+          return null;
+        }
+
+        if (typeof profile.intakeStatusSummary !== 'string' || !profile.intakeStatusSummary.includes('starter template')) {
+          return null;
+        }
+
+        const directImports = profile.importCommands && typeof profile.importCommands === 'object'
+          ? [
+            profile.importCommands.text,
+            profile.importCommands.screenshot,
+            profile.importCommands.message,
+            profile.importCommands.talk,
+          ]
+          : [];
+        const runnableDirectImport = directImports.find((command): command is string => typeof command === 'string' && command.length > 0 && !command.includes('<')) ?? null;
+        if (runnableDirectImport) {
+          return runnableDirectImport;
+        }
+
+        const sampleTextPath = Array.isArray(profile.intakePaths)
+          ? profile.intakePaths.find((value): value is string => typeof value === 'string' && value.endsWith('sample.txt')) ?? null
+          : null;
+        const personId = typeof profile.personId === 'string' && profile.personId.length > 0 ? profile.personId : null;
+        if (!sampleTextPath || !personId) {
+          return null;
+        }
+
+        const shellQuote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
+        const shellQuoteArgument = (value: string) => /^[A-Za-z0-9._-]+$/.test(value) ? value : shellQuote(value);
+        return `node src/index.js import text --person ${shellQuoteArgument(personId)} --file ${shellQuote(sampleTextPath)} --refresh-foundation`;
+      })();
+      const starterImportSegment = starterImportCommand ? ` | import ${starterImportCommand}` : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${intakeShortcutSegment}${manifestSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -1518,6 +1578,24 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
     : [];
 
   return `; buckets ${memory.readyBucketCount}/${memory.totalBucketCount} ready${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${emptyBuckets.length > 0 ? `, missing ${emptyBuckets.join(', ')}` : ''}`;
+}
+
+function formatMemoryAliasSummary(
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases'> | null | undefined,
+  prefix = '; aliases ',
+) {
+  const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
+    ? memory.canonicalShortTermBucket.trim()
+    : null;
+  const legacyAliases = Array.isArray(memory?.legacyShortTermAliases)
+    ? memory.legacyShortTermAliases.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+
+  if (!canonicalBucket || legacyAliases.length === 0) {
+    return null;
+  }
+
+  return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}`;
 }
 
 function formatRootSectionSummary(
@@ -1663,9 +1741,10 @@ function buildReadyCoreFoundationDetails(
   const formatReadySectionSummary = (
     label: string,
     progress: { readySectionCount: number; totalSectionCount: number; readySections: string[] },
-  ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}`;
+    path?: string | null,
+  ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}${typeof path === 'string' && path.length > 0 ? ` @ ${path}` : ''}`;
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', memoryRootProgress)}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress)}; soul ${formatReadySectionSummary('sections', soulProgress)}; voice ${formatReadySectionSummary('sections', voiceProgress)}`;
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath)}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath)}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path)}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path)}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
@@ -1770,7 +1849,7 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       : null,
     readyCoreFoundationDetails,
     !readyCoreFoundationDetails && memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount ?? 0}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${formatMemoryAliasSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}`
       : null,
     !readyCoreFoundationDetails && skills
       ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
@@ -1853,6 +1932,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
       : null,
+    currentPriority?.editPath
+      ? `- edit: ${currentPriority.editPath}`
+      : null,
+    currentPriority?.followUpCommand
+      ? `- then run: ${currentPriority.followUpCommand}`
+      : null,
     (currentPriority?.paths ?? []).length > 0
       ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
       : null,
@@ -1890,16 +1975,17 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
   const longTermEntries = memory.longTermEntries ?? 0;
   const scratchEntries = memory.scratchEntries ?? 0;
   const totalEntries = memory.totalEntries ?? (dailyEntries + longTermEntries + scratchEntries);
-  const dailyPresent = memory.dailyPresent ?? memory.shortTermPresent ?? false;
-  const longTermPresent = memory.longTermPresent ?? false;
-  const scratchPresent = memory.scratchPresent ?? false;
+  const bucketSummary = typeof memory.readyBucketCount === 'number' && typeof memory.totalBucketCount === 'number'
+    ? `- buckets: ${memory.readyBucketCount}/${memory.totalBucketCount} ready${Array.isArray(memory.populatedBuckets) && memory.populatedBuckets.length > 0 ? ` (${memory.populatedBuckets.join(', ')})` : ''}${Array.isArray(memory.emptyBuckets) && memory.emptyBuckets.length > 0 ? `, missing ${memory.emptyBuckets.join(', ')}` : ''}`
+    : `- coverage: daily ${(memory.dailyPresent ?? memory.shortTermPresent ?? false) ? 'yes' : 'no'}, long-term ${memory.longTermPresent ?? false ? 'yes' : 'no'}, scratch ${memory.scratchPresent ?? false ? 'yes' : 'no'}`;
 
   return [
     `- daily: ${dailyEntries}`,
     `- long-term: ${longTermEntries}`,
     `- scratch: ${scratchEntries}`,
     `- total: ${totalEntries}`,
-    `- coverage: daily ${dailyPresent ? 'yes' : 'no'}, long-term ${longTermPresent ? 'yes' : 'no'}, scratch ${scratchPresent ? 'yes' : 'no'}`,
+    bucketSummary,
+    formatMemoryAliasSummary(memory, '- aliases: '),
   ].join('\n');
 }
 

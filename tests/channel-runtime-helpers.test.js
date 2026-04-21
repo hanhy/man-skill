@@ -150,6 +150,29 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
   );
 
   assert.deepEqual(
+    channel.normalizeInboundEvent({
+      update_id: 1000,
+      callback_query: {
+        id: 'cbq-inline',
+        data: 'approve-inline',
+        from: { id: 84 },
+      },
+    }),
+    {
+      platform: 'telegram',
+      eventType: 'callback_query',
+      updateId: 1000,
+      chatId: null,
+      senderId: 84,
+      text: 'approve-inline',
+      messageId: null,
+      threadId: null,
+      chatType: null,
+      timestamp: null,
+    },
+  );
+
+  assert.deepEqual(
     channel.buildChatSend({
       chatId: -100123,
       text: 'ship the thin slice',

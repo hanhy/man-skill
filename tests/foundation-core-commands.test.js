@@ -134,7 +134,7 @@ test('buildCoreFoundationCommand scaffolds missing memory buckets with seed file
     buildCoreFoundationCommand({
       area: 'memory',
       status: 'missing',
-      paths: ['memory/README.md', 'memory/daily', 'memory/long-term', 'memory/scratch'],
+      paths: ['memory/README.md', 'memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     }),
     "mkdir -p 'memory' 'memory/daily' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
@@ -145,7 +145,7 @@ test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () 
     buildCoreFoundationCommand({
       area: 'memory',
       status: 'thin',
-      paths: ['memory/scratch', 'memory/README.md', 'memory/long-term', 'memory/scratch'],
+      paths: ['memory/scratch/draft.md', 'memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     }),
     "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
@@ -155,7 +155,7 @@ test('buildCoreFoundationCommand daily memory scaffold expands the date at execu
   const command = buildCoreFoundationCommand({
     area: 'memory',
     status: 'missing',
-    paths: ['memory/README.md', 'memory/daily'],
+    paths: ['memory/README.md', 'memory/daily/$(date +%F).md'],
   });
 
   assert.equal(

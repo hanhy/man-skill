@@ -8,6 +8,12 @@ export interface MemorySummary {
   scratchPresent: boolean;
   shortTermEntries: number;
   shortTermPresent: boolean;
+  canonicalShortTermBucket: 'daily';
+  legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
+  readyBucketCount: number;
+  totalBucketCount: number;
+  populatedBuckets: string[];
+  emptyBuckets: string[];
 }
 
 export interface MemoryStoreOptions {
@@ -18,16 +24,30 @@ export interface MemoryStoreOptions {
 }
 
 export class MemoryStore {
-  daily: unknown[];
-  shortTerm: unknown[];
+  private _daily: unknown[];
   longTerm: unknown[];
   scratch: unknown[];
 
   constructor({ daily, shortTerm, longTerm, scratch }: MemoryStoreOptions = {}) {
-    this.daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
-    this.shortTerm = this.daily;
+    this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+  }
+
+  get daily(): unknown[] {
+    return this._daily;
+  }
+
+  set daily(entries: unknown[]) {
+    this._daily = Array.isArray(entries) ? entries : [];
+  }
+
+  get shortTerm(): unknown[] {
+    return this._daily;
+  }
+
+  set shortTerm(entries: unknown[]) {
+    this.daily = entries;
   }
 
   addDaily(entry: unknown): void {
@@ -50,6 +70,16 @@ export class MemoryStore {
     const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
     const scratchEntries = this.scratch.length;
+    const populatedBuckets = [
+      ...(dailyEntries > 0 ? ['daily'] : []),
+      ...(longTermEntries > 0 ? ['long-term'] : []),
+      ...(scratchEntries > 0 ? ['scratch'] : []),
+    ];
+    const emptyBuckets = [
+      ...(dailyEntries === 0 ? ['daily'] : []),
+      ...(longTermEntries === 0 ? ['long-term'] : []),
+      ...(scratchEntries === 0 ? ['scratch'] : []),
+    ];
 
     return {
       dailyEntries,
@@ -61,6 +91,12 @@ export class MemoryStore {
       scratchPresent: scratchEntries > 0,
       shortTermEntries: dailyEntries,
       shortTermPresent: dailyEntries > 0,
+      canonicalShortTermBucket: 'daily',
+      legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      readyBucketCount: populatedBuckets.length,
+      totalBucketCount: 3,
+      populatedBuckets,
+      emptyBuckets,
     };
   }
 }

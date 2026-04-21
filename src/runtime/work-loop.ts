@@ -5,6 +5,8 @@ export interface WorkPriority {
   summary: string;
   nextAction: string | null;
   command: string | null;
+  editPath?: string | null;
+  followUpCommand?: string | null;
   paths: string[];
 }
 
