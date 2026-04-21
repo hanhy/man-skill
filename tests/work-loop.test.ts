@@ -169,6 +169,33 @@ test('buildSummary work loop advances to ingestion when memory and skills root d
   assert.doesNotMatch(summary.promptPreview, /current: Foundation \[queued\]/);
 });
 
+test('buildSummary work loop advances to ingestion when soul and voice docs use mixed closing-hash and setext headings', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths ##\n- Stay faithful to the source material.\n\nBoundaries\n----------\n- Do not bluff or overspeculate.\n\n## Vibe ##\n- Keep the tone grounded and direct.\n\nContinuity\n----------\n- Preserve durable lessons across runs.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone ##\nWarm and grounded.\n\nSignature moves\n---------------\n- Use crisp examples.\n\n## Avoid ##\n- Never pad the answer.\n\nLanguage hints\n--------------\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.match(summary.promptPreview, /lead: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), root sections 2\/2 \(what-belongs-here, buckets\); skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
+  assert.doesNotMatch(summary.promptPreview, /current: Foundation \[queued\]/);
+});
+
 test('buildSummary work loop keeps foundation current when soul and voice docs only contain unstructured prose after hidden scaffolds', () => {
   const rootDir = makeTempRepo();
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
