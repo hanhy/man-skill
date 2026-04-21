@@ -28,6 +28,8 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /work-loop queue follow that same order/i);
   assert.match(readme, /runtime-ready integrations that are still waiting on auth\/configuration/i);
   assert.match(readme, /\.env\.example/);
+  assert.match(readme, /bootstrap blast radius explicit/i);
+  assert.match(readme, /`\.env\.example` and `\.env`/);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
 });
@@ -41,6 +43,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
+  assert.match(architectureDoc, /bootstrap that means `paths` keeps both `\.env\.example` and `\.env` visible when `cp \.env\.example \.env` is the active delivery step/i);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
   assert.match(architectureDoc, /skills candidate-profile coverage/i);
@@ -56,7 +59,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
-  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command plus only the `\.env\.example` path visible/);
+  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command and surface both `\.env\.example` and `\.env` when the bootstrap step writes the repo-local env file/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
   assert.match(ingestionDoc, /`sampleStarterSource` keeps the exact checked-in manifest path visible/i);
