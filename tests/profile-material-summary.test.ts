@@ -101,6 +101,47 @@ test('JS ingestion summary shim stays aligned with the TypeScript implementation
   assert.deepEqual(buildJsIngestionSummary(profiles, options), buildTsIngestionSummary(profiles, options));
 });
 
+test('buildIngestionSummary preserves sample manifest source paths for legacy text-file manifests', () => {
+  const summary = buildTsIngestionSummary([], {
+    sampleManifestPath: 'samples/legacy-materials.json',
+    sampleManifest: {
+      status: 'loaded',
+      entryCount: 1,
+      profileIds: ['alpha-ready'],
+      profileLabels: ['Alpha Ready (alpha-ready)'],
+      filePaths: ['samples/alpha-ready.txt'],
+      materialTypes: { text: 1 },
+      textFilePersonIds: {
+        'samples/alpha-ready.txt': 'alpha-ready',
+      },
+      error: null,
+    },
+    sampleTextPath: 'samples/alpha-ready.txt',
+  });
+
+  assert.deepEqual(summary.sampleFileCommands, [
+    {
+      type: 'text',
+      path: 'samples/alpha-ready.txt',
+      personId: 'alpha-ready',
+      sourcePath: 'samples/legacy-materials.json',
+      command: "node src/index.js import text --person alpha-ready --file 'samples/alpha-ready.txt' --refresh-foundation",
+    },
+  ]);
+
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: summary as any,
+  }).buildPreview(4000);
+
+  assert.match(prompt, /sample text: alpha-ready -> node src\/index\.js import text --person alpha-ready --file 'samples\/alpha-ready\.txt' --refresh-foundation @ samples\/legacy-materials\.json/);
+});
+
 test('buildIngestionSummary exposes a per-profile foundation refresh bundle for imported stale profiles', () => {
   const summary = buildTsIngestionSummary([
     {

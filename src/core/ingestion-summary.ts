@@ -245,7 +245,12 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         return left.personId.localeCompare(right.personId);
       })
     : Object.entries(normalizedTextFilePersonIds)
-      .map(([path, personId]) => ({ type: 'text', path, personId }));
+      .map(([path, personId]) => ({
+        type: 'text',
+        path,
+        personId,
+        sourcePath: normalizedPath,
+      }));
   const normalizedInlineEntries = Array.isArray(sampleManifest?.inlineEntries)
     ? sampleManifest.inlineEntries
       .filter((entry) => entry && typeof entry === 'object')
