@@ -233,8 +233,14 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
     'providers/openai',
     'providers/qwen',
   ]);
+  assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(summary.foundation.core.soul.missingSections, []);
   assert.equal(summary.foundation.core.soul.readySectionCount, 4);
+  assert.equal(summary.foundation.core.soul.totalSectionCount, 4);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
   assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\); skills docs 11\/11 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\); soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\); voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\)/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.doesNotMatch(summary.promptPreview, /- skills: 11 registered, 11 documented/);
