@@ -1761,7 +1761,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'populate the imported intake starter manifest for harry-han');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
@@ -1772,7 +1772,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
     'profiles/harry-han/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 1 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
-  assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for harry-han/);
+  assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
 });
@@ -3605,7 +3605,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     summary.workLoop.currentPriority.command,
     "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with jane-doe (missing drafts + new materials)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with Jane Doe (jane-doe) (missing drafts + new materials)');
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
@@ -3616,7 +3616,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/soul/README.md',
     'profiles/harry-han/voice/README.md',
   ]);
-  assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with jane-doe \(missing drafts \+ new materials\)/);
+  assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with Jane Doe \(jane-doe\) \(missing drafts \+ new materials\)/);
   assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'jane-doe'\) && \(node src\/index\.js update foundation --person 'harry-han'\)/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);

@@ -378,16 +378,41 @@ function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = fi
   return realFilePath;
 }
 
+function buildFallbackDisplayName(value) {
+  if (!value || typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  const parts = normalized
+    .split(/[-_\s]+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .map((part) => /^[a-z0-9]+$/i.test(part)
+      ? `${part.charAt(0).toUpperCase()}${part.slice(1)}`
+      : part);
+
+  const fallbackDisplayName = parts.join(' ').trim();
+  return fallbackDisplayName.length > 0
+    ? fallbackDisplayName
+    : null;
+}
+
 function buildProfileDocument({ existingProfile = null, normalizedId, personId, displayName, summary }) {
   const now = new Date().toISOString();
   const normalizedDisplayName = normalizeText(displayName);
   const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
+  const fallbackDisplayName = buildFallbackDisplayName(normalizedDisplayName ?? normalizeText(personId) ?? normalizedId);
 
   return {
     id: normalizedId,
     createdAt: existingProfile?.createdAt ?? now,
     updatedAt: now,
-    displayName: normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId,
+    displayName: normalizedDisplayName ?? existingProfile?.displayName ?? fallbackDisplayName ?? normalizedId,
     summary: normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary,
   };
 }
@@ -399,7 +424,8 @@ function shouldRewriteProfileDocument({ existingProfile = null, normalizedId, pe
 
   const normalizedDisplayName = normalizeText(displayName);
   const normalizedSummary = summary === undefined ? undefined : normalizeText(summary);
-  const nextDisplayName = normalizedDisplayName ?? existingProfile?.displayName ?? normalizeText(personId) ?? normalizedId;
+  const fallbackDisplayName = buildFallbackDisplayName(normalizedDisplayName ?? normalizeText(personId) ?? normalizedId);
+  const nextDisplayName = normalizedDisplayName ?? existingProfile?.displayName ?? fallbackDisplayName ?? normalizedId;
   const nextSummary = normalizedSummary === undefined ? (existingProfile?.summary ?? null) : normalizedSummary;
 
   return existingProfile.id !== normalizedId
