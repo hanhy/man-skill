@@ -75,6 +75,70 @@ test('imports text, message, talk, and screenshot materials into a profile-speci
   assert.match(screenshotRecord.assetPath, /materials\/screenshots\//);
 });
 
+test('direct message imports skip unchanged reruns and keep material records flat', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const firstResult = ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'I will be there in ten minutes.',
+    notes: 'short message sample',
+  });
+  const secondResult = ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'I will be there in ten minutes.',
+    notes: 'short message sample',
+  });
+
+  assert.equal(typeof firstResult.recordPath, 'string');
+  assert.equal(firstResult.skipped, false);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(typeof secondResult.fingerprint, 'string');
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+});
+
+test('direct screenshot imports skip unchanged reruns before copying duplicate assets', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const firstResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: screenshotPath,
+    notes: 'chat screenshot',
+  });
+  const screenshotAssetsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials', 'screenshots');
+  const firstAssetNames = fs.readdirSync(screenshotAssetsDir);
+
+  const secondResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: screenshotPath,
+    notes: 'chat screenshot',
+  });
+  const secondAssetNames = fs.readdirSync(screenshotAssetsDir);
+
+  assert.equal(firstResult.skipped, false);
+  assert.equal(fs.existsSync(firstResult.assetPath), true);
+  assert.equal(firstAssetNames.length, 1);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+  assert.deepEqual(secondAssetNames, firstAssetNames);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

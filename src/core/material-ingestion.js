@@ -1194,7 +1194,21 @@ export class MaterialIngestion {
       ),
     );
 
-    return { materialId, recordPath, assetPath, fingerprint };
+    return { materialId, recordPath, assetPath, fingerprint, skipped: false };
+  }
+
+  buildSkippedMaterialResult(fingerprint) {
+    return {
+      materialId: null,
+      recordPath: null,
+      assetPath: null,
+      fingerprint,
+      skipped: true,
+    };
+  }
+
+  hasExistingMaterialFingerprint(personId, fingerprint) {
+    return isNonEmptyString(fingerprint) && this.buildExistingMaterialFingerprintSet(personId).has(fingerprint);
   }
 
   importTextDocument({ personId, sourceFile, notes = null, fingerprint = null }) {
@@ -1205,18 +1219,23 @@ export class MaterialIngestion {
     const normalized = this.ensureProfile(personId);
     const content = fs.readFileSync(sourceFile, 'utf8');
     const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
+      personId: normalized.personId,
+      notes,
+      sourceFile: relativeSourceFile,
+      content,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'text',
       content,
       notes,
       sourceFile: relativeSourceFile,
-      fingerprint: fingerprint ?? buildTextMaterialFingerprint({
-        personId: normalized.personId,
-        notes,
-        sourceFile: relativeSourceFile,
-        content,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1228,17 +1247,22 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const materialFingerprint = fingerprint ?? buildMessageMaterialFingerprint({
+      personId: normalized.personId,
+      type: 'message',
+      notes,
+      text,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'message',
       content: text,
       notes,
-      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
-        personId: normalized.personId,
-        type: 'message',
-        notes,
-        text,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1250,17 +1274,22 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const materialFingerprint = fingerprint ?? buildMessageMaterialFingerprint({
+      personId: normalized.personId,
+      type: 'talk',
+      notes,
+      text,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'talk',
       content: text,
       notes,
-      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
-        personId: normalized.personId,
-        type: 'talk',
-        notes,
-        text,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1272,10 +1301,21 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const fileBuffer = fs.readFileSync(sourceFile);
+    const materialFingerprint = fingerprint ?? buildScreenshotMaterialFingerprint({
+      personId: normalized.personId,
+      notes,
+      sourceFile: relativeSourceFile,
+      fileBuffer,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const assetFileName = `${timestampId()}-${path.basename(sourceFile)}`;
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
     fs.copyFileSync(sourceFile, targetPath);
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
 
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
@@ -1284,12 +1324,7 @@ export class MaterialIngestion {
       sourceFile: relativeSourceFile,
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
-      fingerprint: fingerprint ?? buildScreenshotMaterialFingerprint({
-        personId: normalized.personId,
-        notes,
-        sourceFile: relativeSourceFile,
-        fileBuffer: fs.readFileSync(sourceFile),
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;

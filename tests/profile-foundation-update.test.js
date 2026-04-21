@@ -518,6 +518,38 @@ test('CLI import intake --person refreshes foundation drafts when --refresh-foun
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
 });
 
+test('CLI direct import message reruns report skipped status and avoid duplicate records', () => {
+  const rootDir = makeTempRepo();
+
+  const firstOutput = execFileSync('node', [cliEntrypoint, 'import', 'message', '--person', 'Harry Han', '--text', 'Ship the thin slice first.', '--notes', 'chat sample', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const firstResult = JSON.parse(firstOutput);
+
+  const secondOutput = execFileSync('node', [cliEntrypoint, 'import', 'message', '--person', 'Harry Han', '--text', 'Ship the thin slice first.', '--notes', 'chat sample', '--refresh-foundation'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const secondResult = JSON.parse(secondOutput);
+
+  assert.equal(firstResult.ok, true);
+  assert.equal(firstResult.skipped, false);
+  assert.equal(typeof firstResult.recordPath, 'string');
+  assert.equal(firstResult.foundationRefresh.personId, 'harry-han');
+
+  assert.equal(secondResult.ok, true);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+  assert.equal(secondResult.foundationRefresh.personId, 'harry-han');
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+});
+
 test('CLI import intake --person reruns a ready profile-local starter manifest for an already-imported profile', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
