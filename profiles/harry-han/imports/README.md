@@ -21,6 +21,7 @@ Direct import commands:
 - message: node src/index.js import message --person harry-han --text <message> --refresh-foundation
 - talk: node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation
 - screenshot: node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation
+- manifest: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation
 
 Custom notes:
 <!-- man-skill:intake-custom-notes:start -->

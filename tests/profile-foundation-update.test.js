@@ -166,6 +166,7 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut without refreshing drafts/);
   assert.doesNotMatch(intakeReadme, /profile-local intake shortcut and refresh drafts/);
   assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
+  assert.match(intakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('CLI update foundation command writes derived profile drafts', () => {

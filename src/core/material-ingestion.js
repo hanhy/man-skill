@@ -737,6 +737,7 @@ function buildIntakeReadme({
     `- message: ${importCommands?.message}`,
     `- talk: ${importCommands?.talk}`,
     `- screenshot: ${importCommands?.screenshot}`,
+    `- manifest: ${importManifestCommand}`,
     '',
     'Custom notes:',
     INTAKE_CUSTOM_NOTES_START,
