@@ -1074,6 +1074,12 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
+  const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
+    ? ingestionSummary.recommendedEditPath
+    : null;
+  const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
+    ? ingestionSummary.recommendedFollowUpCommand
+    : null;
   const recommendedPaths = Array.isArray(ingestionSummary?.recommendedPaths)
     ? ingestionSummary.recommendedPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -1098,6 +1104,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
+    editPath: recommendedEditPath,
+    followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,
   };
 }

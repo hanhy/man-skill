@@ -2057,6 +2057,8 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
         summary: '0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh',
         nextAction: 'bootstrap a target profile',
         command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+        editPath: 'profiles/harry-han/imports/materials.template.json',
+        followUpCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
         paths: [],
       },
       priorities: [
@@ -2076,6 +2078,8 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           summary: '0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh',
           nextAction: 'bootstrap a target profile',
           command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+          editPath: 'profiles/harry-han/imports/materials.template.json',
+          followUpCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
           paths: [],
         },
         {
@@ -2106,6 +2110,8 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /current: Ingestion \[queued\] — 0 imported, 0 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(prompt, /next action: bootstrap a target profile/);
   assert.match(prompt, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
+  assert.match(prompt, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /then run: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
 

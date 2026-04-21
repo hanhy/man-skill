@@ -586,6 +586,8 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  editPath?: string | null;
+  followUpCommand?: string | null;
   paths?: string[];
 };
 
@@ -1928,6 +1930,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
+      : null,
+    currentPriority?.editPath
+      ? `- edit: ${currentPriority.editPath}`
+      : null,
+    currentPriority?.followUpCommand
+      ? `- then run: ${currentPriority.followUpCommand}`
       : null,
     (currentPriority?.paths ?? []).length > 0
       ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
