@@ -1149,6 +1149,8 @@ test('PromptAssembler preserves root section count summaries when only aggregate
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
       legacyShortTermSourceCount: 0,
       legacyShortTermSources: [],
+      legacyShortTermSampleSources: [],
+      legacyShortTermSourceOverflowCount: 0,
       readyBucketCount: 1,
       totalBucketCount: 3,
       populatedBuckets: ['daily'],

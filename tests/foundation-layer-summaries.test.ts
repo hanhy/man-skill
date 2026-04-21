@@ -100,6 +100,8 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 3,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term', 'scratch'],
@@ -178,6 +180,8 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -210,6 +214,8 @@ test('memory store keeps shortTerm as a writable alias of daily', () => {
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -242,6 +248,8 @@ test('memory store keeps daily and shortTerm in sync when daily is reassigned af
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -280,9 +288,13 @@ test('memory summaries treat legacy short-term files as canonical daily entries'
   assert.equal(summary.memory.shortTermEntries, 1);
   assert.equal(summary.memory.legacyShortTermSourceCount, 1);
   assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md']);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 0);
   assert.equal(summary.foundation.core.memory.dailyCount, 1);
   assert.equal(summary.foundation.core.memory.legacyShortTermSourceCount, 1);
   assert.deepEqual(summary.foundation.core.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md']);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 0);
   assert.deepEqual(summary.foundation.core.memory.sampleEntries, ['daily/legacy.md', 'long-term/stable.md', 'scratch/draft.md']);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/legacy\.md/);
 });
@@ -315,6 +327,18 @@ test('memory alias summary keeps long legacy short-term backlogs compact in prom
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.memory.legacyShortTermSourceCount, 4);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 1);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 1);
   assert.match(
     summary.promptPreview,
     /- aliases: daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more/,
@@ -356,6 +380,8 @@ test('canonical daily counts keep same-basename legacy short-term files instead 
   assert.equal(summary.foundation.core.memory.totalEntries, 4);
   assert.equal(summary.memory.legacyShortTermSourceCount, 1);
   assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/today.md']);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, ['memory/short-term/today.md']);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 0);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 2\n- long-term: 1\n- scratch: 1\n- total: 4/);
   assert.match(summary.promptPreview, /legacy short-term sources memory\/short-term\/today\.md/);
 });
@@ -1094,6 +1120,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 2,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term'],
@@ -1112,6 +1140,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: 0,
     legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 0,

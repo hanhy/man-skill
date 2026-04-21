@@ -303,6 +303,17 @@ function collectMemorySampleEntries({
   ];
 }
 
+function collectLegacyShortTermPreviewSources(legacyShortTermSources: string[], limit = 3): {
+  sampleSources: string[];
+  overflowCount: number;
+} {
+  const sampleSources = legacyShortTermSources.slice(0, limit);
+  return {
+    sampleSources,
+    overflowCount: Math.max(legacyShortTermSources.length - sampleSources.length, 0),
+  };
+}
+
 export function summarizeRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -591,6 +602,8 @@ export interface CoreMemoryFoundationSummary {
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   legacyShortTermSourceCount: number;
   legacyShortTermSources: string[];
+  legacyShortTermSampleSources: string[];
+  legacyShortTermSourceOverflowCount: number;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -1074,6 +1087,7 @@ export function buildCoreFoundationSummary({
   const legacyShortTermSources = Array.isArray(memoryIndex?.legacyShortTerm)
     ? memoryIndex.legacyShortTerm.filter((value): value is string => isNonEmptyString(value))
     : [];
+  const legacyShortTermPreview = collectLegacyShortTermPreviewSources(legacyShortTermSources);
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
   const memoryBuckets = [
@@ -1147,6 +1161,8 @@ export function buildCoreFoundationSummary({
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: legacyShortTermSources.length,
     legacyShortTermSources,
+    legacyShortTermSampleSources: legacyShortTermPreview.sampleSources,
+    legacyShortTermSourceOverflowCount: legacyShortTermPreview.overflowCount,
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,

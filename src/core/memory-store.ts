@@ -12,6 +12,8 @@ export interface MemorySummary {
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   legacyShortTermSourceCount: number;
   legacyShortTermSources: string[];
+  legacyShortTermSampleSources: string[];
+  legacyShortTermSourceOverflowCount: number;
   readyBucketCount: number;
   totalBucketCount: number;
   populatedBuckets: string[];
@@ -73,6 +75,14 @@ export class MemoryStore {
     this.scratch.push(entry);
   }
 
+  private buildLegacyShortTermPreview(limit = 3): { sampleSources: string[]; overflowCount: number } {
+    const sampleSources = this.legacyShortTermSources.slice(0, limit);
+    return {
+      sampleSources,
+      overflowCount: Math.max(this.legacyShortTermSources.length - sampleSources.length, 0),
+    };
+  }
+
   summary(): MemorySummary {
     const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
@@ -87,6 +97,7 @@ export class MemoryStore {
       ...(longTermEntries === 0 ? ['long-term'] : []),
       ...(scratchEntries === 0 ? ['scratch'] : []),
     ];
+    const legacyShortTermPreview = this.buildLegacyShortTermPreview();
 
     return {
       dailyEntries,
@@ -102,6 +113,8 @@ export class MemoryStore {
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
       legacyShortTermSourceCount: this.legacyShortTermSources.length,
       legacyShortTermSources: [...this.legacyShortTermSources],
+      legacyShortTermSampleSources: legacyShortTermPreview.sampleSources,
+      legacyShortTermSourceOverflowCount: legacyShortTermPreview.overflowCount,
       readyBucketCount: populatedBuckets.length,
       totalBucketCount: 3,
       populatedBuckets,

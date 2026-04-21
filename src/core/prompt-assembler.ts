@@ -217,6 +217,8 @@ type FoundationCore = {
     legacyShortTermAliases?: string[];
     legacyShortTermSourceCount?: number;
     legacyShortTermSources?: string[];
+    legacyShortTermSampleSources?: string[];
+    legacyShortTermSourceOverflowCount?: number;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -292,6 +294,8 @@ type MemorySummary = {
   legacyShortTermAliases?: string[];
   legacyShortTermSourceCount?: number;
   legacyShortTermSources?: string[];
+  legacyShortTermSampleSources?: string[];
+  legacyShortTermSourceOverflowCount?: number;
   readyBucketCount?: number;
   totalBucketCount?: number;
   populatedBuckets?: string[];
@@ -1594,7 +1598,7 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
 }
 
 function formatMemoryAliasSummary(
-  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources'> | null | undefined,
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount'> | null | undefined,
   prefix = '; aliases ',
 ) {
   const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
@@ -1606,16 +1610,24 @@ function formatMemoryAliasSummary(
   const legacySources = Array.isArray(memory?.legacyShortTermSources)
     ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const legacySampleSources = Array.isArray(memory?.legacyShortTermSampleSources)
+    ? memory.legacyShortTermSampleSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
   const legacySourceCount = typeof memory?.legacyShortTermSourceCount === 'number'
     ? memory.legacyShortTermSourceCount
     : legacySources.length;
+  const legacySourceOverflowCount = typeof memory?.legacyShortTermSourceOverflowCount === 'number'
+    ? memory.legacyShortTermSourceOverflowCount
+    : Math.max(legacySourceCount - legacySampleSources.length, 0);
 
   if (!canonicalBucket || legacyAliases.length === 0) {
     return null;
   }
 
-  const visibleLegacySources = legacySources.slice(0, 3);
-  const remainingLegacySourceCount = Math.max(legacySourceCount, legacySources.length) - visibleLegacySources.length;
+  const visibleLegacySources = legacySampleSources.length > 0 ? legacySampleSources : legacySources.slice(0, 3);
+  const remainingLegacySourceCount = legacySampleSources.length > 0
+    ? legacySourceOverflowCount
+    : Math.max(legacySourceCount, legacySources.length) - visibleLegacySources.length;
   const legacySourceSummary = legacySourceCount > 0
     ? visibleLegacySources.length > 0
       ? `; legacy short-term sources ${visibleLegacySources.join(', ')}${remainingLegacySourceCount > 0 ? `, +${remainingLegacySourceCount} more` : ''}`
