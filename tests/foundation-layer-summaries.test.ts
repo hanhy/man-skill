@@ -322,6 +322,44 @@ test('memory alias summary keeps long legacy short-term backlogs compact in prom
   assert.doesNotMatch(summary.promptPreview, /memory\/short-term\/2026-04-04\.md/);
 });
 
+test('canonical daily counts keep same-basename legacy short-term files instead of deduping them away', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'canonical daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'today.md'), 'legacy daily note with the same basename');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), 'idea');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Build a faithful operator core.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Preserve clear priorities.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Keep delivery loops aligned.\n\n## Suggested workflow\n- Run the queue in priority order.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.memory.dailyEntries, 2);
+  assert.equal(summary.memory.shortTermEntries, 2);
+  assert.equal(summary.foundation.core.memory.dailyCount, 2);
+  assert.equal(summary.foundation.core.memory.totalEntries, 4);
+  assert.equal(summary.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/today.md']);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 2\n- long-term: 1\n- scratch: 1\n- total: 4/);
+  assert.match(summary.promptPreview, /legacy short-term sources memory\/short-term\/today\.md/);
+});
+
 test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
   const scriptPath = path.join(makeTempRepo(), 'memory-store-check.mjs');
   fs.writeFileSync(

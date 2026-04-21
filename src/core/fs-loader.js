@@ -27,10 +27,10 @@ function listFilesIfExists(dirPath) {
 }
 
 function listCanonicalMemoryDailyFiles(rootDir) {
-  return Array.from(new Set([
+  return [
     ...listFilesIfExists(path.join(rootDir, 'memory', 'daily')),
     ...listFilesIfExists(path.join(rootDir, 'memory', 'short-term')),
-  ])).sort();
+  ].sort();
 }
 
 function listLegacyShortTermFiles(rootDir) {
