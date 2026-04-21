@@ -1608,8 +1608,12 @@ function formatMemoryAliasSummary(
     return null;
   }
 
+  const visibleLegacySources = legacySources.slice(0, 3);
+  const remainingLegacySourceCount = Math.max(legacySourceCount, legacySources.length) - visibleLegacySources.length;
   const legacySourceSummary = legacySourceCount > 0
-    ? `; legacy short-term sources ${legacySources.join(', ')}`
+    ? visibleLegacySources.length > 0
+      ? `; legacy short-term sources ${visibleLegacySources.join(', ')}${remainingLegacySourceCount > 0 ? `, +${remainingLegacySourceCount} more` : ''}`
+      : `; legacy short-term sources ${legacySourceCount}`
     : '';
 
   return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}${legacySourceSummary}`;
