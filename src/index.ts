@@ -1373,6 +1373,21 @@ function assertExactlyOneBatchSelector(options: ParsedOptions, selectors: string
   }
 }
 
+const supportedImportSubcommands = ['sample', 'intake', 'manifest', 'text', 'message', 'talk', 'screenshot'] as const;
+const supportedUpdateSubcommands = ['profile', 'intake', 'foundation'] as const;
+
+function buildCommandFamilyUsageHint(command: 'import' | 'update'): string | null {
+  const familyLines = buildCliUsageLines()
+    .filter((line) => line.startsWith(`  node src/index.js ${command} `))
+    .map((line) => line.trim());
+
+  if (familyLines.length === 0) {
+    return null;
+  }
+
+  return ['Usage:', ...familyLines].join('\n');
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1406,6 +1421,14 @@ export function runImportCommand(rootDir: string, subcommand: string | undefined
       : {}),
     results: Array.isArray(result?.results) ? result.results.map((entry: any) => relativizeManifestImportResult(entry)) : [],
   });
+
+  if (!subcommand) {
+    throw new Error('Missing import type');
+  }
+
+  if (!supportedImportSubcommands.includes(subcommand as (typeof supportedImportSubcommands)[number])) {
+    throw new Error(`Unsupported import type: ${subcommand}`);
+  }
 
   if (subcommand === 'manifest') {
     const manifestFile = readOptionalStringOption(options, 'file');
@@ -1519,6 +1542,14 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
   const ingestion = new MaterialIngestion(rootDir);
   const personId = readOptionalStringOption(options, 'person');
   const refreshFoundation = Boolean(options['refresh-foundation']);
+
+  if (!subcommand) {
+    throw new Error('Missing update type');
+  }
+
+  if (!supportedUpdateSubcommands.includes(subcommand as (typeof supportedUpdateSubcommands)[number])) {
+    throw new Error(`Unsupported update type: ${subcommand}`);
+  }
 
   const maybeAttachFoundationRefresh = (result: any) => {
     if (!refreshFoundation) {
@@ -1981,7 +2012,7 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'import' || command === 'update') {
-    return buildCliUsageLines().find((line) => line.startsWith(`  node src/index.js ${command} `))?.trim() ?? null;
+    return buildCommandFamilyUsageHint(command);
   }
 
   return null;

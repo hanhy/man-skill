@@ -1097,6 +1097,56 @@ test('CLI import command errors keep usage hints aligned with optional refresh a
   });
 });
 
+test('CLI unsupported import and update subcommands fail with family-level usage hints', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'csv'],
+      expectedError: /Error: Unsupported import type: csv/,
+      expectedUsageLines: [
+        /Usage:/,
+        /node src\/index\.js import sample \[--file <manifest\.json>\]/,
+        /node src\/index\.js import intake --person <person-id> \[--refresh-foundation\]/,
+        /node src\/index\.js import manifest --file <manifest\.json> \[--refresh-foundation\]/,
+        /node src\/index\.js import text --person <person-id> --file <sample\.txt> \[--notes <text>\] \[--refresh-foundation\]/,
+      ],
+      stackTracePattern: /at runImportCommand/,
+    },
+    {
+      args: ['update', 'csv'],
+      expectedError: /Error: Unsupported update type: csv/,
+      expectedUsageLines: [
+        /Usage:/,
+        /node src\/index\.js update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+        /node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/,
+        /node src\/index\.js update intake --stale \[--refresh-foundation\]/,
+        /node src\/index\.js update foundation --all/,
+      ],
+      stackTracePattern: /at runUpdateCommand/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError, expectedUsageLines, stackTracePattern }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        expectedUsageLines.forEach((pattern) => {
+          assert.match(error.stderr, pattern);
+        });
+        assert.doesNotMatch(error.stderr, stackTracePattern);
+        return true;
+      },
+    );
+  });
+});
+
 test('refreshFoundationDrafts rejects empty profiles without imported materials', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
