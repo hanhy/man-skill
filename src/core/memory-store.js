@@ -41,6 +41,16 @@ export class MemoryStore {
     const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
     const scratchEntries = this.scratch.length;
+    const populatedBuckets = [
+      ...(dailyEntries > 0 ? ['daily'] : []),
+      ...(longTermEntries > 0 ? ['long-term'] : []),
+      ...(scratchEntries > 0 ? ['scratch'] : []),
+    ];
+    const emptyBuckets = [
+      ...(dailyEntries === 0 ? ['daily'] : []),
+      ...(longTermEntries === 0 ? ['long-term'] : []),
+      ...(scratchEntries === 0 ? ['scratch'] : []),
+    ];
 
     return {
       dailyEntries,
@@ -54,6 +64,10 @@ export class MemoryStore {
       shortTermPresent: dailyEntries > 0,
       canonicalShortTermBucket: 'daily',
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      readyBucketCount: populatedBuckets.length,
+      totalBucketCount: 3,
+      populatedBuckets,
+      emptyBuckets,
     };
   }
 }

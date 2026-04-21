@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 import { AgentProfile } from '../src/core/agent-profile.ts';
 import { MemoryStore } from '../src/core/memory-store.ts';
@@ -238,6 +239,21 @@ test('memory store keeps daily and shortTerm in sync when daily is reassigned af
     populatedBuckets: ['daily'],
     emptyBuckets: ['long-term', 'scratch'],
   });
+});
+
+test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
+  const scriptPath = path.join(makeTempRepo(), 'memory-store-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { MemoryStore } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/memory-store.js'))};
+const memory = new MemoryStore({ daily: [{ id: 'daily-1' }] });
+console.log(JSON.stringify(memory.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, new MemoryStore({ daily: [{ id: 'daily-1' }] }).summary());
 });
 
 test('voice profile parses tone, signature moves, avoid, and language hints from voice docs', () => {
