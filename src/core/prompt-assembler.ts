@@ -1988,7 +1988,10 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
   ].join('\n');
 }
 
-function buildMemoryPreviewBlock(memory: MemorySummary): string {
+function buildMemoryPreviewBlock(
+  memory: MemorySummary,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath'> | null,
+): string {
   if (!memory) {
     return '- unavailable';
   }
@@ -2000,6 +2003,12 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
   const bucketSummary = typeof memory.readyBucketCount === 'number' && typeof memory.totalBucketCount === 'number'
     ? `- buckets: ${memory.readyBucketCount}/${memory.totalBucketCount} ready${Array.isArray(memory.populatedBuckets) && memory.populatedBuckets.length > 0 ? ` (${memory.populatedBuckets.join(', ')})` : ''}${Array.isArray(memory.emptyBuckets) && memory.emptyBuckets.length > 0 ? `, missing ${memory.emptyBuckets.join(', ')}` : ''}`
     : `- coverage: daily ${(memory.dailyPresent ?? memory.shortTermPresent ?? false) ? 'yes' : 'no'}, long-term ${memory.longTermPresent ?? false ? 'yes' : 'no'}, scratch ${memory.scratchPresent ?? false ? 'yes' : 'no'}`;
+  const rootExcerpt = typeof foundationMemory?.rootExcerpt === 'string' && foundationMemory.rootExcerpt.trim().length > 0
+    ? foundationMemory.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationMemory?.rootPath === 'string' && foundationMemory.rootPath.trim().length > 0
+    ? foundationMemory.rootPath.trim()
+    : null;
 
   return [
     `- daily: ${dailyEntries}`,
@@ -2008,7 +2017,8 @@ function buildMemoryPreviewBlock(memory: MemorySummary): string {
     `- total: ${totalEntries}`,
     bucketSummary,
     formatMemoryAliasSummary(memory, '- aliases: '),
-  ].join('\n');
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
@@ -2184,7 +2194,7 @@ export class PromptAssembler {
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
     const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
     const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
-    const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary);
+    const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary, this.foundationCore?.memory);
     const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
 
     return truncatePreview(

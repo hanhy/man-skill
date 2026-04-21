@@ -1096,6 +1096,21 @@ test('PromptAssembler preserves root section count summaries when only aggregate
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },
     memory: { shortTermEntries: 0, longTermEntries: 0 },
+    memorySummary: {
+      dailyEntries: 1,
+      longTermEntries: 0,
+      scratchEntries: 0,
+      totalEntries: 1,
+      dailyPresent: true,
+      longTermPresent: false,
+      scratchPresent: false,
+      canonicalShortTermBucket: 'daily',
+      legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      readyBucketCount: 1,
+      totalBucketCount: 3,
+      populatedBuckets: ['daily'],
+      emptyBuckets: ['long-term', 'scratch'],
+    },
     skills: [],
     channels: { channelCount: 0, channels: [] },
     models: { providerCount: 0, providers: [] },
@@ -1145,6 +1160,7 @@ test('PromptAssembler preserves root section count summaries when only aggregate
     },
   }).buildPreview(4000);
 
+  assert.match(prompt, /Memory store:\n- daily: 1\n- long-term: 0\n- scratch: 0\n- total: 1\n- buckets: 1\/3 ready \(daily\), missing long-term, scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md/);
   assert.match(prompt, /memory: README yes, daily 1, long-term 0, scratch 0; buckets 1\/3 ready \(daily\), missing long-term, scratch; samples: daily\/2026-04-20\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready/);
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready; docs: skills\/slack\/SKILL\.md/);
 });

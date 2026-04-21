@@ -95,6 +95,7 @@ The summary surfaces keep that contract machine-readable:
 - the top-level memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers even though `daily/` is the checked-in path
 - the `MemoryStore` runtime keeps `shortTerm` as a compatibility alias of `daily`, so either property can be reassigned without drifting into two separate short-term buckets
 - `memorySummary.canonicalShortTermBucket` and `memorySummary.legacyShortTermAliases` make that daily-vs-legacy mapping explicit for downstream tooling instead of forcing callers to infer it from field names alone
+- the top-level `Memory store:` preview now also mirrors the repo-core memory guide through `foundation.core.memory.rootExcerpt` / `rootPath`, so operators can see the durable `memory/README.md` framing inline before the deeper `Core foundation:` block
 
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command; when all four repo-core layers are ready, that same block collapses to one compact `ready details` line so cron/operator runs keep the foundation visible without wasting preview budget before moving on to ingestion, channels, or providers.
 
