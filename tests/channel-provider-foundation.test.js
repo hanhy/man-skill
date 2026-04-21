@@ -217,6 +217,8 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
   assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.deepEqual(summary.channels.channels.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
+  assert.deepEqual(summary.models.providers.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
   assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
   assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
 });
@@ -1330,9 +1332,9 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY.*ANTHROPIC_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*GLM_API_KEY.*QWEN_API_KEY/);
   assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: credentials present via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
   assert.doesNotMatch(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]:[^\n]*; next: hook tenant-app event subscriptions into inbound delivery flow/);
-  assert.match(summary.promptPreview, /Slack \[candidate, runtime-ready\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+  assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
   assert.match(summary.promptPreview, /Telegram \[candidate, runtime-ready\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-  assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[candidate, runtime-ready\], Feishu \[candidate(?:, configured)?, runtime-ready\]/);
+  assert.match(summary.promptPreview, /\+2 more channels: WhatsApp \[candidate, runtime-ready\], Slack \[candidate, runtime-ready\]/);
   assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, runtime-ready\], WhatsApp \[candidate, runtime-ready\], Slack \[candidate, runtime-ready\]/);
   assert.match(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
   assert.doesNotMatch(summary.promptPreview, /OpenAI \[candidate, runtime-ready\]:[^\n]*; next: implement chat\/tool request translation and response normalization/);
@@ -1505,7 +1507,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
-    assert.match(summary.promptPreview, /Slack \[planned, configured, scaffold-only\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
+    assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
     assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
     assert.match(summary.promptPreview, /Anthropic \[planned, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
@@ -1741,8 +1743,8 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
   assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Slack \[active\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
-  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Feishu \[planned, scaffold-only\], Discord \[candidate\]/);
+  assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Slack \[active\], Discord \[candidate\]/);
   assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
   assert.match(summary.promptPreview, /OpenAI \[active\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);

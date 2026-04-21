@@ -314,21 +314,36 @@ function promoteRuntimeReadyStatus(status?: string | null, implementationReady?:
 function applyRuntimeReadyStatuses<
   TRecord extends DeliveryRecordLike,
   TSummary extends DeliverySummaryLike<TRecord>,
->(summary: TSummary, queue: QueueLike[] = [], collectionKey: DeliveryCollectionKey): TSummary {
+>(
+  summary: TSummary,
+  queue: QueueLike[] = [],
+  collectionKey: DeliveryCollectionKey,
+  preferredOrder: readonly string[] = [],
+): TSummary {
   const records = Array.isArray(summary?.[collectionKey]) ? summary[collectionKey] as TRecord[] : [];
   const queueById = new Map(
     queue
       .filter((item): item is QueueLike & { id: string } => typeof item?.id === 'string' && item.id.length > 0)
       .map((item) => [item.id, item]),
   );
-  const promotedRecords = records.map((record) => {
+  const orderIndex = new Map(preferredOrder.map((id, index) => [id, index]));
+  const promotedRecords = records.map((record, index) => {
     const queuedRecord = queueById.get(record.id ?? '');
     return {
       ...record,
       status: queuedRecord ? promoteRuntimeReadyStatus(queuedRecord.status, queuedRecord.implementationReady) : (record.status ?? 'unknown'),
       nextStep: queuedRecord?.implementationReady ? null : (record.nextStep ?? null),
+      __originalIndex: index,
     };
-  });
+  }).sort((left, right) => {
+    const leftOrder = orderIndex.get(left.id ?? '') ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = orderIndex.get(right.id ?? '') ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return left.__originalIndex - right.__originalIndex;
+  }).map(({ __originalIndex, ...record }) => record as TRecord);
   const activeCount = promotedRecords.filter((record) => record.status === 'active').length;
   const plannedCount = promotedRecords.filter((record) => record.status === 'planned').length;
   const candidateCount = promotedRecords.filter((record) => record.status === 'candidate').length;
@@ -1722,8 +1737,8 @@ export function buildSummary(rootDir: string) {
     ...provider,
     status: promoteRuntimeReadyStatus(provider.status, provider.implementationReady),
   }));
-  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
-  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
+  const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels', channelRolloutOrder);
+  const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers', providerRolloutOrder);
   const envTemplateVarNames = orderStringsByPreferredSequence(rawEnvTemplateVarNames, baseDeliverySummary.requiredEnvVars);
   const envTemplateMissingRequiredVars = orderStringsByPreferredSequence(
     baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar)),
