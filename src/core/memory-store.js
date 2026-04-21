@@ -37,6 +37,8 @@ export class MemoryStore {
       scratchPresent: scratchEntries > 0,
       shortTermEntries: dailyEntries,
       shortTermPresent: dailyEntries > 0,
+      canonicalShortTermBucket: 'daily',
+      legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
     };
   }
 }

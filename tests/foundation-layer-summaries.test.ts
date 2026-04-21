@@ -95,6 +95,8 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     scratchPresent: true,
     shortTermEntries: 1,
     shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
   });
 
   assert.deepEqual(skills.summary(), {
@@ -165,6 +167,8 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     scratchPresent: false,
     shortTermEntries: 1,
     shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
   });
 });
 
@@ -883,6 +887,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     scratchPresent: false,
     shortTermEntries: 1,
     shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
   });
 
   assert.deepEqual(summary.foundation.core.memory, {
