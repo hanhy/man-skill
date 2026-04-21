@@ -38,8 +38,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /canonical rollout order: Feishu, Telegram, WhatsApp, Slack/);
   assert.match(architectureDoc, /canonical rollout order: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen/);
   assert.match(architectureDoc, /keep Feishu, Telegram, WhatsApp, and Slack adapter manifests\/implementations visible in the delivery summary/);
-  assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the actionable `currentPriority`/);
-  assert.match(architectureDoc, /`actionableReadyPriority` for ready-but-still-runnable follow-up work such as imported intake starter manifests/);
+  assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the queued-or-blocked `currentPriority`/);
+  assert.match(architectureDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported intake starter manifest/i);
+  assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
@@ -59,7 +60,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /update-bundle/i);
   assert.match(architectureDoc, /sync-bundle/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
-  assert.match(ingestionDoc, /`actionableReadyPriority` for ready-but-still-runnable follow-up work such as imported starter-manifest edits/);
+  assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
+  assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);

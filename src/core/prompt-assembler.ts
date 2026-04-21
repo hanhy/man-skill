@@ -614,6 +614,7 @@ type WorkLoopSummary = {
   blockedPriorityCount?: number;
   leadingPriority?: WorkLoopPriority | null;
   currentPriority?: WorkLoopPriority | null;
+  runnablePriority?: WorkLoopPriority | null;
   actionableReadyPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
 } | null;
@@ -2011,14 +2012,20 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
   const leadingPriority = workLoop.leadingPriority;
   const currentPriority = workLoop.currentPriority;
+  const runnablePriority = workLoop.runnablePriority;
   const actionableReadyPriority = workLoop.actionableReadyPriority;
   const priorities = workLoop.priorities ?? [];
   const showLeadingPriority = Boolean(
     leadingPriority && (!currentPriority || (leadingPriority.id ?? leadingPriority.label) !== (currentPriority.id ?? currentPriority.label)),
   );
+  const showRunnablePriority = Boolean(
+    runnablePriority
+      && (!currentPriority || (runnablePriority.id ?? runnablePriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
   const showActionableReadyPriority = Boolean(
     actionableReadyPriority
-      && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+      && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
+      && (!runnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority.id ?? runnablePriority.label)),
   );
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2058,6 +2065,24 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     (currentPriority?.paths ?? []).length > 0
       ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
+      : null,
+    showRunnablePriority && runnablePriority
+      ? `- runnable: ${runnablePriority.label ?? runnablePriority.id ?? 'Runnable priority'} [${runnablePriority.status ?? 'unknown'}] — ${runnablePriority.summary ?? 'needs review'}`
+      : null,
+    showRunnablePriority && runnablePriority?.nextAction
+      ? `- runnable next action: ${runnablePriority.nextAction}`
+      : null,
+    showRunnablePriority && runnablePriority?.command
+      ? `- runnable command: ${runnablePriority.command}`
+      : null,
+    showRunnablePriority && runnablePriority?.editPath
+      ? `- runnable edit: ${runnablePriority.editPath}`
+      : null,
+    showRunnablePriority && runnablePriority?.followUpCommand
+      ? `- runnable then run: ${runnablePriority.followUpCommand}`
+      : null,
+    showRunnablePriority && (runnablePriority?.paths ?? []).length > 0
+      ? `- runnable paths: ${(runnablePriority?.paths ?? []).join(', ')}`
       : null,
     showActionableReadyPriority && actionableReadyPriority
       ? `- advisory: ${actionableReadyPriority.label ?? actionableReadyPriority.id ?? 'Ready advisory'} [${actionableReadyPriority.status ?? 'unknown'}] — ${actionableReadyPriority.summary ?? 'needs review'}`
