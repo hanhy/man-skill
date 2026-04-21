@@ -214,6 +214,47 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
   assert.deepEqual(summary.delivery.providerQueue.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
 });
 
+test('buildSummary keeps required delivery env coverage in rollout order even when leading integrations are already active', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'channels.json'), JSON.stringify([
+    { ...feishuChannelScaffold, status: 'active' },
+    telegramChannelScaffold,
+    whatsappChannelScaffold,
+    slackChannelScaffold,
+  ], null, 2));
+  fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([
+    { ...openaiProviderScaffold, status: 'active' },
+    anthropicProviderScaffold,
+    kimiProviderScaffold,
+    minimaxProviderScaffold,
+    glmProviderScaffold,
+    qwenProviderScaffold,
+  ], null, 2));
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.delivery.requiredEnvVars, [
+    'FEISHU_APP_ID',
+    'FEISHU_APP_SECRET',
+    'TELEGRAM_BOT_TOKEN',
+    'WHATSAPP_ACCESS_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_BOT_TOKEN',
+    'SLACK_SIGNING_SECRET',
+    'OPENAI_API_KEY',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
+  ]);
+  assert.equal(summary.delivery.envTemplateVarNames.length, 13);
+  assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
+  assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
+});
+
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
   const channelScaffolds = [
     slackChannelScaffold,
@@ -1278,8 +1319,8 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /channels: 4 total \(0 active, 0 planned, 4 candidate\)/);
   assert.match(summary.promptPreview, /models: 6 total \(0 active, 0 planned, 6 candidate\)/);
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
-  assert.match(summary.promptPreview, /channel env backlog: .*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET.*TELEGRAM_BOT_TOKEN.*WHATSAPP_ACCESS_TOKEN.*WHATSAPP_PHONE_NUMBER_ID/);
-  assert.match(summary.promptPreview, /provider env backlog: .*ANTHROPIC_API_KEY.*GLM_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*OPENAI_API_KEY.*QWEN_API_KEY/);
+  assert.match(summary.promptPreview, /channel env backlog: .*TELEGRAM_BOT_TOKEN.*WHATSAPP_ACCESS_TOKEN.*WHATSAPP_PHONE_NUMBER_ID.*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET/);
+  assert.match(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY.*ANTHROPIC_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*GLM_API_KEY.*QWEN_API_KEY/);
   assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: credentials present via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
   assert.doesNotMatch(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]:[^\n]*; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /Slack \[candidate, runtime-ready\] via events-api\/web-api -> thread-reply @ \/hooks\/slack\/events \[bot-token: SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET\]/);
@@ -1340,25 +1381,25 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     ]);
     assert.deepEqual(summary.delivery.missingProviderEnvVars, [
       'ANTHROPIC_API_KEY',
-      'GLM_API_KEY',
       'KIMI_API_KEY',
       'MINIMAX_API_KEY',
+      'GLM_API_KEY',
       'QWEN_API_KEY',
     ]);
     assert.deepEqual(summary.delivery.requiredEnvVars, [
-      'ANTHROPIC_API_KEY',
       'FEISHU_APP_ID',
       'FEISHU_APP_SECRET',
-      'GLM_API_KEY',
-      'KIMI_API_KEY',
-      'MINIMAX_API_KEY',
-      'OPENAI_API_KEY',
-      'QWEN_API_KEY',
-      'SLACK_BOT_TOKEN',
-      'SLACK_SIGNING_SECRET',
       'TELEGRAM_BOT_TOKEN',
       'WHATSAPP_ACCESS_TOKEN',
       'WHATSAPP_PHONE_NUMBER_ID',
+      'SLACK_BOT_TOKEN',
+      'SLACK_SIGNING_SECRET',
+      'OPENAI_API_KEY',
+      'ANTHROPIC_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'GLM_API_KEY',
+      'QWEN_API_KEY',
     ]);
     assert.equal(summary.delivery.channelManifestPath, 'manifests/channels.json');
     assert.equal(summary.delivery.providerManifestPath, 'manifests/providers.json');
@@ -1366,19 +1407,19 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.equal(summary.delivery.envTemplatePresent, true);
     assert.equal(summary.delivery.envTemplateCommand, 'cp .env.example .env');
     assert.deepEqual(summary.delivery.envTemplateVarNames, [
-      'ANTHROPIC_API_KEY',
       'FEISHU_APP_ID',
       'FEISHU_APP_SECRET',
-      'GLM_API_KEY',
-      'KIMI_API_KEY',
-      'MINIMAX_API_KEY',
-      'OPENAI_API_KEY',
-      'QWEN_API_KEY',
-      'SLACK_BOT_TOKEN',
-      'SLACK_SIGNING_SECRET',
       'TELEGRAM_BOT_TOKEN',
       'WHATSAPP_ACCESS_TOKEN',
       'WHATSAPP_PHONE_NUMBER_ID',
+      'SLACK_BOT_TOKEN',
+      'SLACK_SIGNING_SECRET',
+      'OPENAI_API_KEY',
+      'ANTHROPIC_API_KEY',
+      'KIMI_API_KEY',
+      'MINIMAX_API_KEY',
+      'GLM_API_KEY',
+      'QWEN_API_KEY',
     ]);
     assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, []);
     assert.deepEqual(summary.delivery.helperCommands, {
@@ -1462,7 +1503,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
     assert.match(summary.promptPreview, /Anthropic \[planned, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
-    assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY/);
+    assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
     assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Slack \[planned, configured, scaffold-only\]/);
@@ -1708,27 +1749,27 @@ test('buildSummary exposes env template population helpers when .env.example is 
 
   const summary = buildSummary(rootDir);
 
-  assert.deepEqual(summary.delivery.envTemplateVarNames, ['OPENAI_API_KEY', 'SLACK_BOT_TOKEN']);
+  assert.deepEqual(summary.delivery.envTemplateVarNames, ['SLACK_BOT_TOKEN', 'OPENAI_API_KEY']);
   assert.deepEqual(summary.delivery.envTemplateMissingRequiredVars, [
-    'ANTHROPIC_API_KEY',
     'FEISHU_APP_ID',
     'FEISHU_APP_SECRET',
-    'GLM_API_KEY',
-    'KIMI_API_KEY',
-    'MINIMAX_API_KEY',
-    'QWEN_API_KEY',
-    'SLACK_SIGNING_SECRET',
     'TELEGRAM_BOT_TOKEN',
     'WHATSAPP_ACCESS_TOKEN',
     'WHATSAPP_PHONE_NUMBER_ID',
+    'SLACK_SIGNING_SECRET',
+    'ANTHROPIC_API_KEY',
+    'KIMI_API_KEY',
+    'MINIMAX_API_KEY',
+    'GLM_API_KEY',
+    'QWEN_API_KEY',
   ]);
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
   assert.equal(
     summary.delivery.helperCommands.populateEnvTemplate,
-    "touch '.env.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
-  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing ANTHROPIC_API_KEY, FEISHU_APP_ID, FEISHU_APP_SECRET, GLM_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, QWEN_API_KEY, SLACK_SIGNING_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID\)/);
-  assert.match(summary.promptPreview, /helpers: template env touch '\.env\.example' && for key in 'ANTHROPIC_API_KEY' 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'GLM_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'QWEN_API_KEY' 'SLACK_SIGNING_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, SLACK_SIGNING_SECRET, ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY\)/);
+  assert.match(summary.promptPreview, /helpers: template env touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
 });
 

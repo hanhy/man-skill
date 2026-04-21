@@ -13,7 +13,7 @@ import { buildFoundationRollup } from './core/foundation-rollup.js';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
-import { buildDeliverySummary, buildPopulateEnvCommand } from './core/delivery-summary.ts';
+import { buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
@@ -948,7 +948,7 @@ function readEnvTemplateVarNames(envTemplateAbsolutePath: string): string[] {
       .filter((line) => line.length > 0 && !line.startsWith('#'))
       .map((line) => line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1] ?? null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
-  )).sort((left, right) => left.localeCompare(right));
+  ));
 }
 
 function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profiles: ProfileSummaryLike[] = []): WorkPriority {
@@ -1619,7 +1619,7 @@ export function buildSummary(rootDir: string) {
   const envConfigAbsolutePath = path.join(rootDir, '.env');
   const envTemplatePresent = fs.existsSync(envTemplateAbsolutePath);
   const envConfigPresent = fs.existsSync(envConfigAbsolutePath);
-  const envTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
+  const rawEnvTemplateVarNames = envTemplatePresent ? readEnvTemplateVarNames(envTemplateAbsolutePath) : [];
   const repoEnvValues = readEnvFileValues(envConfigAbsolutePath);
   const deliveryEnvironment = mergeDeliveryEnvironment(repoEnvValues, process.env);
   const baseDeliverySummary = buildDeliverySummary(rawChannelsSummary, rawModelsSummary, deliveryEnvironment, { rootDir });
@@ -1633,7 +1633,11 @@ export function buildSummary(rootDir: string) {
   }));
   const channelsSummary = applyRuntimeReadyStatuses(rawChannelsSummary, promotedChannelQueue, 'channels');
   const modelsSummary = applyRuntimeReadyStatuses(rawModelsSummary, promotedProviderQueue, 'providers');
-  const envTemplateMissingRequiredVars = baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar));
+  const envTemplateVarNames = orderStringsByPreferredSequence(rawEnvTemplateVarNames, baseDeliverySummary.requiredEnvVars);
+  const envTemplateMissingRequiredVars = orderStringsByPreferredSequence(
+    baseDeliverySummary.requiredEnvVars.filter((envVar) => !envTemplateVarNames.includes(envVar)),
+    baseDeliverySummary.requiredEnvVars,
+  );
   const completeEnvBootstrapCommand = envTemplatePresent && !envConfigPresent ? 'cp .env.example .env' : null;
   const populateEnvTemplateCommand = envTemplatePresent && envTemplateMissingRequiredVars.length > 0
     ? buildPopulateEnvCommand(envTemplateMissingRequiredVars, '.env.example')

@@ -147,6 +147,40 @@ type DeliverySummaryOptions = {
   rootDir?: string | null;
 };
 
+function uniqueStringsPreservingOrder(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  values.forEach((value) => {
+    if (typeof value !== 'string' || value.length === 0 || seen.has(value)) {
+      return;
+    }
+
+    seen.add(value);
+    result.push(value);
+  });
+  return result;
+}
+
+export function orderStringsByPreferredSequence(
+  values: Array<string | null | undefined>,
+  preferredOrder: readonly string[] = [],
+): string[] {
+  const normalizedValues = uniqueStringsPreservingOrder(values);
+  if (normalizedValues.length === 0) {
+    return [];
+  }
+
+  const preferred = uniqueStringsPreservingOrder(preferredOrder as string[]);
+  if (preferred.length === 0) {
+    return normalizedValues;
+  }
+
+  const valueSet = new Set(normalizedValues);
+  const orderedPreferred = preferred.filter((value) => valueSet.has(value));
+  const orderedExtras = normalizedValues.filter((value) => !preferred.includes(value));
+  return [...orderedPreferred, ...orderedExtras];
+}
+
 function collectMissingEnvVars(envVars: string[], environment: NodeJS.ProcessEnv): string[] {
   return envVars.filter((envVar) => !hasConfiguredEnvValue(environment[envVar]));
 }
@@ -330,6 +364,22 @@ function compareRolloutOrder(
   return (leftId ?? '').localeCompare(rightId ?? '');
 }
 
+function collectOrderedChannelEnvVars(records: ChannelSummaryRecord[] = []): string[] {
+  return uniqueStringsPreservingOrder(
+    [...records]
+      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, CHANNEL_ROLLOUT_ORDER))
+      .flatMap((record) => (record?.auth?.envVars ?? []).filter(Boolean)),
+  );
+}
+
+function collectOrderedProviderEnvVars(records: ProviderSummaryRecord[] = []): string[] {
+  return uniqueStringsPreservingOrder(
+    [...records]
+      .sort((left, right) => compareRolloutOrder(left?.id, right?.id, PROVIDER_ROLLOUT_ORDER))
+      .flatMap((record) => record?.authEnvVar ? [record.authEnvVar] : []),
+  );
+}
+
 export function buildDeliverySummary(
   channels: ChannelsSummary = null,
   models: ModelsSummary = null,
@@ -429,10 +479,9 @@ export function buildDeliverySummary(
     })
     .sort((left, right) => compareRolloutOrder(left.id, right.id, PROVIDER_ROLLOUT_ORDER));
 
-  const requiredEnvVars = [
-    ...(channels?.channels ?? []).flatMap((channel) => (channel.auth?.envVars ?? []).filter(Boolean)),
-    ...(models?.providers ?? []).flatMap((provider) => (provider.authEnvVar ? [provider.authEnvVar] : [])),
-  ].filter(Boolean);
+  const orderedChannelEnvVars = collectOrderedChannelEnvVars(allChannelRecords);
+  const orderedProviderEnvVars = collectOrderedProviderEnvVars(allProviderRecords);
+  const requiredEnvVars = [...orderedChannelEnvVars, ...orderedProviderEnvVars];
   const channelScaffoldCoverage = allChannelRecords.map((channel) => isImplementationPresent(channel.implementationPath ?? null, rootDir));
   const providerScaffoldCoverage = allProviderRecords.map((provider) => isImplementationPresent(provider.implementationPath ?? null, rootDir));
   const firstChannelMissingManifest = channelQueue.find((channel) => channel.manifestPresent === false) ?? null;
@@ -465,9 +514,9 @@ export function buildDeliverySummary(
     scaffoldOnlyProviderCount: providerQueue.filter((provider) => provider.implementationStatus === 'scaffold').length,
     missingChannelScaffoldCount: channelScaffoldCoverage.filter((present) => !present).length,
     missingProviderScaffoldCount: providerScaffoldCoverage.filter((present) => !present).length,
-    missingChannelEnvVars: [...new Set(channelQueue.flatMap((channel) => channel.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
-    missingProviderEnvVars: [...new Set(providerQueue.flatMap((provider) => provider.missingEnvVars))].sort((left, right) => left.localeCompare(right)),
-    requiredEnvVars: [...new Set(requiredEnvVars)].sort((left, right) => left.localeCompare(right)),
+    missingChannelEnvVars: orderStringsByPreferredSequence(channelQueue.flatMap((channel) => channel.missingEnvVars), orderedChannelEnvVars),
+    missingProviderEnvVars: orderStringsByPreferredSequence(providerQueue.flatMap((provider) => provider.missingEnvVars), orderedProviderEnvVars),
+    requiredEnvVars,
     channelManifestPath,
     providerManifestPath,
     envTemplatePath,
