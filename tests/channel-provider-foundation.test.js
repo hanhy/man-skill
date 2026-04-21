@@ -359,8 +359,8 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
   const telegram = summary.channels.channels.find((channel) => channel.id === 'telegram');
 
   assert.equal(summary.channels.activeCount, 0);
-  assert.equal(summary.channels.plannedCount, 4);
-  assert.equal(summary.channels.candidateCount, 0);
+  assert.equal(summary.channels.plannedCount, 0);
+  assert.equal(summary.channels.candidateCount, 4);
   assert.deepEqual(summary.channels.authEnvVars, [
     'FEISHU_APP_ID',
     'FEISHU_APP_SECRET',
@@ -378,7 +378,7 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
   assert.equal(slack.inboundPath, '/hooks/slack/events');
   assert.equal(slack.outboundMode, 'thread-reply');
   assert.equal(slack.implementationPath, 'src/channels/slack.js');
-  assert.equal(slack.nextStep, 'implement inbound event handling and outbound thread replies');
+  assert.equal(slack.nextStep, null);
   assert.deepEqual(telegram.auth, {
     type: 'bot-token',
     envVars: ['TELEGRAM_BOT_TOKEN'],
@@ -387,7 +387,7 @@ test('buildSummary exposes delivery metadata for default chat channels', () => {
   assert.equal(telegram.inboundPath, '/hooks/telegram');
   assert.equal(telegram.outboundMode, 'chat-send');
   assert.equal(telegram.implementationPath, 'src/channels/telegram.js');
-  assert.equal(telegram.nextStep, 'wire bot webhook intake and outbound chat sends');
+  assert.equal(telegram.nextStep, null);
 });
 
 test('buildSummary exposes capability metadata for default model providers', () => {
@@ -400,8 +400,8 @@ test('buildSummary exposes capability metadata for default model providers', () 
   const kimi = summary.models.providers.find((provider) => provider.id === 'kimi');
 
   assert.equal(summary.models.activeCount, 0);
-  assert.equal(summary.models.plannedCount, 6);
-  assert.equal(summary.models.candidateCount, 0);
+  assert.equal(summary.models.plannedCount, 0);
+  assert.equal(summary.models.candidateCount, 6);
   assert.equal(summary.models.multimodalProviderCount, 6);
   assert.deepEqual(summary.models.authEnvVars, [
     'ANTHROPIC_API_KEY',
@@ -415,18 +415,18 @@ test('buildSummary exposes capability metadata for default model providers', () 
   assert.equal(openai.authEnvVar, 'OPENAI_API_KEY');
   assert.deepEqual(openai.modalities, ['chat', 'reasoning', 'vision']);
   assert.equal(openai.implementationPath, 'src/models/openai.js');
-  assert.equal(openai.nextStep, 'implement chat/tool request translation and response normalization');
+  assert.equal(openai.nextStep, null);
   assert.equal(anthropic.defaultModel, 'claude-3.7-sonnet');
   assert.equal(anthropic.authEnvVar, 'ANTHROPIC_API_KEY');
   assert.deepEqual(anthropic.modalities, ['chat', 'long-context', 'vision']);
   assert.equal(anthropic.implementationPath, 'src/models/anthropic.js');
-  assert.equal(anthropic.nextStep, 'implement messages api wrapper with long-context defaults');
+  assert.equal(anthropic.nextStep, null);
   assert.equal(kimi.defaultModel, 'moonshot-v1-32k');
   assert.equal(kimi.authEnvVar, 'KIMI_API_KEY');
   assert.deepEqual(kimi.features, ['chat', 'tools', 'long-context']);
   assert.deepEqual(kimi.modalities, ['chat', 'tools', 'long-context']);
   assert.equal(kimi.implementationPath, 'src/models/kimi.js');
-  assert.equal(kimi.nextStep, 'implement moonshot-compatible client setup and model selection');
+  assert.equal(kimi.nextStep, null);
 });
 
 test('buildSummary treats repo-local .env values as configured delivery auth', () => {
@@ -1575,7 +1575,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.channelQueue[0], {
       id: 'feishu',
       name: 'Feishu',
-      status: 'planned',
+      status: 'candidate',
       authType: 'tenant-app',
       authEnvVars: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'],
       capabilities: ['tenant-app', 'docs', 'bot'],
@@ -1593,7 +1593,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestPresent: false,
       manifestScaffoldPath: 'manifests/channels.json',
       setupHint: 'set FEISHU_APP_ID, FEISHU_APP_SECRET',
-      nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
+      nextStep: null,
       helperCommands: {
         bootstrapEnv: 'cp .env.example .env',
         populateEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
@@ -1604,7 +1604,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.providerQueue[0], {
       id: 'openai',
       name: 'OpenAI',
-      status: 'planned',
+      status: 'candidate',
       defaultModel: 'gpt-5',
       authEnvVar: 'OPENAI_API_KEY',
       models: ['gpt-4.1', 'gpt-4o', 'gpt-5'],
@@ -1621,7 +1621,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       manifestPresent: false,
       manifestScaffoldPath: 'manifests/providers.json',
       setupHint: 'auth configured for gpt-5',
-      nextStep: 'implement chat/tool request translation and response normalization',
+      nextStep: null,
       helperCommands: {
         bootstrapEnv: null,
         populateEnv: null,
@@ -1630,24 +1630,33 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       },
     });
     assert.match(summary.promptPreview, /Delivery foundation:/);
-    assert.match(summary.promptPreview, /channels: 4 total \(0 active, 4 planned, 0 candidate\)/);
+    assert.match(summary.promptPreview, /channels: 4 total \(0 active, 0 planned, 4 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
     assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
-    assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
-    assert.match(summary.promptPreview, /Telegram \[planned, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
-    assert.match(summary.promptPreview, /Anthropic \[planned, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
+    assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
+    assert.match(summary.promptPreview, /Telegram \[candidate, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
+    assert.match(summary.promptPreview, /OpenAI \[candidate, configured, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
+    assert.match(summary.promptPreview, /Anthropic \[candidate, scaffold-only\] default claude-3\.7-sonnet \[ANTHROPIC_API_KEY\] \{chat, long-context, vision\}/);
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
     assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
-    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[planned, scaffold-only\], WhatsApp \[planned, scaffold-only\], Slack \[planned, configured, scaffold-only\]/);
-    assert.match(summary.promptPreview, /models: 6 total \(0 active, 6 planned, 0 candidate\)/);
+    assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, scaffold-only\], WhatsApp \[candidate, scaffold-only\], Slack \[candidate, configured, scaffold-only\]/);
+    assert.match(summary.promptPreview, /models: 6 total \(0 active, 0 planned, 6 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
-    assert.match(summary.promptPreview, /OpenAI \[planned, configured, scaffold-only\]: auth configured for gpt-5; next: implement chat\/tool request translation and response normalization \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
-    assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[planned, scaffold-only\], Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\]/);
+    assert.match(summary.promptPreview, /OpenAI \[candidate, configured, scaffold-only\]: auth configured for gpt-5 \{chat, reasoning, vision\} \[features: chat, tools, reasoning; models: gpt-4\.1, gpt-4o, gpt-5\] @ src\/models\/openai\.js \| helpers: manifest mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /\+5 more queued providers: Anthropic \[candidate, scaffold-only\], Kimi \[candidate, scaffold-only\], Minimax \[candidate, scaffold-only\], GLM \[candidate, scaffold-only\], Qwen \[candidate, scaffold-only\]/);
+    const channelsPriority = summary.workLoop.priorities.find((priority) => priority.id === 'channels');
+    assert.ok(channelsPriority);
+    assert.equal(channelsPriority.status, 'queued');
+    assert.equal(channelsPriority.command, 'cp .env.example .env');
+    assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
+    assert.equal(
+      channelsPriority.nextAction,
+      'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET',
+    );
   } finally {
     if (originalEnv.SLACK_BOT_TOKEN === undefined) {
       delete process.env.SLACK_BOT_TOKEN;
@@ -1712,9 +1721,9 @@ test('buildSummary exposes delivery implementation readiness separately from sca
   assert.equal(summary.delivery.providerQueue[0].implementationStatus, 'scaffold');
   assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
   assert.match(summary.promptPreview, /channel queue: 4 pending \(4 auth-blocked\), manifest ready, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET; next: hook tenant-app event subscriptions into inbound delivery flow/);
+  assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /provider queue: 6 pending \(6 auth-blocked\), manifest ready, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
-  assert.match(summary.promptPreview, /OpenAI \[planned, scaffold-only\]: set OPENAI_API_KEY for gpt-5; next: implement chat\/tool request translation and response normalization/);
+  assert.match(summary.promptPreview, /OpenAI \[candidate, scaffold-only\]: set OPENAI_API_KEY for gpt-5/);
   } finally {
     envVars.forEach((envVar) => {
       if (originalEnv[envVar] === undefined) {
@@ -1889,14 +1898,14 @@ test('buildSummary prompt preview surfaces candidate delivery integrations from 
   assert.equal(summary.models.manifest.status, 'loaded');
   assert.equal(summary.models.manifest.entryCount, 2);
   assert.equal(summary.models.manifest.path, 'manifests/providers.json');
-  assert.match(summary.promptPreview, /channels: 5 total \(1 active, 3 planned, 1 candidate\)/);
+  assert.match(summary.promptPreview, /channels: 5 total \(1 active, 0 planned, 4 candidate\)/);
   assert.match(summary.promptPreview, /channel manifest: loaded 2 entries from manifests\/channels\.json/);
-  assert.match(summary.promptPreview, /Feishu \[planned, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
-  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[planned, scaffold-only\], Slack \[active, scaffold-only\], Discord \[candidate\]/);
-  assert.match(summary.promptPreview, /models: 7 total \(1 active, 5 planned, 1 candidate\)/);
+  assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
+  assert.match(summary.promptPreview, /\+3 more channels: WhatsApp \[candidate, scaffold-only\], Slack \[active, scaffold-only\], Discord \[candidate\]/);
+  assert.match(summary.promptPreview, /models: 7 total \(1 active, 0 planned, 6 candidate\)/);
   assert.match(summary.promptPreview, /provider manifest: loaded 2 entries from manifests\/providers\.json/);
   assert.match(summary.promptPreview, /OpenAI \[active, scaffold-only\] default gpt-5 \[OPENAI_API_KEY\] \{chat, reasoning, vision\}/);
-  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[planned, scaffold-only\], Minimax \[planned, scaffold-only\], GLM \[planned, scaffold-only\], Qwen \[planned, scaffold-only\], DeepSeek \[candidate\]/);
+  assert.match(summary.promptPreview, /\+5 more providers: Kimi \[candidate, scaffold-only\], Minimax \[candidate, scaffold-only\], GLM \[candidate, scaffold-only\], Qwen \[candidate, scaffold-only\], DeepSeek \[candidate\]/);
 });
 
 test('buildSummary exposes env template population helpers when .env.example is missing required delivery vars', () => {
@@ -2014,8 +2023,8 @@ test('buildSummary merges channel and provider manifests onto the default founda
 
   assert.equal(summary.channels.channelCount, 5);
   assert.equal(summary.channels.activeCount, 1);
-  assert.equal(summary.channels.plannedCount, 3);
-  assert.equal(summary.channels.candidateCount, 1);
+  assert.equal(summary.channels.plannedCount, 0);
+  assert.equal(summary.channels.candidateCount, 4);
   assert.deepEqual(summary.channels.authEnvVars, [
     'FEISHU_APP_ID',
     'FEISHU_APP_SECRET',
@@ -2027,8 +2036,8 @@ test('buildSummary merges channel and provider manifests onto the default founda
   ]);
   assert.equal(summary.models.providerCount, 7);
   assert.equal(summary.models.activeCount, 1);
-  assert.equal(summary.models.plannedCount, 5);
-  assert.equal(summary.models.candidateCount, 1);
+  assert.equal(summary.models.plannedCount, 0);
+  assert.equal(summary.models.candidateCount, 6);
   assert.equal(summary.models.multimodalProviderCount, 6);
   assert.equal(slack.status, 'active');
   assert.deepEqual(slack.auth, {

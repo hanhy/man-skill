@@ -3,68 +3,119 @@
     "id": "slack",
     "name": "Slack",
     "transport": "chat",
-    "direction": ["inbound", "outbound"],
-    "status": "planned",
-    "capabilities": ["threads", "mentions", "bot-token"],
+    "direction": [
+      "inbound",
+      "outbound"
+    ],
+    "status": "candidate",
+    "capabilities": [
+      "threads",
+      "mentions",
+      "bot-token"
+    ],
     "auth": {
       "type": "bot-token",
-      "envVars": ["SLACK_BOT_TOKEN", "SLACK_SIGNING_SECRET"]
+      "envVars": [
+        "SLACK_BOT_TOKEN",
+        "SLACK_SIGNING_SECRET"
+      ]
     },
-    "deliveryModes": ["events-api", "web-api"],
+    "deliveryModes": [
+      "events-api",
+      "web-api"
+    ],
     "inboundPath": "/hooks/slack/events",
     "outboundMode": "thread-reply",
     "implementationPath": "src/channels/slack.js",
-    "nextStep": "implement inbound event handling and outbound thread replies"
+    "nextStep": null
   },
   {
     "id": "telegram",
     "name": "Telegram",
     "transport": "chat",
-    "direction": ["inbound", "outbound"],
-    "status": "planned",
-    "capabilities": ["bot-token", "webhook", "polling"],
+    "direction": [
+      "inbound",
+      "outbound"
+    ],
+    "status": "candidate",
+    "capabilities": [
+      "bot-token",
+      "webhook",
+      "polling"
+    ],
     "auth": {
       "type": "bot-token",
-      "envVars": ["TELEGRAM_BOT_TOKEN"]
+      "envVars": [
+        "TELEGRAM_BOT_TOKEN"
+      ]
     },
-    "deliveryModes": ["polling", "webhook"],
+    "deliveryModes": [
+      "polling",
+      "webhook"
+    ],
     "inboundPath": "/hooks/telegram",
     "outboundMode": "chat-send",
     "implementationPath": "src/channels/telegram.js",
-    "nextStep": "wire bot webhook intake and outbound chat sends"
+    "nextStep": null
   },
   {
     "id": "whatsapp",
     "name": "WhatsApp",
     "transport": "chat",
-    "direction": ["inbound", "outbound"],
-    "status": "planned",
-    "capabilities": ["session", "group-chat", "business-api"],
+    "direction": [
+      "inbound",
+      "outbound"
+    ],
+    "status": "candidate",
+    "capabilities": [
+      "session",
+      "group-chat",
+      "business-api"
+    ],
     "auth": {
       "type": "access-token",
-      "envVars": ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"]
+      "envVars": [
+        "WHATSAPP_ACCESS_TOKEN",
+        "WHATSAPP_PHONE_NUMBER_ID"
+      ]
     },
-    "deliveryModes": ["cloud-api", "session-bridge"],
+    "deliveryModes": [
+      "cloud-api",
+      "session-bridge"
+    ],
     "inboundPath": "/hooks/whatsapp",
     "outboundMode": "session-send",
     "implementationPath": "src/channels/whatsapp.js",
-    "nextStep": "map business-api webhooks and outbound message delivery"
+    "nextStep": null
   },
   {
     "id": "feishu",
     "name": "Feishu",
     "transport": "chat",
-    "direction": ["inbound", "outbound"],
-    "status": "planned",
-    "capabilities": ["tenant-app", "docs", "bot"],
+    "direction": [
+      "inbound",
+      "outbound"
+    ],
+    "status": "candidate",
+    "capabilities": [
+      "tenant-app",
+      "docs",
+      "bot"
+    ],
     "auth": {
       "type": "tenant-app",
-      "envVars": ["FEISHU_APP_ID", "FEISHU_APP_SECRET"]
+      "envVars": [
+        "FEISHU_APP_ID",
+        "FEISHU_APP_SECRET"
+      ]
     },
-    "deliveryModes": ["event-subscription", "webhook"],
+    "deliveryModes": [
+      "event-subscription",
+      "webhook"
+    ],
     "inboundPath": "/hooks/feishu/events",
     "outboundMode": "bot-message",
     "implementationPath": "src/channels/feishu.js",
-    "nextStep": "hook tenant-app event subscriptions into inbound delivery flow"
+    "nextStep": null
   }
 ]

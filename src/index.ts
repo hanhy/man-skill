@@ -1260,6 +1260,12 @@ function buildDeliveryPriority({
   let nextAction = firstQueued ? followUpParts.join('; ') : null;
   let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
 
+  if (command === envTemplateCommand && needsCredentialBootstrap) {
+    const envTarget = typeof envConfigPath === 'string' && envConfigPath.length > 0 ? envConfigPath : '.env';
+    const envSource = typeof envTemplatePath === 'string' && envTemplatePath.length > 0 ? envTemplatePath : '.env.example';
+    nextAction = [`bootstrap ${envTarget} from ${envSource}`, ...followUpParts].filter(Boolean).join('; ');
+  }
+
   if (!command && needsEnvTemplateRepair) {
     nextAction = [`update .env.example with missing delivery credentials`, ...followUpParts].filter(Boolean).join('; ');
     command = envTemplatePopulateCommand;

@@ -5,7 +5,7 @@ export const feishuChannelScaffold = {
   name: 'Feishu',
   transport: 'chat',
   direction: ['inbound', 'outbound'],
-  status: 'planned',
+  status: 'candidate',
   capabilities: ['tenant-app', 'docs', 'bot'],
   auth: {
     type: 'tenant-app',
@@ -15,7 +15,7 @@ export const feishuChannelScaffold = {
   inboundPath: '/hooks/feishu/events',
   outboundMode: 'bot-message',
   implementationPath: 'src/channels/feishu.js',
-  nextStep: 'hook tenant-app event subscriptions into inbound delivery flow',
+  nextStep: null,
 };
 
 function parseFeishuMessageContent(rawContent) {

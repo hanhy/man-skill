@@ -59,7 +59,8 @@ The current operator-facing entrance is:
 - backfill missing intake landing zones for already-imported profiles with `update intake --imported`
 - import checked-in starter material with `import sample`
 - import profile-local intake manifests with `import intake --person <id>`
-- bulk-import only first-run metadata-only intake manifests with `import intake --stale --refresh-foundation`
+- bulk-import only first-run metadata-only intake manifests with `import intake --stale` without refreshing derived drafts by default
+- re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory / voice / soul / skills drafts too
 - bulk-import only already-imported profile-local intake manifests with `import intake --imported`
 - re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory / voice / soul / skills drafts
 - regenerate derived memory / voice / soul / skills drafts with `--refresh-foundation`, `update foundation --person <id>`, or `update foundation --stale`
@@ -82,19 +83,21 @@ The repo-level foundation is intentionally OpenClaw-like: `memory/`, `skills/`, 
 
 The current structured contract is:
 - `memory/README.md` explains `## What belongs here` and `## Buckets`, with `daily/` as the canonical short-term working-memory bucket
+- `src/core/fs-loader.js` folds legacy `memory/short-term/` files into that same canonical `daily` lane at load time, so older repos do not lose short-term memory coverage while the checked-in path stays `daily/`
 - `skills/README.md` explains `## What lives here` and `## Layout`
 - `SOUL.md` captures `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`
 - `voice/README.md` captures `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`
 
 The summary surfaces keep that contract machine-readable:
-- `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready
+- `foundation.core.memory.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` show whether the repo memory guide is structurally ready, while optional `headingAliases` makes sibling-root fallbacks like `What lives here` / `Layout` visible when they still back the canonical memory sections
 - `foundation.core.memory.canonicalShortTermBucket` and `foundation.core.memory.legacyShortTermAliases` mirror the same daily-vs-legacy mapping inside the repo-core foundation contract
-- `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide
+- `foundation.core.skills.rootReadySections`, `rootMissingSections`, `rootReadySectionCount`, and `rootTotalSectionCount` do the same for the shared skills guide, while optional `headingAliases` makes sibling-root fallbacks like `What belongs here` / `Buckets` visible when they still back the canonical skills sections
 - `foundation.core.soul.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable soul heading contract, while optional `headingAliases` makes legacy root headings like `Core values` / `Decision rules` visible when they still map onto the canonical OpenClaw sections
 - `foundation.core.voice.readySections`, `missingSections`, `readySectionCount`, and `totalSectionCount` expose the stable voice heading contract, while optional `headingAliases` makes fallback headings like `Voice should capture` / `Current default for ...` visible when they still back the canonical voice sections
 - the top-level memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers even though `daily/` is the checked-in path
 - the `MemoryStore` runtime keeps `shortTerm` as a compatibility alias of `daily`, so either property can be reassigned without drifting into two separate short-term buckets
 - `memorySummary.canonicalShortTermBucket` and `memorySummary.legacyShortTermAliases` make that daily-vs-legacy mapping explicit for downstream tooling instead of forcing callers to infer it from field names alone
+- the top-level `Memory store:` preview now also mirrors the repo-core memory guide through `foundation.core.memory.rootExcerpt` / `rootPath`, so operators can see the durable `memory/README.md` framing inline before the deeper `Core foundation:` block
 
 `buildSummary(...)` and the work loop use those sections directly. When a root doc is missing or thin, the prompt preview surfaces the exact missing sections plus a runnable repair command; when all four repo-core layers are ready, that same block collapses to one compact `ready details` line so cron/operator runs keep the foundation visible without wasting preview budget before moving on to ingestion, channels, or providers.
 

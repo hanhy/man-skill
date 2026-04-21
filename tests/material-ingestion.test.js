@@ -50,6 +50,7 @@ test('imports text, message, talk, and screenshot materials into a profile-speci
 
   const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
   assert.equal(profile.id, 'harry-han');
+  assert.equal(profile.displayName, 'Harry Han');
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
   const entries = fs.readdirSync(materialsDir);

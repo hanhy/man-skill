@@ -98,6 +98,15 @@ test('checked-in USER current product direction stays aligned with the default w
   ]);
 });
 
+test('README keeps the intake replay defaults aligned with the CLI entrance semantics', () => {
+  assert.match(readme, /bulk-import only first-run metadata-only intake manifests with `import intake --stale`/i);
+  assert.match(readme, /re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory \/ voice \/ soul \/ skills drafts too/i);
+  assert.match(readme, /bulk-import only already-imported profile-local intake manifests with `import intake --imported`/i);
+  assert.match(readme, /re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory \/ voice \/ soul \/ skills drafts/i);
+  assert.match(readme, /`node src\/index\.js --help` now prints a concise operator-facing usage guide/i);
+  assert.match(readme, /without refreshing derived drafts by default/i);
+});
+
 test('checked-in intake scaffold stays aligned with the repo-level starter ingress for Harry Han', () => {
   assert.match(readme, /`update intake` writes `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json`/);
   assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/);
@@ -109,6 +118,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`update intake` bootstraps `profiles\/<person-id>\/imports\/README\.md`, `sample\.txt`, and `materials\.template\.json` as the profile-local user-facing landing zone/i);
   assert.match(profilesDoc, /plain `node src\/index\.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection/i);
   assert.match(profilesDoc, /`node src\/index\.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory \/ voice \/ soul \/ skills drafts/i);
+  assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest and `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
 
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
@@ -123,6 +133,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
   assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 
   assert.equal(harryIntakeManifest.personId, 'harry-han');
   assert.equal(harryIntakeManifest.displayName, 'Harry Han');
@@ -173,14 +184,16 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /OpenClaw-like/i);
   assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
   assert.match(readme, /`daily\/` as the canonical short-term working-memory bucket/i);
+  assert.match(readme, /legacy `memory\/short-term\/` files into that same canonical `daily` lane at load time/i);
   assert.match(readme, /memory summary still mirrors that bucket through `shortTermEntries` and `shortTermPresent` for legacy consumers/i);
   assert.match(readme, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
+  assert.match(readme, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /prompt preview surfaces the exact missing sections plus a runnable repair command/i);
-  assert.match(readme, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
-  assert.match(readme, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
+  assert.match(readme, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
+  assert.match(readme, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(readme, /foundation\.core\.soul\.readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(readme, /foundation\.core\.voice\.readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(readme, /foundation\.core\.maintenance\.queuedAreas\[\*\]\.rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
@@ -190,11 +203,13 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /next repair.*next refresh/i);
   assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
+  assert.match(architectureDoc, /legacy `memory\/short-term\/` files still fold into the canonical `daily` lane/i);
   assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
   assert.match(architectureDoc, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
-  assert.match(architectureDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
+  assert.match(architectureDoc, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
+  assert.match(architectureDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
-  assert.match(architectureDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
+  assert.match(architectureDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /foundation\.core\.soul.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
@@ -203,10 +218,11 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /checked-in root `voice\/README\.md` stable on `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
-  assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
+  assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
+  assert.match(ingestionDoc, /repo loading also folds legacy `memory\/short-term\/` files into that canonical `daily` lane/i);
   assert.match(ingestionDoc, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
-  assert.match(ingestionDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount/i);
+  assert.match(ingestionDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.soul.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
@@ -266,6 +282,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.voice.missingSections, []);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.equal(summary.foundation.core.voice.totalSectionCount, 4);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: This directory stores the agent's durable and working memory in plain files\. @ memory\/README\.md/);
   assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 11\/11 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.doesNotMatch(summary.promptPreview, /- skills: 11 registered, 11 documented/);
