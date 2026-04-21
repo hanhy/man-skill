@@ -744,6 +744,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     assert.equal(typeof telegram.isConfigured, 'function');
     assert.equal(typeof telegram.summary, 'function');
     assert.equal(typeof telegram.normalizeInboundEvent, 'function');
+    assert.equal(typeof telegram.buildCallbackAnswer, 'function');
     assert.equal(typeof telegram.buildChatSend, 'function');
     assert.equal(telegram.isConfigured(), true);
     assert.deepEqual(telegram.summary(), telegramChannelScaffold);
@@ -763,6 +764,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         platform: 'telegram',
         eventType: 'message',
         updateId: 77,
+        callbackQueryId: null,
         chatId: -100123,
         senderId: 42,
         text: 'hello from telegram',
@@ -770,6 +772,13 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         threadId: 9,
         chatType: 'supergroup',
         timestamp: 1710000100,
+      },
+    );
+    assert.deepEqual(
+      telegram.buildCallbackAnswer({ callbackQueryId: 'cbq-77', text: 'roger that' }),
+      {
+        callback_query_id: 'cbq-77',
+        text: 'roger that',
       },
     );
     assert.deepEqual(
