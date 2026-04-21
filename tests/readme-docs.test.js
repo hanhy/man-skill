@@ -139,6 +139,10 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryCommand.updateIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(harryCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
+  assert.equal(
+    summary.workLoop.priorities.find((priority) => priority.id === 'ingestion')?.summary,
+    '1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available',
+  );
 });
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {

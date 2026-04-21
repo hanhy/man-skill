@@ -1037,6 +1037,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const intakeStaleProfileCount = ingestionSummary?.intakeStaleProfileCount ?? 0;
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
+  const importedStarterIntakeProfileCount = ingestionSummary?.importedStarterIntakeProfileCount ?? 0;
   const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
   const importedInvalidIntakeManifestProfileCount = ingestionSummary?.importedInvalidIntakeManifestProfileCount ?? 0;
   const status: WorkPriority['status'] = importedProfileCount > 0
@@ -1061,6 +1062,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const intakeBackfillSummary = importedIntakeBackfillProfileCount > 0
     ? `, ${importedIntakeBackfillProfileCount} intake backfill${importedIntakeBackfillProfileCount === 1 ? '' : 's'}`
     : '';
+  const importedStarterIntakeSummary = importedStarterIntakeProfileCount > 0
+    ? `, ${importedStarterIntakeProfileCount} imported intake starter scaffold${importedStarterIntakeProfileCount === 1 ? '' : 's'} available`
+    : '';
   const invalidMetadataOnlyIntakeSummary = (ingestionSummary?.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
     ? `, ${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount} invalid metadata-only intake manifest${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'}`
     : '';
@@ -1072,7 +1076,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
     paths: recommendedPaths,

@@ -2747,6 +2747,10 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /profiles: 3 total \(2 imported, 1 metadata-only\)/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
+  assert.equal(
+    summary.workLoop.priorities.find((priority) => priority.id === 'ingestion')?.summary,
+    '2 imported, 1 metadata-only, drafts 1 ready, 1 queued for refresh, 2 imported intake starter scaffolds available',
+  );
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 starter templates, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 0 ready, 2 starter templates, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
