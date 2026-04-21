@@ -1755,6 +1755,7 @@ export function buildSummary(rootDir: string) {
 
   const memory = new MemoryStore({
     daily: memoryIndex.daily,
+    legacyShortTerm: memoryIndex.legacyShortTerm,
     longTerm: memoryIndex.longTerm,
     scratch: memoryIndex.scratch,
   });

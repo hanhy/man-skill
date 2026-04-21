@@ -10,6 +10,8 @@ export interface MemorySummary {
   shortTermPresent: boolean;
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
+  legacyShortTermSourceCount: number;
+  legacyShortTermSources: string[];
   readyBucketCount: number;
   totalBucketCount: number;
   populatedBuckets: string[];
@@ -19,6 +21,7 @@ export interface MemorySummary {
 export interface MemoryStoreOptions {
   daily?: unknown[];
   shortTerm?: unknown[];
+  legacyShortTerm?: string[];
   longTerm?: unknown[];
   scratch?: unknown[];
 }
@@ -27,11 +30,15 @@ export class MemoryStore {
   private _daily: unknown[];
   longTerm: unknown[];
   scratch: unknown[];
+  legacyShortTermSources: string[];
 
-  constructor({ daily, shortTerm, longTerm, scratch }: MemoryStoreOptions = {}) {
+  constructor({ daily, shortTerm, legacyShortTerm, longTerm, scratch }: MemoryStoreOptions = {}) {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
+      ? legacyShortTerm.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      : [];
   }
 
   get daily(): unknown[] {
@@ -93,6 +100,8 @@ export class MemoryStore {
       shortTermPresent: dailyEntries > 0,
       canonicalShortTermBucket: 'daily',
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      legacyShortTermSourceCount: this.legacyShortTermSources.length,
+      legacyShortTermSources: [...this.legacyShortTermSources],
       readyBucketCount: populatedBuckets.length,
       totalBucketCount: 3,
       populatedBuckets,

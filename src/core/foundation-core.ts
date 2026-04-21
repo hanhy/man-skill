@@ -585,6 +585,8 @@ export interface CoreMemoryFoundationSummary {
   headingAliases?: string[];
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
+  legacyShortTermSourceCount: number;
+  legacyShortTermSources: string[];
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -1037,6 +1039,7 @@ export interface BuildCoreFoundationSummaryOptions {
   memoryIndex?: {
     root?: string | null;
     daily?: string[];
+    legacyShortTerm?: string[];
     longTerm?: string[];
     scratch?: string[];
   } | null;
@@ -1063,6 +1066,9 @@ export function buildCoreFoundationSummary({
   skillInventory = null,
 }: BuildCoreFoundationSummaryOptions = {}): CoreFoundationSummary {
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
+  const legacyShortTermSources = Array.isArray(memoryIndex?.legacyShortTerm)
+    ? memoryIndex.legacyShortTerm.filter((value): value is string => isNonEmptyString(value))
+    : [];
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
   const memoryBuckets = [
@@ -1134,6 +1140,8 @@ export function buildCoreFoundationSummary({
     ...(memoryHeadingAliases.length > 0 ? { headingAliases: memoryHeadingAliases } : {}),
     canonicalShortTermBucket: 'daily' as const,
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: legacyShortTermSources.length,
+    legacyShortTermSources,
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,

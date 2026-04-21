@@ -1,8 +1,11 @@
 export class MemoryStore {
-  constructor({ daily, shortTerm, longTerm, scratch } = {}) {
+  constructor({ daily, shortTerm, legacyShortTerm, longTerm, scratch } = {}) {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
+      ? legacyShortTerm.filter((value) => typeof value === 'string' && value.trim().length > 0)
+      : [];
   }
 
   get daily() {
@@ -64,6 +67,8 @@ export class MemoryStore {
       shortTermPresent: dailyEntries > 0,
       canonicalShortTermBucket: 'daily',
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      legacyShortTermSourceCount: this.legacyShortTermSources.length,
+      legacyShortTermSources: [...this.legacyShortTermSources],
       readyBucketCount: populatedBuckets.length,
       totalBucketCount: 3,
       populatedBuckets,

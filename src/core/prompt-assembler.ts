@@ -214,6 +214,8 @@ type FoundationCore = {
     headingAliases?: string[];
     canonicalShortTermBucket?: string;
     legacyShortTermAliases?: string[];
+    legacyShortTermSourceCount?: number;
+    legacyShortTermSources?: string[];
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -287,6 +289,8 @@ type MemorySummary = {
   scratchPresent?: boolean;
   canonicalShortTermBucket?: string;
   legacyShortTermAliases?: string[];
+  legacyShortTermSourceCount?: number;
+  legacyShortTermSources?: string[];
   readyBucketCount?: number;
   totalBucketCount?: number;
   populatedBuckets?: string[];
@@ -1584,7 +1588,7 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
 }
 
 function formatMemoryAliasSummary(
-  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases'> | null | undefined,
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources'> | null | undefined,
   prefix = '; aliases ',
 ) {
   const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
@@ -1593,12 +1597,22 @@ function formatMemoryAliasSummary(
   const legacyAliases = Array.isArray(memory?.legacyShortTermAliases)
     ? memory.legacyShortTermAliases.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const legacySources = Array.isArray(memory?.legacyShortTermSources)
+    ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+  const legacySourceCount = typeof memory?.legacyShortTermSourceCount === 'number'
+    ? memory.legacyShortTermSourceCount
+    : legacySources.length;
 
   if (!canonicalBucket || legacyAliases.length === 0) {
     return null;
   }
 
-  return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}`;
+  const legacySourceSummary = legacySourceCount > 0
+    ? `; legacy short-term sources ${legacySources.join(', ')}`
+    : '';
+
+  return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}${legacySourceSummary}`;
 }
 
 function formatHeadingAliasSummary(

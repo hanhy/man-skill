@@ -98,6 +98,8 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     readyBucketCount: 3,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term', 'scratch'],
@@ -174,6 +176,8 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -204,6 +208,8 @@ test('memory store keeps shortTerm as a writable alias of daily', () => {
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -234,6 +240,8 @@ test('memory store keeps daily and shortTerm in sync when daily is reassigned af
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -270,9 +278,13 @@ test('buildSummary folds legacy memory/short-term files into the canonical daily
 
   assert.equal(summary.memory.dailyEntries, 1);
   assert.equal(summary.memory.shortTermEntries, 1);
+  assert.equal(summary.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
   assert.equal(summary.foundation.core.memory.dailyCount, 1);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
   assert.deepEqual(summary.foundation.core.memory.sampleEntries, ['daily/legacy.md', 'long-term/stable.md', 'scratch/draft.md']);
-  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)/);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/legacy\.md/);
 });
 
 test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
@@ -1007,6 +1019,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     readyBucketCount: 2,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term'],
@@ -1023,6 +1037,8 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     rootTotalSectionCount: 2,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 0,

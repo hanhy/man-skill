@@ -33,6 +33,11 @@ function listCanonicalMemoryDailyFiles(rootDir) {
   ])).sort();
 }
 
+function listLegacyShortTermFiles(rootDir) {
+  return listFilesIfExists(path.join(rootDir, 'memory', 'short-term'))
+    .map((entry) => `memory/short-term/${entry}`);
+}
+
 function listDirectoriesIfExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return [];
@@ -1015,6 +1020,7 @@ export class FileSystemLoader {
     return {
       root: readTextIfExists(this.resolve('memory', 'README.md')),
       daily: listCanonicalMemoryDailyFiles(this.rootDir),
+      legacyShortTerm: listLegacyShortTermFiles(this.rootDir),
       longTerm: listFilesIfExists(this.resolve('memory', 'long-term')),
       scratch: listFilesIfExists(this.resolve('memory', 'scratch')),
     };
