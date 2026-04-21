@@ -588,7 +588,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe'/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
