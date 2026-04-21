@@ -884,16 +884,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
       : '';
     return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapSuffix}`;
   };
-  const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => {
-    const segments = [profile.status ?? 'stale'];
-    if (Number.isFinite(profile.generatedDraftCount) && Number.isFinite(profile.expectedDraftCount)) {
-      segments.push(`${profile.generatedDraftCount}/${profile.expectedDraftCount} drafts`);
-    }
-    if ((profile.missingDrafts ?? []).length > 0) {
-      segments.push(`missing ${profile.missingDrafts?.join('/')}`);
-    }
-    return `${profile.label ?? profile.id} [${segments.join(', ')}]`;
-  };
+  const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
     .slice(0, 2)
     .map((profile) => formatCompactQueuedProfileLabel(profile))
