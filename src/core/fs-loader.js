@@ -696,11 +696,7 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     return null;
   }
 
-  const lines = normalizeSetextHeadingLines(
-    filterOutsideMarkdownFences(
-      extractDocumentBodyLines(resolvedContent).map((line) => stripLeadingBlockquotePrefix(line)),
-    ),
-  );
+  const lines = extractVisibleDocumentBodyLines(resolvedContent);
   const readySections = [];
   const missingSections = [];
 

@@ -2454,6 +2454,125 @@ test('loadProfilesIndex ignores heading-only and fenced template sections when e
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate \| soul 1\/4 ready \(core-truths\), missing boundaries\/vibe\/continuity \| voice 0\/4 ready, missing tone\/signature-moves\/avoid\/language-hints/);
 });
 
+test('loadProfilesIndex ignores indented template sections when evaluating profile foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importTalkSnippet({
+    personId: 'Jane Doe',
+    text: 'Tight loops beat big plans.',
+    notes: 'execution heuristic',
+  });
+  ingestion.updateProfile({
+    personId: 'Jane Doe',
+    displayName: 'Jane Doe',
+    summary: 'Imported materials waiting on a refresh.',
+  });
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'soul'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'skills'), { recursive: true });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'jane-doe', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'jane-doe', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'jane-doe', 'skills', 'README.md');
+
+  fs.writeFileSync(
+    voiceDraftPath,
+    [
+      '# Voice draft',
+      '',
+      'Profile: jane-doe',
+      'Display name: Jane Doe',
+      'Summary: Imported materials waiting on a refresh.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-talk)',
+      'Source materials: 1 (talk:1)',
+      '',
+      '>     ## Tone',
+      '>     - Example template only.',
+      '',
+      '## Signature moves',
+      '- Lead with the operating takeaway.',
+      '',
+      '    ## Avoid',
+      '    - Example template only.',
+      '',
+      '\t## Language hints',
+      '\t- Example template only.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    soulDraftPath,
+    [
+      '# Soul draft',
+      '',
+      'Profile: jane-doe',
+      'Display name: Jane Doe',
+      'Summary: Imported materials waiting on a refresh.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-talk)',
+      'Source materials: 1 (talk:1)',
+      '',
+      '## Core values',
+      '- Tight loops beat big plans.',
+      '',
+      '    ## Boundaries',
+      '    - Example template only.',
+      '',
+      '>     ## Vibe',
+      '>     - Example template only.',
+      '',
+      '\t## Decision rules',
+      '\t- Example template only.',
+    ].join('\n'),
+  );
+  fs.writeFileSync(
+    skillsDraftPath,
+    [
+      '# Skills draft',
+      '',
+      'Profile: jane-doe',
+      'Display name: Jane Doe',
+      'Summary: Imported materials waiting on a refresh.',
+      'Generated at: 2026-04-16T00:00:00.000Z',
+      'Latest material: 2026-04-16T00:00:00.000Z (legacy-talk)',
+      'Source materials: 1 (talk:1)',
+      '',
+      '    ## Candidate skills',
+      '    - Example template only.',
+      '',
+      '>     ## Evidence',
+      '>     - Example template only.',
+      '',
+      '\t## Gaps to validate',
+      '\t- Example template only.',
+    ].join('\n'),
+  );
+
+  assert.equal(hasValidFoundationMarkdownDraft(voiceDraftPath), false);
+  assert.equal(hasValidFoundationMarkdownDraft(soulDraftPath), false);
+  assert.equal(hasValidFoundationMarkdownDraft(skillsDraftPath), false);
+
+  const [profile] = loader.loadProfilesIndex();
+  const summary = buildSummary(rootDir);
+
+  assert.equal(profile.foundationDraftStatus.complete, false);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, false);
+  assert.deepEqual((profile.foundationDraftSummaries.voice as any).readySections ?? [], ['signature-moves']);
+  assert.deepEqual((profile.foundationDraftSummaries.voice as any).missingSections ?? [], ['tone', 'avoid', 'language-hints']);
+  assert.equal(profile.foundationDraftSummaries.soul.generated, false);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).readySections ?? [], ['core-truths']);
+  assert.deepEqual((profile.foundationDraftSummaries.soul as any).missingSections ?? [], ['boundaries', 'vibe', 'continuity']);
+  assert.equal(profile.foundationDraftSummaries.skills.generated, false);
+  assert.deepEqual((profile.foundationDraftSummaries.skills as any).readySections ?? [], []);
+  assert.deepEqual((profile.foundationDraftSummaries.skills as any).missingSections ?? [], ['candidate-skills', 'evidence', 'gaps-to-validate']);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\).*gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 0\/3 ready, missing candidate-skills\/evidence\/gaps-to-validate \| soul 1\/4 ready \(core-truths\), missing boundaries\/vibe\/continuity \| voice 1\/4 ready \(signature-moves\), missing tone\/avoid\/language-hints/);
+});
+
 test('loadProfilesIndex marks foundation status stale when memory draft metadata is unreadable', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
