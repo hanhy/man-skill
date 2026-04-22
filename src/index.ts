@@ -671,6 +671,48 @@ function listRelativeFiles(dirPath: string, extension: string): string[] {
     .sort();
 }
 
+function getSkillCategory(skillId: string): string {
+  const normalizedSkillId = typeof skillId === 'string' ? skillId.trim() : '';
+  if (!normalizedSkillId) {
+    return 'root';
+  }
+
+  const [category] = normalizedSkillId.split('/');
+  return normalizedSkillId.includes('/') && category ? category : 'root';
+}
+
+function compareSkillCategory(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === 'root') {
+    return 1;
+  }
+
+  if (right === 'root') {
+    return -1;
+  }
+
+  return left.localeCompare(right);
+}
+
+function buildSkillCategoryCounts(skillNames: string[]): Record<string, number> {
+  const unsortedCounts = skillNames.reduce<Record<string, number>>((counts, skillName) => {
+    const skillCategory = getSkillCategory(skillName);
+    counts[skillCategory] = (counts[skillCategory] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(unsortedCounts).sort(([left], [right]) => compareSkillCategory(left, right)),
+  );
+}
+
+function hasGroupedSkillCategories(skillIds: string[]): boolean {
+  return skillIds.some((skillId) => typeof skillId === 'string' && skillId.includes('/'));
+}
+
 function detectSampleManifestRelativePath(rootDir: string): string | null {
   const sampleDir = path.join(rootDir, 'samples');
   const canonicalRelativePath = 'samples/harry-materials.json';
@@ -1742,6 +1784,7 @@ export function buildSummary(rootDir: string) {
   const skillNames = skillInventory.names;
   const documentedSkillNames = new Set(skillInventory.documented ?? []);
   const thinSkillNames = new Set(skillInventory.thin ?? []);
+  const skillCategoryCounts = buildSkillCategoryCounts(skillNames);
   const skillRecords = skillNames.map((skillName) => ({
     id: skillName,
     name: skillName,
@@ -1783,6 +1826,10 @@ export function buildSummary(rootDir: string) {
     scratch: memoryIndex.scratch,
   });
   const skills = new SkillRegistry(skillRecords);
+  const skillSummary = {
+    ...skills.summary(),
+    ...(hasGroupedSkillCategories(skillNames) ? { categoryCounts: skillCategoryCounts } : {}),
+  };
   const channels = new ChannelRegistry();
   if (Array.isArray(channelManifest.records)) {
     channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
@@ -1947,8 +1994,8 @@ export function buildSummary(rootDir: string) {
     },
     memory: memoryIndex,
     memorySummary: memory.summary(),
-    skills: skills.summary(),
-    skillsSummary: skills.summary(),
+    skills: skillSummary,
+    skillsSummary: skillSummary,
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
@@ -1963,7 +2010,7 @@ export function buildSummary(rootDir: string) {
     profile: profile.summary(),
     soul: soul.summary(),
     memory: memory.summary(),
-    skills: skills.summary(),
+    skills: skillSummary,
     voice: voice.summary(),
     foundation: {
       ...foundation,

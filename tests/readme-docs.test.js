@@ -235,6 +235,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
+  assert.match(readme, /summary\.skills\.categoryCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /top-level `Soul profile:` and `Voice profile:` preview blocks.*foundation\.core\.soul\|voice\.rootExcerpt.*rootPath.*heading aliases/i);
@@ -253,9 +254,10 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /legacy `memory\/short-term\/` files still fold into the canonical `daily` lane/i);
   assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
   assert.match(architectureDoc, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
-  assert.match(architectureDoc, /memorySummary\.legacyShortTermSourceCount.*memorySummary\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
+  assert.match(architectureDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
+  assert.match(architectureDoc, /summary\.skills\.categoryCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
   assert.match(architectureDoc, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
-  assert.match(architectureDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
+
   assert.match(architectureDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
   assert.match(architectureDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
@@ -318,6 +320,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
   assert.equal(summary.foundation.core.skills.count, 11);
+  assert.deepEqual(summary.skills.categoryCounts, { channels: 4, providers: 6, root: 1 });
+  assert.deepEqual(summary.foundation.core.skills.categoryCounts, { channels: 4, providers: 6, root: 1 });
+  assert.deepEqual(summary.foundation.core.skills.documentedCategoryCounts, { channels: 4, providers: 6, root: 1 });
   assert.deepEqual(summary.skills.skills.map((skill) => skill.id), [
     'channels/feishu',
     'channels/slack',
@@ -345,5 +350,5 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 11\/11 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.doesNotMatch(summary.promptPreview, /- skills: 11 registered, 11 documented/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 11\n- discovered: 11\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+8 more/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 11\n- discovered: 11\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+8 more\n- categories: channels 4, providers 6, root 1/);
 });

@@ -244,6 +244,8 @@ type FoundationCore = {
     documentedCount?: number;
     undocumentedCount?: number;
     thinCount?: number;
+    categoryCounts?: Record<string, number>;
+    documentedCategoryCounts?: Record<string, number>;
     sample?: string[];
     samplePaths?: string[];
     sampleExcerpts?: string[];
@@ -309,6 +311,7 @@ type SkillRegistrySummary = {
   skillCount?: number;
   discoveredCount?: number;
   customCount?: number;
+  categoryCounts?: Record<string, number>;
   skills?: Array<{
     id?: string;
     name?: string;
@@ -2212,7 +2215,7 @@ function buildMemoryPreviewBlock(
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -2264,6 +2267,15 @@ function buildSkillsPreviewBlock(
       ...(remainingSkillCount > 0 ? [`+${remainingSkillCount} more`] : []),
     ].join('; ')
     : 'none';
+  const rawCategoryCounts = foundationSkills?.categoryCounts && typeof foundationSkills.categoryCounts === 'object'
+    ? foundationSkills.categoryCounts
+    : (skills.categoryCounts && typeof skills.categoryCounts === 'object' ? skills.categoryCounts : {});
+  const categoryEntries = Object.entries(rawCategoryCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([category, count]) => `${category} ${count}`);
+  const categorySummary = categoryEntries.length > 0
+    ? `- categories: ${categoryEntries.join(', ')}`
+    : null;
 
   const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
     ? foundationSkills.rootExcerpt.trim()
@@ -2288,6 +2300,7 @@ function buildSkillsPreviewBlock(
     rootSectionSummary,
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
+    categorySummary,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 

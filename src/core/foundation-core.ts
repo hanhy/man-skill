@@ -50,6 +50,48 @@ function formatList(values: string[]): string {
   return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
 }
 
+function getSkillCategory(skillId: string): string {
+  const normalizedSkillId = typeof skillId === 'string' ? skillId.trim() : '';
+  if (!normalizedSkillId) {
+    return 'root';
+  }
+
+  const [category] = normalizedSkillId.split('/');
+  return normalizedSkillId.includes('/') && category ? category : 'root';
+}
+
+function compareSkillCategory(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === 'root') {
+    return 1;
+  }
+
+  if (right === 'root') {
+    return -1;
+  }
+
+  return left.localeCompare(right);
+}
+
+function buildSkillCategoryCounts(skillNames: string[]): Record<string, number> {
+  const unsortedCounts = skillNames.reduce<Record<string, number>>((counts, skillName) => {
+    const skillCategory = getSkillCategory(skillName);
+    counts[skillCategory] = (counts[skillCategory] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(unsortedCounts).sort(([left], [right]) => compareSkillCategory(left, right)),
+  );
+}
+
+function hasGroupedSkillCategories(skillIds: string[]): boolean {
+  return skillIds.some((skillId) => typeof skillId === 'string' && skillId.includes('/'));
+}
+
 function buildMemoryBucketAction(emptyBuckets: string[]): string | null {
   const bucketPaths = emptyBuckets
     .map((bucket) => `memory/${bucket}`)
@@ -628,6 +670,8 @@ export interface CoreSkillsFoundationSummary {
   documentedCount: number;
   undocumentedCount: number;
   thinCount: number;
+  categoryCounts?: Record<string, number>;
+  documentedCategoryCounts?: Record<string, number>;
   sample: string[];
   samplePaths: string[];
   sampleExcerpts: string[];
@@ -1205,6 +1249,10 @@ export function buildCoreFoundationSummary({
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
     thinCount: thinSkillNames.length,
+    ...(hasGroupedSkillCategories(safeSkillNames) ? {
+      categoryCounts: buildSkillCategoryCounts(safeSkillNames),
+      documentedCategoryCounts: buildSkillCategoryCounts(documentedSkillNames),
+    } : {}),
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     sampleExcerpts: documentedSkillNames
