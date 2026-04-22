@@ -401,6 +401,33 @@ console.log(JSON.stringify(memory.summary()));
   assert.deepEqual(rawSummary, new MemoryStore({ daily: [{ id: 'daily-1' }] }).summary());
 });
 
+test('soul profile raw JS entrypoint stays aligned for blockquoted structured docs', () => {
+  const document = [
+    '# Soul',
+    '',
+    '> Stay faithful.',
+    '',
+    '> ## Core truths',
+    '> - Keep the system inspectable.',
+    '',
+    '> ## Boundaries',
+    '> - Do not bluff certainty.',
+    '',
+  ].join('\n');
+  const scriptPath = path.join(makeTempRepo(), 'soul-profile-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { SoulProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/soul-profile.js'))};
+const soul = SoulProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(soul.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
+});
+
 test('voice profile parses tone, signature moves, avoid, and language hints from voice docs', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Close with a concrete next step.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n`);
 
