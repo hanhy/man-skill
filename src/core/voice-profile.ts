@@ -1,4 +1,4 @@
-import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, extractFrontmatterDescription, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
 
 export interface VoiceProfileSummary {
   tone: string;
@@ -113,12 +113,9 @@ export class VoiceProfile {
     const normalizedDocument = normalizeDocument(document);
     const excerpt = findDocumentExcerpt(normalizedDocument);
     const normalizedExcerpt = excerpt ? cleanVoiceLine(excerpt) : null;
-    const hasExcerptToneGuidance = normalizedExcerpt !== null && !isStarterVoiceGuidance(normalizedExcerpt);
-    const defaultTone = hasExcerptToneGuidance ? normalizedExcerpt : 'clear';
-    const voice = new VoiceProfile({
-      tone: defaultTone,
-      style: hasExcerptToneGuidance ? 'documented' : 'adaptive',
-    });
+    const frontmatterDescription = extractFrontmatterDescription(normalizedDocument);
+    const normalizedFrontmatterDescription = frontmatterDescription ? cleanVoiceLine(frontmatterDescription) : null;
+    const voice = new VoiceProfile();
     let currentSection: VoiceSection = null;
     let currentSectionHasContent = false;
 
@@ -217,6 +214,18 @@ export class VoiceProfile {
         currentSectionHasContent = true;
       }
     });
+
+    const hasExcerptToneGuidance = normalizedExcerpt !== null
+      && !isStarterVoiceGuidance(normalizedExcerpt)
+      && (
+        normalizedFrontmatterDescription === normalizedExcerpt
+        || !looksLikeLanguageHint(normalizedExcerpt)
+      );
+    if (!voice.hasToneGuidance && hasExcerptToneGuidance) {
+      voice.tone = normalizedExcerpt;
+      voice.style = 'documented';
+      voice.hasToneGuidance = true;
+    }
 
     return voice;
   }

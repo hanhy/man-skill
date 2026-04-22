@@ -486,6 +486,27 @@ test('voice profile treats named-language code-switching guidance in current-def
   assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
 });
 
+test('voice profile keeps language-hint-only current-default sections from counting as tone guidance', () => {
+  const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: [],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['tone', 'signature-moves', 'avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
+});
+
 test('voice profile accepts prose lines inside signature, avoid, and language hint sections', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\nUse crisp examples without bullets.\n\n## Avoid\nNever pad the answer.\n\n## Language hints\nPreserve bilingual phrasing when the source material switches languages.\n`);
 
