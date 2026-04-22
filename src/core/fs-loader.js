@@ -909,6 +909,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
     memory: memoryDraft
       ? {
           generated: true,
+          path: path.relative(rootDir, memoryDraftPath),
           generatedAt: memoryMetadata.generatedAt,
           latestMaterialAt: memoryMetadata.latestMaterialAt,
           latestMaterialId: memoryMetadata.latestMaterialId,
@@ -923,6 +924,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
         }
       : {
           generated: false,
+          path: fs.existsSync(memoryDraftPath) ? path.relative(rootDir, memoryDraftPath) : null,
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
@@ -934,6 +936,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
     voice: voiceMetadata?.valid && hasValidFoundationMarkdownDraft(voiceDraftPath)
       ? {
           generated: true,
+          path: path.relative(rootDir, voiceDraftPath),
           generatedAt: voiceMetadata.generatedAt,
           latestMaterialAt: voiceMetadata.latestMaterialAt,
           latestMaterialId: voiceMetadata.latestMaterialId,
@@ -944,6 +947,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
         }
       : {
           generated: false,
+          path: fs.existsSync(voiceDraftPath) ? path.relative(rootDir, voiceDraftPath) : null,
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
@@ -955,6 +959,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
     soul: soulMetadata?.valid && hasValidFoundationMarkdownDraft(soulDraftPath)
       ? {
           generated: true,
+          path: path.relative(rootDir, soulDraftPath),
           generatedAt: soulMetadata.generatedAt,
           latestMaterialAt: soulMetadata.latestMaterialAt,
           latestMaterialId: soulMetadata.latestMaterialId,
@@ -965,6 +970,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
         }
       : {
           generated: false,
+          path: fs.existsSync(soulDraftPath) ? path.relative(rootDir, soulDraftPath) : null,
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
@@ -976,6 +982,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
     skills: skillsMetadata?.valid && hasValidFoundationMarkdownDraft(skillsDraftPath)
       ? {
           generated: true,
+          path: path.relative(rootDir, skillsDraftPath),
           generatedAt: skillsMetadata.generatedAt,
           latestMaterialAt: skillsMetadata.latestMaterialAt,
           latestMaterialId: skillsMetadata.latestMaterialId,
@@ -986,6 +993,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
         }
       : {
           generated: false,
+          path: fs.existsSync(skillsDraftPath) ? path.relative(rootDir, skillsDraftPath) : null,
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,

@@ -598,6 +598,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
   assert.deepEqual(profile.foundationDraftStatus.refreshReasons, []);
   assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+  assert.equal(profile.foundationDraftSummaries.memory.path, 'profiles/harry-han/memory/long-term/foundation.json');
   assert.equal(profile.foundationDraftSummaries.memory.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialAt, profile.latestMaterialAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialId, profile.latestMaterialId);
@@ -610,6 +611,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.path, 'profiles/harry-han/voice/README.md');
   assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
   assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {
@@ -629,6 +631,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.deepEqual(profile.foundationDraftSummaries.voice.missingSections, []);
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: true,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
@@ -646,6 +649,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: true,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
@@ -735,6 +739,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['missing drafts']);
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
+    path: 'profiles/harry-han/voice/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -748,6 +753,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: false,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -761,6 +767,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -835,6 +842,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
 
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
+    path: 'profiles/harry-han/voice/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -848,6 +856,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: false,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -861,6 +870,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -1071,6 +1081,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
         foundationDraftSummaries: {
           memory: {
             generated: true,
+            path: 'profiles/harry-han/memory/long-term/foundation.json',
             generatedAt: '2026-04-16T15:00:01.000Z',
             latestMaterialAt: '2026-04-16T15:00:00.000Z',
             latestMaterialId: '2026-04-16T15-00-00-000Z-screenshot',
@@ -1081,6 +1092,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           voice: {
             generated: true,
+            path: 'profiles/harry-han/voice/README.md',
             highlights: ['- [message] Ship the first slice.'],
             readySectionCount: 4,
             totalSectionCount: 4,
@@ -1089,6 +1101,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           soul: {
             generated: true,
+            path: 'profiles/harry-han/soul/README.md',
             highlights: ['- [text] Direct writing sample.'],
             readySectionCount: 4,
             totalSectionCount: 4,
@@ -1097,6 +1110,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           skills: {
             generated: true,
+            path: 'profiles/harry-han/skills/README.md',
             highlights: [],
             readySectionCount: 3,
             totalSectionCount: 3,
@@ -1177,6 +1191,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /drafts: fresh, complete, generated 2026-04-16T15:00:01.000Z/);
   assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
   assert.match(prompt, /draft sections: skills 3\/3 ready \(candidate-skills, evidence, gaps-to-validate\) \| soul 4\/4 ready \(core-truths, boundaries, vibe, continuity\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(prompt, /draft files: memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \| skills @ profiles\/harry-han\/skills\/README\.md \| soul @ profiles\/harry-han\/soul\/README\.md \| voice @ profiles\/harry-han\/voice\/README\.md/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
   assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
   assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);

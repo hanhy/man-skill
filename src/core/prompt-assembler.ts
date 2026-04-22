@@ -25,6 +25,7 @@ type ReadinessSignal = {
 
 type MemoryDraftSummary = {
   generated?: boolean;
+  path?: string | null;
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
@@ -37,6 +38,7 @@ type MemoryDraftSummary = {
 
 type HighlightDraftSummary = {
   generated?: boolean;
+  path?: string | null;
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
@@ -788,6 +790,27 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
   return sectionSummaries.length > 0 ? sectionSummaries.join(' | ') : null;
 }
 
+function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
+  const draftKinds = [
+    { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+  ];
+
+  const fileSummaries = draftKinds
+    .map(({ key, summary }) => {
+      if (!summary || summary.generated !== true || typeof summary.path !== 'string' || summary.path.length === 0) {
+        return null;
+      }
+
+      return `${key} @ ${summary.path}`;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
+}
+
 function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
   const displayName = profile.profile?.displayName;
   const profileId = profile.id ?? 'unknown-profile';
@@ -817,6 +840,11 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
   const draftSections = summarizeDraftSections(profile);
   if (draftSections) {
     lines.push(`  draft sections: ${draftSections}`);
+  }
+
+  const draftFiles = summarizeDraftFiles(profile);
+  if (draftFiles) {
+    lines.push(`  draft files: ${draftFiles}`);
   }
 
   const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries?.length
