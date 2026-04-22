@@ -54,6 +54,8 @@ The per-profile command palette still stays actionable in that starter-template 
 - `importManifestCommand` plus `helperCommands.importManifestAndRefresh` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
 - `starterImportCommand` for the checked-in `profiles/<id>/imports/sample.txt` starter import
 - both `followUpImportIntakeWithoutRefreshCommand` / `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` / `importAfterEditingCommand`, plus matching `helperCommands.importAfterEditingWithoutRefresh` / `helperCommands.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available from either the higher-level ingestion summary or the direct `update intake` JSON result after editing the starter manifest
+- the generated `profiles/<id>/imports/README.md` also keeps the manifest helper bullets explicit: `inspect the edited manifest without refreshing drafts: node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'` and `import the edited manifest and refresh drafts: node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
+- that same checked-in README mirrors those direct replay labels as `manifest inspect:` and `manifest:` inside its `Direct import commands:` block.
 - `updateProfileCommand` for metadata-only edits
 - `updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration
 

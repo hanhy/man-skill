@@ -172,6 +172,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`importManifestCommand` plus `helperCommands\.importManifestAndRefresh` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
   assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` \/ `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` \/ `importAfterEditingCommand`, plus matching `helperCommands\.importAfterEditingWithoutRefresh` \/ `helperCommands\.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available/i);
+  assert.match(profilesDoc, /generated `profiles\/<id>\/imports\/README\.md` also keeps the manifest helper bullets explicit: `inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'` and `import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
+  assert.match(profilesDoc, /`manifest inspect:` and `manifest:` inside its `Direct import commands:` block/i);
   assert.match(profilesDoc, /`updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
 
