@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "check": "tsx src/index.ts",
-    "test": "node --import tsx --test",
+    "check": "node scripts/run-with-safe-tmp.mjs tsx src/index.ts",
+    "test": "node scripts/run-with-safe-tmp.mjs node --import tsx --test",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

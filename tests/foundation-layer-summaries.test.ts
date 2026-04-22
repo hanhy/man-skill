@@ -10,7 +10,7 @@ import { MemoryStore } from '../src/core/memory-store.ts';
 import { SkillRegistry } from '../src/core/skill-registry.ts';
 import { SoulProfile } from '../src/core/soul-profile.ts';
 import { VoiceProfile } from '../src/core/voice-profile.ts';
-import { summarizeRootSectionSummary } from '../src/core/foundation-core.ts';
+import { buildCoreFoundationSummary, summarizeRootSectionSummary } from '../src/core/foundation-core.ts';
 import { buildSummary } from '../src/index.js';
 
 function makeTempRepo() {
@@ -98,6 +98,10 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 3,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term', 'scratch'],
@@ -174,6 +178,10 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -204,6 +212,10 @@ test('memory store keeps shortTerm as a writable alias of daily', () => {
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -234,6 +246,10 @@ test('memory store keeps daily and shortTerm in sync when daily is reassigned af
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 1,
     totalBucketCount: 3,
     populatedBuckets: ['daily'],
@@ -241,9 +257,9 @@ test('memory store keeps daily and shortTerm in sync when daily is reassigned af
   });
 });
 
-test('buildSummary folds legacy memory/short-term files into the canonical daily bucket', () => {
+test('memory summaries treat legacy short-term files as canonical daily entries', () => {
   const rootDir = makeTempRepo();
-
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
@@ -270,9 +286,104 @@ test('buildSummary folds legacy memory/short-term files into the canonical daily
 
   assert.equal(summary.memory.dailyEntries, 1);
   assert.equal(summary.memory.shortTermEntries, 1);
+  assert.equal(summary.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md']);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 0);
   assert.equal(summary.foundation.core.memory.dailyCount, 1);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSources, ['memory/short-term/legacy.md']);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md']);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 0);
   assert.deepEqual(summary.foundation.core.memory.sampleEntries, ['daily/legacy.md', 'long-term/stable.md', 'scratch/draft.md']);
-  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)/);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/legacy\.md/);
+});
+
+test('memory alias summary keeps long legacy short-term backlogs compact in prompt preview', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note 1');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-02.md'), 'legacy note 2');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-03.md'), 'legacy note 3');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-04.md'), 'legacy note 4');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Build a faithful operator core.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Preserve clear priorities.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Keep delivery loops aligned.\n\n## Suggested workflow\n- Run the queue in priority order.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.memory.legacyShortTermSourceCount, 4);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 1);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 1);
+  assert.match(
+    summary.promptPreview,
+    /- aliases: daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more/,
+  );
+  assert.doesNotMatch(summary.promptPreview, /memory\/short-term\/2026-04-04\.md/);
+});
+
+test('canonical daily counts keep same-basename legacy short-term files instead of deduping them away', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'canonical daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'today.md'), 'legacy daily note with the same basename');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.md'), 'idea');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Build a faithful operator core.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Preserve clear priorities.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Keep delivery loops aligned.\n\n## Suggested workflow\n- Run the queue in priority order.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.memory.dailyEntries, 2);
+  assert.equal(summary.memory.shortTermEntries, 2);
+  assert.equal(summary.foundation.core.memory.dailyCount, 2);
+  assert.equal(summary.foundation.core.memory.totalEntries, 4);
+  assert.equal(summary.memory.legacyShortTermSourceCount, 1);
+  assert.deepEqual(summary.memory.legacyShortTermSources, ['memory/short-term/today.md']);
+  assert.deepEqual(summary.memory.legacyShortTermSampleSources, ['memory/short-term/today.md']);
+  assert.equal(summary.memory.legacyShortTermSourceOverflowCount, 0);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 2\n- long-term: 1\n- scratch: 1\n- total: 4/);
+  assert.match(summary.promptPreview, /legacy short-term sources memory\/short-term\/today\.md/);
 });
 
 test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
@@ -352,6 +463,27 @@ test('voice profile treats target-specific current default headings as legacy la
     languageHintCount: 1,
     hasGuidance: true,
   });
+});
+
+test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
+  const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Keep the answer concise.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Keep the answer concise.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Keep the answer concise.'],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
 });
 
 test('voice profile accepts prose lines inside signature, avoid, and language hint sections', () => {
@@ -1007,6 +1139,10 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     shortTermPresent: true,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     readyBucketCount: 2,
     totalBucketCount: 3,
     populatedBuckets: ['daily', 'long-term'],
@@ -1023,6 +1159,10 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
     rootTotalSectionCount: 2,
     canonicalShortTermBucket: 'daily',
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 0,
+    legacyShortTermSources: [],
+    legacyShortTermSampleSources: [],
+    legacyShortTermSourceOverflowCount: 0,
     dailyCount: 1,
     longTermCount: 1,
     scratchCount: 0,
@@ -1114,7 +1254,7 @@ test('buildSummary skill preview shows descriptions and summarizes hidden skills
   assert.equal(summary.skills.skillCount, 4);
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 4\n- discovered: 4\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; intake \[discovered\]: Refresh target-person intake summaries\.; \+1 more/,
+    /Skill registry:\n- total: 4\n- discovered: 4\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; intake \[discovered\]: Refresh target-person intake summaries\.; \+1 more/,
   );
 });
 
@@ -1144,7 +1284,7 @@ test('buildSummary skill preview prefers described skills before placeholders', 
 
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered, missing\]/,
+    /Skill registry:\n- total: 3\n- discovered: 3\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: delivery \[discovered\]: Deliver verified slices\.; foundation \[discovered\]: Keep the OpenClaw-style foundation aligned\.; alpha \[discovered, missing\]/,
   );
 });
 
@@ -1201,7 +1341,7 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   assert.equal(summary.skills.skillCount, 2);
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
+    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
   );
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.undocumentedCount, 1);

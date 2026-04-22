@@ -95,6 +95,40 @@ test('JS manifest loader shim stays aligned with the TypeScript implementation',
   assert.deepEqual(jsLoader.loadProviderManifest(), tsLoader.loadProviderManifest());
 });
 
+test('manifest loaders accept UTF-8 BOM-prefixed manifest files', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'channels.json'),
+    `\uFEFF${JSON.stringify([{ id: 'slack', status: 'planned' }], null, 2)}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    `\uFEFF${JSON.stringify([{ id: 'openai', status: 'active' }], null, 2)}`,
+  );
+
+  const jsLoader = new JsManifestLoader(rootDir);
+  const tsLoader = new TsManifestLoader(rootDir);
+
+  assert.deepEqual(jsLoader.loadChannelManifestSummary(), {
+    path: 'manifests/channels.json',
+    status: 'loaded',
+    entryCount: 1,
+    error: null,
+    records: [{ id: 'slack', status: 'planned' }],
+  });
+  assert.deepEqual(jsLoader.loadProviderManifestSummary(), {
+    path: 'manifests/providers.json',
+    status: 'loaded',
+    entryCount: 1,
+    error: null,
+    records: [{ id: 'openai', status: 'active' }],
+  });
+  assert.deepEqual(jsLoader.loadChannelManifestSummary(), tsLoader.loadChannelManifestSummary());
+  assert.deepEqual(jsLoader.loadProviderManifestSummary(), tsLoader.loadProviderManifestSummary());
+});
+
 test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
     slackChannelScaffold,
@@ -744,6 +778,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
     assert.equal(typeof telegram.isConfigured, 'function');
     assert.equal(typeof telegram.summary, 'function');
     assert.equal(typeof telegram.normalizeInboundEvent, 'function');
+    assert.equal(typeof telegram.buildCallbackAnswer, 'function');
     assert.equal(typeof telegram.buildChatSend, 'function');
     assert.equal(telegram.isConfigured(), true);
     assert.deepEqual(telegram.summary(), telegramChannelScaffold);
@@ -763,6 +798,7 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         platform: 'telegram',
         eventType: 'message',
         updateId: 77,
+        callbackQueryId: null,
         chatId: -100123,
         senderId: 42,
         text: 'hello from telegram',
@@ -770,6 +806,13 @@ test('default channel/provider factories expose scaffold metadata and runtime he
         threadId: 9,
         chatType: 'supergroup',
         timestamp: 1710000100,
+      },
+    );
+    assert.deepEqual(
+      telegram.buildCallbackAnswer({ callbackQueryId: 'cbq-77', text: 'roger that' }),
+      {
+        callback_query_id: 'cbq-77',
+        text: 'roger that',
       },
     );
     assert.deepEqual(

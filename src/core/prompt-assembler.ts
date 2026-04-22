@@ -176,6 +176,7 @@ type FoundationCoreMaintenanceQueueItem = {
   rootThinReadySections?: string[];
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   command?: string | null;
 };
 
@@ -214,6 +215,10 @@ type FoundationCore = {
     headingAliases?: string[];
     canonicalShortTermBucket?: string;
     legacyShortTermAliases?: string[];
+    legacyShortTermSourceCount?: number;
+    legacyShortTermSources?: string[];
+    legacyShortTermSampleSources?: string[];
+    legacyShortTermSourceOverflowCount?: number;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -287,6 +292,10 @@ type MemorySummary = {
   scratchPresent?: boolean;
   canonicalShortTermBucket?: string;
   legacyShortTermAliases?: string[];
+  legacyShortTermSourceCount?: number;
+  legacyShortTermSources?: string[];
+  legacyShortTermSampleSources?: string[];
+  legacyShortTermSourceOverflowCount?: number;
   readyBucketCount?: number;
   totalBucketCount?: number;
   populatedBuckets?: string[];
@@ -462,6 +471,8 @@ type IngestionProfileCommand = {
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   starterImportCommand?: string | null;
+  followUpImportIntakeWithoutRefreshCommand?: string | null;
+  followUpImportIntakeCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -604,6 +615,8 @@ type WorkLoopSummary = {
   blockedPriorityCount?: number;
   leadingPriority?: WorkLoopPriority | null;
   currentPriority?: WorkLoopPriority | null;
+  runnablePriority?: WorkLoopPriority | null;
+  actionableReadyPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
 } | null;
 
@@ -1522,6 +1535,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
+      const followUpImportIntakeWithoutRefreshSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeWithoutRefreshCommand
+        ? ` | inspect-after-edit ${profile.followUpImportIntakeWithoutRefreshCommand}`
+        : '';
+      const followUpImportIntakeSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeCommand
+        ? ` | replay-after-edit ${profile.followUpImportIntakeCommand}`
+        : '';
       const starterImportCommand = profile.starterImportCommand ?? (() => {
         if (profile.intakeReady !== true || intakeShortcutCommand || actionLabel === 'import') {
           return null;
@@ -1562,7 +1581,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -1584,7 +1603,7 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
 }
 
 function formatMemoryAliasSummary(
-  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases'> | null | undefined,
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount'> | null | undefined,
   prefix = '; aliases ',
 ) {
   const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
@@ -1593,12 +1612,34 @@ function formatMemoryAliasSummary(
   const legacyAliases = Array.isArray(memory?.legacyShortTermAliases)
     ? memory.legacyShortTermAliases.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     : [];
+  const legacySources = Array.isArray(memory?.legacyShortTermSources)
+    ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+  const legacySampleSources = Array.isArray(memory?.legacyShortTermSampleSources)
+    ? memory.legacyShortTermSampleSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+  const legacySourceCount = typeof memory?.legacyShortTermSourceCount === 'number'
+    ? memory.legacyShortTermSourceCount
+    : legacySources.length;
+  const legacySourceOverflowCount = typeof memory?.legacyShortTermSourceOverflowCount === 'number'
+    ? memory.legacyShortTermSourceOverflowCount
+    : Math.max(legacySourceCount - legacySampleSources.length, 0);
 
   if (!canonicalBucket || legacyAliases.length === 0) {
     return null;
   }
 
-  return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}`;
+  const visibleLegacySources = legacySampleSources.length > 0 ? legacySampleSources : legacySources.slice(0, 3);
+  const remainingLegacySourceCount = legacySampleSources.length > 0
+    ? legacySourceOverflowCount
+    : Math.max(legacySourceCount, legacySources.length) - visibleLegacySources.length;
+  const legacySourceSummary = legacySourceCount > 0
+    ? visibleLegacySources.length > 0
+      ? `; legacy short-term sources ${visibleLegacySources.join(', ')}${remainingLegacySourceCount > 0 ? `, +${remainingLegacySourceCount} more` : ''}`
+      : `; legacy short-term sources ${legacySourceCount}`
+    : '';
+
+  return `${prefix}${canonicalBucket} canonical via ${legacyAliases.join(', ')}${legacySourceSummary}`;
 }
 
 function formatHeadingAliasSummary(
@@ -1644,6 +1685,53 @@ function formatRootSectionSummary(
   }
 
   return `; root sections ${resolvedReadySectionCount}/${resolvedTotalSectionCount} ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+}
+
+function formatPreviewRootSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string | null {
+  const summary = formatRootSectionSummary(
+    readySections,
+    missingSections,
+    readySectionCount,
+    totalSectionCount,
+  );
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; root sections /, '- root sections: ');
+}
+
+function formatPreviewSectionSummary(
+  readySections: string[] | undefined,
+  missingSections: string[] | undefined,
+  readySectionCount?: number,
+  totalSectionCount?: number,
+): string | null {
+  const summary = formatRootSectionSummary(
+    readySections,
+    missingSections,
+    readySectionCount,
+    totalSectionCount,
+  );
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; root sections /, '- sections: ');
+}
+
+function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | undefined): string | null {
+  const summary = formatHeadingAliasSummary(headingAliases);
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; aliases /, '- root heading aliases: ');
 }
 
 function formatThinSectionProgress(
@@ -1782,6 +1870,11 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
     contextParts.push(`${rootLabel}${rootSummary}`.trim());
   }
 
+  const rootHeadingAliasSummary = formatHeadingAliasSummary(area.rootHeadingAliases, 'root aliases ');
+  if (rootHeadingAliasSummary) {
+    contextParts.push(rootHeadingAliasSummary);
+  }
+
   const thinSectionPaths = new Set<string>([
     ...Object.keys(area.thinReadySections ?? {}),
     ...Object.keys(area.thinMissingSections ?? {}),
@@ -1855,8 +1948,11 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
   const recommendedRepairSummary = typeof maintenance?.recommendedSummary === 'string' && maintenance.recommendedSummary.length > 0
     ? maintenance.recommendedSummary
     : null;
+  const recommendedRepairStatus = typeof maintenance?.recommendedStatus === 'string' && maintenance.recommendedStatus.length > 0
+    ? maintenance.recommendedStatus
+    : null;
   const recommendedRepairLine = maintenance?.recommendedAction
-    ? `- next repair: ${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}${recommendedRepairSummary ? `; context ${recommendedRepairSummary}` : ''}`
+    ? `- next repair: ${recommendedRepairStatus ? `[${recommendedRepairStatus}] ` : ''}${maintenance.recommendedAction}${maintenance.recommendedCommand ? `; command ${maintenance.recommendedCommand}` : ''}${(maintenance.recommendedPaths ?? []).length > 0 ? ` @ ${(maintenance.recommendedPaths ?? []).join(', ')}` : ''}${recommendedRepairSummary ? `; context ${recommendedRepairSummary}` : ''}`
     : null;
   const readyCoreFoundationDetails = overview
     && (overview.readyAreaCount ?? 0) === (overview.totalAreaCount ?? 0)
@@ -1920,9 +2016,20 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
   const leadingPriority = workLoop.leadingPriority;
   const currentPriority = workLoop.currentPriority;
+  const runnablePriority = workLoop.runnablePriority;
+  const actionableReadyPriority = workLoop.actionableReadyPriority;
   const priorities = workLoop.priorities ?? [];
   const showLeadingPriority = Boolean(
     leadingPriority && (!currentPriority || (leadingPriority.id ?? leadingPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
+  const showRunnablePriority = Boolean(
+    runnablePriority
+      && (!currentPriority || (runnablePriority.id ?? runnablePriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
+  const showActionableReadyPriority = Boolean(
+    actionableReadyPriority
+      && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
+      && (!runnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority.id ?? runnablePriority.label)),
   );
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -1963,12 +2070,51 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     (currentPriority?.paths ?? []).length > 0
       ? `- paths: ${(currentPriority?.paths ?? []).join(', ')}`
       : null,
+    showRunnablePriority && runnablePriority
+      ? `- runnable: ${runnablePriority.label ?? runnablePriority.id ?? 'Runnable priority'} [${runnablePriority.status ?? 'unknown'}] — ${runnablePriority.summary ?? 'needs review'}`
+      : null,
+    showRunnablePriority && runnablePriority?.nextAction
+      ? `- runnable next action: ${runnablePriority.nextAction}`
+      : null,
+    showRunnablePriority && runnablePriority?.command
+      ? `- runnable command: ${runnablePriority.command}`
+      : null,
+    showRunnablePriority && runnablePriority?.editPath
+      ? `- runnable edit: ${runnablePriority.editPath}`
+      : null,
+    showRunnablePriority && runnablePriority?.followUpCommand
+      ? `- runnable then run: ${runnablePriority.followUpCommand}`
+      : null,
+    showRunnablePriority && (runnablePriority?.paths ?? []).length > 0
+      ? `- runnable paths: ${(runnablePriority?.paths ?? []).join(', ')}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority
+      ? `- advisory: ${actionableReadyPriority.label ?? actionableReadyPriority.id ?? 'Ready advisory'} [${actionableReadyPriority.status ?? 'unknown'}] — ${actionableReadyPriority.summary ?? 'needs review'}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.nextAction
+      ? `- advisory next action: ${actionableReadyPriority.nextAction}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.command
+      ? `- advisory command: ${actionableReadyPriority.command}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.editPath
+      ? `- advisory edit: ${actionableReadyPriority.editPath}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.followUpCommand
+      ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
+      : null,
+    showActionableReadyPriority && (actionableReadyPriority?.paths ?? []).length > 0
+      ? `- advisory paths: ${(actionableReadyPriority?.paths ?? []).join(', ')}`
+      : null,
     orderLine,
     objectiveLine,
   ].filter(Boolean).join('\n');
 }
 
-function buildSoulPreviewBlock(soul: SoulSummary): string {
+function buildSoulPreviewBlock(
+  soul: SoulSummary,
+  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+): string {
   if (!soul) {
     return '- unavailable';
   }
@@ -1978,6 +2124,12 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
   const boundaryCount = Array.isArray(soul.boundaries) ? soul.boundaries.length : 0;
   const vibeCount = Array.isArray(soul.vibe) ? soul.vibe.length : 0;
   const continuityCount = Array.isArray(soul.continuity) ? soul.continuity.length : 0;
+  const rootExcerpt = typeof foundationSoul?.rootExcerpt === 'string' && foundationSoul.rootExcerpt.trim().length > 0
+    ? foundationSoul.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationSoul?.rootPath === 'string' && foundationSoul.rootPath.trim().length > 0
+    ? foundationSoul.rootPath.trim()
+    : null;
 
   return [
     `- excerpt: ${excerpt}`,
@@ -1985,12 +2137,22 @@ function buildSoulPreviewBlock(soul: SoulSummary): string {
     `- boundaries: ${boundaryCount}`,
     `- vibe: ${vibeCount}`,
     `- continuity: ${continuityCount}`,
-  ].join('\n');
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationSoul
+      ? formatPreviewSectionSummary(
+        foundationSoul.readySections,
+        foundationSoul.missingSections,
+        foundationSoul.readySectionCount,
+        foundationSoul.totalSectionCount,
+      )
+      : null,
+    formatPreviewHeadingAliasSummary(foundationSoul?.headingAliases),
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildMemoryPreviewBlock(
   memory: MemorySummary,
-  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath'> | null,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
 ): string {
   if (!memory) {
     return '- unavailable';
@@ -2018,10 +2180,22 @@ function buildMemoryPreviewBlock(
     bucketSummary,
     formatMemoryAliasSummary(memory, '- aliases: '),
     rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationMemory
+      ? formatPreviewRootSectionSummary(
+        foundationMemory.rootReadySections,
+        foundationMemory.rootMissingSections,
+        foundationMemory.rootReadySectionCount,
+        foundationMemory.rootTotalSectionCount,
+      )
+      : null,
+    formatPreviewHeadingAliasSummary(foundationMemory?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
-function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
+function buildSkillsPreviewBlock(
+  skills: SkillRegistrySummary,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
+): string {
   if (!skills) {
     return '- unavailable';
   }
@@ -2073,12 +2247,30 @@ function buildSkillsPreviewBlock(skills: SkillRegistrySummary): string {
     ].join('; ')
     : 'none';
 
+  const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
+    ? foundationSkills.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationSkills?.rootPath === 'string' && foundationSkills.rootPath.trim().length > 0
+    ? foundationSkills.rootPath.trim()
+    : null;
+  const rootSectionSummary = foundationSkills
+    ? formatPreviewRootSectionSummary(
+      foundationSkills.rootReadySections,
+      foundationSkills.rootMissingSections,
+      foundationSkills.rootReadySectionCount,
+      foundationSkills.rootTotalSectionCount,
+    )
+    : null;
+
   return [
     `- total: ${skills.skillCount ?? 0}`,
     `- discovered: ${skills.discoveredCount ?? 0}`,
     `- custom: ${skills.customCount ?? 0}`,
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    rootSectionSummary,
+    formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
-  ].join('\n');
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function formatVoicePreviewItems(label: string, values: unknown): string {
@@ -2090,13 +2282,22 @@ function formatVoicePreviewItems(label: string, values: unknown): string {
     : `- ${label}: 0`;
 }
 
-function buildVoicePreviewBlock(voice: VoiceSummary): string {
+function buildVoicePreviewBlock(
+  voice: VoiceSummary,
+  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+): string {
   if (!voice) {
     return '- unavailable';
   }
 
   const tone = typeof voice.tone === 'string' && voice.tone.length > 0 ? voice.tone : 'n/a';
   const style = typeof voice.style === 'string' && voice.style.length > 0 ? voice.style : 'unknown';
+  const rootExcerpt = typeof foundationVoice?.rootExcerpt === 'string' && foundationVoice.rootExcerpt.trim().length > 0
+    ? foundationVoice.rootExcerpt.trim()
+    : null;
+  const rootPath = typeof foundationVoice?.rootPath === 'string' && foundationVoice.rootPath.trim().length > 0
+    ? foundationVoice.rootPath.trim()
+    : null;
 
   return [
     `- tone: ${tone}`,
@@ -2104,7 +2305,17 @@ function buildVoicePreviewBlock(voice: VoiceSummary): string {
     formatVoicePreviewItems('constraints', voice.constraints),
     formatVoicePreviewItems('signatures', voice.signatures),
     formatVoicePreviewItems('language hints', voice.languageHints),
-  ].join('\n');
+    rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
+    foundationVoice
+      ? formatPreviewSectionSummary(
+        foundationVoice.readySections,
+        foundationVoice.missingSections,
+        foundationVoice.readySectionCount,
+        foundationVoice.totalSectionCount,
+      )
+      : null,
+    formatPreviewHeadingAliasSummary(foundationVoice?.headingAliases),
+  ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function truncatePreview(text: string, maxLength: number): string {
@@ -2192,10 +2403,10 @@ export class PromptAssembler {
     const deliveryFoundationBlock = buildDeliveryFoundationBlock(this.channels, this.models, this.delivery);
     const coreFoundationBlock = buildCoreFoundationBlock(this.foundationCore);
     const workLoopBlock = buildWorkLoopBlock(this.workLoop);
-    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile);
-    const voicePreviewBlock = buildVoicePreviewBlock(this.voice);
+    const soulPreviewBlock = buildSoulPreviewBlock(this.soulProfile, this.foundationCore?.soul);
+    const voicePreviewBlock = buildVoicePreviewBlock(this.voice, this.foundationCore?.voice);
     const memoryPreviewBlock = buildMemoryPreviewBlock(this.memorySummary, this.foundationCore?.memory);
-    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary);
+    const skillsPreviewBlock = buildSkillsPreviewBlock(this.skillsSummary, this.foundationCore?.skills);
 
     return truncatePreview(
       [

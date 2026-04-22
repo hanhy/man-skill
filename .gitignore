@@ -1,3 +1,4 @@
 .openclaw/
 .hermes/
+.tmp/
 node_modules/

@@ -303,6 +303,17 @@ function collectMemorySampleEntries({
   ];
 }
 
+function collectLegacyShortTermPreviewSources(legacyShortTermSources: string[], limit = 3): {
+  sampleSources: string[];
+  overflowCount: number;
+} {
+  const sampleSources = legacyShortTermSources.slice(0, limit);
+  return {
+    sampleSources,
+    overflowCount: Math.max(legacyShortTermSources.length - sampleSources.length, 0),
+  };
+}
+
 export function summarizeRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -462,6 +473,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: memoryRootThinReadySections.length + memoryRootThinMissingSections.length,
         }
         : {}),
+      ...(memory.headingAliases?.length > 0 ? { rootHeadingAliases: memory.headingAliases } : {}),
     },
     {
       area: 'skills',
@@ -493,6 +505,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: rootThinReadySections.length + rootThinMissingSections.length,
         }
         : {}),
+      ...(skills.headingAliases?.length > 0 ? { rootHeadingAliases: skills.headingAliases } : {}),
     },
     {
       area: 'soul',
@@ -508,6 +521,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: soul.totalSectionCount,
         }
         : {}),
+      ...(Array.isArray(soul.headingAliases) && soul.headingAliases.length > 0 ? { rootHeadingAliases: soul.headingAliases } : {}),
     },
     {
       area: 'voice',
@@ -523,6 +537,7 @@ function buildCoreFoundationMaintenance({
           rootThinTotalSectionCount: voice.totalSectionCount,
         }
         : {}),
+      ...(Array.isArray(voice.headingAliases) && voice.headingAliases.length > 0 ? { rootHeadingAliases: voice.headingAliases } : {}),
     },
   ];
 
@@ -585,6 +600,10 @@ export interface CoreMemoryFoundationSummary {
   headingAliases?: string[];
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
+  legacyShortTermSourceCount: number;
+  legacyShortTermSources: string[];
+  legacyShortTermSampleSources: string[];
+  legacyShortTermSourceOverflowCount: number;
   dailyCount: number;
   longTermCount: number;
   scratchCount: number;
@@ -990,6 +1009,7 @@ export interface CoreFoundationMaintenanceQueueItem {
   rootThinReadySections?: string[];
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   thinReadySectionCounts?: Record<string, number>;
@@ -1037,6 +1057,7 @@ export interface BuildCoreFoundationSummaryOptions {
   memoryIndex?: {
     root?: string | null;
     daily?: string[];
+    legacyShortTerm?: string[];
     longTerm?: string[];
     scratch?: string[];
   } | null;
@@ -1063,6 +1084,10 @@ export function buildCoreFoundationSummary({
   skillInventory = null,
 }: BuildCoreFoundationSummaryOptions = {}): CoreFoundationSummary {
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
+  const legacyShortTermSources = Array.isArray(memoryIndex?.legacyShortTerm)
+    ? memoryIndex.legacyShortTerm.filter((value): value is string => isNonEmptyString(value))
+    : [];
+  const legacyShortTermPreview = collectLegacyShortTermPreviewSources(legacyShortTermSources);
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
   const memoryBuckets = [
@@ -1134,6 +1159,10 @@ export function buildCoreFoundationSummary({
     ...(memoryHeadingAliases.length > 0 ? { headingAliases: memoryHeadingAliases } : {}),
     canonicalShortTermBucket: 'daily' as const,
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: legacyShortTermSources.length,
+    legacyShortTermSources,
+    legacyShortTermSampleSources: legacyShortTermPreview.sampleSources,
+    legacyShortTermSourceOverflowCount: legacyShortTermPreview.overflowCount,
     dailyCount: daily.length,
     longTermCount: longTerm.length,
     scratchCount: scratch.length,

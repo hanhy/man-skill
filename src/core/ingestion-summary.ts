@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function stripLeadingUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function buildFallbackDisplayName(profileId) {
   if (typeof profileId !== 'string' || profileId.trim().length === 0) {
     return null;
@@ -245,7 +249,12 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
         return left.personId.localeCompare(right.personId);
       })
     : Object.entries(normalizedTextFilePersonIds)
-      .map(([path, personId]) => ({ type: 'text', path, personId }));
+      .map(([path, personId]) => ({
+        type: 'text',
+        path,
+        personId,
+        sourcePath: normalizedPath,
+      }));
   const normalizedInlineEntries = Array.isArray(sampleManifest?.inlineEntries)
     ? sampleManifest.inlineEntries
       .filter((entry) => entry && typeof entry === 'object')
@@ -434,7 +443,7 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
   const absoluteManifestPath = path.join(rootDir, starterManifestPath);
   let parsedManifest: any;
   try {
-    parsedManifest = JSON.parse(fs.readFileSync(absoluteManifestPath, 'utf8'));
+    parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));
   } catch (error) {
     return {
       status: 'invalid',
@@ -645,6 +654,16 @@ function buildProfileCommands(profile, options: any = {}) {
   const importIntakeCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
+  const starterTemplateFollowUpImportIntakeWithoutRefreshCommand = imported
+    && intake?.ready === true
+    && intakeManifest.status === 'starter'
+    ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
+    : null;
+  const starterTemplateFollowUpImportIntakeCommand = imported
+    && intake?.ready === true
+    && intakeManifest.status === 'starter'
+    ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
+    : null;
   const starterImportCommand = imported
     && intake?.ready === true
     && intakeManifest.status === 'starter'
@@ -675,6 +694,8 @@ function buildProfileCommands(profile, options: any = {}) {
     importIntakeWithoutRefreshCommand,
     importIntakeCommand,
     starterImportCommand,
+    followUpImportIntakeWithoutRefreshCommand: starterTemplateFollowUpImportIntakeWithoutRefreshCommand,
+    followUpImportIntakeCommand: starterTemplateFollowUpImportIntakeCommand,
     intakeReady: intake?.ready ?? false,
     intakeCompletion: intake?.completion ?? 'missing',
     intakeStatusSummary: summarizeIntakeStatus(intake, intakeManifest),
@@ -1070,12 +1091,39 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : 'populate imported intake starter manifests';
     recommendedCommand = null;
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
-    recommendedFollowUpCommand = firstImportedStarterIntakeProfile?.personId
-      ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
-      : null;
+    recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
+      ? helperCommands.importIntakeImportedAndRefresh
+      : (firstImportedStarterIntakeProfile?.personId
+        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
+        : null);
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);
+  } else if (metadataOnlyProfileCount === 0 && importedProfilesWithReadyIntake.length > 0) {
+    const firstImportedReadyIntakeProfile = importedProfilesWithReadyIntake[0] ?? null;
+    recommendedProfileId = firstImportedReadyIntakeProfile?.personId ?? null;
+    recommendedLabel = firstImportedReadyIntakeProfile?.label ?? firstImportedReadyIntakeProfile?.personId ?? null;
+    recommendedAction = importedProfilesWithReadyIntake.length > 1
+      ? (recommendedLabel
+        ? `import source materials for imported intake replays — starting with ${recommendedLabel}`
+        : 'import source materials for imported intake replays')
+      : (recommendedLabel
+        ? `import source materials for ${recommendedLabel}`
+        : 'import source materials for imported intake replays');
+    recommendedCommand = importedProfilesWithReadyIntake.length > 1
+      ? (helperCommands.importIntakeImportedAndRefresh
+        ?? helperCommands.importIntakeBundle
+        ?? firstImportedReadyIntakeProfile?.importIntakeCommand
+        ?? firstImportedReadyIntakeProfile?.importManifestCommand
+        ?? null)
+      : (firstImportedReadyIntakeProfile?.importIntakeCommand
+        ?? firstImportedReadyIntakeProfile?.importManifestCommand
+        ?? firstImportedReadyIntakeProfile?.importMaterialCommand
+        ?? helperCommands.importIntakeImportedAndRefresh
+        ?? null);
+    recommendedPaths = importedProfilesWithReadyIntake.length > 1
+      ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+      : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir);
   } else if (metadataOnlyProfileCount > 0) {
     if (metadataOnlyProfileNeedingScaffold) {
       recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;

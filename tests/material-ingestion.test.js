@@ -75,6 +75,70 @@ test('imports text, message, talk, and screenshot materials into a profile-speci
   assert.match(screenshotRecord.assetPath, /materials\/screenshots\//);
 });
 
+test('direct message imports skip unchanged reruns and keep material records flat', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const firstResult = ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'I will be there in ten minutes.',
+    notes: 'short message sample',
+  });
+  const secondResult = ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'I will be there in ten minutes.',
+    notes: 'short message sample',
+  });
+
+  assert.equal(typeof firstResult.recordPath, 'string');
+  assert.equal(firstResult.skipped, false);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(typeof secondResult.fingerprint, 'string');
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+});
+
+test('direct screenshot imports skip unchanged reruns before copying duplicate assets', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  const firstResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: screenshotPath,
+    notes: 'chat screenshot',
+  });
+  const screenshotAssetsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials', 'screenshots');
+  const firstAssetNames = fs.readdirSync(screenshotAssetsDir);
+
+  const secondResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: screenshotPath,
+    notes: 'chat screenshot',
+  });
+  const secondAssetNames = fs.readdirSync(screenshotAssetsDir);
+
+  assert.equal(firstResult.skipped, false);
+  assert.equal(fs.existsSync(firstResult.assetPath), true);
+  assert.equal(firstAssetNames.length, 1);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+  assert.deepEqual(secondAssetNames, firstAssetNames);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -134,6 +198,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       needsRefresh: true,
       missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
@@ -143,6 +208,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
@@ -160,6 +226,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
       needsRefresh: true,
       missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'jane-doe'",
@@ -169,6 +236,7 @@ test('importManifest imports mixed material entries across profiles from a JSON 
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'jane-doe'",
         importIntake: "node src/index.js import intake --person 'jane-doe' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
@@ -186,6 +254,35 @@ test('importManifest imports mixed material entries across profiles from a JSON 
     .readdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'materials'))
     .filter((name) => name.endsWith('.json'));
   assert.equal(janeMaterials.length, 1);
+});
+
+test('importManifest accepts UTF-8 BOM-prefixed manifest files', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    `\uFEFF${JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post.txt',
+          notes: 'blog fragment',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['harry-han']);
 });
 
 test('importManifest skips unchanged entries when the same manifest is rerun', () => {
@@ -446,6 +543,7 @@ test('importManifest supports a single-target shorthand profile and inherits per
       needsRefresh: true,
       missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
@@ -455,6 +553,7 @@ test('importManifest supports a single-target shorthand profile and inherits per
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
@@ -665,6 +764,7 @@ test('importManifest profile summaries keep current manifest counts while surfac
       needsRefresh: true,
       missingDrafts: ['memory', 'skills', 'soul', 'voice'],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
@@ -674,6 +774,7 @@ test('importManifest profile summaries keep current manifest counts while surfac
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
@@ -723,6 +824,7 @@ test('importManifest returns profile command summaries that stay aligned with ma
       needsRefresh: false,
       missingDrafts: [],
       importCommand: "node src/index.js import manifest --file 'materials.json'",
+      importManifestAndRefreshCommand: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
       refreshFoundationCommand: "node src/index.js update foundation --person 'harry-han'",
@@ -732,6 +834,7 @@ test('importManifest returns profile command summaries that stay aligned with ma
         importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
         importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         importManifest: "node src/index.js import manifest --file 'materials.json'",
+        importManifestAndRefresh: "node src/index.js import manifest --file 'materials.json' --refresh-foundation",
         updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
         updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
         refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
@@ -863,12 +966,13 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
 
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
+  assert.match(intakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
   assert.match(intakeReadme, /Direct import commands:/);
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
@@ -877,6 +981,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images')), true);
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
   const materialFiles = fs.existsSync(materialsDir)
@@ -958,7 +1063,7 @@ test('scaffoldProfileIntake preserves existing starter entries and customized en
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });
@@ -1020,7 +1125,7 @@ test('scaffoldProfileIntake preserves legacy array-form starter manifests on rer
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: 'images/chat.png',
       notes: 'chat screenshot',
     },
   });

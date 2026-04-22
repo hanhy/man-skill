@@ -6,13 +6,21 @@ import {
   loadFoundationDraftStatus,
 } from './fs-loader.js';
 
+function stripLeadingUtf8Bom(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function readJsonIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
   }
 
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(filePath, 'utf8')));
   } catch {
     return null;
   }
@@ -30,7 +38,7 @@ function readJsonFileState(filePath) {
   try {
     return {
       exists: true,
-      parsed: JSON.parse(fs.readFileSync(filePath, 'utf8')),
+      parsed: JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(filePath, 'utf8'))),
       parseError: null,
     };
   } catch (error) {
@@ -433,8 +441,8 @@ function shouldRewriteProfileDocument({ existingProfile = null, normalizedId, pe
     || (existingProfile.summary ?? null) !== nextSummary;
 }
 
-function buildManifestImportCommand(manifestPath) {
-  return `node src/index.js import manifest --file ${shellQuote(manifestPath)}`;
+function buildManifestImportCommand(manifestPath, { refreshFoundation = false } = {}) {
+  return `node src/index.js import manifest --file ${shellQuote(manifestPath)}${refreshFoundation ? ' --refresh-foundation' : ''}`;
 }
 
 function shellQuote(value) {
@@ -495,6 +503,7 @@ function buildIntakePaths(personId) {
   const basePath = path.join('profiles', personId, 'imports');
   return {
     importsDir: basePath,
+    sampleImagesDirPath: path.join(basePath, 'images'),
     intakeReadmePath: path.join(basePath, 'README.md'),
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
@@ -641,6 +650,7 @@ function buildStarterManifestDocument({
   existingEntries = [],
   existingEntryTemplates = null,
   sampleTextPath = 'sample.txt',
+  sampleScreenshotPath = 'images/chat.png',
 }) {
   const defaultEntryTemplates = {
     text: {
@@ -660,7 +670,7 @@ function buildStarterManifestDocument({
     },
     screenshot: {
       type: 'screenshot',
-      file: '<relative-path-to-image.png>',
+      file: sampleScreenshotPath,
       notes: 'chat screenshot',
     },
   };
@@ -721,7 +731,10 @@ function buildIntakeReadme({
   personId,
   starterManifestPath,
   sampleTextPath,
+  sampleImagesDirPath,
+  importManifestWithoutRefreshCommand,
   importManifestCommand,
+  importAfterEditingWithoutRefreshCommand,
   importAfterEditingCommand,
   importCommands,
   updateIntakeCommand,
@@ -733,27 +746,77 @@ function buildIntakeReadme({
 }) {
   const label = normalizeText(displayName) ?? personId;
   const managedCustomNotes = normalizeBlockText(customNotes) ?? DEFAULT_INTAKE_CUSTOM_NOTES;
+  const hasReadyProfileLocalReplay = Boolean(importIntakeWithoutRefreshCommand || importIntakeCommand);
+
   return [
     `# Intake scaffold for ${label}`,
     '',
     'Use this folder as the user-facing entrance for collecting target-person materials before import.',
     '',
-    `- Starter manifest: ${starterManifestPath}`,
+    hasReadyProfileLocalReplay
+      ? `- Profile-local manifest: ${starterManifestPath}`
+      : `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
+    `- Starter image folder: ${sampleImagesDirPath}`,
     `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',
     '1. Replace sample.txt with a real writing sample or point the manifest at real files.',
-    '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
+    hasReadyProfileLocalReplay
+      ? '2. Update materials.template.json entries (and any local assets) when the intake fixture changes.'
+      : '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
     '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Path rule:',
+    `- \`materials.template.json\` resolves every \`file\` relative to \`${path.posix.dirname(starterManifestPath)}/\`.`,
+    `- Keep local screenshots or attachments next to \`${path.posix.basename(sampleTextPath)}\` or inside a small subdirectory like \`${sampleImagesDirPath}/\`.`,
+    `- Example: if you save a screenshot at \`${sampleImagesDirPath}/chat.png\`, use \`images/chat.png\` inside the manifest.`,
+    '',
+    'Starter entry examples:',
+    '```json',
+    '[',
+    '  {',
+    '    "type": "text",',
+    '    "file": "sample.txt",',
+    '    "notes": "long-form writing sample"',
+    '  },',
+    '  {',
+    '    "type": "message",',
+    '    "text": "Ship the thin slice first, then tighten it with real feedback.",',
+    '    "notes": "representative short message"',
+    '  },',
+    '  {',
+    '    "type": "talk",',
+    '    "text": "If we can learn it in one run today, that beats polishing a big plan all week.",',
+    '    "notes": "voice memo transcript"',
+    '  },',
+    '  {',
+    '    "type": "screenshot",',
+    '    "file": "images/chat.png",',
+    '    "notes": "chat screenshot"',
+    '  }',
+    ']',
+    '```',
     '',
     'Recommended helper commands:',
     `- refresh this intake scaffold: ${updateIntakeCommand}`,
+    !hasReadyProfileLocalReplay && importAfterEditingWithoutRefreshCommand
+      ? `- after editing, replay the profile-local intake without refreshing drafts: ${importAfterEditingWithoutRefreshCommand}`
+      : null,
+    !hasReadyProfileLocalReplay && importAfterEditingCommand
+      ? `- after editing, replay the profile-local intake and refresh drafts: ${importAfterEditingCommand}`
+      : null,
     importIntakeWithoutRefreshCommand
       ? `- import via the profile-local intake shortcut without refreshing drafts: ${importIntakeWithoutRefreshCommand}`
       : null,
     importIntakeCommand
       ? `- import via the profile-local intake shortcut and refresh drafts: ${importIntakeCommand}`
+      : null,
+    importManifestWithoutRefreshCommand
+      ? `- inspect the edited manifest without refreshing drafts: ${importManifestWithoutRefreshCommand}`
+      : null,
+    importManifestCommand
+      ? `- import the edited manifest and refresh drafts: ${importManifestCommand}`
       : null,
     `- edit target-profile metadata without refreshing drafts: ${updateProfileCommand}`,
     `- sync target-profile metadata and refresh drafts: ${updateProfileAndRefreshCommand}`,
@@ -763,7 +826,10 @@ function buildIntakeReadme({
     `- message: ${importCommands?.message}`,
     `- talk: ${importCommands?.talk}`,
     `- screenshot: ${importCommands?.screenshot}`,
-    `- manifest: ${importManifestCommand}`,
+    importManifestWithoutRefreshCommand && importManifestWithoutRefreshCommand !== importManifestCommand
+      ? `- manifest inspect: ${importManifestWithoutRefreshCommand}`
+      : null,
+    `- manifest: ${importManifestCommand ?? importManifestWithoutRefreshCommand}`,
     '',
     'Custom notes:',
     INTAKE_CUSTOM_NOTES_START,
@@ -782,6 +848,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
   const displayName = normalizeText(profileSummary?.profile?.displayName) ?? personId;
   const summary = profileSummary?.profile?.summary ?? null;
   const importCommand = buildManifestImportCommand(manifestPath);
+  const importManifestAndRefreshCommand = buildManifestImportCommand(manifestPath, { refreshFoundation: true });
   const updateProfileCommand = buildUpdateProfileCommand({ personId, displayName, summary });
   const updateProfileAndRefreshCommand = buildUpdateProfileCommand({ personId, displayName, summary, refreshFoundation: true });
   const refreshFoundationCommand = `node src/index.js update foundation --person ${shellQuote(personId)}`;
@@ -799,6 +866,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
     needsRefresh: Boolean(profileSummary?.foundationDraftStatus?.needsRefresh),
     missingDrafts: [...(profileSummary?.foundationDraftStatus?.missingDrafts ?? [])].sort(),
     importCommand,
+    importManifestAndRefreshCommand,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
     refreshFoundationCommand,
@@ -808,6 +876,7 @@ function buildProfileCommandSummaries({ manifestPath, profileSummary, materialCo
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
       importManifest: importCommand,
+      importManifestAndRefresh: importManifestAndRefreshCommand,
       updateProfile: updateProfileCommand,
       updateProfileAndRefresh: updateProfileAndRefreshCommand,
       refreshFoundation: refreshFoundationCommand,
@@ -869,6 +938,7 @@ export class MaterialIngestion {
     const profileUpdate = this.updateProfile({ personId, displayName, summary });
     const intakePaths = buildIntakePaths(profileUpdate.personId);
     ensureDir(this.resolve(intakePaths.importsDir));
+    ensureDir(this.resolve(intakePaths.sampleImagesDirPath));
     const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
     const importCommands = buildDirectImportCommands({
       personId: profileUpdate.personId,
@@ -888,6 +958,7 @@ export class MaterialIngestion {
       existingEntries: existingTemplate?.entries,
       existingEntryTemplates: existingTemplate?.entryTemplates,
       sampleTextPath: path.basename(relativeSampleTextPath),
+      sampleScreenshotPath: 'images/chat.png',
     });
     fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
@@ -898,7 +969,8 @@ export class MaterialIngestion {
       );
     }
 
-    const importManifestCommand = `${buildManifestImportCommand(intakePaths.starterManifestPath)} --refresh-foundation`;
+    const importManifestWithoutRefreshCommand = buildManifestImportCommand(intakePaths.starterManifestPath);
+    const importManifestCommand = buildManifestImportCommand(intakePaths.starterManifestPath, { refreshFoundation: true });
     const updateProfileCommand = buildUpdateProfileCommand({
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
@@ -927,6 +999,7 @@ export class MaterialIngestion {
     const existingReadme = fs.existsSync(this.resolve(intakePaths.intakeReadmePath))
       ? fs.readFileSync(this.resolve(intakePaths.intakeReadmePath), 'utf8')
       : null;
+    const importAfterEditingWithoutRefreshCommand = buildImportIntakeCommand(profileUpdate.personId);
     const importAfterEditingCommand = buildImportIntakeCommand(profileUpdate.personId, { refreshFoundation: true });
     fs.writeFileSync(
       this.resolve(intakePaths.intakeReadmePath),
@@ -935,7 +1008,10 @@ export class MaterialIngestion {
         personId: profileUpdate.personId,
         starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
         sampleTextPath: relativeSampleTextPath,
+        sampleImagesDirPath: intakePaths.sampleImagesDirPath.split(path.sep).join('/'),
+        importManifestWithoutRefreshCommand,
         importManifestCommand,
+        importAfterEditingWithoutRefreshCommand,
         importAfterEditingCommand,
         importCommands,
         updateIntakeCommand,
@@ -955,6 +1031,7 @@ export class MaterialIngestion {
       invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'
         ? path.relative(this.rootDir, invalidStarterManifestBackupPath).split(path.sep).join('/')
         : null,
+      importManifestWithoutRefreshCommand,
       importManifestCommand,
       importIntakeWithoutRefreshCommand,
       importIntakeCommand,
@@ -1188,7 +1265,21 @@ export class MaterialIngestion {
       ),
     );
 
-    return { materialId, recordPath, assetPath, fingerprint };
+    return { materialId, recordPath, assetPath, fingerprint, skipped: false };
+  }
+
+  buildSkippedMaterialResult(fingerprint) {
+    return {
+      materialId: null,
+      recordPath: null,
+      assetPath: null,
+      fingerprint,
+      skipped: true,
+    };
+  }
+
+  hasExistingMaterialFingerprint(personId, fingerprint) {
+    return isNonEmptyString(fingerprint) && this.buildExistingMaterialFingerprintSet(personId).has(fingerprint);
   }
 
   importTextDocument({ personId, sourceFile, notes = null, fingerprint = null }) {
@@ -1199,18 +1290,23 @@ export class MaterialIngestion {
     const normalized = this.ensureProfile(personId);
     const content = fs.readFileSync(sourceFile, 'utf8');
     const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
+      personId: normalized.personId,
+      notes,
+      sourceFile: relativeSourceFile,
+      content,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'text',
       content,
       notes,
       sourceFile: relativeSourceFile,
-      fingerprint: fingerprint ?? buildTextMaterialFingerprint({
-        personId: normalized.personId,
-        notes,
-        sourceFile: relativeSourceFile,
-        content,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1222,17 +1318,22 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const materialFingerprint = fingerprint ?? buildMessageMaterialFingerprint({
+      personId: normalized.personId,
+      type: 'message',
+      notes,
+      text,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'message',
       content: text,
       notes,
-      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
-        personId: normalized.personId,
-        type: 'message',
-        notes,
-        text,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1244,17 +1345,22 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const materialFingerprint = fingerprint ?? buildMessageMaterialFingerprint({
+      personId: normalized.personId,
+      type: 'talk',
+      notes,
+      text,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
       type: 'talk',
       content: text,
       notes,
-      fingerprint: fingerprint ?? buildMessageMaterialFingerprint({
-        personId: normalized.personId,
-        type: 'talk',
-        notes,
-        text,
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;
@@ -1266,10 +1372,21 @@ export class MaterialIngestion {
     }
 
     const normalized = this.ensureProfile(personId);
+    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const fileBuffer = fs.readFileSync(sourceFile);
+    const materialFingerprint = fingerprint ?? buildScreenshotMaterialFingerprint({
+      personId: normalized.personId,
+      notes,
+      sourceFile: relativeSourceFile,
+      fileBuffer,
+    });
+    if (this.hasExistingMaterialFingerprint(normalized.personId, materialFingerprint)) {
+      this.scaffoldProfileIntake({ personId: normalized.personId });
+      return this.buildSkippedMaterialResult(materialFingerprint);
+    }
     const assetFileName = `${timestampId()}-${path.basename(sourceFile)}`;
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
     fs.copyFileSync(sourceFile, targetPath);
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
 
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
@@ -1278,12 +1395,7 @@ export class MaterialIngestion {
       sourceFile: relativeSourceFile,
       assetPath: targetPath,
       assetRelativePath: path.relative(this.rootDir, targetPath),
-      fingerprint: fingerprint ?? buildScreenshotMaterialFingerprint({
-        personId: normalized.personId,
-        notes,
-        sourceFile: relativeSourceFile,
-        fileBuffer: fs.readFileSync(sourceFile),
-      }),
+      fingerprint: materialFingerprint,
     });
     this.scaffoldProfileIntake({ personId: normalized.personId });
     return result;

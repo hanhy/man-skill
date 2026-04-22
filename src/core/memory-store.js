@@ -1,8 +1,11 @@
 export class MemoryStore {
-  constructor({ daily, shortTerm, longTerm, scratch } = {}) {
+  constructor({ daily, shortTerm, legacyShortTerm, longTerm, scratch } = {}) {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
+    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
+      ? legacyShortTerm.filter((value) => typeof value === 'string' && value.trim().length > 0)
+      : [];
   }
 
   get daily() {
@@ -37,6 +40,14 @@ export class MemoryStore {
     this.scratch.push(entry);
   }
 
+  buildLegacyShortTermPreview(limit = 3) {
+    const sampleSources = this.legacyShortTermSources.slice(0, limit);
+    return {
+      sampleSources,
+      overflowCount: Math.max(this.legacyShortTermSources.length - sampleSources.length, 0),
+    };
+  }
+
   summary() {
     const dailyEntries = this.daily.length;
     const longTermEntries = this.longTerm.length;
@@ -51,6 +62,7 @@ export class MemoryStore {
       ...(longTermEntries === 0 ? ['long-term'] : []),
       ...(scratchEntries === 0 ? ['scratch'] : []),
     ];
+    const legacyShortTermPreview = this.buildLegacyShortTermPreview();
 
     return {
       dailyEntries,
@@ -64,6 +76,10 @@ export class MemoryStore {
       shortTermPresent: dailyEntries > 0,
       canonicalShortTermBucket: 'daily',
       legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      legacyShortTermSourceCount: this.legacyShortTermSources.length,
+      legacyShortTermSources: [...this.legacyShortTermSources],
+      legacyShortTermSampleSources: legacyShortTermPreview.sampleSources,
+      legacyShortTermSourceOverflowCount: legacyShortTermPreview.overflowCount,
       readyBucketCount: populatedBuckets.length,
       totalBucketCount: 3,
       populatedBuckets,

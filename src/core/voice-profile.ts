@@ -61,13 +61,12 @@ function cleanVoiceLine(value: string) {
   ).trim();
 }
 
+const LANGUAGE_HINT_PATTERN = /\b(?:language|languages|bilingual|multilingual|dialect|code-switch(?:ing)?|english|spanish|arabic|mandarin|cantonese|french|german|japanese|korean|hindi|urdu|russian|portuguese|italian)\b/u;
+
 function looksLikeLanguageHint(value: string) {
   const normalized = value.toLowerCase();
-  return normalized.includes('language')
-    || normalized.includes('bilingual')
-    || normalized.includes('multilingual')
-    || normalized.includes('中文')
-    || normalized.includes('english');
+  return LANGUAGE_HINT_PATTERN.test(normalized)
+    || normalized.includes('中文');
 }
 
 function isCurrentDefaultHeading(value: string) {

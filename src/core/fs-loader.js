@@ -27,10 +27,15 @@ function listFilesIfExists(dirPath) {
 }
 
 function listCanonicalMemoryDailyFiles(rootDir) {
-  return Array.from(new Set([
+  return [
     ...listFilesIfExists(path.join(rootDir, 'memory', 'daily')),
     ...listFilesIfExists(path.join(rootDir, 'memory', 'short-term')),
-  ])).sort();
+  ].sort();
+}
+
+function listLegacyShortTermFiles(rootDir) {
+  return listFilesIfExists(path.join(rootDir, 'memory', 'short-term'))
+    .map((entry) => `memory/short-term/${entry}`);
 }
 
 function listDirectoriesIfExists(dirPath) {
@@ -1015,6 +1020,7 @@ export class FileSystemLoader {
     return {
       root: readTextIfExists(this.resolve('memory', 'README.md')),
       daily: listCanonicalMemoryDailyFiles(this.rootDir),
+      legacyShortTerm: listLegacyShortTermFiles(this.rootDir),
       longTerm: listFilesIfExists(this.resolve('memory', 'long-term')),
       scratch: listFilesIfExists(this.resolve('memory', 'scratch')),
     };

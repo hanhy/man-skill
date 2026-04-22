@@ -109,7 +109,7 @@ test('Slack channel runtime helpers cover readiness, inbound normalization, and 
   );
 });
 
-test('Telegram channel runtime helpers cover readiness, callback normalization, and chat sends', () => {
+test('Telegram channel runtime helpers cover readiness, callback normalization, callback answers, and chat sends', () => {
   const channel = createTelegramChannel();
 
   assert.deepEqual(channel.requiredEnvVars(), ['TELEGRAM_BOT_TOKEN']);
@@ -139,6 +139,7 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
       platform: 'telegram',
       eventType: 'callback_query',
       updateId: 999,
+      callbackQueryId: 'cbq-1',
       chatId: -100123,
       senderId: 42,
       text: 'approve',
@@ -162,6 +163,7 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
       platform: 'telegram',
       eventType: 'callback_query',
       updateId: 1000,
+      callbackQueryId: 'cbq-inline',
       chatId: null,
       senderId: 84,
       text: 'approve-inline',
@@ -169,6 +171,23 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
       threadId: null,
       chatType: null,
       timestamp: null,
+    },
+  );
+
+  assert.deepEqual(
+    channel.buildCallbackAnswer({
+      callbackQueryId: 'cbq-1',
+      text: 'Queued for review.',
+      showAlert: true,
+      url: 'https://example.com/runs/123',
+      cacheTime: 5,
+    }),
+    {
+      callback_query_id: 'cbq-1',
+      text: 'Queued for review.',
+      show_alert: true,
+      url: 'https://example.com/runs/123',
+      cache_time: 5,
     },
   );
 

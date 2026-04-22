@@ -24,6 +24,7 @@ function pickTelegramEventRecord(payload = {}) {
     if (payload?.[key] && typeof payload[key] === 'object') {
       return {
         eventType: key,
+        callbackQueryId: null,
         event: payload[key],
       };
     }
@@ -32,6 +33,9 @@ function pickTelegramEventRecord(payload = {}) {
   if (payload?.callback_query && typeof payload.callback_query === 'object') {
     return {
       eventType: 'callback_query',
+      callbackQueryId: typeof payload.callback_query.id === 'string' && payload.callback_query.id.length > 0
+        ? payload.callback_query.id
+        : null,
       event: payload.callback_query.message && typeof payload.callback_query.message === 'object'
         ? {
             ...payload.callback_query.message,
@@ -44,12 +48,13 @@ function pickTelegramEventRecord(payload = {}) {
 
   return {
     eventType: 'unknown',
+    callbackQueryId: null,
     event: {},
   };
 }
 
 export function normalizeTelegramInboundEvent(payload = {}) {
-  const { eventType, event } = pickTelegramEventRecord(payload);
+  const { eventType, callbackQueryId, event } = pickTelegramEventRecord(payload);
   const chat = event?.chat && typeof event.chat === 'object' ? event.chat : {};
   const sender = event?.from && typeof event.from === 'object' ? event.from : {};
 
@@ -57,6 +62,7 @@ export function normalizeTelegramInboundEvent(payload = {}) {
     platform: 'telegram',
     eventType,
     updateId: Number.isFinite(payload?.update_id) ? payload.update_id : null,
+    callbackQueryId,
     chatId: Number.isFinite(chat?.id) ? chat.id : null,
     senderId: Number.isFinite(sender?.id) ? sender.id : null,
     text: typeof event?.text === 'string' && event.text.length > 0
@@ -69,6 +75,36 @@ export function normalizeTelegramInboundEvent(payload = {}) {
     chatType: typeof chat?.type === 'string' && chat.type.length > 0 ? chat.type : null,
     timestamp: Number.isFinite(event?.date) ? event.date : null,
   };
+}
+
+export function buildTelegramCallbackAnswer({
+  callbackQueryId,
+  text,
+  showAlert,
+  url,
+  cacheTime,
+} = {}) {
+  const payload = {
+    callback_query_id: callbackQueryId,
+  };
+
+  if (typeof text === 'string' && text.length > 0) {
+    payload.text = text;
+  }
+
+  if (typeof showAlert === 'boolean') {
+    payload.show_alert = showAlert;
+  }
+
+  if (typeof url === 'string' && url.length > 0) {
+    payload.url = url;
+  }
+
+  if (Number.isFinite(cacheTime)) {
+    payload.cache_time = cacheTime;
+  }
+
+  return payload;
 }
 
 export function buildTelegramChatSend({
@@ -103,6 +139,10 @@ export function buildTelegramChatSend({
 export class TelegramChannel extends BaseChannel {
   normalizeInboundEvent(payload) {
     return normalizeTelegramInboundEvent(payload);
+  }
+
+  buildCallbackAnswer(options) {
+    return buildTelegramCallbackAnswer(options);
   }
 
   buildChatSend(options) {

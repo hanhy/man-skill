@@ -213,8 +213,22 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
       break;
     }
 
-    const parsedObjective = parseWorkLoopObjectiveLine(lines[index] ?? '');
+    const currentLine = lines[index] ?? '';
+    const parsedObjective = parseWorkLoopObjectiveLine(currentLine);
     if (!parsedObjective) {
+      const trimmedLine = currentLine.trim();
+      const continuationIndent = currentLine.match(/^(\s*)/)?.[1].length ?? 0;
+      const looksLikeNestedListDetail = /^[-*+]\s+/.test(trimmedLine);
+      if (
+        trimmedLine.length > 0
+        && objectives.length > 0
+        && objectiveIndent !== null
+        && !nextHeading
+        && continuationIndent > objectiveIndent
+        && !looksLikeNestedListDetail
+      ) {
+        objectives[objectives.length - 1] = `${objectives[objectives.length - 1]} ${trimmedLine}`;
+      }
       continue;
     }
 
@@ -1057,6 +1071,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const refreshProfileCount = ingestionSummary?.refreshProfileCount ?? 0;
   const incompleteProfileCount = ingestionSummary?.incompleteProfileCount ?? 0;
   const importedStarterIntakeProfileCount = ingestionSummary?.importedStarterIntakeProfileCount ?? 0;
+  const importedIntakeReadyProfileCount = ingestionSummary?.importedIntakeReadyProfileCount ?? 0;
   const importedIntakeBackfillProfileCount = ingestionSummary?.importedIntakeBackfillProfileCount ?? 0;
   const importedInvalidIntakeManifestProfileCount = ingestionSummary?.importedInvalidIntakeManifestProfileCount ?? 0;
   const status: WorkPriority['status'] = importedProfileCount > 0
@@ -1090,6 +1105,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const importedStarterIntakeSummary = importedStarterIntakeProfileCount > 0
     ? `, ${importedStarterIntakeProfileCount} imported intake starter scaffold${importedStarterIntakeProfileCount === 1 ? '' : 's'} available`
     : '';
+  const importedReadyIntakeSummary = importedIntakeReadyProfileCount > 0
+    ? `, ${importedIntakeReadyProfileCount} imported intake replay${importedIntakeReadyProfileCount === 1 ? ' ready' : 's ready'}`
+    : '';
   const invalidMetadataOnlyIntakeSummary = (ingestionSummary?.invalidMetadataOnlyIntakeManifestProfileCount ?? 0) > 0
     ? `, ${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount} invalid metadata-only intake manifest${ingestionSummary.invalidMetadataOnlyIntakeManifestProfileCount === 1 ? '' : 's'}`
     : '';
@@ -1101,7 +1119,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     id: 'ingestion',
     label: 'Ingestion',
     status,
-    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
+    summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${importedReadyIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
     editPath: recommendedEditPath,
@@ -1755,6 +1773,7 @@ export function buildSummary(rootDir: string) {
 
   const memory = new MemoryStore({
     daily: memoryIndex.daily,
+    legacyShortTerm: memoryIndex.legacyShortTerm,
     longTerm: memoryIndex.longTerm,
     scratch: memoryIndex.scratch,
   });
