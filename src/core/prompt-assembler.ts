@@ -808,7 +808,8 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
   return sectionSummaries.length > 0 ? sectionSummaries.join(' | ') : null;
 }
 
-function collectDraftFiles(profile: ProfileSnapshot = {}) {
+function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOnly?: boolean } = {}) {
+  const { generatedOnly = false } = options;
   const draftKinds = [
     { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
@@ -817,7 +818,11 @@ function collectDraftFiles(profile: ProfileSnapshot = {}) {
   ] as const;
 
   return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
-    if (!summary || summary.generated !== true || typeof summary.path !== 'string' || summary.path.length === 0) {
+    if (!summary || typeof summary.path !== 'string' || summary.path.length === 0) {
+      return accumulator;
+    }
+
+    if (generatedOnly && summary.generated !== true) {
       return accumulator;
     }
 
@@ -827,7 +832,7 @@ function collectDraftFiles(profile: ProfileSnapshot = {}) {
 }
 
 function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
-  const draftFiles = collectDraftFiles(profile);
+  const draftFiles = collectDraftFiles(profile, { generatedOnly: true });
   const fileSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
     .map((key) => draftFiles[key] ? `${key} @ ${draftFiles[key]}` : null)
     .filter((value): value is string => typeof value === 'string' && value.length > 0);

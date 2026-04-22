@@ -2610,7 +2610,7 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);
 });
 
-test('buildProfileSnapshotSummaries keeps structured draft gaps stable when memory summaries contain pipe delimiters', () => {
+test('buildProfileSnapshotSummaries keeps stale draft file paths in structured data without forcing them into the prompt snapshot', () => {
   const [snapshot] = buildProfileSnapshotSummaries([
     {
       id: 'jane-doe',
@@ -2619,7 +2619,41 @@ test('buildProfileSnapshotSummaries keeps structured draft gaps stable when memo
       foundationDraftStatus: {
         complete: false,
         needsRefresh: true,
-        missingDrafts: ['memory'],
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: false,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestSummaries: [],
+        },
+        voice: {
+          generated: false,
+          path: 'profiles/jane-doe/voice/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+          highlights: [],
+        },
+        soul: {
+          generated: false,
+          path: 'profiles/jane-doe/soul/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['core-truths'],
+          missingSections: ['boundaries', 'vibe', 'continuity'],
+          highlights: [],
+        },
+        skills: {
+          generated: false,
+          path: 'profiles/jane-doe/skills/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills'],
+          missingSections: ['evidence', 'gaps-to-validate'],
+          highlights: [],
+        },
       },
       foundationReadiness: {
         memory: { candidateCount: 1, sampleSummaries: ['Keep the loop tight | but honest.'] },
@@ -2627,7 +2661,19 @@ test('buildProfileSnapshotSummaries keeps structured draft gaps stable when memo
     },
   ]);
 
-  assert.deepEqual(snapshot.draftGaps, ['memory missing, 1 candidate (Keep the loop tight | but honest.)']);
+  assert.deepEqual(snapshot.draftFiles, {
+    memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+    skills: 'profiles/jane-doe/skills/README.md',
+    soul: 'profiles/jane-doe/soul/README.md',
+    voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.doesNotMatch(snapshot.snapshot, /draft files:/);
+  assert.deepEqual(snapshot.draftGaps, [
+    'memory missing, 1 candidate (Keep the loop tight | but honest.)',
+    'skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
+    'soul 1/4 ready (core-truths), missing boundaries/vibe/continuity',
+    'voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
+  ]);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Keep the loop tight \| but honest\.\)/);
 });
 
