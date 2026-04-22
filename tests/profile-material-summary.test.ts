@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,12 +10,97 @@ import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
+import * as promptAssemblerJsShim from '../src/core/prompt-assembler.js';
 import { PromptAssembler, buildProfileSnapshotSummaries } from '../src/core/prompt-assembler.ts';
+import * as promptAssemblerTsModule from '../src/core/prompt-assembler.ts';
 import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
 }
+
+test('JS prompt assembler shim stays aligned with the TypeScript profile snapshot helpers', () => {
+  assert.equal(typeof promptAssemblerJsShim.PromptAssembler, 'function');
+  assert.equal(typeof promptAssemblerTsModule.PromptAssembler, 'function');
+  assert.equal(typeof promptAssemblerJsShim.buildProfileSnapshotSummaries, 'function');
+  assert.equal(typeof promptAssemblerTsModule.buildProfileSnapshotSummaries, 'function');
+
+  const profiles = [{
+    id: 'harry-han',
+    materialCount: 2,
+    materialTypes: { text: 1, message: 1 },
+    latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    foundationReadiness: {
+      memory: { candidateCount: 2, latestTypes: ['message', 'text'], sampleSummaries: ['Ship the first slice.'] },
+      voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Ship the first slice.'] },
+      soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Protect the operator loop.'] },
+      skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+    },
+    foundationDraftStatus: {
+      generatedAt: '2026-04-16T15:00:01.000Z',
+      complete: false,
+      missingDrafts: ['skills'],
+      needsRefresh: true,
+      refreshReasons: ['new-material'],
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        path: 'profiles/harry-han/memory/long-term/foundation.json',
+        generatedAt: '2026-04-16T15:00:01.000Z',
+        latestMaterialAt: '2026-04-16T15:00:00.000Z',
+        latestMaterialId: '2026-04-16T15-00-00-000Z-message',
+        sourceCount: 2,
+        materialTypes: { text: 1, message: 1 },
+        entryCount: 2,
+        latestSummaries: ['Ship the first slice.'],
+      },
+      voice: {
+        generated: true,
+        path: 'profiles/harry-han/voice/README.md',
+        highlights: ['- [message] Ship the first slice.'],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+      },
+      soul: {
+        generated: true,
+        path: 'profiles/harry-han/soul/README.md',
+        highlights: ['- [text] Protect the operator loop.'],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+      },
+      skills: {
+        generated: false,
+        path: 'profiles/harry-han/skills/README.md',
+        highlights: [],
+        readySectionCount: 2,
+        totalSectionCount: 3,
+        readySections: ['candidate-skills', 'evidence'],
+        missingSections: ['gaps-to-validate'],
+      },
+    },
+  }];
+
+  assert.deepEqual(
+    promptAssemblerJsShim.buildProfileSnapshotSummaries(profiles),
+    promptAssemblerTsModule.buildProfileSnapshotSummaries(profiles),
+  );
+
+  const exportedKeys = execFileSync(
+    'node',
+    ['--input-type=module', '-e', "import('./src/core/prompt-assembler.js').then((module) => console.log(Object.keys(module).sort().join(',')))"],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  ).trim();
+
+  assert.equal(exportedKeys, 'PromptAssembler,buildProfileSnapshotSummaries');
+});
 
 test('JS ingestion summary shim stays aligned with the TypeScript implementation', () => {
   const profiles = [
