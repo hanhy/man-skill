@@ -30,6 +30,13 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /\.env\.example/);
   assert.match(readme, /bootstrap blast radius honest/i);
   assert.match(readme, /paths` includes both `?\.env\.example`? and `?\.env`?/i);
+  assert.match(readme, /`leadingPriority` keeps the first lane in the configured order even when it is already ready/i);
+  assert.match(readme, /`currentPriority` keeps the queued-or-blocked lane that is actively holding progress/i);
+  assert.match(readme, /`runnablePriority` keeps the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
+  assert.match(readme, /`actionableReadyPriority` keeps the narrower ready-only advisory alias/i);
+  assert.match(readme, /`recommendedPriority` stays a stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/i);
+  assert.match(readme, /`readyPriorityCount`, `queuedPriorityCount`, and `blockedPriorityCount`/i);
+  assert.match(readme, /separate `lead:`, `current:`, `runnable:`, and `advisory:` lines/i);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
 });
