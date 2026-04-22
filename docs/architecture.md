@@ -124,6 +124,7 @@ The project aims to keep personal-agent construction simple:
 - render the same `workLoop` state back into the prompt preview/system prompt as a compact `Work loop:` block so cron-style runs can see the current priority without re-parsing raw JSON
 - assemble a prompt preview from profile, soul, voice, memory, and skills, including the core-foundation coverage line when the base scaffold is thin or incomplete, the compact `ready details` core-foundation line when repo memory/skills/soul/voice are all ready, the stable repo-level ingestion helper palette, and the operator-facing delivery helper commands
 - when that compact `ready details` line is active, keep the repo root source references inline there too (`@ memory/README.md`, `@ skills/README.md`, `@ SOUL.md`, `@ voice/README.md`) so the fully ready path still points operators at the exact backing files instead of only surfacing section counts
+- reuse the compact memory alias preview there as well: if several legacy `memory/short-term/...` files were folded into `daily/`, the `ready details` memory segment should keep the first three source paths plus `+N more` instead of dropping provenance or re-expanding to the full list
 
 ## Staged development sequence
 

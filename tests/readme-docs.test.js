@@ -237,6 +237,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /memorySummary\.legacyShortTermSourceCount.*memorySummary\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
   assert.match(readme, /first three `memory\/short-term\/\.\.\.` paths plus a `\+N more` remainder marker/i);
   assert.match(readme, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
+  assert.match(readme, /all-green `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance visible/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
   assert.match(readme, /summary\.skills\.categoryCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
@@ -281,6 +282,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /checked-in root `SOUL\.md` stable on `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`/i);
   assert.match(architectureDoc, /checked-in root `voice\/README\.md` stable on `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
+  assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
@@ -298,6 +300,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
   assert.match(ingestionDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(ingestionDoc, /compact ready-state line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
+  assert.match(ingestionDoc, /all-ready `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance/i);
   assert.match(ingestionDoc, /first three `memory\/short-term\/\.\.\.` paths plus a `\+N more` remainder marker/i);
   assert.match(ingestionDoc, /when the queue narrows to one area, the additive `recommendedStatus` and `recommendedSummary` fields carry that single target's detailed context/i);
   assert.match(ingestionDoc, /starterImportCommand.*helperCommands` block .*starterImport/i);

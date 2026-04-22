@@ -1340,6 +1340,46 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   assert.doesNotMatch(summary.promptPreview, />\s*## Core truths/);
 });
 
+test('buildSummary carries compact legacy short-term provenance into ready core foundation details', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note one');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-02.md'), 'legacy note two');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-03.md'), 'legacy note three');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-04.md'), 'legacy note four');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver verified slices.\n\n## Suggested workflow\n- Run the smallest validating loop first.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Carry durable lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Warm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceCount, 4);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 1);
+  assert.match(
+    summary.promptPreview,
+    /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/,
+  );
+  assert.doesNotMatch(summary.promptPreview, /memory\/short-term\/2026-04-04\.md/);
+});
+
 test('buildSummary carries the richer foundation layer summaries at top level', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
