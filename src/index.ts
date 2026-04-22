@@ -1141,6 +1141,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
     ? ingestionSummary.recommendedEditPath
     : null;
+  const recommendedEditPaths = Array.isArray(ingestionSummary?.recommendedEditPaths)
+    ? ingestionSummary.recommendedEditPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
   const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
     ? ingestionSummary.recommendedFollowUpCommand
     : null;
@@ -1173,6 +1176,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     command: recommendedCommand,
     fallbackCommand: recommendedFallbackCommand,
     editPath: recommendedEditPath,
+    editPaths: recommendedEditPaths,
     followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,
   };

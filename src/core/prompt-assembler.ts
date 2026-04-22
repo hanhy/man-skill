@@ -598,6 +598,7 @@ type IngestionSummary = {
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
+  recommendedEditPaths?: string[];
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
@@ -615,6 +616,7 @@ type WorkLoopPriority = {
   command?: string | null;
   fallbackCommand?: string | null;
   editPath?: string | null;
+  editPaths?: string[];
   followUpCommand?: string | null;
   paths?: string[];
 };
@@ -1398,14 +1400,20 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
     ? ingestion.recommendedEditPath
     : null;
+  const recommendedEditPaths = Array.isArray(ingestion?.recommendedEditPaths)
+    ? ingestion.recommendedEditPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (recommendedEditPath ? [recommendedEditPath] : []);
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
   const recommendedFallbackCommand = typeof ingestion?.recommendedFallbackCommand === 'string' && ingestion.recommendedFallbackCommand.length > 0
     ? ingestion.recommendedFallbackCommand
     : null;
+  const recommendedEditSegment = recommendedEditPaths.length > 1
+    ? `; edit paths ${recommendedEditPaths.join(', ')}`
+    : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2061,8 +2069,18 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const showActionableReadyPriority = Boolean(
     actionableReadyPriority
       && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
-      && (!runnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority.id ?? runnablePriority.label)),
+      && (!showRunnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority?.id ?? runnablePriority?.label)),
   );
+  const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
+    ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (currentPriority?.editPath ? [currentPriority.editPath] : []);
+  const runnablePriorityEditPaths = Array.isArray(runnablePriority?.editPaths)
+    ? runnablePriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (runnablePriority?.editPath ? [runnablePriority.editPath] : []);
+  const actionableReadyPriorityEditPaths = Array.isArray(actionableReadyPriority?.editPaths)
+    ? actionableReadyPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (actionableReadyPriority?.editPath ? [actionableReadyPriority.editPath] : []);
+
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
     : null;
@@ -2096,9 +2114,11 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
-    currentPriority?.editPath
-      ? `- edit: ${currentPriority.editPath}`
-      : null,
+    currentPriorityEditPaths.length > 1
+      ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
+      : (currentPriority?.editPath
+        ? `- edit: ${currentPriority.editPath}`
+        : null),
     currentPriority?.followUpCommand
       ? `- then run: ${currentPriority.followUpCommand}`
       : null,
@@ -2117,9 +2137,11 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
-    showRunnablePriority && runnablePriority?.editPath
-      ? `- runnable edit: ${runnablePriority.editPath}`
-      : null,
+    showRunnablePriority && runnablePriorityEditPaths.length > 1
+      ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
+      : (showRunnablePriority && runnablePriority?.editPath
+        ? `- runnable edit: ${runnablePriority.editPath}`
+        : null),
     showRunnablePriority && runnablePriority?.followUpCommand
       ? `- runnable then run: ${runnablePriority.followUpCommand}`
       : null,
@@ -2138,9 +2160,11 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,
-    showActionableReadyPriority && actionableReadyPriority?.editPath
-      ? `- advisory edit: ${actionableReadyPriority.editPath}`
-      : null,
+    showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
+      ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`
+      : (showActionableReadyPriority && actionableReadyPriority?.editPath
+        ? `- advisory edit: ${actionableReadyPriority.editPath}`
+        : null),
     showActionableReadyPriority && actionableReadyPriority?.followUpCommand
       ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
       : null,

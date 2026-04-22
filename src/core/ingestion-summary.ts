@@ -1053,6 +1053,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedEditPath: string | null = null;
+  let recommendedEditPaths: string[] = [];
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
 
@@ -1131,6 +1132,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
       : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
+    recommendedEditPaths = importedStarterIntakeProfiles.length > 1
+      ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
+      : (recommendedEditPath ? [recommendedEditPath] : []);
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
       ? helperCommands.importIntakeImportedAndRefresh
       : (firstImportedStarterIntakeProfile?.personId
@@ -1348,6 +1352,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedEditPath,
+    recommendedEditPaths,
     recommendedFollowUpCommand,
     recommendedPaths,
     helperCommands,

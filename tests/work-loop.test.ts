@@ -2026,6 +2026,10 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.equal(summary.workLoop.runnablePriority?.nextAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
   assert.equal(summary.workLoop.runnablePriority?.command, null);
   assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.runnablePriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports',
@@ -2042,7 +2046,7 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 2 imported, 0 metadata-only, drafts 2 ready, 0 queued for refresh, 2 imported intake starter scaffolds available/);
   assert.match(summary.promptPreview, /runnable next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
-  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --imported --refresh-foundation/);
 });
 
