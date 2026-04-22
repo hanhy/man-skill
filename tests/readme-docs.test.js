@@ -74,6 +74,11 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /top-level `ingestion` entrance data .*`recommendedEditPath`, `recommendedEditPaths`, `recommendedInspectCommand`, `recommendedFollowUpCommand`, `recommendedPaths`, `helperCommands`, `profileCommands`, `allProfileCommands`/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
+  assert.match(ingestionDoc, /each `workLoop` priority row can now also carry additive follow-up metadata \(`fallbackCommand`, `editPath`, `editPaths`, `inspectCommand`, `followUpCommand`\)/i);
+  assert.match(ingestionDoc, /prompt-preview `Work loop:` block now also serializes the same `fallback`, `edit` \/ `edit paths`, `inspect after editing`, and `then run` surfaces/i);
+  assert.match(readme, /each priority can carry additive follow-up surfaces like `fallbackCommand`, `editPath`, `editPaths`, `inspectCommand`, and `followUpCommand`/i);
+  assert.match(readme, /explicit `fallback:`, `edit:`, `edit paths:`, `inspect after editing:`, and `then run:` lines/i);
+  assert.match(profilesDoc, /same contract now propagates into `workLoop\.currentPriority\|runnablePriority\|recommendedPriority` through `fallbackCommand`, `editPath`, `editPaths`, `inspectCommand`, and `followUpCommand`/i);
   assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
   assert.match(ingestionDoc, /`recommendedPriority` as the stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
@@ -233,10 +238,26 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     summary.ingestion.recommendedFollowUpCommand,
     "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   );
+  assert.equal(
+    summary.workLoop.recommendedPriority?.fallbackCommand,
+    "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+  );
+  assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(
+    summary.workLoop.recommendedPriority?.followUpCommand,
+    "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+  );
   assert.match(
     summary.promptPreview,
     /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
+  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /runnable fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(
     summary.promptPreview,
     /Harry Han \(harry-han\): 4 materials \(message:1, screenshot:1, talk:1, text:1\), latest .* intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
@@ -245,6 +266,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
   assert.match(readme, /Foundation contract/i);
+  assert.match(readme, /top-level `workLoop` summary exposes the queue from a few complementary angles/i);
+  assert.match(readme, /each priority can carry additive follow-up surfaces like `fallbackCommand`, `editPath`, `editPaths`, `inspectCommand`, and `followUpCommand`/i);
   assert.match(readme, /OpenClaw-like/i);
   assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
   assert.match(readme, /`daily\/` as the canonical short-term working-memory bucket/i);
