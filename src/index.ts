@@ -1298,10 +1298,11 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  const envBootstrapTargetPath = needsCredentialBootstrap
-    ? (typeof envConfigPath === 'string' && envConfigPath.length > 0 ? envConfigPath : '.env')
-    : envConfigPath;
-  const envBootstrapPaths = [envTemplatePath, envBootstrapTargetPath];
+  // Keep bootstrap paths source-focused on the template input; the active copy command writes `.env`,
+  // but the operator-facing blast radius for that step should surface the source file being copied.
+  const envBootstrapPaths = needsCredentialBootstrap
+    ? [envTemplatePath]
+    : [envTemplatePath, envConfigPath];
   const normalizedEnvBootstrapPaths = envBootstrapPaths.filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
