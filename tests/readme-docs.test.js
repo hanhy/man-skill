@@ -285,7 +285,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
 
   assert.match(memoryDoc, /## What belongs here/);
   assert.match(memoryDoc, /## Buckets/);
-  assert.match(memoryDoc, /`daily\/`.*checked-in short-term bucket/i);
+  assert.match(memoryDoc, /legacy `memory\/short-term\/` files are folded into `daily\/`/);
 
   assert.match(skillsDoc, /## What lives here/);
   assert.match(skillsDoc, /## Layout/);

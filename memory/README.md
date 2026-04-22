@@ -11,6 +11,7 @@ The point is not to store everything. The point is to preserve what helps the ag
 
 ## Buckets
 - `daily/` for dated logs or session summaries. This is the checked-in short-term bucket.
+- legacy `memory/short-term/` files are folded into `daily/` during repo loading so older repos keep their short-term context without renaming the directory first.
 - `long-term/` for distilled identity facts, preferences, habits, and other stable knowledge.
 - `scratch/` for temporary working notes that may later be promoted or deleted.
 
