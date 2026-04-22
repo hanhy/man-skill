@@ -1135,6 +1135,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedFallbackCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedEditPaths: string[] = [];
+  let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
 
@@ -1220,6 +1221,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
       : (recommendedEditPath ? [recommendedEditPath] : []);
+    recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
+      ? helperCommands.importIntakeImported
+      : (firstImportedStarterIntakeProfile?.personId
+        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)}`
+        : null);
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
       ? helperCommands.importIntakeImportedAndRefresh
       : (firstImportedStarterIntakeProfile?.personId
@@ -1441,6 +1447,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedFallbackCommand,
     recommendedEditPath,
     recommendedEditPaths,
+    recommendedInspectCommand,
     recommendedFollowUpCommand,
     recommendedPaths,
     helperCommands,

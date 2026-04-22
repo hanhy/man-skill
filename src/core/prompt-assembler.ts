@@ -601,6 +601,7 @@ type IngestionSummary = {
   recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
+  recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
@@ -1406,6 +1407,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedEditPaths = Array.isArray(ingestion?.recommendedEditPaths)
     ? ingestion.recommendedEditPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (recommendedEditPath ? [recommendedEditPath] : []);
+  const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
+    ? ingestion.recommendedInspectCommand
+    : null;
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
@@ -1416,7 +1420,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
