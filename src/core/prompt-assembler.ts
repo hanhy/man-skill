@@ -481,6 +481,7 @@ type IngestionProfileCommand = {
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   refreshFoundationCommand?: string | null;
+  importManifestWithoutRefreshCommand?: string | null;
   importManifestCommand?: string | null;
   importCommands?: {
     text?: string | null;
@@ -1537,6 +1538,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
         ? ` | shortcut ${intakeShortcutCommand}`
         : '';
+      const manifestInspectSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestWithoutRefreshCommand
+        ? ` | manifest-inspect ${profile.importManifestWithoutRefreshCommand}`
+        : '';
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
@@ -1586,7 +1590,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');

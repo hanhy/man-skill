@@ -622,8 +622,11 @@ function buildProfileCommands(profile, options: any = {}) {
     : null;
   const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
+  const intakeImportManifestWithoutRefreshCommand = intakeManifestPath && intakeManifestCommandAvailable
+    ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)}`
+    : null;
   const intakeImportManifestCommand = intakeManifestPath && intakeManifestCommandAvailable
-    ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)} --refresh-foundation`
+    ? `${intakeImportManifestWithoutRefreshCommand} --refresh-foundation`
     : null;
   const preferredIntakeManifestCommand = intakeManifest.status === 'loaded'
     ? intakeImportManifestCommand
@@ -710,6 +713,7 @@ function buildProfileCommands(profile, options: any = {}) {
       intake.sampleTextPath,
     ].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
+    importManifestWithoutRefreshCommand: intakeImportManifestWithoutRefreshCommand,
     importManifestCommand: intakeImportManifestCommand,
     refreshFoundationCommand,
     importCommands,
@@ -717,6 +721,7 @@ function buildProfileCommands(profile, options: any = {}) {
       scaffold: updateIntakeCommand,
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
+      importManifestWithoutRefresh: intakeImportManifestWithoutRefreshCommand,
       importManifest: intakeImportManifestCommand,
       starterImport: starterImportCommand,
       updateProfile: updateProfileCommand,
