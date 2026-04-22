@@ -872,6 +872,40 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.doesNotMatch(summary.promptPreview, /root: >/);
 });
 
+test('buildSummary accepts BOM-prefixed frontmatter descriptions for root foundation docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    `\uFEFF${['---', 'description: Keep shared operator procedures discoverable.', '---', '', '# Skills', '', '## What lives here', '- Keep shared operator procedures discoverable.', '', '## Layout', '- skills/<name>/SKILL.md stores the per-skill workflow.'].join('\n')}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    `\uFEFF${['---', 'description: >', '  Keep durable repo knowledge organized', '  without leaking raw YAML metadata.', '---', '', '# Memory', '', 'Buckets live below.'].join('\n')}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge organized without leaking raw YAML metadata.');
+  assert.equal(summary.foundation.core.skills.rootExcerpt, 'Keep shared operator procedures discoverable.');
+  assert.doesNotMatch(summary.promptPreview, /root: description:/);
+  assert.doesNotMatch(summary.promptPreview, /root: >/);
+});
+
 
 test('buildSummary ignores fenced template blocks when deriving memory and skills root excerpts', () => {
   const rootDir = makeTempRepo();

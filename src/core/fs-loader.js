@@ -94,11 +94,12 @@ function stripWrappingQuotes(value) {
 }
 
 function extractFrontmatterDescription(document) {
-  if (!isNonEmptyString(document) || !document.startsWith('---')) {
+  const normalizedDocument = normalizeDocument(document);
+  if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
     return null;
   }
 
-  const lines = document.split(/\r?\n/);
+  const lines = normalizedDocument.split(/\r?\n/);
   const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
   if (closingIndex < 0) {
     return null;
