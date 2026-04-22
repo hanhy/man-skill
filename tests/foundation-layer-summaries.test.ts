@@ -691,6 +691,44 @@ Description: Preserve terse bilingual delivery.
   });
 });
 
+test('voice profile raw JS entrypoint stays aligned for frontmatter description and target-specific current-default aliases', () => {
+  const document = `---
+name: Harry Han voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+---
+
+# Voice
+
+## Current default for Harry Han
+- concise by default
+- preserve 中文 and English switching when the source does
+`;
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-frontmatter-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile treats a documented tone-only excerpt as real guidance', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nclear\n`);
 
