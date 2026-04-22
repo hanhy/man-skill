@@ -30,6 +30,7 @@ test('JS prompt assembler shim stays aligned with the TypeScript profile snapsho
     materialCount: 2,
     materialTypes: { text: 1, message: 1 },
     latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    latestMaterialId: '2026-04-16T15-00-00-000Z-message',
     foundationReadiness: {
       memory: { candidateCount: 2, latestTypes: ['message', 'text'], sampleSummaries: ['Ship the first slice.'] },
       voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Ship the first slice.'] },
@@ -108,6 +109,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
     materialCount: 1,
     materialTypes: { text: 1 },
     latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    latestMaterialId: ' 2026-04-16T15-00-00-000Z-text ',
     profile: {
       displayName: 'Jane Doe',
       summary: '  Tight loops beat big plans.  ',
@@ -184,6 +186,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
   assert.deepEqual(snapshot.readiness.memory.sampleSummaries, ['Tight loops beat big plans.']);
   assert.deepEqual(snapshot.readiness.voice.sampleTypes, ['message']);
   assert.deepEqual(snapshot.readiness.voice.sampleExcerpts, ['Keep it tight.']);
+  assert.equal(snapshot.latestMaterialId, '2026-04-16T15-00-00-000Z-text');
   assert.equal(snapshot.draftFiles.memory, 'profiles/jane-doe/memory/long-term/foundation.json');
   assert.equal(snapshot.draftFiles.voice, 'profiles/jane-doe/voice/README.md');
   assert.deepEqual(snapshot.draftSections.voice?.readySections, ['tone']);
@@ -194,6 +197,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
   assert.deepEqual(snapshot.highlights.voice, ['[message] Keep it tight.']);
   assert.deepEqual(snapshot.highlights.soul, ['[talk] Protect the operator loop.']);
   assert.deepEqual(snapshot.highlights.skills, ['feedback-loop heuristic']);
+  assert.match(snapshot.snapshot, /latest material: 2026-04-16T15:00:00.000Z \(2026-04-16T15-00-00-000Z-text\)/);
   assert.match(snapshot.snapshot, /drafts: stale, missing memory\/voice, generated 2026-04-16T15:00:01.000Z, reasons new-material/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence \| soul 1\/4 ready \(core-truths\), missing boundaries \| voice 1\/4 ready \(tone\), missing avoid/);
   assert.doesNotMatch(snapshot.snapshot, /\s\|\s\|/);

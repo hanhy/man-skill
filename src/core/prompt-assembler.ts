@@ -72,6 +72,7 @@ type ProfileSnapshot = {
   materialCount?: number;
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string;
+  latestMaterialId?: string;
   foundationDraftStatus?: FoundationDraftStatus;
   foundationDraftSummaries?: FoundationDraftSummaries;
   foundationReadiness?: FoundationReadiness;
@@ -93,6 +94,7 @@ export type ProfileSnapshotSummary = {
   materialCount: number;
   materialTypes: Record<string, number>;
   latestMaterialAt: string | null;
+  latestMaterialId: string | null;
   profileSummary: string | null;
   draftStatus: {
     generatedAt?: string | null;
@@ -995,8 +997,11 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
 
-  if (profile.latestMaterialAt) {
-    lines.push(`  latest material: ${profile.latestMaterialAt}`);
+  const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
+  const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
+
+  if (latestMaterialAt || latestMaterialId) {
+    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`);
   }
 
   if (profileSummary) {
@@ -1050,7 +1055,8 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines,
     materialCount: profile.materialCount ?? 0,
     materialTypes: { ...(profile.materialTypes ?? {}) },
-    latestMaterialAt: profile.latestMaterialAt ?? null,
+    latestMaterialAt,
+    latestMaterialId,
     profileSummary,
     draftStatus,
     readiness,
