@@ -1302,10 +1302,10 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  // Keep bootstrap paths source-focused: `cp .env.example .env` reads the shared template, but the
-  // operator-facing path list should name the source asset that drives the next step rather than both
-  // the input and destination.
-  const normalizedEnvBootstrapPaths = [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const normalizedEnvBootstrapPaths = [
+    envTemplatePath,
+    ...(needsCredentialBootstrap ? [envConfigPath] : []),
+  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
