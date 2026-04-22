@@ -102,6 +102,133 @@ test('JS prompt assembler shim stays aligned with the TypeScript profile snapsho
   assert.equal(exportedKeys, 'PromptAssembler,buildProfileSnapshotSummaries');
 });
 
+test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata before exposing it', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    profile: {
+      displayName: 'Jane Doe',
+      summary: '  Tight loops beat big plans.  ',
+    },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        latestTypes: [' text ', 'text', ''],
+        sampleSummaries: ['  Tight loops beat big plans.  ', 'Tight loops beat big plans.', ''],
+      },
+      voice: {
+        candidateCount: 1,
+        sampleTypes: [' message ', 'message', ''],
+        sampleExcerpts: ['  Keep it tight.  ', 'Keep it tight.', ''],
+      },
+      soul: {
+        candidateCount: 1,
+        sampleTypes: [' talk ', 'talk', ''],
+        sampleExcerpts: ['  Protect the operator loop.  ', 'Protect the operator loop.', ''],
+      },
+      skills: {
+        candidateCount: 1,
+        sampleTypes: [' talk ', 'talk', ''],
+        sampleExcerpts: ['  feedback-loop heuristic  ', 'feedback-loop heuristic', ''],
+      },
+    },
+    foundationDraftStatus: {
+      generatedAt: '2026-04-16T15:00:01.000Z',
+      complete: false,
+      missingDrafts: [' memory ', 'voice', 'memory', ''],
+      needsRefresh: true,
+      refreshReasons: ['  new-material  ', 'new-material', ''],
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        path: ' profiles/jane-doe/memory/long-term/foundation.json ',
+        latestSummaries: ['  Tight loops beat big plans.  ', 'Tight loops beat big plans.', ''],
+      },
+      voice: {
+        generated: true,
+        path: ' profiles/jane-doe/voice/README.md ',
+        highlights: [' - [message] Keep it tight. ', '[message] Keep it tight.', ''],
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: [' tone ', 'tone', ''],
+        missingSections: [' avoid ', 'avoid', ''],
+      },
+      soul: {
+        generated: true,
+        path: ' profiles/jane-doe/soul/README.md ',
+        highlights: [' - [talk] Protect the operator loop. ', '[talk] Protect the operator loop.', ''],
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: [' core-truths ', 'core-truths', ''],
+        missingSections: [' boundaries ', 'boundaries', ''],
+      },
+      skills: {
+        generated: true,
+        path: ' profiles/jane-doe/skills/README.md ',
+        highlights: ['  feedback-loop heuristic  ', 'feedback-loop heuristic', ''],
+        readySectionCount: 1,
+        totalSectionCount: 3,
+        readySections: [' candidate-skills ', 'candidate-skills', ''],
+        missingSections: [' evidence ', 'evidence', ''],
+      },
+    },
+  }]);
+
+  assert.equal(snapshot.profileSummary, 'Tight loops beat big plans.');
+  assert.deepEqual(snapshot.draftStatus.missingDrafts, ['memory', 'voice']);
+  assert.deepEqual(snapshot.draftStatus.refreshReasons, ['new-material']);
+  assert.deepEqual(snapshot.readiness.memory.latestTypes, ['text']);
+  assert.deepEqual(snapshot.readiness.memory.sampleSummaries, ['Tight loops beat big plans.']);
+  assert.deepEqual(snapshot.readiness.voice.sampleTypes, ['message']);
+  assert.deepEqual(snapshot.readiness.voice.sampleExcerpts, ['Keep it tight.']);
+  assert.equal(snapshot.draftFiles.memory, 'profiles/jane-doe/memory/long-term/foundation.json');
+  assert.equal(snapshot.draftFiles.voice, 'profiles/jane-doe/voice/README.md');
+  assert.deepEqual(snapshot.draftSections.voice?.readySections, ['tone']);
+  assert.deepEqual(snapshot.draftSections.voice?.missingSections, ['avoid']);
+  assert.deepEqual(snapshot.draftSections.soul?.readySections, ['core-truths']);
+  assert.deepEqual(snapshot.draftSections.skills?.missingSections, ['evidence']);
+  assert.deepEqual(snapshot.highlights.memory, ['Tight loops beat big plans.']);
+  assert.deepEqual(snapshot.highlights.voice, ['[message] Keep it tight.']);
+  assert.deepEqual(snapshot.highlights.soul, ['[talk] Protect the operator loop.']);
+  assert.deepEqual(snapshot.highlights.skills, ['feedback-loop heuristic']);
+  assert.match(snapshot.snapshot, /drafts: stale, missing memory\/voice, generated 2026-04-16T15:00:01.000Z, reasons new-material/);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence \| soul 1\/4 ready \(core-truths\), missing boundaries \| voice 1\/4 ready \(tone\), missing avoid/);
+  assert.doesNotMatch(snapshot.snapshot, /\s\|\s\|/);
+  assert.doesNotMatch(snapshot.snapshot, /memory\/voice\/memory/);
+});
+
+test('buildProfileSnapshotSummaries falls back to readiness memory highlights when generated summaries normalize to empty strings', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        sampleSummaries: ['  Tight loops beat big plans.  ', ''],
+      },
+    },
+    foundationDraftStatus: {
+      complete: false,
+      missingDrafts: ['memory'],
+      needsRefresh: true,
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        latestSummaries: ['   ', ''],
+      },
+    },
+  }]);
+
+  assert.deepEqual(snapshot.highlights.memory, ['Tight loops beat big plans.']);
+  assert.match(snapshot.snapshot, /memory highlights: Tight loops beat big plans\./);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\)/);
+});
+
 test('JS ingestion summary shim stays aligned with the TypeScript implementation', () => {
   const profiles = [
     {

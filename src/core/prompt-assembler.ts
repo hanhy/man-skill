@@ -722,25 +722,56 @@ function formatMaterialTypes(materialTypes: MaterialTypes = {}) {
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeStringArray(values: unknown, mapper?: (value: string) => string | null): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalizedValues: string[] = [];
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+
+    const normalized = mapper ? mapper(value) : normalizeOptionalString(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    normalizedValues.push(normalized);
+  }
+
+  return normalizedValues;
+}
+
 function formatDraftStatus(status: FoundationDraftStatus = {}) {
   const freshness = status.needsRefresh ? 'stale' : 'fresh';
-  const completeness = status.complete ? 'complete' : `missing ${(status.missingDrafts ?? []).join('/') || 'drafts'}`;
-  const generatedAt = status.generatedAt ? `, generated ${status.generatedAt}` : '';
-  const refreshReasons = Array.isArray(status.refreshReasons)
-    ? status.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  const missingDrafts = normalizeStringArray(status.missingDrafts);
+  const completeness = status.complete ? 'complete' : `missing ${missingDrafts.join('/') || 'drafts'}`;
+  const generatedAtValue = normalizeOptionalString(status.generatedAt);
+  const generatedAt = generatedAtValue ? `, generated ${generatedAtValue}` : '';
+  const refreshReasons = normalizeStringArray(status.refreshReasons);
   const reasonsSuffix = refreshReasons.length > 0 ? `, reasons ${refreshReasons.join(' + ')}` : '';
   return `${freshness}, ${completeness}${generatedAt}${reasonsSuffix}`;
 }
 
 function cleanHighlight(value: string) {
-  return value.replace(/^[-\s]*/, '').trim();
+  return normalizeOptionalString(value.replace(/^[-\s]*/, ''));
 }
 
 function collectDraftGaps(profile: ProfileSnapshot = {}) {
-  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
-    ? profile.foundationDraftStatus.missingDrafts
-    : [];
+  const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts);
   const draftKinds = [
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
     { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
@@ -753,10 +784,10 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
     }
 
     const candidateCount = Number(profile.foundationReadiness?.memory?.candidateCount ?? 0);
-    const memoryHighlights = [
+    const memoryHighlights = normalizeStringArray([
       ...(profile.foundationDraftSummaries?.memory?.latestSummaries ?? []),
       ...(profile.foundationReadiness?.memory?.sampleSummaries ?? []),
-    ].filter((value, index, values) => typeof value === 'string' && value.trim().length > 0 && values.indexOf(value) === index);
+    ]);
 
     if (candidateCount > 0) {
       const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
@@ -782,16 +813,12 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
           return null;
         }
 
-        const missingSections = Array.isArray(summary.missingSections)
-          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
+        const missingSections = normalizeStringArray(summary.missingSections);
         if (missingSections.length === 0 && !missingDrafts.includes(key)) {
           return null;
         }
 
-        const readySections = Array.isArray(summary.readySections)
-          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
+        const readySections = normalizeStringArray(summary.readySections);
 
         return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
       })
@@ -823,12 +850,8 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
         return null;
       }
 
-      const readySections = Array.isArray(summary.readySections)
-        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      const missingSections = Array.isArray(summary.missingSections)
-        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
+      const readySections = normalizeStringArray(summary.readySections);
+      const missingSections = normalizeStringArray(summary.missingSections);
       if (missingSections.length > 0) {
         return null;
       }
@@ -850,7 +873,8 @@ function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOn
   ] as const;
 
   return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
-    if (!summary || typeof summary.path !== 'string' || summary.path.length === 0) {
+    const normalizedPath = normalizeOptionalString(summary?.path);
+    if (!summary || !normalizedPath) {
       return accumulator;
     }
 
@@ -858,7 +882,7 @@ function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOn
       return accumulator;
     }
 
-    accumulator[key] = summary.path;
+    accumulator[key] = normalizedPath;
     return accumulator;
   }, {});
 }
@@ -873,25 +897,29 @@ function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
 }
 
 function collectProfileSnapshotHighlights(profile: ProfileSnapshot = {}) {
-  const generatedVoiceHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const generatedSoulHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const generatedSkillSignals = (profile.foundationDraftSummaries?.skills?.highlights ?? [])
-    .map(cleanHighlight)
-    .filter((value) => value && !value.startsWith('sample:'));
+  const generatedVoiceHighlights = normalizeStringArray(profile.foundationDraftSummaries?.voice?.highlights, cleanHighlight);
+  const generatedSoulHighlights = normalizeStringArray(profile.foundationDraftSummaries?.soul?.highlights, cleanHighlight);
+  const generatedSkillSignals = normalizeStringArray(
+    profile.foundationDraftSummaries?.skills?.highlights,
+    (value) => {
+      const normalized = cleanHighlight(value);
+      return normalized && !normalized.startsWith('sample:') ? normalized : null;
+    },
+  );
+  const generatedMemoryHighlights = normalizeStringArray(profile.foundationDraftSummaries?.memory?.latestSummaries);
+  const fallbackMemoryHighlights = normalizeStringArray(profile.foundationReadiness?.memory?.sampleSummaries);
 
   return {
-    memory: profile.foundationDraftSummaries?.memory?.latestSummaries?.length
-      ? profile.foundationDraftSummaries.memory.latestSummaries
-      : (profile.foundationReadiness?.memory?.sampleSummaries ?? []),
+    memory: generatedMemoryHighlights.length > 0 ? generatedMemoryHighlights : fallbackMemoryHighlights,
     voice: generatedVoiceHighlights.length > 0
       ? generatedVoiceHighlights
-      : (profile.foundationReadiness?.voice?.sampleExcerpts ?? []),
+      : normalizeStringArray(profile.foundationReadiness?.voice?.sampleExcerpts),
     soul: generatedSoulHighlights.length > 0
       ? generatedSoulHighlights
-      : (profile.foundationReadiness?.soul?.sampleExcerpts ?? []),
+      : normalizeStringArray(profile.foundationReadiness?.soul?.sampleExcerpts),
     skills: generatedSkillSignals.length > 0
       ? generatedSkillSignals
-      : (profile.foundationReadiness?.skills?.sampleExcerpts ?? []),
+      : normalizeStringArray(profile.foundationReadiness?.skills?.sampleExcerpts),
   };
 }
 
@@ -901,24 +929,30 @@ function collectDraftGapList(profile: ProfileSnapshot = {}) {
 
 function normalizeProfileSnapshotDraftStatus(profile: ProfileSnapshot = {}) {
   return {
-    ...(profile.foundationDraftStatus?.generatedAt !== undefined ? { generatedAt: profile.foundationDraftStatus.generatedAt ?? null } : {}),
+    ...(profile.foundationDraftStatus?.generatedAt !== undefined
+      ? { generatedAt: normalizeOptionalString(profile.foundationDraftStatus.generatedAt) }
+      : {}),
     ...(profile.foundationDraftStatus?.complete !== undefined ? { complete: profile.foundationDraftStatus.complete } : {}),
     ...(profile.foundationDraftStatus?.needsRefresh !== undefined ? { needsRefresh: profile.foundationDraftStatus.needsRefresh } : {}),
-    missingDrafts: Array.isArray(profile.foundationDraftStatus?.missingDrafts)
-      ? [...profile.foundationDraftStatus.missingDrafts]
-      : [],
-    refreshReasons: Array.isArray(profile.foundationDraftStatus?.refreshReasons)
-      ? [...profile.foundationDraftStatus.refreshReasons]
-      : [],
+    missingDrafts: normalizeStringArray(profile.foundationDraftStatus?.missingDrafts),
+    refreshReasons: normalizeStringArray(profile.foundationDraftStatus?.refreshReasons),
   };
 }
 
 function normalizeProfileSnapshotReadiness(profile: ProfileSnapshot = {}) {
+  const normalizeReadinessSignal = (signal: ReadinessSignal | undefined = {}) => ({
+    ...signal,
+    ...(signal.latestTypes !== undefined ? { latestTypes: normalizeStringArray(signal.latestTypes) } : {}),
+    ...(signal.sampleSummaries !== undefined ? { sampleSummaries: normalizeStringArray(signal.sampleSummaries) } : {}),
+    ...(signal.sampleTypes !== undefined ? { sampleTypes: normalizeStringArray(signal.sampleTypes) } : {}),
+    ...(signal.sampleExcerpts !== undefined ? { sampleExcerpts: normalizeStringArray(signal.sampleExcerpts) } : {}),
+  });
+
   return {
-    memory: { ...(profile.foundationReadiness?.memory ?? {}) },
-    voice: { ...(profile.foundationReadiness?.voice ?? {}) },
-    soul: { ...(profile.foundationReadiness?.soul ?? {}) },
-    skills: { ...(profile.foundationReadiness?.skills ?? {}) },
+    memory: normalizeReadinessSignal(profile.foundationReadiness?.memory),
+    voice: normalizeReadinessSignal(profile.foundationReadiness?.voice),
+    soul: normalizeReadinessSignal(profile.foundationReadiness?.soul),
+    skills: normalizeReadinessSignal(profile.foundationReadiness?.skills),
   };
 }
 
@@ -939,21 +973,18 @@ function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): P
       generated: summary.generated === true,
       readySectionCount,
       totalSectionCount,
-      readySections: Array.isArray(summary.readySections)
-        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [],
-      missingSections: Array.isArray(summary.missingSections)
-        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [],
+      readySections: normalizeStringArray(summary.readySections),
+      missingSections: normalizeStringArray(summary.missingSections),
     };
     return accumulator;
   }, {});
 }
 
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
-  const displayName = profile.profile?.displayName;
-  const profileId = profile.id ?? 'unknown-profile';
+  const displayName = normalizeOptionalString(profile.profile?.displayName);
+  const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
   const profileLabel = displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+  const profileSummary = normalizeOptionalString(profile.profile?.summary);
   const lines = [
     `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
   ];
@@ -968,8 +999,8 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  latest material: ${profile.latestMaterialAt}`);
   }
 
-  if (profile.profile?.summary) {
-    lines.push(`  profile summary: ${profile.profile.summary}`);
+  if (profileSummary) {
+    lines.push(`  profile summary: ${profileSummary}`);
   }
 
   if (profile.foundationDraftStatus) {
@@ -1020,7 +1051,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     materialCount: profile.materialCount ?? 0,
     materialTypes: { ...(profile.materialTypes ?? {}) },
     latestMaterialAt: profile.latestMaterialAt ?? null,
-    profileSummary: profile.profile?.summary ?? null,
+    profileSummary,
     draftStatus,
     readiness,
     draftFiles,
