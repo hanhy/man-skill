@@ -107,18 +107,22 @@ test('buildIngestionSummary preserves sample manifest source paths for legacy te
     sampleManifest: {
       status: 'loaded',
       entryCount: 1,
-      profileIds: ['alpha-ready'],
-      profileLabels: ['Alpha Ready (alpha-ready)'],
-      filePaths: ['samples/alpha-ready.txt'],
-      materialTypes: { text: 1 },
+      profileIds: [' alpha-ready '],
+      profileLabels: [' Alpha Ready (alpha-ready) '],
+      filePaths: [' samples/alpha-ready.txt '],
+      materialTypes: { ' text ': 1 },
       textFilePersonIds: {
-        'samples/alpha-ready.txt': 'alpha-ready',
+        ' samples/alpha-ready.txt ': ' alpha-ready ',
       },
       error: null,
     },
     sampleTextPath: 'samples/alpha-ready.txt',
   });
 
+  assert.deepEqual(summary.sampleManifestProfileIds, ['alpha-ready']);
+  assert.deepEqual(summary.sampleManifestProfileLabels, ['Alpha Ready (alpha-ready)']);
+  assert.deepEqual(summary.sampleManifestFilePaths, ['samples/alpha-ready.txt']);
+  assert.deepEqual(summary.sampleManifestMaterialTypes, { text: 1 });
   assert.deepEqual(summary.sampleFileCommands, [
     {
       type: 'text',
@@ -352,6 +356,81 @@ test('buildIngestionSummary shell-quotes sample import commands when person ids 
   assert.equal(summary.metadataProfileCommands[0]?.helperCommands?.directImports?.text, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
   assert.equal(summary.metadataProfileCommands[0]?.helperCommands?.directImports?.message, "node src/index.js import message --person 'o'\"'\"'brien lane' --text 'Don'\"'\"'t drop the quote.' --refresh-foundation");
   assert.equal(summary.metadataProfileCommands[0]?.importMaterialCommand, "node src/index.js import text --person 'o'\"'\"'brien lane' --file 'samples/o brien note.txt' --refresh-foundation");
+});
+
+test('buildIngestionSummary trims sample manifest file and person identifiers before matching profile imports', () => {
+  const summary = buildTsIngestionSummary([
+    {
+      id: 'harry-han',
+      materialCount: 0,
+      materialTypes: {},
+      profile: {
+        displayName: 'Harry Han',
+        summary: 'Profile scaffold without imported materials yet.',
+      },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: false,
+        missingDrafts: [],
+      },
+    },
+  ], {
+    sampleManifestPath: 'samples/harry-materials.json',
+    sampleManifest: {
+      status: 'loaded',
+      entryCount: 2,
+      profileIds: [' harry-han '],
+      profileLabels: [' Harry Han (harry-han) '],
+      filePaths: [' samples/harry-post.txt '],
+      materialTypes: { message: 1, text: 1 },
+      textFilePersonIds: {
+        ' samples/harry-post.txt ': ' harry-han ',
+      },
+      fileEntries: [
+        {
+          type: 'text',
+          filePath: ' samples/harry-post.txt ',
+          personId: ' harry-han ',
+        },
+      ],
+      inlineEntries: [
+        {
+          type: 'message',
+          text: ' Ship the thin slice first. ',
+          personId: ' harry-han ',
+        },
+      ],
+      error: null,
+    },
+    sampleTextPath: 'samples/harry-post.txt',
+  });
+
+  assert.deepEqual(summary.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.deepEqual(summary.sampleManifestFilePaths, ['samples/harry-post.txt']);
+  assert.equal(summary.sampleTextPersonId, 'harry-han');
+  assert.equal(summary.sampleTextCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
+  assert.deepEqual(summary.sampleFileCommands, [
+    {
+      type: 'text',
+      path: 'samples/harry-post.txt',
+      personId: 'harry-han',
+      sourcePath: 'samples/harry-materials.json',
+      command: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
+    },
+  ]);
+  assert.deepEqual(summary.sampleInlineCommands, [
+    {
+      type: 'message',
+      text: 'Ship the thin slice first.',
+      personId: 'harry-han',
+      sourcePath: 'samples/harry-materials.json',
+      command: "node src/index.js import message --person harry-han --text 'Ship the thin slice first.' --refresh-foundation",
+    },
+  ]);
+  assert.equal(summary.metadataProfileCommands[0]?.importCommands?.text, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.importCommands?.message, "node src/index.js import message --person harry-han --text 'Ship the thin slice first.' --refresh-foundation");
+  assert.equal(summary.metadataProfileCommands[0]?.importMaterialCommand, "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation");
 });
 
 test('buildIngestionSummary carries section-aware draft gap summaries onto stale imported profile commands', () => {

@@ -215,13 +215,17 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
 
 function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedPath = normalizeRelativePath(sampleManifestPath);
+  const trimNonEmptyString = (value) => (typeof value === 'string' && value.trim().length > 0 ? value.trim() : null);
   const normalizedProfileIds = Array.isArray(sampleManifest?.profileIds)
-    ? sampleManifest.profileIds.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    ? sampleManifest.profileIds
+      .map((value) => trimNonEmptyString(value))
+      .filter((value) => typeof value === 'string')
     : [];
   const normalizedTextFilePersonIds = sampleManifest?.textFilePersonIds && typeof sampleManifest.textFilePersonIds === 'object'
     ? Object.fromEntries(
       Object.entries(sampleManifest.textFilePersonIds)
-        .filter(([filePath, personId]) => typeof filePath === 'string' && filePath.trim().length > 0 && typeof personId === 'string' && personId.trim().length > 0),
+        .map(([filePath, personId]) => [trimNonEmptyString(filePath), trimNonEmptyString(personId)])
+        .filter(([filePath, personId]) => typeof filePath === 'string' && typeof personId === 'string'),
     )
     : {};
   const normalizedFileEntries = Array.isArray(sampleManifest?.fileEntries)
@@ -229,8 +233,8 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
       .filter((entry) => entry && typeof entry === 'object')
       .map((entry) => ({
         type: typeof entry.type === 'string' && (entry.type === 'text' || entry.type === 'screenshot') ? entry.type : null,
-        path: typeof entry.filePath === 'string' && entry.filePath.trim().length > 0 ? entry.filePath : null,
-        personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+        path: trimNonEmptyString(entry.filePath),
+        personId: trimNonEmptyString(entry.personId),
         sourcePath: normalizedPath,
       }))
       .filter((entry) => entry.type && entry.path && entry.personId)
@@ -260,8 +264,8 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
       .filter((entry) => entry && typeof entry === 'object')
       .map((entry) => ({
         type: typeof entry.type === 'string' && (entry.type === 'message' || entry.type === 'talk') ? entry.type : null,
-        text: typeof entry.text === 'string' && entry.text.trim().length > 0 ? entry.text.trim() : null,
-        personId: typeof entry.personId === 'string' && entry.personId.trim().length > 0 ? entry.personId : null,
+        text: trimNonEmptyString(entry.text),
+        personId: trimNonEmptyString(entry.personId),
         sourcePath: normalizedPath,
       }))
       .filter((entry) => entry.type && entry.text && entry.personId)
@@ -283,16 +287,27 @@ function normalizeSampleManifestSummary(sampleManifestPath, sampleManifest) {
   const normalizedMaterialTypes = sampleManifest?.materialTypes && typeof sampleManifest.materialTypes === 'object'
     ? Object.fromEntries(
       Object.entries(sampleManifest.materialTypes)
-        .filter(([type, count]) => typeof type === 'string' && type.trim().length > 0 && Number.isFinite(Number(count)) && Number(count) > 0)
+        .map(([type, count]) => {
+          const normalizedType = trimNonEmptyString(type);
+          const normalizedCount = Number(count);
+          return normalizedType && Number.isFinite(normalizedCount) && normalizedCount > 0
+            ? [normalizedType, normalizedCount]
+            : null;
+        })
+        .filter((entry): entry is [string, number] => Array.isArray(entry))
         .sort(([left], [right]) => left.localeCompare(right)),
     )
     : {};
 
   const normalizedProfileLabels = Array.isArray(sampleManifest?.profileLabels)
-    ? sampleManifest.profileLabels.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    ? sampleManifest.profileLabels
+      .map((value) => trimNonEmptyString(value))
+      .filter((value) => typeof value === 'string')
     : [];
   const normalizedFilePaths = Array.isArray(sampleManifest?.filePaths)
-    ? sampleManifest.filePaths.filter((value) => typeof value === 'string' && value.trim().length > 0)
+    ? sampleManifest.filePaths
+      .map((value) => trimNonEmptyString(value))
+      .filter((value) => typeof value === 'string')
     : [];
   const starterTargets = normalizedProfileLabels.length > 0 ? normalizedProfileLabels : normalizedProfileIds;
 
