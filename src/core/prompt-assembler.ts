@@ -2261,7 +2261,7 @@ function buildMemoryPreviewBlock(
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -2322,6 +2322,16 @@ function buildSkillsPreviewBlock(
   const categorySummary = categoryEntries.length > 0
     ? `- categories: ${categoryEntries.join(', ')}`
     : null;
+  const rawDocumentedCategoryCounts = foundationSkills?.documentedCategoryCounts
+    && typeof foundationSkills.documentedCategoryCounts === 'object'
+      ? foundationSkills.documentedCategoryCounts
+      : {};
+  const documentedCategoryEntries = Object.entries(rawDocumentedCategoryCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([category, count]) => `${category} ${count}`);
+  const documentedCategorySummary = documentedCategoryEntries.length > 0
+    ? `- documented categories: ${documentedCategoryEntries.join(', ')}`
+    : null;
 
   const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
     ? foundationSkills.rootExcerpt.trim()
@@ -2347,6 +2357,7 @@ function buildSkillsPreviewBlock(
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
     categorySummary,
+    documentedCategorySummary,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 

@@ -1703,9 +1703,8 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   });
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
+    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]\n- categories: channels 1, providers 1\n- documented categories: channels 1/,
   );
-  assert.match(summary.promptPreview, /- categories: channels 1, providers 1/);
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.undocumentedCount, 1);
   assert.deepEqual(summary.foundation.core.skills.samplePaths, ['skills/channels/slack/SKILL.md']);
