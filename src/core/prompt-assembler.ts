@@ -219,6 +219,8 @@ type FoundationCore = {
     legacyShortTermSources?: string[];
     legacyShortTermSampleSources?: string[];
     legacyShortTermSourceOverflowCount?: number;
+    shortTermEntries?: number;
+    shortTermPresent?: boolean;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -1603,15 +1605,24 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
 }
 
 function formatMemoryAliasSummary(
-  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount'> | null | undefined,
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount' | 'shortTermEntries' | 'shortTermPresent'> | null | undefined,
   prefix = '; aliases ',
 ) {
+  const hasLegacyShortTermEntryAliases = Boolean(memory && (
+    Object.prototype.hasOwnProperty.call(memory, 'shortTermEntries')
+    || Object.prototype.hasOwnProperty.call(memory, 'shortTermPresent')
+  ));
   const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
     ? memory.canonicalShortTermBucket.trim()
-    : null;
+    : hasLegacyShortTermEntryAliases
+      ? 'daily'
+      : null;
   const legacyAliases = Array.isArray(memory?.legacyShortTermAliases)
     ? memory.legacyShortTermAliases.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
+    : [
+        ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermEntries') ? ['shortTermEntries'] : []),
+        ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermPresent') ? ['shortTermPresent'] : []),
+      ];
   const legacySources = Array.isArray(memory?.legacyShortTermSources)
     ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     : [];

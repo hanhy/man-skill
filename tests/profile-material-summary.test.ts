@@ -1221,6 +1221,110 @@ test('PromptAssembler preserves root section count summaries when only aggregate
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/slack\/SKILL\.md/);
 });
 
+test('PromptAssembler infers canonical daily alias wording from legacy short-term fields when explicit alias metadata is absent', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: {
+      dailyEntries: 2,
+      shortTermEntries: 2,
+      longTermEntries: 1,
+      scratchEntries: 0,
+      totalEntries: 3,
+      dailyPresent: true,
+      shortTermPresent: true,
+      longTermPresent: true,
+      scratchPresent: false,
+      legacyShortTermSourceCount: 4,
+      legacyShortTermSampleSources: [
+        'memory/short-term/2026-04-01.md',
+        'memory/short-term/2026-04-02.md',
+        'memory/short-term/2026-04-03.md',
+      ],
+      legacyShortTermSourceOverflowCount: 1,
+    },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        shortTermEntries: 2,
+        shortTermPresent: true,
+        dailyCount: 2,
+        longTermCount: 1,
+        scratchCount: 0,
+        totalEntries: 3,
+        readyBucketCount: 2,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term'],
+        emptyBuckets: ['scratch'],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json'],
+        legacyShortTermSourceCount: 4,
+        legacyShortTermSampleSources: [
+          'memory/short-term/2026-04-01.md',
+          'memory/short-term/2026-04-02.md',
+          'memory/short-term/2026-04-03.md',
+        ],
+        legacyShortTermSourceOverflowCount: 1,
+      },
+      skills: {
+        hasRootDocument: false,
+        rootPath: 'skills/README.md',
+        rootExcerpt: null,
+        count: 0,
+        documentedCount: 0,
+        sample: [],
+        samplePaths: [],
+      },
+      soul: {
+        present: false,
+        path: 'SOUL.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      voice: {
+        present: false,
+        path: 'voice/README.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      overview: {
+        readyAreaCount: 1,
+        totalAreaCount: 4,
+        missingAreas: ['skills', 'soul', 'voice'],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 1,
+        missingAreaCount: 3,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /memory: README yes, daily 2, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more; samples: daily\/2026-04-20\.md, long-term\/operator\.json; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+});
+
 test('PromptAssembler preserves queued core-foundation root section counts when only aggregate counts are available', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
