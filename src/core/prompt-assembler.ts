@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
 
@@ -1033,7 +1034,7 @@ function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): P
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
-  const profileLabel = displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+  const profileLabel = formatProfileLabel(profileId, displayName);
   const profileSummary = normalizeOptionalString(profile.profile?.summary);
   const lines = [
     `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,

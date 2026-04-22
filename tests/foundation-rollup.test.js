@@ -219,8 +219,8 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
-    recommendedLabel: 'jane-doe',
-    recommendedAction: 'refresh jane-doe — reasons missing drafts',
+    recommendedLabel: 'Jane Doe (jane-doe)',
+    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts',
     recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
@@ -241,7 +241,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         id: 'jane-doe',
         displayName: null,
         summary: null,
-        label: 'jane-doe',
+        label: 'Jane Doe (jane-doe)',
         status: 'stale',
         generatedDraftCount: 0,
         expectedDraftCount: 4,
@@ -301,6 +301,31 @@ test('buildFoundationRollup shell-quotes refresh commands for profile ids with s
   assert.equal(rollup.maintenance.recommendedCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
   assert.equal(rollup.maintenance.helperCommands.refreshBundle, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
   assert.equal(rollup.maintenance.queuedProfiles[0]?.refreshCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
+});
+
+test('buildFoundationRollup humanizes queued profile labels when display names are missing', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-19T01:05:00.000Z',
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory'], refreshReasons: ['missing drafts'] },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        voice: { generated: false, highlights: [] },
+        soul: { generated: false, highlights: [] },
+        skills: { generated: false, highlights: [] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 0, sampleExcerpts: [] },
+        soul: { candidateCount: 0, sampleExcerpts: [] },
+        skills: { candidateCount: 0, sampleExcerpts: [] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.label, 'Jane Doe (jane-doe)');
 });
 
 test('buildFoundationRollup preserves aggregate draft gap counts when section names are unavailable', () => {

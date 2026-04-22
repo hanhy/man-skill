@@ -1154,6 +1154,32 @@ test('buildSummary work loop accepts BOM-prefixed checked-in sample manifests', 
   assert.doesNotMatch(summary.promptPreview, /sample manifest invalid:/);
 });
 
+test('buildSummary work loop humanizes slug-only checked-in sample manifest profile labels', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile for Harry Han (harry-han)');
+  assert.match(summary.promptPreview, /next action: import the checked-in sample target profile for Harry Han \(harry-han\)/);
+});
+
 test('buildSummary work loop uses plural wording when the checked-in sample manifest spans multiple starter profiles', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

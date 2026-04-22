@@ -1,3 +1,5 @@
+import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
+
 function cleanHighlight(value: unknown): string | null {
   return typeof value === 'string' ? value.replace(/^-\s*/, '').trim() : null;
 }
@@ -54,7 +56,7 @@ function countStringValues(values: unknown[]): Record<string, number> {
 function buildProfileLabel(profile: any): string {
   const profileId = profile?.id ?? 'unknown-profile';
   const displayName = profile?.profile?.displayName;
-  return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+  return formatProfileLabel(profileId, displayName);
 }
 
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'] as const;

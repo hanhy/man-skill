@@ -1410,7 +1410,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /draft sections: skills 3\/3 ready \(candidate-skills, evidence, gaps-to-validate\) \| soul 4\/4 ready \(core-truths, boundaries, vibe, continuity\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
   assert.match(prompt, /draft files: memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \| skills @ profiles\/harry-han\/skills\/README\.md \| soul @ profiles\/harry-han\/soul\/README\.md \| voice @ profiles\/harry-han\/voice\/README\.md/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
-  assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): 1 material \(talk:1\)/);
   assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);
   assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
@@ -2877,6 +2877,23 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
   });
   assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);
+});
+
+test('buildProfileSnapshotSummaries humanizes slug-only profile ids when display names are missing', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { message: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      profile: {
+        summary: 'Direct operator with strong execution taste.',
+      },
+    },
+  ]);
+
+  assert.equal(snapshot.label, 'Jane Doe (jane-doe)');
+  assert.match(snapshot.snapshot, /^- Jane Doe \(jane-doe\): 1 material \(message:1\)/);
 });
 
 test('buildProfileSnapshotSummaries keeps stale draft file paths in structured data without forcing them into the prompt snapshot', () => {

@@ -18,6 +18,7 @@ import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
 import { PromptAssembler, buildProfileSnapshotSummaries } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
+import { buildProfileLabel as formatProfileLabel } from './core/profile-label.js';
 import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
 type OptionValue = string | boolean | undefined;
@@ -393,12 +394,7 @@ function slugifyPersonId(value: string) {
 }
 
 function buildSampleProfileLabel(personId: string, displayName?: string | null) {
-  const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
-  if (!normalizedDisplayName || normalizedDisplayName === personId) {
-    return personId;
-  }
-
-  return `${normalizedDisplayName} (${personId})`;
+  return formatProfileLabel(personId, displayName);
 }
 
 function readSampleManifestSummary(rootDir: string, relativePath: string | null): SampleManifestSummary {
