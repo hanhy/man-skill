@@ -164,6 +164,7 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);

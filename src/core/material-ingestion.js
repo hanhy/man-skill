@@ -671,6 +671,7 @@ function buildIntakeReadme({
       : `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
     `- Starter image folder: ${sampleImagesDirPath}`,
+    `- Inspect after editing: ${importAfterEditingWithoutRefreshCommand ?? importManifestWithoutRefreshCommand}`,
     `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',

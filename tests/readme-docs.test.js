@@ -178,6 +178,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(harryIntakeReadme, /Sample text placeholder: profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(harryIntakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(harryIntakeReadme, /`materials\.template\.json` resolves every `file` relative to `profiles\/harry-han\/imports\/`\./);
   assert.match(harryIntakeReadme, /if you save a screenshot at `profiles\/harry-han\/imports\/images\/chat\.png`, use `images\/chat\.png` inside the manifest/i);
