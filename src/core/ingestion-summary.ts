@@ -603,7 +603,7 @@ function summarizeIntakeManifestError(error: unknown): string | null {
     return fileName ? `missing file: ${fileName}` : 'missing file';
   }
 
-  if (/unable to parse intake manifest/i.test(trimmed) || /expected property name|unexpected token|json/i.test(trimmed)) {
+  if (/unable to parse (?:intake|sample) manifest/i.test(trimmed) || /expected property name|unexpected token|json/i.test(trimmed)) {
     return 'invalid JSON';
   }
 
@@ -1146,6 +1146,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
       : null;
     const sampleManifestInvalid = sampleManifest.status === 'invalid' && sampleManifestPath;
+    const sampleManifestInvalidReason = summarizeIntakeManifestError(sampleManifest.error);
 
     if (sampleStarterCommand) {
       const sampleProfileCount = sampleManifest.profileIds.length;
@@ -1157,7 +1158,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedCommand = exactSampleManifestCommand ?? sampleStarterCommand;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
-      recommendedAction = 'fix the checked-in sample manifest for first imports';
+      recommendedAction = sampleManifestInvalidReason
+        ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
+        : 'fix the checked-in sample manifest for first imports';
       recommendedCommand = null;
       recommendedPaths = [sampleManifestPath];
     } else {
