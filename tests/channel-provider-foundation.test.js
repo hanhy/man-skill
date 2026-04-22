@@ -1185,6 +1185,250 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   }
 });
 
+test('default channel factories cover verification and richer inbound-event variants', () => {
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
+  process.env.WHATSAPP_ACCESS_TOKEN='***';
+  process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
+  process.env.FEISHU_APP_ID = 'cli_a1b2c3';
+  process.env.FEISHU_APP_SECRET='***';
+
+  try {
+    const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
+    const telegram = createDefaultChannels().find((channel) => channel.id === 'telegram');
+    const whatsapp = createDefaultChannels().find((channel) => channel.id === 'whatsapp');
+    const feishu = createDefaultChannels().find((channel) => channel.id === 'feishu');
+
+    assert.ok(slack);
+    assert.ok(telegram);
+    assert.ok(whatsapp);
+    assert.ok(feishu);
+
+    assert.deepEqual(
+      slack.normalizeInboundEvent({
+        authorizations: [{ team_id: 'T999' }],
+        event: {
+          type: 'message',
+          subtype: 'message_changed',
+          channel: 'C999',
+          ts: '1710000400.000100',
+          message: {
+            user: 'U999',
+            text: 'edited thread reply',
+            ts: '1710000400.000200',
+          },
+        },
+      }),
+      {
+        platform: 'slack',
+        eventType: 'message_changed',
+        channelId: 'C999',
+        senderId: 'U999',
+        text: 'edited thread reply',
+        ts: '1710000400.000200',
+        threadTs: '1710000400.000200',
+        teamId: 'T999',
+      },
+    );
+    assert.deepEqual(
+      slack.buildWebhookResponse({ type: 'url_verification', challenge: 'slack-challenge' }),
+      { challenge: 'slack-challenge' },
+    );
+
+    assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 88,
+        callback_query: {
+          id: 'cbq-88',
+          data: 'open-profile:harry-han',
+          from: { id: 99 },
+          message: {
+            message_id: 22,
+            message_thread_id: 7,
+            date: 1710000500,
+            chat: { id: -100456, type: 'supergroup' },
+            text: 'tap to inspect',
+          },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'callback_query',
+        updateId: 88,
+        callbackQueryId: 'cbq-88',
+        chatId: -100456,
+        senderId: 99,
+        text: 'open-profile:harry-han',
+        messageId: 22,
+        threadId: 7,
+        chatType: 'supergroup',
+        timestamp: 1710000500,
+      },
+    );
+    assert.deepEqual(
+      telegram.buildCallbackAnswer({
+        callbackQueryId: 'cbq-88',
+        text: 'Opening profile…',
+        showAlert: true,
+        url: 'https://example.com/profile/harry-han',
+        cacheTime: 30,
+      }),
+      {
+        callback_query_id: 'cbq-88',
+        text: 'Opening profile…',
+        show_alert: true,
+        url: 'https://example.com/profile/harry-han',
+        cache_time: 30,
+      },
+    );
+
+    assert.deepEqual(
+      whatsapp.normalizeInboundEvent({
+        entry: [{
+          changes: [{
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: '1234567890' },
+              contacts: [{ profile: { name: 'Harry' }, wa_id: '15551234567' }],
+              messages: [{
+                id: 'wamid.HBgNOD.list',
+                from: '15551234567',
+                timestamp: '1710000600',
+                type: 'interactive',
+                interactive: {
+                  list_reply: {
+                    id: 'topic-1',
+                    title: 'Profile intake',
+                    description: 'Review latest materials',
+                  },
+                },
+              }],
+            },
+          }],
+        }],
+      }),
+      {
+        platform: 'whatsapp',
+        eventType: 'interactive',
+        phoneNumberId: '1234567890',
+        senderId: '15551234567',
+        profileName: 'Harry',
+        text: 'Profile intake',
+        interactiveReplyType: 'list_reply',
+        interactiveReplyId: 'topic-1',
+        interactiveReplyTitle: 'Profile intake',
+        interactiveReplyDescription: 'Review latest materials',
+        messageId: 'wamid.HBgNOD.list',
+        contextMessageId: null,
+        timestamp: 1710000600,
+      },
+    );
+    assert.equal(
+      whatsapp.buildWebhookVerificationResponse({ 'hub.mode': 'subscribe', 'hub.challenge': 'whatsapp-challenge' }),
+      'whatsapp-challenge',
+    );
+
+    assert.deepEqual(
+      feishu.normalizeInboundEvent({
+        header: {
+          event_type: 'im.message.receive_v1',
+          tenant_key: 'tenant-key',
+        },
+        event: {
+          sender: {
+            sender_id: { user_id: 'ou_user' },
+          },
+          message: {
+            chat_id: 'oc_chat_post',
+            message_id: 'om_post',
+            message_type: 'post',
+            content: JSON.stringify({
+              post: {
+                en_us: {
+                  content: [
+                    [{ tag: 'text', text: 'hello' }, { tag: 'text', text: 'from' }],
+                    [{ tag: 'text', text: 'feishu post' }],
+                  ],
+                },
+              },
+            }),
+            create_time: '1710000700000',
+          },
+        },
+      }),
+      {
+        platform: 'feishu',
+        eventType: 'im.message.receive_v1',
+        tenantKey: 'tenant-key',
+        chatId: 'oc_chat_post',
+        senderId: 'ou_user',
+        messageId: 'om_post',
+        messageType: 'post',
+        text: 'hello from feishu post',
+        threadId: null,
+        timestamp: 1710000700000,
+      },
+    );
+    assert.deepEqual(
+      feishu.buildWebhookResponse({ type: 'url_verification', challenge: 'feishu-challenge' }),
+      { challenge: 'feishu-challenge' },
+    );
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+
+    if (originalEnv.TELEGRAM_BOT_TOKEN === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    }
+
+    if (originalEnv.WHATSAPP_ACCESS_TOKEN === undefined) {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    }
+
+    if (originalEnv.WHATSAPP_PHONE_NUMBER_ID === undefined) {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    }
+
+    if (originalEnv.FEISHU_APP_ID === undefined) {
+      delete process.env.FEISHU_APP_ID;
+    } else {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    }
+
+    if (originalEnv.FEISHU_APP_SECRET === undefined) {
+      delete process.env.FEISHU_APP_SECRET;
+    } else {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    }
+  }
+});
+
 test('default provider factories expose runtime helpers for Minimax, GLM, and Qwen', () => {
   const originalEnv = {
     MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
