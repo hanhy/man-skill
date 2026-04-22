@@ -5,7 +5,7 @@ const SOUL_STARTER_GUIDANCE_LINES = new Set([
   'Note the principles to use when tradeoffs appear.',
 ]);
 
-const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
 
 function normalizeDocument(document) {
   return typeof document === 'string' ? document : '';

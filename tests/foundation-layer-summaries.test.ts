@@ -158,6 +158,37 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
   });
 });
 
+test('soul and voice parsers accept plus bullets and checklist markers inside structured sections', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nStay faithful.\n\n## Core truths\n+ [ ] Keep the system inspectable.\n+ Prefer narrow, verified diffs.\n\n## Boundaries\n+ [x] Do not bluff certainty.\n\n## Vibe\n+ Grounded and direct.\n\n## Continuity\n+ Carry durable lessons forward.\n`);
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n+ [ ] Crisp and grounded.\n\n## Signature moves\n+ [ ] Use concrete examples.\n+ Close with the next step.\n\n## Avoid\n+ [x] Padding the answer.\n\n## Language hints\n+ Preserve bilingual phrasing when the source switches languages.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Stay faithful.',
+    coreTruths: ['Keep the system inspectable.', 'Prefer narrow, verified diffs.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Crisp and grounded.',
+    style: 'documented',
+    constraints: ['Padding the answer.'],
+    signatures: ['Use concrete examples.', 'Close with the next step.'],
+    languageHints: ['Preserve bilingual phrasing when the source switches languages.'],
+    constraintCount: 1,
+    signatureCount: 2,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('memory store prefers daily over legacy shortTerm input and ignores non-array buckets', () => {
   const memory = new MemoryStore({
     daily: [{ id: 'daily-1' }],

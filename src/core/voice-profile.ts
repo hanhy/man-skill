@@ -49,7 +49,7 @@ function parseStructuredHeading(line: string): { level: number; text: string } |
   };
 }
 
-const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
 
 function cleanVoiceLine(value: string) {
   return normalizeAdmonitionLine(
