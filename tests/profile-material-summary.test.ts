@@ -2613,6 +2613,29 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
     soul: 'profiles/jane-doe/soul/README.md',
     voice: 'profiles/jane-doe/voice/README.md',
   });
+  assert.deepEqual(snapshot.draftSections, {
+    skills: {
+      generated: true,
+      readySectionCount: 2,
+      totalSectionCount: 2,
+      readySections: ['what-lives-here', 'layout'],
+      missingSections: [],
+    },
+    soul: {
+      generated: true,
+      readySectionCount: 3,
+      totalSectionCount: 4,
+      readySections: ['core-truths', 'boundaries', 'vibe'],
+      missingSections: ['continuity'],
+    },
+    voice: {
+      generated: true,
+      readySectionCount: 4,
+      totalSectionCount: 4,
+      readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+      missingSections: [],
+    },
+  });
   assert.deepEqual(snapshot.draftGaps, [
     'memory missing, 1 candidate (Push the work loop forward.)',
     'soul 3/4 ready (core-truths, boundaries, vibe), missing continuity',
@@ -2695,6 +2718,29 @@ test('buildProfileSnapshotSummaries keeps stale draft file paths in structured d
     skills: 'profiles/jane-doe/skills/README.md',
     soul: 'profiles/jane-doe/soul/README.md',
     voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.deepEqual(snapshot.draftSections, {
+    skills: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 3,
+      readySections: ['candidate-skills'],
+      missingSections: ['evidence', 'gaps-to-validate'],
+    },
+    soul: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 4,
+      readySections: ['core-truths'],
+      missingSections: ['boundaries', 'vibe', 'continuity'],
+    },
+    voice: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 4,
+      readySections: ['tone'],
+      missingSections: ['signature-moves', 'avoid', 'language-hints'],
+    },
   });
   assert.doesNotMatch(snapshot.snapshot, /draft files:/);
   assert.deepEqual(snapshot.draftGaps, [

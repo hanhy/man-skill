@@ -77,6 +77,14 @@ type ProfileSnapshot = {
   foundationReadiness?: FoundationReadiness;
 };
 
+type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', {
+  generated: boolean;
+  readySectionCount: number;
+  totalSectionCount: number;
+  readySections: string[];
+  missingSections: string[];
+}>>;
+
 export type ProfileSnapshotSummary = {
   id: string;
   label: string;
@@ -100,6 +108,7 @@ export type ProfileSnapshotSummary = {
     skills: ReadinessSignal;
   };
   draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
+  draftSections: ProfileSnapshotDraftSections;
   draftGaps: string[];
   highlights: {
     memory: string[];
@@ -913,6 +922,34 @@ function normalizeProfileSnapshotReadiness(profile: ProfileSnapshot = {}) {
   };
 }
 
+function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): ProfileSnapshotDraftSections {
+  return (['skills', 'soul', 'voice'] as const).reduce<ProfileSnapshotDraftSections>((accumulator, key) => {
+    const summary = profile.foundationDraftSummaries?.[key];
+    if (!summary) {
+      return accumulator;
+    }
+
+    const readySectionCount = Number(summary.readySectionCount ?? 0);
+    const totalSectionCount = Number(summary.totalSectionCount ?? 0);
+    if (totalSectionCount <= 0) {
+      return accumulator;
+    }
+
+    accumulator[key] = {
+      generated: summary.generated === true,
+      readySectionCount,
+      totalSectionCount,
+      readySections: Array.isArray(summary.readySections)
+        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [],
+      missingSections: Array.isArray(summary.missingSections)
+        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [],
+    };
+    return accumulator;
+  }, {});
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = profile.profile?.displayName;
   const profileId = profile.id ?? 'unknown-profile';
@@ -923,6 +960,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftStatus = normalizeProfileSnapshotDraftStatus(profile);
   const readiness = normalizeProfileSnapshotReadiness(profile);
   const draftFiles = collectDraftFiles(profile);
+  const draftSections = normalizeProfileSnapshotDraftSections(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
 
@@ -944,9 +982,9 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     );
   }
 
-  const draftSections = summarizeDraftSections(profile);
-  if (draftSections) {
-    lines.push(`  draft sections: ${draftSections}`);
+  const promptDraftSections = summarizeDraftSections(profile);
+  if (promptDraftSections) {
+    lines.push(`  draft sections: ${promptDraftSections}`);
   }
 
   const draftFilesSummary = summarizeDraftFiles(profile);
@@ -986,6 +1024,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     draftStatus,
     readiness,
     draftFiles,
+    draftSections,
     draftGaps,
     highlights,
   };
