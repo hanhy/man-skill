@@ -71,6 +71,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sync-bundle/i);
   assert.match(architectureDoc, /updateProfileBundleCommand/i);
   assert.match(architectureDoc, /updateProfileAndRefreshBundleCommand/i);
+  assert.match(architectureDoc, /additive follow-up metadata \(`fallbackCommand`, `editPath`, `editPaths`, `inspectCommand`, `followUpCommand`\)/i);
+  assert.match(architectureDoc, /prompt-preview `Work loop:` block also serializes the same `fallback`, `edit` \/ `edit paths`, `inspect after editing`, and `then run` surfaces/i);
   assert.match(ingestionDoc, /top-level `ingestion` entrance data .*`recommendedEditPath`, `recommendedEditPaths`, `recommendedInspectCommand`, `recommendedFollowUpCommand`, `recommendedPaths`, `helperCommands`, `profileCommands`, `allProfileCommands`/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
