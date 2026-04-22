@@ -583,9 +583,81 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
   };
 }
 
+function summarizeIntakeManifestError(error: unknown): string | null {
+  if (typeof error !== 'string') {
+    return null;
+  }
+
+  const trimmed = error.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (/targets a different profile/i.test(trimmed)) {
+    return 'targets a different profile';
+  }
+
+  const missingFileMatch = trimmed.match(/references a missing file: (.+)$/i);
+  if (missingFileMatch) {
+    const fileName = missingFileMatch[1]?.trim();
+    return fileName ? `missing file: ${fileName}` : 'missing file';
+  }
+
+  if (/unable to parse intake manifest/i.test(trimmed) || /expected property name|unexpected token|json/i.test(trimmed)) {
+    return 'invalid JSON';
+  }
+
+  if (/outside the repo/i.test(trimmed)) {
+    return 'file outside repo';
+  }
+
+  if (/non-file path/i.test(trimmed)) {
+    return 'path is not a file';
+  }
+
+  const missingTextMatch = trimmed.match(/is missing text for ([a-z]+) import/i);
+  if (missingTextMatch) {
+    return `missing ${missingTextMatch[1]} text`;
+  }
+
+  const missingImportFileMatch = trimmed.match(/is missing file for ([a-z]+) import/i);
+  if (missingImportFileMatch) {
+    return `missing ${missingImportFileMatch[1]} file`;
+  }
+
+  const missingPersonIdMatch = trimmed.match(/is missing personId for ([a-z0-9._-]+)/i);
+  if (missingPersonIdMatch) {
+    return `missing personId for ${missingPersonIdMatch[1]}`;
+  }
+
+  const unsupportedTypeMatch = trimmed.match(/Unsupported manifest entry type at index \d+: (.+)$/i);
+  if (unsupportedTypeMatch) {
+    const unsupportedType = unsupportedTypeMatch[1]?.trim();
+    return unsupportedType ? `unsupported type: ${unsupportedType}` : 'unsupported type';
+  }
+
+  const objectMatch = trimmed.match(/Manifest entry (\d+) must be an object/i);
+  if (objectMatch) {
+    return `entry ${objectMatch[1]} must be an object`;
+  }
+
+  if (/must contain a non-empty entries array/i.test(trimmed)) {
+    return 'missing entries array';
+  }
+
+  if (/must be an array or object/i.test(trimmed)) {
+    return 'manifest must be an array or object';
+  }
+
+  return trimmed;
+}
+
 function summarizeIntakeStatus(intake, manifestInspection = null) {
   if (manifestInspection?.status === 'invalid') {
-    return 'invalid manifest — repair materials.template.json';
+    const manifestErrorSummary = summarizeIntakeManifestError(manifestInspection?.error);
+    return manifestErrorSummary
+      ? `invalid manifest — repair materials.template.json (${manifestErrorSummary})`
+      : 'invalid manifest — repair materials.template.json';
   }
 
   if (manifestInspection?.status === 'starter') {
@@ -1114,12 +1186,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : collectProfileIntakePaths(firstImportedBackfillProfile);
   } else if (importedInvalidIntakeManifestProfiles.length > 0) {
     const firstInvalidImportedIntakeProfile = importedInvalidIntakeManifestProfiles[0] ?? null;
+    const firstInvalidImportedReason = summarizeIntakeManifestError(firstInvalidImportedIntakeProfile?.intakeManifestError);
     recommendedProfileId = firstInvalidImportedIntakeProfile?.personId ?? null;
     recommendedLabel = firstInvalidImportedIntakeProfile?.label ?? firstInvalidImportedIntakeProfile?.personId ?? null;
     recommendedAction = recommendedLabel
       ? (importedInvalidIntakeManifestProfiles.length > 1
         ? `repair invalid intake manifests for imported profiles — starting with ${recommendedLabel}`
-        : `repair the invalid intake manifest for imported profile ${recommendedLabel}`)
+        : `repair the invalid intake manifest for imported profile ${recommendedLabel}${firstInvalidImportedReason ? ` — ${firstInvalidImportedReason}` : ''}`)
       : 'repair invalid intake manifests for imported profiles';
     recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
@@ -1198,12 +1271,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : collectProfileIntakePaths(metadataOnlyProfileNeedingScaffold);
     } else if (invalidReadyIntakeProfiles.length > 0) {
       const firstInvalidReadyIntakeProfile = invalidReadyIntakeProfiles[0] ?? null;
+      const firstInvalidReadyReason = summarizeIntakeManifestError(firstInvalidReadyIntakeProfile?.intakeManifestError);
       recommendedProfileId = firstInvalidReadyIntakeProfile?.personId ?? null;
       recommendedLabel = firstInvalidReadyIntakeProfile?.label ?? firstInvalidReadyIntakeProfile?.personId ?? null;
       recommendedAction = recommendedLabel
         ? (invalidReadyIntakeProfiles.length > 1
           ? `repair invalid profile-local intake manifests — starting with ${recommendedLabel}`
-          : `repair the invalid intake manifest for ${recommendedLabel}`)
+          : `repair the invalid intake manifest for ${recommendedLabel}${firstInvalidReadyReason ? ` — ${firstInvalidReadyReason}` : ''}`)
         : 'repair invalid profile-local intake manifests';
       recommendedCommand = invalidReadyIntakeProfiles.length > 1
         ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)

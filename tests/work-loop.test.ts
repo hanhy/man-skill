@@ -1716,7 +1716,7 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
 
   assert.equal(metadataOnlyCommand?.intakeReady, true);
   assert.equal(metadataOnlyCommand?.intakeManifestStatus, 'invalid');
-  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
   assert.equal(metadataOnlyCommand?.importIntakeCommand, null);
   assert.equal(metadataOnlyCommand?.importManifestCommand, null);
   assert.equal(metadataOnlyCommand?.importMaterialCommand, null);
@@ -1724,13 +1724,13 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only) — missing file: missing-post.txt');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
-  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\)/);
+  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\) — missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
@@ -1774,18 +1774,18 @@ test('buildSummary marks profile-local intake manifests invalid when they target
   assert.equal(metadataOnlyCommand?.intakeReady, true);
   assert.equal(metadataOnlyCommand?.intakeManifestStatus, 'invalid');
   assert.match(metadataOnlyCommand?.intakeManifestError ?? '', /targets a different profile/i);
-  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (targets a different profile)');
   assert.equal(metadataOnlyCommand?.importIntakeCommand, null);
   assert.equal(metadataOnlyCommand?.importManifestCommand, null);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only) — targets a different profile');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(targets a different profile\)/);
 });
 
 test('buildSummary work loop repairs invalid intake manifests for imported profiles before moving on to delivery work', () => {
@@ -1814,13 +1814,13 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han) — invalid JSON');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\]/);
-  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports\/materials\.template\.json/);
 });
