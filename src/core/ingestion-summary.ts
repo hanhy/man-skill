@@ -1355,6 +1355,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     starterImportBundleCommand: helperCommands.starterImportBundle,
     repairInvalidIntakeBundleCommand: helperCommands.repairInvalidBundle,
     repairImportedInvalidIntakeBundleCommand: helperCommands.repairImportedInvalidBundle,
+    updateProfileBundleCommand: helperCommands.updateProfileBundle,
+    updateProfileAndRefreshBundleCommand: helperCommands.updateProfileAndRefreshBundle,
     recommendedProfileId,
     recommendedLabel,
     recommendedAction,

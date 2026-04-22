@@ -61,6 +61,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sample-screenshot/i);
   assert.match(architectureDoc, /update-bundle/i);
   assert.match(architectureDoc, /sync-bundle/i);
+  assert.match(architectureDoc, /updateProfileBundleCommand/i);
+  assert.match(architectureDoc, /updateProfileAndRefreshBundleCommand/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
   assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
@@ -87,6 +89,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /sample-screenshot/i);
   assert.match(ingestionDoc, /update-bundle/i);
   assert.match(ingestionDoc, /sync-bundle/i);
+  assert.match(ingestionDoc, /updateProfileBundleCommand/i);
+  assert.match(ingestionDoc, /updateProfileAndRefreshBundleCommand/i);
 });
 
 test('checked-in USER current product direction stays aligned with the default work-loop objectives', () => {

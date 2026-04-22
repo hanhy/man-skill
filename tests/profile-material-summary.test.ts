@@ -2127,6 +2127,8 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
       ],
       sampleInlineCommands: [],
       staleRefreshCommand: 'node src/index.js update foundation --stale',
+      updateProfileBundleCommand: "(node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe') && (node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.')",
+      updateProfileAndRefreshBundleCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
       helperCommands: {
         updateProfileBundle: "(node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe') && (node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.')",
         updateProfileAndRefreshBundle: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -3987,6 +3989,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     starterImportBundleCommand: null,
     repairInvalidIntakeBundleCommand: null,
     repairImportedInvalidIntakeBundleCommand: null,
+    updateProfileBundleCommand: null,
+    updateProfileAndRefreshBundleCommand: null,
     recommendedProfileId: null,
     recommendedLabel: null,
     recommendedAction: 'bootstrap a target profile',

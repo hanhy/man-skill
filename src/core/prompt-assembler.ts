@@ -592,6 +592,8 @@ type IngestionSummary = {
   starterImportBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
+  updateProfileBundleCommand?: string | null;
+  updateProfileAndRefreshBundleCommand?: string | null;
   recommendedProfileId?: string | null;
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
