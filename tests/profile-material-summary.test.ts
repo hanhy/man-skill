@@ -1338,7 +1338,6 @@ test('PromptAssembler infers canonical daily alias wording from legacy short-ter
         rootTotalSectionCount: 2,
         shortTermEntries: 2,
         shortTermPresent: true,
-        dailyCount: 2,
         longTermCount: 1,
         scratchCount: 0,
         totalEntries: 3,
@@ -1404,6 +1403,56 @@ test('PromptAssembler infers canonical daily alias wording from legacy short-ter
   }).buildPreview(4000);
 
   assert.match(prompt, /memory: README yes, daily 2, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more; samples: daily\/2026-04-20\.md, long-term\/operator\.json; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
+});
+
+test('PromptAssembler prefers explicit daily counts over legacy short-term aliases in core foundation memory snapshots', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 1, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here'],
+        rootMissingSections: ['buckets'],
+        rootReadySectionCount: 1,
+        rootTotalSectionCount: 2,
+        shortTermEntries: 5,
+        shortTermPresent: true,
+        dailyCount: 2,
+        longTermCount: 1,
+        scratchCount: 0,
+        readyBucketCount: 2,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term'],
+        emptyBuckets: ['scratch'],
+      },
+      overview: {
+        readyAreaCount: 1,
+        totalAreaCount: 4,
+        missingAreas: ['skills', 'soul', 'voice'],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 1,
+        missingAreaCount: 3,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /memory: README yes, daily 2, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; root: Keep durable notes here\. @ memory\/README\.md; root sections 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.doesNotMatch(prompt, /memory: README yes, daily 5,/);
 });
 
 test('PromptAssembler preserves queued core-foundation root section counts when only aggregate counts are available', () => {
