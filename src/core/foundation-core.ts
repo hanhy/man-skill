@@ -1,5 +1,6 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
 import { collectVisibleDocumentLines, findDocumentExcerpt } from './document-excerpt.ts';
+import { normalizeLegacyShortTermSources } from './memory-store.ts';
 import { SoulProfile } from './soul-profile.ts';
 import { VoiceProfile } from './voice-profile.ts';
 
@@ -354,31 +355,6 @@ function collectLegacyShortTermPreviewSources(legacyShortTermSources: string[], 
     sampleSources,
     overflowCount: Math.max(legacyShortTermSources.length - sampleSources.length, 0),
   };
-}
-
-function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
-  if (!Array.isArray(legacyShortTerm)) {
-    return [];
-  }
-
-  const normalizedSources: string[] = [];
-  const seenSources = new Set<string>();
-
-  legacyShortTerm.forEach((value) => {
-    if (!isNonEmptyString(value)) {
-      return;
-    }
-
-    const trimmedValue = value.trim();
-    if (seenSources.has(trimmedValue)) {
-      return;
-    }
-
-    seenSources.add(trimmedValue);
-    normalizedSources.push(trimmedValue);
-  });
-
-  return normalizedSources;
 }
 
 export function summarizeRootSectionSummary(

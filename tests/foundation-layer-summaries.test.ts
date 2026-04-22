@@ -46,6 +46,41 @@ test('summarizeRootSectionSummary preserves count-only root progress without sec
   assert.equal(summarizeRootSectionSummary(undefined, undefined, 0, 0), '');
 });
 
+test('foundation layer primitives normalize legacy short-term provenance consistently', () => {
+  const legacyShortTerm = [
+    ' memory\\short-term\\today.md ',
+    './memory/short-term/today.md',
+    'memory//short-term//older.md',
+    'memory/short-term/older.md',
+    '',
+    null,
+  ];
+  const memory = new MemoryStore({ legacyShortTerm: legacyShortTerm as unknown as string[] });
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts\n- scratch/: working drafts\n',
+      daily: ['today.md'],
+      legacyShortTerm: legacyShortTerm as unknown as string[],
+      longTerm: ['stable.md'],
+      scratch: ['ideas.md'],
+    },
+  });
+
+  assert.deepEqual(memory.legacyShortTermSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
+  assert.deepEqual(foundation.memory.legacyShortTermSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
+  assert.equal(foundation.memory.legacyShortTermSourceCount, 2);
+  assert.deepEqual(foundation.memory.legacyShortTermSampleSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
+});
+
 test('foundation layer primitives expose readiness-oriented summary metadata', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nLead with fidelity.\n\n## Core truths\n\nKeep the system inspectable.\nPrefer small verified slices.\n\n## Boundaries\n\n- Do not bluff certainty.\n- Do not hide provenance.\n\n## Vibe\n\nGrounded and direct.\n\n## Continuity\n\nCarry durable lessons forward.\n`);
   const voice = new VoiceProfile({

@@ -28,7 +28,15 @@ export interface MemoryStoreOptions {
   scratch?: unknown[];
 }
 
-function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
+function normalizeLegacyShortTermSourcePath(value: string): string {
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\/+/g, '/');
+}
+
+export function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
   if (!Array.isArray(legacyShortTerm)) {
     return [];
   }
@@ -41,13 +49,13 @@ function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
       return;
     }
 
-    const trimmedValue = value.trim();
-    if (trimmedValue.length === 0 || seenSources.has(trimmedValue)) {
+    const normalizedValue = normalizeLegacyShortTermSourcePath(value);
+    if (normalizedValue.length === 0 || seenSources.has(normalizedValue)) {
       return;
     }
 
-    seenSources.add(trimmedValue);
-    normalizedSources.push(trimmedValue);
+    seenSources.add(normalizedValue);
+    normalizedSources.push(normalizedValue);
   });
 
   return normalizedSources;
