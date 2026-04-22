@@ -1298,11 +1298,11 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  // Keep bootstrap paths source-focused on the template input; the active copy command writes `.env`,
-  // but the operator-facing blast radius for that step should surface the source file being copied.
+  // Keep bootstrap paths aligned with the active copy command's full blast radius: the template source
+  // is the required input, but `cp .env.example .env` also writes the repo-local destination file.
   const envBootstrapPaths = needsCredentialBootstrap
-    ? [envTemplatePath]
-    : [envTemplatePath, envConfigPath];
+    ? [envTemplatePath, envConfigPath]
+    : [envTemplatePath];
   const normalizedEnvBootstrapPaths = envBootstrapPaths.filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
@@ -1965,7 +1965,7 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
-        envConfigPath: envConfigPresent ? '.env' : null,
+        envConfigPath: '.env',
         envConfigPresent,
         envConfigPopulateCommand: deliverySummary.helperCommands.populateChannelEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
@@ -1981,7 +1981,7 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
-        envConfigPath: envConfigPresent ? '.env' : null,
+        envConfigPath: '.env',
         envConfigPresent,
         envConfigPopulateCommand: deliverySummary.helperCommands.populateProviderEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
