@@ -111,6 +111,10 @@ function readFileIfPresent(filePath: string): string | null {
   }
 }
 
+function stripLeadingUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function parseMarkdownHeadingAt(lines: string[], index: number): { level: number; text: string; lineCount: number } | null {
   const currentLine = (lines[index] ?? '').replace(/^\uFEFF/, '');
   const trimmedLine = currentLine.trim();
@@ -431,7 +435,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    parsed = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absolutePath, 'utf8')));
   } catch (error) {
     return {
       status: 'invalid',

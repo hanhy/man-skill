@@ -1057,6 +1057,37 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/harry-chat\.png/);
 });
 
+test('buildSummary work loop accepts BOM-prefixed checked-in sample manifests', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt']);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile for Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
+  assert.match(summary.promptPreview, /next action: import the checked-in sample target profile for Harry Han \(harry-han\)/);
+  assert.doesNotMatch(summary.promptPreview, /sample manifest invalid:/);
+});
+
 test('buildSummary work loop uses plural wording when the checked-in sample manifest spans multiple starter profiles', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
