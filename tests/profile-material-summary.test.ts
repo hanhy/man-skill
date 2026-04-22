@@ -2369,6 +2369,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
         command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
         editPath: 'profiles/harry-han/imports/materials.template.json',
         editPaths: ['profiles/harry-han/imports/materials.template.json'],
+        inspectCommand: "node src/index.js import intake --person 'harry-han'",
         followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         paths: [],
       },
@@ -2390,6 +2391,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           nextAction: 'bootstrap a target profile',
           command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
           editPath: 'profiles/harry-han/imports/materials.template.json',
+          inspectCommand: "node src/index.js import intake --person 'harry-han'",
           followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
           paths: [],
         },
@@ -2422,6 +2424,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /next action: bootstrap a target profile/);
   assert.match(prompt, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(prompt, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(prompt, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });

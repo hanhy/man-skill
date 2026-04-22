@@ -620,6 +620,7 @@ type WorkLoopPriority = {
   fallbackCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
+  inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
 };
@@ -2084,12 +2085,21 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
     ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (currentPriority?.editPath ? [currentPriority.editPath] : []);
+  const currentPriorityInspectCommand = typeof currentPriority?.inspectCommand === 'string' && currentPriority.inspectCommand.length > 0
+    ? currentPriority.inspectCommand
+    : null;
   const runnablePriorityEditPaths = Array.isArray(runnablePriority?.editPaths)
     ? runnablePriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (runnablePriority?.editPath ? [runnablePriority.editPath] : []);
+  const runnablePriorityInspectCommand = typeof runnablePriority?.inspectCommand === 'string' && runnablePriority.inspectCommand.length > 0
+    ? runnablePriority.inspectCommand
+    : null;
   const actionableReadyPriorityEditPaths = Array.isArray(actionableReadyPriority?.editPaths)
     ? actionableReadyPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (actionableReadyPriority?.editPath ? [actionableReadyPriority.editPath] : []);
+  const actionableReadyPriorityInspectCommand = typeof actionableReadyPriority?.inspectCommand === 'string' && actionableReadyPriority.inspectCommand.length > 0
+    ? actionableReadyPriority.inspectCommand
+    : null;
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2132,6 +2142,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (currentPriority?.editPath
         ? `- edit: ${currentPriority.editPath}`
         : null),
+    currentPriorityInspectCommand
+      ? `- inspect after editing: ${currentPriorityInspectCommand}`
+      : null,
     currentPriority?.followUpCommand
       ? `- then run: ${currentPriority.followUpCommand}`
       : null,
@@ -2155,6 +2168,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showRunnablePriority && runnablePriority?.editPath
         ? `- runnable edit: ${runnablePriority.editPath}`
         : null),
+    showRunnablePriority && runnablePriorityInspectCommand
+      ? `- runnable inspect after editing: ${runnablePriorityInspectCommand}`
+      : null,
     showRunnablePriority && runnablePriority?.followUpCommand
       ? `- runnable then run: ${runnablePriority.followUpCommand}`
       : null,
@@ -2178,6 +2194,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showActionableReadyPriority && actionableReadyPriority?.editPath
         ? `- advisory edit: ${actionableReadyPriority.editPath}`
         : null),
+    showActionableReadyPriority && actionableReadyPriorityInspectCommand
+      ? `- advisory inspect after editing: ${actionableReadyPriorityInspectCommand}`
+      : null,
     showActionableReadyPriority && actionableReadyPriority?.followUpCommand
       ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
       : null,
