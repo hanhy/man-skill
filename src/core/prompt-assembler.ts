@@ -78,6 +78,11 @@ type ProfileSnapshot = {
   foundationReadiness?: FoundationReadiness;
 };
 
+type ProfileSnapshotRefreshInfo = {
+  refreshCommand: string | null;
+  refreshPaths: string[];
+};
+
 type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', {
   generated: boolean;
   readySectionCount: number;
@@ -96,6 +101,8 @@ export type ProfileSnapshotSummary = {
   latestMaterialAt: string | null;
   latestMaterialId: string | null;
   profileSummary: string | null;
+  refreshCommand: string | null;
+  refreshPaths: string[];
   draftStatus: {
     generatedAt?: string | null;
     complete?: boolean;
@@ -903,6 +910,42 @@ function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
   return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
 }
 
+function buildMissingDraftPaths(profileId: string, missingDrafts: string[]) {
+  const draftPathByKey: Record<string, string> = {
+    memory: `profiles/${profileId}/memory/long-term/foundation.json`,
+    skills: `profiles/${profileId}/skills/README.md`,
+    soul: `profiles/${profileId}/soul/README.md`,
+    voice: `profiles/${profileId}/voice/README.md`,
+  };
+
+  return missingDrafts
+    .filter((draftKey): draftKey is keyof typeof draftPathByKey => draftKey in draftPathByKey)
+    .map((draftKey) => draftPathByKey[draftKey]);
+}
+
+function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
+  if (profile.foundationDraftStatus?.needsRefresh !== true || !profileId) {
+    return {
+      refreshCommand: null,
+      refreshPaths: [],
+    };
+  }
+
+  const refreshCommand = `node src/index.js update foundation --person '${profileId.replace(/'/g, `'"'"'`)}'`;
+  const generatedDraftFiles = collectDraftFiles(profile);
+  const refreshPaths = [
+    ...(['memory', 'skills', 'soul', 'voice'] as const)
+      .map((key) => generatedDraftFiles[key] ?? null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ...buildMissingDraftPaths(profileId, normalizeStringArray(profile.foundationDraftStatus?.missingDrafts)),
+  ];
+
+  return {
+    refreshCommand,
+    refreshPaths: Array.from(new Set(refreshPaths)),
+  };
+}
+
 function collectProfileSnapshotHighlights(profile: ProfileSnapshot = {}) {
   const generatedVoiceHighlights = normalizeStringArray(profile.foundationDraftSummaries?.voice?.highlights, cleanHighlight);
   const generatedSoulHighlights = normalizeStringArray(profile.foundationDraftSummaries?.soul?.highlights, cleanHighlight);
@@ -1001,6 +1044,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftSections = normalizeProfileSnapshotDraftSections(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
+  const refreshInfo = buildProfileSnapshotRefreshInfo(profile, profileId);
 
   const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
   const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
@@ -1033,6 +1077,10 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  draft files: ${draftFilesSummary}`);
   }
 
+  if (refreshInfo.refreshCommand) {
+    lines.push(`  refresh drafts: ${refreshInfo.refreshCommand}`);
+  }
+
   if (highlights.memory.length > 0) {
     lines.push(`  memory highlights: ${highlights.memory.join(' | ')}`);
   }
@@ -1063,6 +1111,8 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     latestMaterialAt,
     latestMaterialId,
     profileSummary,
+    refreshCommand: refreshInfo.refreshCommand,
+    refreshPaths: refreshInfo.refreshPaths,
     draftStatus,
     readiness,
     draftFiles,

@@ -219,6 +219,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(summary.profileSnapshots[0].materialCount, 4);
   assert.deepEqual(summary.profileSnapshots[0].materialTypes, { message: 1, screenshot: 1, talk: 1, text: 1 });
   assert.equal(summary.profileSnapshots[0].latestMaterialId, summary.profiles[0].latestMaterialId);
+  assert.equal(summary.profileSnapshots[0].refreshCommand, null);
+  assert.deepEqual(summary.profileSnapshots[0].refreshPaths, []);
   assert.deepEqual(summary.profileSnapshots[0].draftStatus, {
     generatedAt: summary.profiles[0].foundationDraftStatus.generatedAt,
     complete: summary.profiles[0].foundationDraftStatus.complete,
@@ -371,12 +373,12 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
-  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, and `highlights`\)/i);
+  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, and `highlights`\)/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
-  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
-  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);
