@@ -86,6 +86,19 @@ export type ProfileSnapshotSummary = {
   materialTypes: Record<string, number>;
   latestMaterialAt: string | null;
   profileSummary: string | null;
+  draftStatus: {
+    generatedAt?: string | null;
+    complete?: boolean;
+    needsRefresh?: boolean;
+    missingDrafts: string[];
+    refreshReasons: string[];
+  };
+  readiness: {
+    memory: ReadinessSignal;
+    voice: ReadinessSignal;
+    soul: ReadinessSignal;
+    skills: ReadinessSignal;
+  };
   draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
   draftGaps: string[];
   highlights: {
@@ -877,6 +890,29 @@ function collectDraftGapList(profile: ProfileSnapshot = {}) {
   return collectDraftGaps(profile);
 }
 
+function normalizeProfileSnapshotDraftStatus(profile: ProfileSnapshot = {}) {
+  return {
+    ...(profile.foundationDraftStatus?.generatedAt !== undefined ? { generatedAt: profile.foundationDraftStatus.generatedAt ?? null } : {}),
+    ...(profile.foundationDraftStatus?.complete !== undefined ? { complete: profile.foundationDraftStatus.complete } : {}),
+    ...(profile.foundationDraftStatus?.needsRefresh !== undefined ? { needsRefresh: profile.foundationDraftStatus.needsRefresh } : {}),
+    missingDrafts: Array.isArray(profile.foundationDraftStatus?.missingDrafts)
+      ? [...profile.foundationDraftStatus.missingDrafts]
+      : [],
+    refreshReasons: Array.isArray(profile.foundationDraftStatus?.refreshReasons)
+      ? [...profile.foundationDraftStatus.refreshReasons]
+      : [],
+  };
+}
+
+function normalizeProfileSnapshotReadiness(profile: ProfileSnapshot = {}) {
+  return {
+    memory: { ...(profile.foundationReadiness?.memory ?? {}) },
+    voice: { ...(profile.foundationReadiness?.voice ?? {}) },
+    soul: { ...(profile.foundationReadiness?.soul ?? {}) },
+    skills: { ...(profile.foundationReadiness?.skills ?? {}) },
+  };
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = profile.profile?.displayName;
   const profileId = profile.id ?? 'unknown-profile';
@@ -884,6 +920,8 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const lines = [
     `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
   ];
+  const draftStatus = normalizeProfileSnapshotDraftStatus(profile);
+  const readiness = normalizeProfileSnapshotReadiness(profile);
   const draftFiles = collectDraftFiles(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
@@ -945,6 +983,8 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     materialTypes: { ...(profile.materialTypes ?? {}) },
     latestMaterialAt: profile.latestMaterialAt ?? null,
     profileSummary: profile.profile?.summary ?? null,
+    draftStatus,
+    readiness,
     draftFiles,
     draftGaps,
     highlights,

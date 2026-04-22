@@ -2594,6 +2594,19 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
   assert.deepEqual(snapshot.materialTypes, { message: 1, talk: 1 });
   assert.equal(snapshot.latestMaterialAt, '2026-04-20T12:00:00.000Z');
   assert.equal(snapshot.profileSummary, 'Direct operator with strong execution taste.');
+  assert.deepEqual(snapshot.draftStatus, {
+    generatedAt: '2026-04-20T12:05:00.000Z',
+    complete: false,
+    needsRefresh: true,
+    missingDrafts: ['memory'],
+    refreshReasons: [],
+  });
+  assert.deepEqual(snapshot.readiness, {
+    memory: { candidateCount: 1, sampleSummaries: ['Push the work loop forward.'] },
+    voice: { candidateCount: 1, sampleExcerpts: ['fallback voice'] },
+    soul: { candidateCount: 1, sampleExcerpts: ['fallback soul'] },
+    skills: { candidateCount: 1, sampleExcerpts: ['fallback skill'] },
+  });
   assert.deepEqual(snapshot.draftFiles, {
     memory: 'profiles/jane-doe/memory/long-term/foundation.json',
     skills: 'profiles/jane-doe/skills/README.md',
@@ -2665,6 +2678,18 @@ test('buildProfileSnapshotSummaries keeps stale draft file paths in structured d
     },
   ]);
 
+  assert.deepEqual(snapshot.draftStatus, {
+    complete: false,
+    needsRefresh: true,
+    missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+    refreshReasons: [],
+  });
+  assert.deepEqual(snapshot.readiness, {
+    memory: { candidateCount: 1, sampleSummaries: ['Keep the loop tight | but honest.'] },
+    voice: {},
+    soul: {},
+    skills: {},
+  });
   assert.deepEqual(snapshot.draftFiles, {
     memory: 'profiles/jane-doe/memory/long-term/foundation.json',
     skills: 'profiles/jane-doe/skills/README.md',

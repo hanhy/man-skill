@@ -217,6 +217,14 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(summary.profileSnapshots[0].snapshot, /^- Harry Han \(harry-han\): 4 materials \(message:1, screenshot:1, talk:1, text:1\)/);
   assert.equal(summary.profileSnapshots[0].materialCount, 4);
   assert.deepEqual(summary.profileSnapshots[0].materialTypes, { message: 1, screenshot: 1, talk: 1, text: 1 });
+  assert.deepEqual(summary.profileSnapshots[0].draftStatus, {
+    generatedAt: summary.profiles[0].foundationDraftStatus.generatedAt,
+    complete: summary.profiles[0].foundationDraftStatus.complete,
+    needsRefresh: summary.profiles[0].foundationDraftStatus.needsRefresh,
+    missingDrafts: summary.profiles[0].foundationDraftStatus.missingDrafts,
+    refreshReasons: summary.profiles[0].foundationDraftStatus.refreshReasons,
+  });
+  assert.deepEqual(summary.profileSnapshots[0].readiness, summary.profiles[0].foundationReadiness);
   assert.equal(summary.profileSnapshots[0].profileSummary, 'Direct operator with a bias for momentum and fast feedback loops.');
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
@@ -338,9 +346,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
-  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftFiles`, `draftGaps`, and `highlights`\)/i);
-  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftFiles`, `draftGaps`, `highlights`\)/i);
-  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftFiles`, `draftGaps`, `highlights`\)/i);
+  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftGaps`, and `highlights`\)/i);
+  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `profileSummary`, `draftStatus`, `readiness`, `draftFiles`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
