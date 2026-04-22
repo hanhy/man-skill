@@ -3623,6 +3623,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(janeCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation");
   assert.equal(janeCommand.refreshFoundationCommand, "node src/index.js update foundation --person 'jane-doe'");
   assert.equal(janeCommand.starterImportCommand, "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation");
+  assert.equal(janeCommand.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'jane-doe'");
+  assert.equal(janeCommand.importAfterEditingCommand, "node src/index.js import intake --person 'jane-doe' --refresh-foundation");
   assert.equal(janeCommand.importMaterialCommand, null);
   assert.deepEqual(janeCommand.importCommands, {
     text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
@@ -3637,6 +3639,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importManifestWithoutRefresh: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json'",
     importManifest: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation",
     starterImport: "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation",
+    importAfterEditingWithoutRefresh: "node src/index.js import intake --person 'jane-doe'",
+    importAfterEditing: "node src/index.js import intake --person 'jane-doe' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
@@ -3666,6 +3670,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     starterImportCommand: null,
     followUpImportIntakeWithoutRefreshCommand: null,
     followUpImportIntakeCommand: null,
+    importAfterEditingWithoutRefreshCommand: null,
+    importAfterEditingCommand: null,
     intakeReady: false,
     intakeCompletion: 'missing',
     intakeStatusSummary: 'missing — create imports, images, README.md, materials.template.json, sample.txt',
@@ -3702,6 +3708,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
       importManifestWithoutRefresh: null,
       importManifest: null,
       starterImport: null,
+      importAfterEditingWithoutRefresh: null,
+      importAfterEditing: null,
       updateProfile: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
       updateProfileAndRefresh: null,
       refreshFoundation: null,
@@ -3789,9 +3797,15 @@ test('buildSummary recommends populating imported starter intake manifests once 
   ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
 
   const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
+  assert.ok(harry);
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
+  assert.equal(harry.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harry.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(harry.helperCommands?.importAfterEditingWithoutRefresh, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harry.helperCommands?.importAfterEditing, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedProfileId, 'harry-han');
   assert.equal(summary.ingestion.recommendedLabel, 'Harry Han (harry-han)');
   assert.equal(summary.ingestion.recommendedAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');

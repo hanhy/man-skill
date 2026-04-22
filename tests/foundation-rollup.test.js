@@ -228,6 +228,8 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
       'profiles/jane-doe/soul/README.md',
       'profiles/jane-doe/voice/README.md',
     ],
+    recommendedLatestMaterialAt: null,
+    recommendedLatestMaterialId: null,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -247,6 +249,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
+        latestMaterialId: null,
         draftGapCount: 8,
         draftGapCounts: {
           memory: 1,
@@ -559,6 +562,8 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
       'profiles/jane-doe/soul/README.md',
       'profiles/jane-doe/voice/README.md',
     ],
+    recommendedLatestMaterialAt: summary.foundation.maintenance.recommendedLatestMaterialAt,
+    recommendedLatestMaterialId: summary.foundation.maintenance.recommendedLatestMaterialId,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -578,6 +583,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+        latestMaterialId: summary.foundation.maintenance.queuedProfiles[0].latestMaterialId,
         draftGapCount: 12,
         draftGapCounts: {
           memory: 1,

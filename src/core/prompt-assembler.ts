@@ -526,6 +526,8 @@ type IngestionProfileCommand = {
   starterImportCommand?: string | null;
   followUpImportIntakeWithoutRefreshCommand?: string | null;
   followUpImportIntakeCommand?: string | null;
+  importAfterEditingWithoutRefreshCommand?: string | null;
+  importAfterEditingCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
