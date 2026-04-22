@@ -126,7 +126,7 @@ function buildDocumentRepairCommand(filePath, _sentinel, sections) {
     `const file = ${JSON.stringify(filePath)};`,
     `const sections = ${JSON.stringify(normalizedSections)};`,
     "const stripQuotePrefix = (value) => value.replace(/^\\s{0,3}(?:>\\s?)+/, '').trimEnd(); const parseHeadingAt = (lines, index) => { const current = lines[index] ?? ''; const normalizedCurrent = stripQuotePrefix(current); const trimmed = normalizedCurrent.trim(); const atxMatch = trimmed.match(/^(#{1,6})\\s+(.*)$/); if (atxMatch) { return { level: atxMatch[1].length, text: atxMatch[2].trim().replace(/\\s+#+\\s*$/, '').trim().toLowerCase(), lineCount: 1 }; } const next = lines[index + 1] ?? ''; const normalizedNext = stripQuotePrefix(next); const setextMatch = normalizedNext.trim().match(/^(=+|-+)$/); if (!setextMatch || trimmed.length === 0 || trimmed.startsWith('#')) return null; return { level: setextMatch[1].startsWith('=') ? 1 : 2, text: trimmed.toLowerCase(), lineCount: 2 }; };",
-    "const buildVisibleLines = (sourceLines) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; return sourceLines.map((rawLine = '') => { const trimmed = stripQuotePrefix(rawLine).trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; return ''; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } return ''; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) return ''; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } return visibleLine; }); };",
+    "const lineStartsIndentedCodeBlock = (value) => /^(?:\\t| {4,})\\S?/.test(value); const buildVisibleLines = (sourceLines) => { let activeFenceMarker = null; let activeFenceLength = 0; let insideHtmlComment = false; let insideIndentedCodeBlock = false; let previousVisibleLine = null; return sourceLines.map((rawLine = '') => { const trimmed = stripQuotePrefix(rawLine).trim(); if (!activeFenceMarker) { const openingFenceMatch = trimmed.match(/^(`{3,}|~{3,})(.*)$/); if (openingFenceMatch) { activeFenceMarker = openingFenceMatch[1][0]; activeFenceLength = openingFenceMatch[1].length; return ''; } } else { const closingFenceMatch = trimmed.match(/^([`~]{3,})(\\s*)$/); if (closingFenceMatch && closingFenceMatch[1][0] === activeFenceMarker && closingFenceMatch[1].length >= activeFenceLength) { activeFenceMarker = null; activeFenceLength = 0; } return ''; } let visibleLine = rawLine; if (insideHtmlComment) { const commentEnd = visibleLine.indexOf('-->'); if (commentEnd < 0) return ''; visibleLine = visibleLine.slice(commentEnd + 3); insideHtmlComment = false; } while (true) { const commentStart = visibleLine.indexOf('<!--'); if (commentStart < 0) break; const commentEnd = visibleLine.indexOf('-->', commentStart + 4); if (commentEnd >= 0) { visibleLine = `${visibleLine.slice(0, commentStart)}${visibleLine.slice(commentEnd + 3)}`; continue; } visibleLine = visibleLine.slice(0, commentStart); insideHtmlComment = true; break; } const rawLineWasBlank = rawLine.trim().length === 0; const becameEmptyAfterFiltering = visibleLine.trim().length === 0 && !rawLineWasBlank; if (becameEmptyAfterFiltering) return ''; const normalizedIndentedLine = stripQuotePrefix(visibleLine); const isBlankLine = visibleLine.trim().length === 0; const isIndentedCodeLine = lineStartsIndentedCodeBlock(normalizedIndentedLine); const canStartIndentedCodeBlock = previousVisibleLine === null || previousVisibleLine.trim().length === 0; if (insideIndentedCodeBlock) { if (isBlankLine || isIndentedCodeLine) return ''; insideIndentedCodeBlock = false; } if (canStartIndentedCodeBlock && isIndentedCodeLine) { insideIndentedCodeBlock = true; return ''; } previousVisibleLine = visibleLine; return visibleLine; }); };",
     "const hasVisibleContent = (visibleSectionLines, sectionHeadingLevel) => { for (const line of visibleSectionLines) { const normalizedLine = stripQuotePrefix(line ?? '').trim(); if (normalizedLine.length === 0) continue; const nestedHeading = parseHeadingAt([line], 0); if (nestedHeading && nestedHeading.level > sectionHeadingLevel) return true; if (!normalizedLine.startsWith('#')) return true; } return false; };",
     "let lines = fs.readFileSync(file, 'utf8').split(/\\r?\\n/);",
     "for (const section of sections) { const visibleLines = buildVisibleLines(lines); const target = section.headingText.toLowerCase(); const aliases = Array.isArray(section.headingAliases) ? section.headingAliases.map((value) => value.toLowerCase()) : []; let headingIndex = -1; let headingLevel = 0; let headingLineCount = 0; for (let index = 0; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.text === target || aliases.includes(parsed.text)) { if (parsed.level === section.headingLevel) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; break; } if (headingIndex < 0) { headingIndex = index; headingLevel = parsed.level; headingLineCount = parsed.lineCount; } } index += parsed.lineCount; } if (headingIndex < 0) { const missingLines = section.missingSectionAppend.replace(/^\\n/, '').replace(/\\n$/, '').split('\\n'); if (lines.length > 0 && lines[lines.length - 1] !== '') lines.push(''); lines.push(...missingLines); continue; } const contentStartIndex = headingIndex + headingLineCount; let endIndex = lines.length; for (let index = contentStartIndex; index < visibleLines.length;) { const parsed = parseHeadingAt(visibleLines, index); if (!parsed) { index += 1; continue; } if (parsed.level <= headingLevel) { endIndex = index; break; } index += parsed.lineCount; } const hasContent = hasVisibleContent(visibleLines.slice(contentStartIndex, endIndex), headingLevel); if (hasContent) continue; const insertLines = section.existingBulletAppend.replace(/\\n+$/, '').split('\\n'); lines.splice(contentStartIndex, 0, ...insertLines); }",
@@ -784,6 +784,29 @@ test('buildCoreFoundationCommand ignores html-comment-only legacy voice headings
   );
 });
 
+test('buildCoreFoundationCommand ignores indented-code legacy voice headings when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-indented-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n    ## Tone\n    Warm and grounded.\n\n    Voice should capture\n    --------------------\n    - Use crisp examples.\n\n    ## Voice should not capture ##\n    - Never pad the answer.\n\n    ## Current default for Harry Han\n    - Default to English with occasional 中文 examples.\n    - Lead with the operating takeaway.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n    ## Tone\n    Warm and grounded.\n\n    Voice should capture\n    --------------------\n    - Use crisp examples.\n\n    ## Voice should not capture ##\n    - Never pad the answer.\n\n    ## Current default for Harry Han\n    - Default to English with occasional 中文 examples.\n    - Lead with the operating takeaway.\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+  );
+});
+
 test('buildCoreFoundationCommand repairs heading-only thin soul scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'soul',
@@ -902,6 +925,28 @@ test('buildCoreFoundationCommand ignores html-comment-only legacy soul headings 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
     '# Soul\n\n<!--\n## Core values ##\n- Stay faithful to source material.\n\nDecision rules\n--------------\n- Keep tradeoffs grounded in the source.\n-->\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand ignores indented-code legacy soul headings when repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-indented-soul-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n    ## Core values ##\n    - Stay faithful to source material.\n\n    Decision rules\n    --------------\n    - Keep tradeoffs grounded in the source.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n    ## Core values ##\n    - Stay faithful to source material.\n\n    Decision rules\n    --------------\n    - Keep tradeoffs grounded in the source.\n\n## Core truths\n- Describe the durable values and goals that should survive across tasks.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Describe the emotional texture or posture the agent should project.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
