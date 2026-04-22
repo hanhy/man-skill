@@ -37,9 +37,12 @@ function parseFeishuMessageContent(rawContent) {
 
 function extractFeishuPostText(post) {
   const languages = post && typeof post === 'object' ? Object.values(post) : [];
+  const fragments = [];
+  const seen = new Set();
+
   for (const language of languages) {
     const contentRows = Array.isArray(language?.content) ? language.content : [];
-    const text = contentRows
+    const languageFragments = contentRows
       .map((row) => Array.isArray(row)
         ? row
             .filter((item) => item && typeof item === 'object' && typeof item.text === 'string' && item.text.length > 0)
@@ -47,16 +50,20 @@ function extractFeishuPostText(post) {
             .filter((item) => item.length > 0)
             .join(' ')
         : '')
-      .filter((rowText) => rowText.length > 0)
-      .join(' ')
-      .trim();
+      .filter((rowText) => rowText.length > 0);
 
-    if (text.length > 0) {
-      return text;
+    for (const fragment of languageFragments) {
+      if (seen.has(fragment)) {
+        continue;
+      }
+
+      seen.add(fragment);
+      fragments.push(fragment);
     }
   }
 
-  return null;
+  const text = fragments.join(' ').trim();
+  return text.length > 0 ? text : null;
 }
 
 export function normalizeFeishuInboundEvent(payload = {}) {
