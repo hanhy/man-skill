@@ -32,9 +32,9 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /paths` includes both `?\.env\.example`? and `?\.env`?/i);
   assert.match(readme, /`leadingPriority` keeps the first lane in the configured order even when it is already ready/i);
   assert.match(readme, /`currentPriority` keeps the queued-or-blocked lane that is actively holding progress/i);
-  assert.match(readme, /`runnablePriority` keeps the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
-  assert.match(readme, /`actionableReadyPriority` keeps the narrower ready-only advisory alias/i);
-  assert.match(readme, /`recommendedPriority` stays a stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/i);
+  assert.match(readme, /`runnablePriority` keeps the first priority-order lane with a primary `command`/i);
+  assert.match(readme, /`actionableReadyPriority` keeps the narrower ready-only advisory alias.*imported starter-manifest edits/i);
+  assert.match(readme, /`recommendedPriority` stays a stable best-next-action alias by scanning priority order for the earliest queued\/blocked lane or ready advisory/i);
   assert.match(readme, /`readyPriorityCount`, `queuedPriorityCount`, and `blockedPriorityCount`/i);
   assert.match(readme, /separate `lead:`, `current:`, `runnable:`, and `advisory:` lines/i);
   assert.match(readme, /manifests\/channels\.json/);
@@ -46,9 +46,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /canonical rollout order: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen/);
   assert.match(architectureDoc, /keep Feishu, Telegram, WhatsApp, and Slack adapter manifests\/implementations visible in the delivery summary/);
   assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the queued-or-blocked `currentPriority`/);
-  assert.match(architectureDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported intake starter manifest/i);
-  assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias/);
-  assert.match(architectureDoc, /`recommendedPriority` as one stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/);
+  assert.match(architectureDoc, /`runnablePriority` for the first priority-order lane with a primary `command`/i);
+  assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias.*imported intake starter manifest/i);
+  assert.match(architectureDoc, /`recommendedPriority` as one stable best-next-action alias that scans priority order for the earliest queued\/blocked lane or ready advisory/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
@@ -75,14 +75,14 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /prompt-preview `Work loop:` block also serializes the same `fallback`, `edit` \/ `edit paths`, `manifest inspect`, `manifest`, `inspect after editing`, and `then run` surfaces/i);
   assert.match(ingestionDoc, /top-level `ingestion` entrance data .*`recommendedEditPath`, `recommendedEditPaths`, `recommendedManifestInspectCommand`, `recommendedManifestImportCommand`, `recommendedInspectCommand`, `recommendedFollowUpCommand`, `recommendedPaths`, `helperCommands`, `profileCommands`, `allProfileCommands`/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
-  assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
+  assert.match(ingestionDoc, /`runnablePriority` for the first priority-order lane with a primary `command`/i);
   assert.match(ingestionDoc, /each `workLoop` priority row can now also carry additive follow-up metadata \(`fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, `followUpCommand`\)/i);
   assert.match(ingestionDoc, /prompt-preview `Work loop:` block now also serializes the same `fallback`, `edit` \/ `edit paths`, `manifest inspect`, `manifest`, `inspect after editing`, and `then run` surfaces/i);
   assert.match(readme, /each priority can carry additive follow-up surfaces like `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
   assert.match(readme, /explicit `fallback:`, `edit:`, `edit paths:`, `manifest inspect:`, `manifest:`, `inspect after editing:`, and `then run:` lines/i);
-  assert.match(profilesDoc, /same contract now propagates into `workLoop\.currentPriority\|runnablePriority\|recommendedPriority` through `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
-  assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
-  assert.match(ingestionDoc, /`recommendedPriority` as the stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/);
+  assert.match(profilesDoc, /same contract now propagates into `workLoop\.currentPriority\|actionableReadyPriority\|recommendedPriority` through `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
+  assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias.*imported starter-manifest edits/i);
+  assert.match(ingestionDoc, /`recommendedPriority` as the stable best-next-action alias that scans priority order for the earliest queued\/blocked lane or ready advisory/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
@@ -298,10 +298,10 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
-  assert.match(summary.promptPreview, /runnable fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
-  assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
-  assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /advisory fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /advisory inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(
     summary.promptPreview,
     /Harry Han \(harry-han\): 4 materials \(message:1, screenshot:1, talk:1, text:1\), latest .* intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
