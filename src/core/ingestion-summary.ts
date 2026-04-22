@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
-function stripLeadingUtf8Bom(value: string): string {
+function stripLeadingUtf8Bom(value: string) {
   return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
 }
 
@@ -455,132 +456,11 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
     };
   }
 
-  const absoluteManifestPath = path.join(rootDir, starterManifestPath);
-  let parsedManifest: any;
-  try {
-    parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));
-  } catch (error) {
-    return {
-      status: 'invalid',
-      path: starterManifestPath,
-      error: error instanceof Error ? error.message : 'Unable to parse intake manifest',
-    };
-  }
-
-  const manifest = Array.isArray(parsedManifest)
-    ? { entries: parsedManifest }
-    : (parsedManifest && typeof parsedManifest === 'object' ? parsedManifest : null);
-  if (!manifest) {
-    return {
-      status: 'invalid',
-      path: starterManifestPath,
-      error: 'Manifest must be an array or object',
-    };
-  }
-
-  const entries = manifest.entries;
-  const hasStarterTemplates = Array.isArray(entries)
-    && entries.length === 0
-    && manifest.entryTemplates
-    && typeof manifest.entryTemplates === 'object'
-    && !Array.isArray(manifest.entryTemplates)
-    && Object.keys(manifest.entryTemplates).length > 0;
-  if (!Array.isArray(entries) && !hasStarterTemplates) {
-    return {
-      status: 'invalid',
-      path: starterManifestPath,
-      error: 'Manifest must contain a non-empty entries array',
-    };
-  }
-
-  const normalizedExpectedProfileId = typeof expectedProfileId === 'string' && expectedProfileId.trim().length > 0
-    ? slugifyPersonId(expectedProfileId)
-    : null;
-  const manifestDir = path.dirname(absoluteManifestPath);
-  const realRootDir = fs.realpathSync(rootDir);
-  const supportedTypes = new Set(['text', 'message', 'talk', 'screenshot']);
-  try {
-    const manifestPersonId = typeof manifest.personId === 'string' && manifest.personId.trim().length > 0
-      ? manifest.personId
-      : null;
-    if (normalizedExpectedProfileId && manifestPersonId && slugifyPersonId(manifestPersonId) !== normalizedExpectedProfileId) {
-      throw new Error(`Profile intake manifest targets a different profile: expected ${normalizedExpectedProfileId}`);
-    }
-
-    entries.forEach((entry, index) => {
-      if (!entry || typeof entry !== 'object') {
-        throw new Error(`Manifest entry ${index} must be an object`);
-      }
-
-      const resolvedPersonId = typeof entry.personId === 'string' && entry.personId.trim().length > 0
-        ? entry.personId
-        : manifestPersonId;
-      if (normalizedExpectedProfileId && !resolvedPersonId) {
-        throw new Error(`Profile intake manifest entry ${index} is missing personId for ${normalizedExpectedProfileId}`);
-      }
-      if (normalizedExpectedProfileId && resolvedPersonId && slugifyPersonId(resolvedPersonId) !== normalizedExpectedProfileId) {
-        throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${normalizedExpectedProfileId}`);
-      }
-
-      const type = typeof entry.type === 'string' ? entry.type : null;
-      if (!type || !supportedTypes.has(type)) {
-        throw new Error(`Unsupported manifest entry type at index ${index}: ${entry.type}`);
-      }
-
-      if ((type === 'message' || type === 'talk') && (typeof entry.text !== 'string' || entry.text.trim().length === 0)) {
-        throw new Error(`Manifest entry ${index} is missing text for ${type} import`);
-      }
-
-      if (type === 'text' || type === 'screenshot') {
-        if (typeof entry.file !== 'string' || entry.file.trim().length === 0) {
-          throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
-        }
-
-        const resolvedFilePath = path.resolve(manifestDir, entry.file);
-        if (!fs.existsSync(resolvedFilePath)) {
-          throw new Error(`Manifest entry ${index} references a missing file: ${entry.file}`);
-        }
-
-        const realFilePath = fs.realpathSync(resolvedFilePath);
-        if (!fs.statSync(realFilePath).isFile()) {
-          throw new Error(`Manifest entry ${index} references a non-file path: ${entry.file}`);
-        }
-
-        const relativeFilePath = path.relative(realRootDir, realFilePath);
-        if (path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')) {
-          throw new Error(`Manifest entry ${index} references a file outside the repo: ${entry.file}`);
-        }
-      }
-    });
-  } catch (error) {
-    return {
-      status: 'invalid',
-      path: starterManifestPath,
-      error: error instanceof Error ? error.message : 'Invalid intake manifest',
-    };
-  }
-
-  if (hasStarterTemplates) {
-    return {
-      status: 'starter',
-      path: starterManifestPath,
-      error: null,
-    };
-  }
-
-  if (!Array.isArray(entries) || entries.length === 0) {
-    return {
-      status: 'invalid',
-      path: starterManifestPath,
-      error: 'Manifest must contain a non-empty entries array',
-    };
-  }
-
-  return {
-    status: 'loaded',
-    path: starterManifestPath,
-    error: null,
-  };
+  return inspectSharedProfileIntakeManifest({
+    rootDir,
+    starterManifestPath,
+    expectedPersonId: expectedProfileId,
+  });
 }
 
 function summarizeIntakeManifestError(error: unknown): string | null {
