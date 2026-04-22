@@ -60,6 +60,7 @@ The project aims to keep personal-agent construction simple:
 - load memory index from `memory/`
 - keep `memory/daily/` as the checked-in short-term bucket while still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers
 - fold legacy `memory/short-term/` files into that canonical `daily` lane during repo loading, so older repos keep their short-term coverage without needing an immediate directory migration
+- if both `memory/daily/<name>` and `memory/short-term/<name>` exist, keep both files in the canonical `daily` count/list rather than collapsing them to one basename match, while `legacyShortTermSources` preserves which one came from the legacy short-term bucket
 - keep the `MemoryStore` runtime alias honest too: `shortTerm` remains a writable compatibility alias of `daily` instead of a second mutable bucket
 - expose `memorySummary.canonicalShortTermBucket` plus `memorySummary.legacyShortTermAliases` so downstream tooling can see the canonical daily bucket and its compatibility field names without hard-coding the mapping
 - also expose `memorySummary.legacyShortTermSourceCount` plus `memorySummary.legacyShortTermSources`, and the compact preview metadata `memorySummary.legacyShortTermSampleSources` / `memorySummary.legacyShortTermSourceOverflowCount`, so callers can inspect which checked-in `memory/short-term/` files were folded into the canonical daily lane without having to recreate the first-three-plus-overflow prompt contract themselves

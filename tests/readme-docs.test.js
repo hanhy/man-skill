@@ -51,7 +51,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
   assert.match(architectureDoc, /skills candidate-profile coverage/i);
+  assert.match(architectureDoc, /keep both files in the canonical `daily` count\/list rather than collapsing them to one basename match/i);
   assert.match(ingestionDoc, /skills candidate-profile coverage/i);
+  assert.match(ingestionDoc, /keeps both files in the canonical `daily` count\/list instead of collapsing them to one basename match/i);
   assert.match(architectureDoc, /repair-invalid-bundle/i);
   assert.match(architectureDoc, /repair-imported-invalid-bundle/i);
   assert.match(architectureDoc, /sample-message/i);
@@ -103,6 +105,7 @@ test('checked-in USER current product direction stays aligned with the default w
 });
 
 test('README keeps the intake replay defaults aligned with the CLI entrance semantics', () => {
+  assert.match(readme, /preserves both files in the canonical `daily` count\/list instead of collapsing them to one basename match/i);
   assert.match(readme, /backfill missing intake landing zones for already-imported profiles with `update intake --imported`/i);
   assert.match(readme, /re-run that imported backfill plus draft regeneration with `update intake --imported --refresh-foundation` when the touched profiles already have materials on disk/i);
   assert.match(readme, /bulk-import only first-run metadata-only intake manifests with `import intake --stale`/i);
