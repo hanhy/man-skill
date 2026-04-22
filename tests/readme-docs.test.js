@@ -128,9 +128,9 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, an `images\/` folder for screenshot assets, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/i);
   assert.match(readme, /`materials\.template\.json` file paths resolve relative to `profiles\/<person-id>\/imports\/`, so local screenshots or attachments can live beside `sample\.txt` \(or under a small subdirectory like `imports\/images\/`\)/i);
   assert.match(ingestionDoc, /`materials\.template\.json` resolves `file` paths relative to `profiles\/<person-id>\/imports\/`, so operators can keep local assets beside `sample\.txt` or under a small sibling folder like `imports\/images\/`/i);
-  assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath` and `recommendedFollowUpCommand`, so operators know which file to edit and which `import intake --person <id> --refresh-foundation` replay to run next/i);
+  assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath`, `recommendedFollowUpCommand`, and `recommendedFallbackCommand`, so operators know which file to edit, which `import intake --person <id> --refresh-foundation` replay to run next, and which direct starter import still works as a fallback/i);
   assert.match(readme, /per-profile prompt-preview line now also keeps the local scaffold refresh visible as `refresh-intake node src\/index\.js update intake --person \.{3}`, an `inspect-after-edit node src\/index\.js import intake --person \.{3}` replay for a plain post-edit inspection pass, and a matching `replay-after-edit node src\/index\.js import intake --person \.{3} --refresh-foundation` follow-up/i);
-  assert.match(ingestionDoc, /when an already-imported profile's drafts are already fresh and it still only has the untouched `profiles\/<id>\/imports\/materials\.template\.json` starter scaffold, the same top-level recommendation keeps `recommendedCommand` empty but now exposes `recommendedEditPath` and `recommendedFollowUpCommand` so `next intake` can say which manifest to edit and which `import intake --person <id> --refresh-foundation` replay comes after that edit/i);
+  assert.match(ingestionDoc, /recommendedCommand`, `recommendedFallbackCommand`, `recommendedEditPath`, `recommendedFollowUpCommand`/i);
   assert.match(ingestionDoc, /starter-template profile rows in the prompt preview now also keep `refresh-intake node src\/index\.js update intake --person \.{3}` visible beside manifest\/import actions, plus both post-edit intake reruns: `inspect-after-edit node src\/index\.js import intake --person <id>` for a plain replay and `replay-after-edit node src\/index\.js import intake --person <id> --refresh-foundation` when the same pass should regenerate drafts too/i);
   assert.match(ingestionDoc, /per-profile command bundles now also carry both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand`, so starter-template profiles advertise the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that becomes runnable after editing a starter manifest/i);
   assert.match(profilesDoc, /profiles\/<person-id>\/imports\//);
@@ -139,7 +139,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /plain `node src\/index\.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection/i);
   assert.match(profilesDoc, /`node src\/index\.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory \/ voice \/ soul \/ skills drafts/i);
   assert.match(profilesDoc, /direct `import manifest --file \.\.\. --refresh-foundation` and one-off `import text\|message\|talk\|screenshot \.\.\.` paths/i);
-  assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest and `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay/i);
+  assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest, `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay to run after the edit, and `recommendedFallbackCommand` keeps the seeded direct starter import visible when operators want a stopgap import before customizing the manifest/i);
   assert.match(profilesDoc, /per-profile command palette still stays actionable in that starter-template state/i);
   assert.match(profilesDoc, /`refresh-intake` via `node src\/index\.js update intake --person <id> \.\.\.`/i);
   assert.match(profilesDoc, /`after-editing import` via `node src\/index\.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet/i);
@@ -207,6 +207,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     '1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available',
   );
   assert.equal(summary.ingestion.recommendedCommand, null);
+  assert.equal(summary.ingestion.recommendedFallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(
     summary.ingestion.recommendedFollowUpCommand,
@@ -214,7 +215,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   );
   assert.match(
     summary.promptPreview,
-    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.match(
     summary.promptPreview,

@@ -1030,6 +1030,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLabel: string | null = null;
   let recommendedAction: string | null = null;
   let recommendedCommand: string | null = null;
+  let recommendedFallbackCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
@@ -1105,6 +1106,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
     recommendedCommand = null;
+    recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
+      ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
+      : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
       ? helperCommands.importIntakeImportedAndRefresh
@@ -1319,6 +1323,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLabel,
     recommendedAction,
     recommendedCommand,
+    recommendedFallbackCommand,
     recommendedEditPath,
     recommendedFollowUpCommand,
     recommendedPaths,

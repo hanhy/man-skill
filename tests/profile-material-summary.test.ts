@@ -3183,6 +3183,10 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.equal(summary.ingestion.recommendedCommand, null);
   assert.equal(summary.ingestion.starterImportBundleCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.helperCommands?.starterImportBundle, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(
+    summary.ingestion.recommendedFallbackCommand,
+    "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+  );
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(
     summary.ingestion.recommendedFollowUpCommand,
@@ -3195,7 +3199,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
@@ -3230,6 +3234,7 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(harry.intakeManifestStatus, 'starter');
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 0);
+  assert.equal(summary.ingestion.recommendedFallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
 });
@@ -3276,6 +3281,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
   assert.equal(summary.ingestion.recommendedCommand, null);
   assert.equal(summary.ingestion.starterImportBundleCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
   assert.equal(summary.ingestion.helperCommands?.starterImportBundle, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
+  assert.equal(summary.ingestion.recommendedFallbackCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.ingestion.recommendedFollowUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
   assert.deepEqual(summary.ingestion.recommendedPaths, [
@@ -3290,7 +3296,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --imported --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --imported --refresh-foundation; fallback \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\)/);
 });
 
@@ -3799,6 +3805,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedLabel: null,
     recommendedAction: 'bootstrap a target profile',
     recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+    recommendedFallbackCommand: null,
     recommendedEditPath: null,
     recommendedFollowUpCommand: null,
     recommendedPaths: [],

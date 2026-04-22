@@ -592,6 +592,7 @@ type IngestionSummary = {
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
+  recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
@@ -608,6 +609,7 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  fallbackCommand?: string | null;
   editPath?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
@@ -1395,8 +1397,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
+  const recommendedFallbackCommand = typeof ingestion?.recommendedFallbackCommand === 'string' && ingestion.recommendedFallbackCommand.length > 0
+    ? ingestion.recommendedFallbackCommand
+    : null;
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2082,6 +2087,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
       : null,
+    currentPriority?.fallbackCommand
+      ? `- fallback: ${currentPriority.fallbackCommand}`
+      : null,
     currentPriority?.editPath
       ? `- edit: ${currentPriority.editPath}`
       : null,
@@ -2100,6 +2108,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.command
       ? `- runnable command: ${runnablePriority.command}`
       : null,
+    showRunnablePriority && runnablePriority?.fallbackCommand
+      ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
+      : null,
     showRunnablePriority && runnablePriority?.editPath
       ? `- runnable edit: ${runnablePriority.editPath}`
       : null,
@@ -2117,6 +2128,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     showActionableReadyPriority && actionableReadyPriority?.command
       ? `- advisory command: ${actionableReadyPriority.command}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
+      ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,
     showActionableReadyPriority && actionableReadyPriority?.editPath
       ? `- advisory edit: ${actionableReadyPriority.editPath}`
