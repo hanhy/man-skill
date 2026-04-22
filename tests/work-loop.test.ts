@@ -2241,6 +2241,53 @@ test('buildSummary work loop includes manifest-backed file assets when a ready i
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
 });
 
+test('buildSummary work loop accepts BOM-prefixed ready intake manifests when collecting manifest-backed file assets', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const intakeDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.writeFileSync(path.join(intakeDir, 'metadata-shot.png'), 'fake screenshot bytes\n');
+  fs.writeFileSync(
+    path.join(intakeDir, 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      entries: [
+        { type: 'text', file: 'sample.txt' },
+        { type: 'screenshot', file: 'metadata-shot.png' },
+      ],
+    }, null, 2)}`,
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/sample.txt',
+    'profiles/metadata-only/imports/metadata-shot.png',
+  ]);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
+});
+
 test('buildSummary work loop prefers the exact ready-intake bundle when multiple metadata-only profiles are ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

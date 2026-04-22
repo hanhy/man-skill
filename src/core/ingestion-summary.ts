@@ -752,7 +752,7 @@ function collectLoadedManifestFilePaths(rootDir: string, relativeManifestPath: s
   const absoluteManifestPath = path.join(rootDir, relativeManifestPath);
   const manifestDir = path.dirname(absoluteManifestPath);
   const realRootDir = fs.realpathSync(rootDir);
-  const parsedManifest = JSON.parse(fs.readFileSync(absoluteManifestPath, 'utf8'));
+  const parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));
   const manifest = Array.isArray(parsedManifest)
     ? { entries: parsedManifest }
     : (parsedManifest && typeof parsedManifest === 'object' ? parsedManifest : null);
