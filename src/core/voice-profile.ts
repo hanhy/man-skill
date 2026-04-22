@@ -79,6 +79,16 @@ function pushUnique(target: string[], value: string) {
   }
 }
 
+function appendToLast(target: string[], value: string) {
+  if (target.length === 0) {
+    pushUnique(target, value);
+    return value;
+  }
+
+  target[target.length - 1] = `${target[target.length - 1]} ${value}`.trim();
+  return target[target.length - 1];
+}
+
 function isStarterVoiceGuidance(value: string) {
   return VOICE_STARTER_GUIDANCE_LINES.has(value);
 }
@@ -118,9 +128,11 @@ export class VoiceProfile {
     const voice = new VoiceProfile();
     let currentSection: VoiceSection = null;
     let currentSectionHasContent = false;
+    let currentDefaultContinuationTarget: 'signatures' | 'languageHints' | null = null;
 
     collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
+      const lineIsIndentedContinuation = rawLine.length > 0 && /^[ \t]+/.test(rawLine) && !LIST_MARKER_PATTERN.test(line);
       if (!line) {
         return;
       }
@@ -130,53 +142,63 @@ export class VoiceProfile {
         if (heading.level < 2) {
           currentSection = null;
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
 
         if (heading.text === 'tone') {
           currentSection = 'tone';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (heading.text === 'signature moves') {
           currentSection = 'signature-moves';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (heading.text === 'avoid') {
           currentSection = 'avoid';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (heading.text === 'language hints') {
           currentSection = 'language-hints';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (heading.text === 'voice should capture') {
           currentSection = 'voice-should-capture';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (heading.text === 'voice should not capture') {
           currentSection = 'voice-should-not-capture';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
         if (isCurrentDefaultHeading(heading.text)) {
           currentSection = 'current-default';
           currentSectionHasContent = false;
+          currentDefaultContinuationTarget = null;
           return;
         }
 
         currentSection = null;
         currentSectionHasContent = false;
+        currentDefaultContinuationTarget = null;
         return;
       }
 
-      if (isListSection(currentSection) && !LIST_MARKER_PATTERN.test(line) && currentSectionHasContent) {
+      if (isListSection(currentSection) && !LIST_MARKER_PATTERN.test(line) && currentSectionHasContent && !lineIsIndentedContinuation) {
         currentSection = null;
         currentSectionHasContent = false;
+        currentDefaultContinuationTarget = null;
         return;
       }
 
@@ -186,37 +208,74 @@ export class VoiceProfile {
       }
 
       if (currentSection === 'tone') {
-        voice.tone = cleaned;
+        voice.tone = voice.hasToneGuidance ? `${voice.tone} ${cleaned}`.trim() : cleaned;
         voice.style = 'documented';
         voice.hasToneGuidance = true;
         currentSectionHasContent = true;
       } else if (currentSection === 'signature-moves') {
-        pushUnique(voice.signatures, cleaned);
-        currentSectionHasContent = true;
-      } else if (currentSection === 'avoid') {
-        pushUnique(voice.constraints, cleaned);
-        currentSectionHasContent = true;
-      } else if (currentSection === 'language-hints') {
-        pushUnique(voice.languageHints, cleaned);
-        currentSectionHasContent = true;
-      } else if (currentSection === 'voice-should-capture') {
-        pushUnique(voice.signatures, cleaned);
-        currentSectionHasContent = true;
-      } else if (currentSection === 'voice-should-not-capture') {
-        pushUnique(voice.constraints, cleaned);
-        currentSectionHasContent = true;
-      } else if (currentSection === 'current-default') {
-        if (looksLikeLanguageHint(cleaned)) {
-          pushUnique(voice.languageHints, cleaned);
+        if (lineIsIndentedContinuation && currentSectionHasContent) {
+          appendToLast(voice.signatures, cleaned);
         } else {
           pushUnique(voice.signatures, cleaned);
+        }
+        currentSectionHasContent = true;
+      } else if (currentSection === 'avoid') {
+        if (lineIsIndentedContinuation && currentSectionHasContent) {
+          appendToLast(voice.constraints, cleaned);
+        } else {
+          pushUnique(voice.constraints, cleaned);
+        }
+        currentSectionHasContent = true;
+      } else if (currentSection === 'language-hints') {
+        if (lineIsIndentedContinuation && currentSectionHasContent) {
+          appendToLast(voice.languageHints, cleaned);
+        } else {
+          pushUnique(voice.languageHints, cleaned);
+        }
+        currentSectionHasContent = true;
+      } else if (currentSection === 'voice-should-capture') {
+        if (lineIsIndentedContinuation && currentSectionHasContent) {
+          appendToLast(voice.signatures, cleaned);
+        } else {
+          pushUnique(voice.signatures, cleaned);
+        }
+        currentSectionHasContent = true;
+      } else if (currentSection === 'voice-should-not-capture') {
+        if (lineIsIndentedContinuation && currentSectionHasContent) {
+          appendToLast(voice.constraints, cleaned);
+        } else {
+          pushUnique(voice.constraints, cleaned);
+        }
+        currentSectionHasContent = true;
+      } else if (currentSection === 'current-default') {
+        if (lineIsIndentedContinuation && currentSectionHasContent && currentDefaultContinuationTarget === 'languageHints') {
+          appendToLast(voice.languageHints, cleaned);
+        } else if (lineIsIndentedContinuation && currentSectionHasContent && currentDefaultContinuationTarget === 'signatures') {
+          const merged = appendToLast(voice.signatures, cleaned);
+          if (looksLikeLanguageHint(merged)) {
+            voice.signatures.pop();
+            pushUnique(voice.languageHints, merged);
+            currentDefaultContinuationTarget = 'languageHints';
+          }
+        } else if (looksLikeLanguageHint(cleaned)) {
+          pushUnique(voice.languageHints, cleaned);
+          currentDefaultContinuationTarget = 'languageHints';
+        } else {
+          pushUnique(voice.signatures, cleaned);
+          currentDefaultContinuationTarget = 'signatures';
         }
         currentSectionHasContent = true;
       }
     });
 
+    const excerptExtendsLanguageHint = normalizedExcerpt !== null
+      && voice.languageHints.some((hint) => hint === normalizedExcerpt || hint.startsWith(`${normalizedExcerpt} `));
+    const excerptExtendsSignature = normalizedExcerpt !== null
+      && voice.signatures.some((signature) => signature.startsWith(`${normalizedExcerpt} `));
     const hasExcerptToneGuidance = normalizedExcerpt !== null
       && !isStarterVoiceGuidance(normalizedExcerpt)
+      && !excerptExtendsLanguageHint
+      && !excerptExtendsSignature
       && (
         normalizedFrontmatterDescription === normalizedExcerpt
         || !looksLikeLanguageHint(normalizedExcerpt)

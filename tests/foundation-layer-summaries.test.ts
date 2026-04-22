@@ -510,6 +510,73 @@ test('voice profile parses tone, signature moves, avoid, and language hints from
   });
 });
 
+test('voice profile preserves multiline tone paragraphs and indented list continuations inside structured sections', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\nWarm and grounded,\nwith enough urgency to keep momentum.\n\n## Signature moves\n- Use crisp examples that land quickly\n  and end with the next concrete step.\n\n## Avoid\n- Padding the answer\n  with empty throat-clearing.\n\n## Language hints\n- Preserve bilingual phrasing\n  when the source switches languages.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded, with enough urgency to keep momentum.',
+    style: 'documented',
+    constraints: ['Padding the answer with empty throat-clearing.'],
+    signatures: ['Use crisp examples that land quickly and end with the next concrete step.'],
+    languageHints: ['Preserve bilingual phrasing when the source switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile keeps current-default continuation lines attached to the bullet they extend', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct and grounded.\n\n## Current default for ManSkill\n- Keep the answer concise\n  when translating Spanish snippets, preserve the source phrasing.\n- Preserve bilingual phrasing\n  even when the continuation line omits explicit language keywords.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Stay direct and grounded.',
+    style: 'documented',
+    constraints: [],
+    signatures: [],
+    languageHints: [
+      'Keep the answer concise when translating Spanish snippets, preserve the source phrasing.',
+      'Preserve bilingual phrasing even when the continuation line omits explicit language keywords.',
+    ],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 2,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile does not promote current-default language-hint continuations into tone guidance', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Current default for ManSkill\n- Keep the answer concise\n  when translating Spanish snippets, preserve the source phrasing.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: [],
+    languageHints: ['Keep the answer concise when translating Spanish snippets, preserve the source phrasing.'],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile does not promote current-default signature continuations into truncated tone guidance', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Current default for ManSkill\n- Keep the answer concise\n  and close with the next concrete step.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: ['Keep the answer concise and close with the next concrete step.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile ignores untouched starter-template guidance bullets', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- List wording, hedges, or habits that break the voice.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n`);
 
