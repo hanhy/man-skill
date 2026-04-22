@@ -41,6 +41,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the queued-or-blocked `currentPriority`/);
   assert.match(architectureDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported intake starter manifest/i);
   assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias/);
+  assert.match(architectureDoc, /`recommendedPriority` as one stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
@@ -66,6 +67,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
   assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
   assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
+  assert.match(ingestionDoc, /`recommendedPriority` as the stable best-next-action alias that prefers runnable work before falling back to the current blocker or the already-ready leader/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
@@ -194,6 +196,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeSample, /Replace this file with a real writing sample for Harry Han\./);
 
   const summary = buildSummary(repoRoot);
+  assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
+  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
   assert.ok(harryCommand);
   assert.equal(harryCommand.intakeReady, true);

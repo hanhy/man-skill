@@ -24,6 +24,7 @@ export interface WorkLoopSummary {
   currentPriority: WorkPriority | null;
   runnablePriority: WorkPriority | null;
   actionableReadyPriority: WorkPriority | null;
+  recommendedPriority: WorkPriority | null;
   priorities: WorkPriority[];
 }
 
@@ -61,6 +62,9 @@ export class WorkLoop {
     const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
     const runnablePriority = this.priorities.find((priority) => isRunnablePriority(priority)) ?? null;
     const actionableReadyPriority = this.priorities.find((priority) => isActionableReadyPriority(priority)) ?? null;
+    const recommendedPriority = runnablePriority
+      ?? (currentPriority?.status !== 'ready' ? currentPriority : null)
+      ?? leadingPriority;
 
     return {
       intervalMinutes: this.intervalMinutes,
@@ -74,6 +78,7 @@ export class WorkLoop {
       currentPriority,
       runnablePriority,
       actionableReadyPriority,
+      recommendedPriority,
       priorities: this.priorities,
     };
   }
