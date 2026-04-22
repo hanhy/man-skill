@@ -111,6 +111,10 @@ function readFileIfPresent(filePath: string): string | null {
   }
 }
 
+function stripLeadingUtf8Bom(value: string): string {
+  return value.charCodeAt(0) === 0xFEFF ? value.slice(1) : value;
+}
+
 function parseMarkdownHeadingAt(lines: string[], index: number): { level: number; text: string; lineCount: number } | null {
   const currentLine = (lines[index] ?? '').replace(/^\uFEFF/, '');
   const trimmedLine = currentLine.trim();
@@ -431,7 +435,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    parsed = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absolutePath, 'utf8')));
   } catch (error) {
     return {
       status: 'invalid',
@@ -665,6 +669,48 @@ function listRelativeFiles(dirPath: string, extension: string): string[] {
   return fs.readdirSync(dirPath)
     .filter((entry) => entry.endsWith(extension))
     .sort();
+}
+
+function getSkillCategory(skillId: string): string {
+  const normalizedSkillId = typeof skillId === 'string' ? skillId.trim() : '';
+  if (!normalizedSkillId) {
+    return 'root';
+  }
+
+  const [category] = normalizedSkillId.split('/');
+  return normalizedSkillId.includes('/') && category ? category : 'root';
+}
+
+function compareSkillCategory(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === 'root') {
+    return 1;
+  }
+
+  if (right === 'root') {
+    return -1;
+  }
+
+  return left.localeCompare(right);
+}
+
+function buildSkillCategoryCounts(skillNames: string[]): Record<string, number> {
+  const unsortedCounts = skillNames.reduce<Record<string, number>>((counts, skillName) => {
+    const skillCategory = getSkillCategory(skillName);
+    counts[skillCategory] = (counts[skillCategory] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(unsortedCounts).sort(([left], [right]) => compareSkillCategory(left, right)),
+  );
+}
+
+function hasGroupedSkillCategories(skillIds: string[]): boolean {
+  return skillIds.some((skillId) => typeof skillId === 'string' && skillId.includes('/'));
 }
 
 function detectSampleManifestRelativePath(rootDir: string): string | null {
@@ -1089,9 +1135,15 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
+  const recommendedFallbackCommand = typeof ingestionSummary?.recommendedFallbackCommand === 'string' && ingestionSummary.recommendedFallbackCommand.length > 0
+    ? ingestionSummary.recommendedFallbackCommand
+    : null;
   const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
     ? ingestionSummary.recommendedEditPath
     : null;
+  const recommendedEditPaths = Array.isArray(ingestionSummary?.recommendedEditPaths)
+    ? ingestionSummary.recommendedEditPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
   const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
     ? ingestionSummary.recommendedFollowUpCommand
     : null;
@@ -1122,7 +1174,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${importedReadyIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
+    fallbackCommand: recommendedFallbackCommand,
     editPath: recommendedEditPath,
+    editPaths: recommendedEditPaths,
     followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,
   };
@@ -1248,10 +1302,10 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  const envBootstrapPaths = needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
-    ? [envTemplatePath, envConfigPath ?? '.env']
-    : [envTemplatePath];
-  const normalizedEnvBootstrapPaths = envBootstrapPaths.filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  // Keep bootstrap paths source-focused: `cp .env.example .env` reads the shared template, but the
+  // operator-facing path list should name the source asset that drives the next step rather than both
+  // the input and destination.
+  const normalizedEnvBootstrapPaths = [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
@@ -1737,6 +1791,7 @@ export function buildSummary(rootDir: string) {
   const skillNames = skillInventory.names;
   const documentedSkillNames = new Set(skillInventory.documented ?? []);
   const thinSkillNames = new Set(skillInventory.thin ?? []);
+  const skillCategoryCounts = buildSkillCategoryCounts(skillNames);
   const skillRecords = skillNames.map((skillName) => ({
     id: skillName,
     name: skillName,
@@ -1778,6 +1833,10 @@ export function buildSummary(rootDir: string) {
     scratch: memoryIndex.scratch,
   });
   const skills = new SkillRegistry(skillRecords);
+  const skillSummary = {
+    ...skills.summary(),
+    ...(hasGroupedSkillCategories(skillNames) ? { categoryCounts: skillCategoryCounts } : {}),
+  };
   const channels = new ChannelRegistry();
   if (Array.isArray(channelManifest.records)) {
     channelManifest.records.forEach((channel: unknown) => channels.register(channel as any));
@@ -1908,7 +1967,7 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
-        envConfigPath: envConfigPresent ? '.env' : null,
+        envConfigPath: '.env',
         envConfigPresent,
         envConfigPopulateCommand: deliverySummary.helperCommands.populateChannelEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldChannelImplementationBundle,
@@ -1924,7 +1983,7 @@ export function buildSummary(rootDir: string) {
         envTemplateCommand: deliverySummary.envTemplatePresent ? deliverySummary.envTemplateCommand : null,
         envTemplatePopulateCommand: deliverySummary.helperCommands.populateEnvTemplate,
         envTemplateVarNames: deliverySummary.envTemplateVarNames,
-        envConfigPath: envConfigPresent ? '.env' : null,
+        envConfigPath: '.env',
         envConfigPresent,
         envConfigPopulateCommand: deliverySummary.helperCommands.populateProviderEnv,
         implementationBundleCommand: deliverySummary.helperCommands.scaffoldProviderImplementationBundle,
@@ -1942,8 +2001,8 @@ export function buildSummary(rootDir: string) {
     },
     memory: memoryIndex,
     memorySummary: memory.summary(),
-    skills: skills.summary(),
-    skillsSummary: skills.summary(),
+    skills: skillSummary,
+    skillsSummary: skillSummary,
     profiles,
     foundationRollup: foundation,
     foundationCore: coreFoundation,
@@ -1958,7 +2017,7 @@ export function buildSummary(rootDir: string) {
     profile: profile.summary(),
     soul: soul.summary(),
     memory: memory.summary(),
-    skills: skills.summary(),
+    skills: skillSummary,
     voice: voice.summary(),
     foundation: {
       ...foundation,

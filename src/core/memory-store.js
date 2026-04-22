@@ -1,11 +1,34 @@
+function normalizeLegacyShortTermSources(legacyShortTerm) {
+  if (!Array.isArray(legacyShortTerm)) {
+    return [];
+  }
+
+  const normalizedSources = [];
+  const seenSources = new Set();
+
+  legacyShortTerm.forEach((value) => {
+    if (typeof value !== 'string') {
+      return;
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0 || seenSources.has(trimmedValue)) {
+      return;
+    }
+
+    seenSources.add(trimmedValue);
+    normalizedSources.push(trimmedValue);
+  });
+
+  return normalizedSources;
+}
+
 export class MemoryStore {
   constructor({ daily, shortTerm, legacyShortTerm, longTerm, scratch } = {}) {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
-    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
-      ? legacyShortTerm.filter((value) => typeof value === 'string' && value.trim().length > 0)
-      : [];
+    this.legacyShortTermSources = normalizeLegacyShortTermSources(legacyShortTerm);
   }
 
   get daily() {

@@ -5,7 +5,9 @@ export interface WorkPriority {
   summary: string;
   nextAction: string | null;
   command: string | null;
+  fallbackCommand?: string | null;
   editPath?: string | null;
+  editPaths?: string[];
   followUpCommand?: string | null;
   paths: string[];
 }
@@ -33,11 +35,11 @@ export interface WorkLoopOptions {
 
 function isActionableReadyPriority(priority: WorkPriority): boolean {
   return priority.status === 'ready'
-    && Boolean(priority.nextAction || priority.command || priority.editPath || priority.followUpCommand);
+    && Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.followUpCommand);
 }
 
 function isRunnablePriority(priority: WorkPriority): boolean {
-  return Boolean(priority.nextAction || priority.command || priority.editPath || priority.followUpCommand);
+  return Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.followUpCommand);
 }
 
 export class WorkLoop {

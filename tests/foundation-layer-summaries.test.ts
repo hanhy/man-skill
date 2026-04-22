@@ -25,7 +25,7 @@ function seedMinimalRepo(rootDir: string) {
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -44,6 +44,41 @@ test('summarizeRootSectionSummary preserves count-only root progress without sec
     ', root 1/2 sections ready (what-belongs-here)',
   );
   assert.equal(summarizeRootSectionSummary(undefined, undefined, 0, 0), '');
+});
+
+test('foundation layer primitives normalize legacy short-term provenance consistently', () => {
+  const legacyShortTerm = [
+    ' memory\\short-term\\today.md ',
+    './memory/short-term/today.md',
+    'memory//short-term//older.md',
+    'memory/short-term/older.md',
+    '',
+    null,
+  ];
+  const memory = new MemoryStore({ legacyShortTerm: legacyShortTerm as unknown as string[] });
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts\n- scratch/: working drafts\n',
+      daily: ['today.md'],
+      legacyShortTerm: legacyShortTerm as unknown as string[],
+      longTerm: ['stable.md'],
+      scratch: ['ideas.md'],
+    },
+  });
+
+  assert.deepEqual(memory.legacyShortTermSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
+  assert.deepEqual(foundation.memory.legacyShortTermSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
+  assert.equal(foundation.memory.legacyShortTermSourceCount, 2);
+  assert.deepEqual(foundation.memory.legacyShortTermSampleSources, [
+    'memory/short-term/today.md',
+    'memory/short-term/older.md',
+  ]);
 });
 
 test('foundation layer primitives expose readiness-oriented summary metadata', () => {
@@ -158,6 +193,37 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
   });
 });
 
+test('soul and voice parsers accept plus bullets and checklist markers inside structured sections', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nStay faithful.\n\n## Core truths\n+ [ ] Keep the system inspectable.\n+ Prefer narrow, verified diffs.\n\n## Boundaries\n+ [x] Do not bluff certainty.\n\n## Vibe\n+ Grounded and direct.\n\n## Continuity\n+ Carry durable lessons forward.\n`);
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n+ [ ] Crisp and grounded.\n\n## Signature moves\n+ [ ] Use concrete examples.\n+ Close with the next step.\n\n## Avoid\n+ [x] Padding the answer.\n\n## Language hints\n+ Preserve bilingual phrasing when the source switches languages.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Stay faithful.',
+    coreTruths: ['Keep the system inspectable.', 'Prefer narrow, verified diffs.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: ['Grounded and direct.'],
+    continuity: ['Carry durable lessons forward.'],
+    coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Crisp and grounded.',
+    style: 'documented',
+    constraints: ['Padding the answer.'],
+    signatures: ['Use concrete examples.', 'Close with the next step.'],
+    languageHints: ['Preserve bilingual phrasing when the source switches languages.'],
+    constraintCount: 1,
+    signatureCount: 2,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('memory store prefers daily over legacy shortTerm input and ignores non-array buckets', () => {
   const memory = new MemoryStore({
     daily: [{ id: 'daily-1' }],
@@ -187,6 +253,63 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
     populatedBuckets: ['daily'],
     emptyBuckets: ['long-term', 'scratch'],
   });
+});
+
+test('memory summaries trim and dedupe legacy short-term provenance before exposing it', () => {
+  const memory = new MemoryStore({
+    daily: [{ id: 'daily-1' }],
+    legacyShortTerm: [
+      ' memory/short-term/legacy.md ',
+      'memory/short-term/legacy.md',
+      'memory/short-term/older.md',
+      '',
+      '   ',
+    ],
+  });
+
+  assert.deepEqual(memory.summary(), {
+    dailyEntries: 1,
+    longTermEntries: 0,
+    scratchEntries: 0,
+    totalEntries: 1,
+    dailyPresent: true,
+    longTermPresent: false,
+    scratchPresent: false,
+    shortTermEntries: 1,
+    shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 2,
+    legacyShortTermSources: ['memory/short-term/legacy.md', 'memory/short-term/older.md'],
+    legacyShortTermSampleSources: ['memory/short-term/legacy.md', 'memory/short-term/older.md'],
+    legacyShortTermSourceOverflowCount: 0,
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
+  });
+
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable notes.\n\n## Buckets\n- daily/: short-term notes\n- long-term/: stable facts\n- scratch/: drafts\n',
+      daily: ['today.md'],
+      legacyShortTerm: [
+        ' memory/short-term/legacy.md ',
+        'memory/short-term/legacy.md',
+        'memory/short-term/older.md',
+        '',
+        '   ',
+      ],
+      longTerm: ['stable.md'],
+      scratch: ['draft.md'],
+    },
+    skillNames: ['delivery'],
+  });
+
+  assert.equal(foundation.memory.legacyShortTermSourceCount, 2);
+  assert.deepEqual(foundation.memory.legacyShortTermSources, ['memory/short-term/legacy.md', 'memory/short-term/older.md']);
+  assert.deepEqual(foundation.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md', 'memory/short-term/older.md']);
+  assert.equal(foundation.memory.legacyShortTermSourceOverflowCount, 0);
 });
 
 test('memory store keeps shortTerm as a writable alias of daily', () => {
@@ -267,7 +390,7 @@ test('memory summaries treat legacy short-term files as canonical daily entries'
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'legacy.md'), 'legacy note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -307,7 +430,7 @@ test('memory alias summary keeps long legacy short-term backlogs compact in prom
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note 1');
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-02.md'), 'legacy note 2');
@@ -356,7 +479,7 @@ test('canonical daily counts keep same-basename legacy short-term files instead 
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'canonical daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'today.md'), 'legacy daily note with the same basename');
@@ -401,6 +524,68 @@ console.log(JSON.stringify(memory.summary()));
   assert.deepEqual(rawSummary, new MemoryStore({ daily: [{ id: 'daily-1' }] }).summary());
 });
 
+test('soul profile raw JS entrypoint stays aligned for blockquoted structured docs', () => {
+  const document = [
+    '# Soul',
+    '',
+    '> Stay faithful.',
+    '',
+    '> ## Core truths',
+    '> - Keep the system inspectable.',
+    '',
+    '> ## Boundaries',
+    '> - Do not bluff certainty.',
+    '',
+  ].join('\n');
+  const scriptPath = path.join(makeTempRepo(), 'soul-profile-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { SoulProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/soul-profile.js'))};
+const soul = SoulProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(soul.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
+});
+
+test('voice profile raw JS entrypoint stays aligned for blockquoted legacy structured docs', () => {
+  const document = [
+    '# Voice',
+    '',
+    '> Stay direct.',
+    '',
+    '> ## Tone',
+    '> Warm and grounded.',
+    '',
+    '> Voice should capture',
+    '> --------------------',
+    '> - Use crisp examples.',
+    '',
+    '> ## Voice should not capture ##',
+    '> - Never pad the answer.',
+    '',
+    '> ## Current default for Harry Han',
+    '> - Preserve English and 中文 phrasing from the source.',
+    '> - Lead with the operating takeaway.',
+    '',
+  ].join('\n');
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+});
+
 test('voice profile parses tone, signature moves, avoid, and language hints from voice docs', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Close with a concrete next step.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n`);
 
@@ -413,6 +598,73 @@ test('voice profile parses tone, signature moves, avoid, and language hints from
     constraintCount: 1,
     signatureCount: 2,
     languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile preserves multiline tone paragraphs and indented list continuations inside structured sections', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\nWarm and grounded,\nwith enough urgency to keep momentum.\n\n## Signature moves\n- Use crisp examples that land quickly\n  and end with the next concrete step.\n\n## Avoid\n- Padding the answer\n  with empty throat-clearing.\n\n## Language hints\n- Preserve bilingual phrasing\n  when the source switches languages.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded, with enough urgency to keep momentum.',
+    style: 'documented',
+    constraints: ['Padding the answer with empty throat-clearing.'],
+    signatures: ['Use crisp examples that land quickly and end with the next concrete step.'],
+    languageHints: ['Preserve bilingual phrasing when the source switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile keeps current-default continuation lines attached to the bullet they extend', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct and grounded.\n\n## Current default for ManSkill\n- Keep the answer concise\n  when translating Spanish snippets, preserve the source phrasing.\n- Preserve bilingual phrasing\n  even when the continuation line omits explicit language keywords.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Stay direct and grounded.',
+    style: 'documented',
+    constraints: [],
+    signatures: [],
+    languageHints: [
+      'Keep the answer concise when translating Spanish snippets, preserve the source phrasing.',
+      'Preserve bilingual phrasing even when the continuation line omits explicit language keywords.',
+    ],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 2,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile does not promote current-default language-hint continuations into tone guidance', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Current default for ManSkill\n- Keep the answer concise\n  when translating Spanish snippets, preserve the source phrasing.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: [],
+    languageHints: ['Keep the answer concise when translating Spanish snippets, preserve the source phrasing.'],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile does not promote current-default signature continuations into truncated tone guidance', () => {
+  const voice = VoiceProfile.fromDocument(`# Voice\n\n## Current default for ManSkill\n- Keep the answer concise\n  and close with the next concrete step.\n`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: ['Keep the answer concise and close with the next concrete step.'],
+    languageHints: [],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 0,
     hasGuidance: true,
   });
 });
@@ -483,6 +735,27 @@ test('voice profile treats named-language code-switching guidance in current-def
   });
   assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
   assert.deepEqual(coreFoundation.voice.missingSections, ['avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
+});
+
+test('voice profile keeps language-hint-only current-default sections from counting as tone guidance', () => {
+  const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'clear',
+    style: 'adaptive',
+    constraints: [],
+    signatures: [],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 0,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['tone', 'signature-moves', 'avoid']);
   assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
 });
 
@@ -565,6 +838,44 @@ Description: Preserve terse bilingual delivery.
 `);
 
   assert.deepEqual(voice.summary(), {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile raw JS entrypoint stays aligned for frontmatter description and target-specific current-default aliases', () => {
+  const document = `---
+name: Harry Han voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+---
+
+# Voice
+
+## Current default for Harry Han
+- concise by default
+- preserve 中文 and English switching when the source does
+`;
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-frontmatter-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
     tone: 'Preserve terse bilingual delivery.',
     style: 'documented',
     constraints: [],
@@ -1094,7 +1405,7 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1119,6 +1430,46 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   assert.doesNotMatch(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\./);
   assert.doesNotMatch(summary.promptPreview, />\s*## Tone/);
   assert.doesNotMatch(summary.promptPreview, />\s*## Core truths/);
+});
+
+test('buildSummary carries compact legacy short-term provenance into ready core foundation details', () => {
+  const rootDir = makeTempRepo();
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'short-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note one');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-02.md'), 'legacy note two');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-03.md'), 'legacy note three');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-04.md'), 'legacy note four');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'ideas.md'), 'idea');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Shared repo skill guidance.\n\n## Layout\n- skills/<name>/SKILL.md documents a reusable workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver verified slices.\n\n## Suggested workflow\n- Run the smallest validating loop first.\n');
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), '# Soul\n\n## Core truths\n- Stay faithful.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Carry durable lessons forward.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), '# Voice\n\n## Tone\n- Warm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceCount, 4);
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermSampleSources, [
+    'memory/short-term/2026-04-01.md',
+    'memory/short-term/2026-04-02.md',
+    'memory/short-term/2026-04-03.md',
+  ]);
+  assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 1);
+  assert.match(
+    summary.promptPreview,
+    /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/,
+  );
+  assert.doesNotMatch(summary.promptPreview, /memory\/short-term\/2026-04-04\.md/);
 });
 
 test('buildSummary carries the richer foundation layer summaries at top level', () => {
@@ -1236,7 +1587,7 @@ test('buildSummary skill preview shows descriptions and summarizes hidden skills
   fs.mkdirSync(path.join(rootDir, 'skills', 'providers'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1269,7 +1620,7 @@ test('buildSummary skill preview prefers described skills before placeholders', 
   fs.mkdirSync(path.join(rootDir, 'skills', 'foundation'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1297,7 +1648,7 @@ test('buildSummary skill preview truncates long skill descriptions to keep the b
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1323,7 +1674,7 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   fs.mkdirSync(path.join(rootDir, 'skills', 'providers', 'openai'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1339,10 +1690,22 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.skills.skillCount, 2);
+  assert.deepEqual(summary.skills.categoryCounts, {
+    channels: 1,
+    providers: 1,
+  });
+  assert.deepEqual(summary.foundation.core.skills.categoryCounts, {
+    channels: 1,
+    providers: 1,
+  });
+  assert.deepEqual(summary.foundation.core.skills.documentedCategoryCounts, {
+    channels: 1,
+  });
   assert.match(
     summary.promptPreview,
     /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]/,
   );
+  assert.match(summary.promptPreview, /- categories: channels 1, providers 1/);
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.undocumentedCount, 1);
   assert.deepEqual(summary.foundation.core.skills.samplePaths, ['skills/channels/slack/SKILL.md']);
@@ -1407,7 +1770,7 @@ test('buildSummary marks skills as thin when skills README lacks structured sect
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1456,7 +1819,7 @@ test('buildSummary treats blockquoted memory sections and setext skills sections
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes and the canonical checked-in short-term bucket\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1492,7 +1855,7 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1545,7 +1908,7 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');

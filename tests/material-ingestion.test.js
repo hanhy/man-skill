@@ -1337,6 +1337,35 @@ test('importProfileIntakeManifest rejects a profile-local manifest that targets 
   assert.deepEqual(materialFiles, []);
 });
 
+test('importProfileIntakeManifest rejects a starter profile-local manifest that targets a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Starter scaffolds must stay bound to their owning profile.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /targets a different profile/i,
+  );
+});
+
 test('buildSummary prompt preview keeps starter-only metadata intake templates off the import-intake shortcut path', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1351,7 +1380,7 @@ test('buildSummary prompt preview keeps starter-only metadata intake templates o
 
   assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, null);
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 1 starter template, 0 partial, 0 missing/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {

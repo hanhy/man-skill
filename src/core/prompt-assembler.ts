@@ -219,6 +219,8 @@ type FoundationCore = {
     legacyShortTermSources?: string[];
     legacyShortTermSampleSources?: string[];
     legacyShortTermSourceOverflowCount?: number;
+    shortTermEntries?: number;
+    shortTermPresent?: boolean;
     dailyCount?: number;
     longTermCount?: number;
     scratchCount?: number;
@@ -242,6 +244,8 @@ type FoundationCore = {
     documentedCount?: number;
     undocumentedCount?: number;
     thinCount?: number;
+    categoryCounts?: Record<string, number>;
+    documentedCategoryCounts?: Record<string, number>;
     sample?: string[];
     samplePaths?: string[];
     sampleExcerpts?: string[];
@@ -307,6 +311,7 @@ type SkillRegistrySummary = {
   skillCount?: number;
   discoveredCount?: number;
   customCount?: number;
+  categoryCounts?: Record<string, number>;
   skills?: Array<{
     id?: string;
     name?: string;
@@ -479,6 +484,7 @@ type IngestionProfileCommand = {
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   refreshFoundationCommand?: string | null;
+  importManifestWithoutRefreshCommand?: string | null;
   importManifestCommand?: string | null;
   importCommands?: {
     text?: string | null;
@@ -501,10 +507,13 @@ type IngestionHelperCommands = {
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
+  importIntakeAllAndRefresh?: string | null;
   importIntakeStale?: string | null;
+  importIntakeStaleAndRefresh?: string | null;
   importIntakeImported?: string | null;
   importIntakeImportedAndRefresh?: string | null;
   importIntakeBundle?: string | null;
+  starterImportBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
   refreshAllFoundation?: string | null;
@@ -538,6 +547,8 @@ type IngestionSummary = {
   intakeScaffoldProfileCount?: number;
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
+  intakeImportAllAndRefreshCommand?: string | null;
+  intakeImportStaleAndRefreshCommand?: string | null;
   intakeImportedCommand?: string | null;
   intakeImportImportedCommand?: string | null;
   intakeImportImportedAndRefreshCommand?: string | null;
@@ -578,13 +589,16 @@ type IngestionSummary = {
   }>;
   staleRefreshCommand?: string | null;
   refreshFoundationBundleCommand?: string | null;
+  starterImportBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
   recommendedProfileId?: string | null;
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
+  recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
+  recommendedEditPaths?: string[];
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
@@ -600,7 +614,9 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  fallbackCommand?: string | null;
   editPath?: string | null;
+  editPaths?: string[];
   followUpCommand?: string | null;
   paths?: string[];
 };
@@ -1384,11 +1400,20 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
     ? ingestion.recommendedEditPath
     : null;
+  const recommendedEditPaths = Array.isArray(ingestion?.recommendedEditPaths)
+    ? ingestion.recommendedEditPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (recommendedEditPath ? [recommendedEditPath] : []);
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
+  const recommendedFallbackCommand = typeof ingestion?.recommendedFallbackCommand === 'string' && ingestion.recommendedFallbackCommand.length > 0
+    ? ingestion.recommendedFallbackCommand
+    : null;
+  const recommendedEditSegment = recommendedEditPaths.length > 1
+    ? `; edit paths ${recommendedEditPaths.join(', ')}`
+    : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -1432,10 +1457,13 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
+      pushHelperEntry(helperCommands.importIntakeAllAndRefresh ? `import-all+refresh ${helperCommands.importIntakeAllAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeStaleAndRefresh ? `import-stale+refresh ${helperCommands.importIntakeStaleAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
+      pushHelperEntry(helperCommands.starterImportBundle ? `starter-import-bundle ${helperCommands.starterImportBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
       pushHelperEntry(helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null);
@@ -1532,6 +1560,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const intakeShortcutSegment = profile.intakeReady === true && intakeShortcutCommand
         ? ` | shortcut ${intakeShortcutCommand}`
         : '';
+      const manifestInspectSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestWithoutRefreshCommand
+        ? ` | manifest-inspect ${profile.importManifestWithoutRefreshCommand}`
+        : '';
       const manifestSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.importManifestCommand
         ? ` | manifest ${profile.importManifestCommand}`
         : '';
@@ -1581,7 +1612,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -1603,15 +1634,24 @@ function formatMemoryBucketSummary(memory: FoundationCore['memory'] = null) {
 }
 
 function formatMemoryAliasSummary(
-  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount'> | null | undefined,
+  memory: Pick<MemorySummary, 'canonicalShortTermBucket' | 'legacyShortTermAliases' | 'legacyShortTermSourceCount' | 'legacyShortTermSources' | 'legacyShortTermSampleSources' | 'legacyShortTermSourceOverflowCount' | 'shortTermEntries' | 'shortTermPresent'> | null | undefined,
   prefix = '; aliases ',
 ) {
+  const hasLegacyShortTermEntryAliases = Boolean(memory && (
+    Object.prototype.hasOwnProperty.call(memory, 'shortTermEntries')
+    || Object.prototype.hasOwnProperty.call(memory, 'shortTermPresent')
+  ));
   const canonicalBucket = typeof memory?.canonicalShortTermBucket === 'string' && memory.canonicalShortTermBucket.trim().length > 0
     ? memory.canonicalShortTermBucket.trim()
-    : null;
+    : hasLegacyShortTermEntryAliases
+      ? 'daily'
+      : null;
   const legacyAliases = Array.isArray(memory?.legacyShortTermAliases)
     ? memory.legacyShortTermAliases.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
+    : [
+        ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermEntries') ? ['shortTermEntries'] : []),
+        ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermPresent') ? ['shortTermPresent'] : []),
+      ];
   const legacySources = Array.isArray(memory?.legacyShortTermSources)
     ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     : [];
@@ -2029,8 +2069,18 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const showActionableReadyPriority = Boolean(
     actionableReadyPriority
       && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
-      && (!runnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority.id ?? runnablePriority.label)),
+      && (!showRunnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority?.id ?? runnablePriority?.label)),
   );
+  const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
+    ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (currentPriority?.editPath ? [currentPriority.editPath] : []);
+  const runnablePriorityEditPaths = Array.isArray(runnablePriority?.editPaths)
+    ? runnablePriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (runnablePriority?.editPath ? [runnablePriority.editPath] : []);
+  const actionableReadyPriorityEditPaths = Array.isArray(actionableReadyPriority?.editPaths)
+    ? actionableReadyPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (actionableReadyPriority?.editPath ? [actionableReadyPriority.editPath] : []);
+
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
     : null;
@@ -2061,9 +2111,14 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
       : null,
-    currentPriority?.editPath
-      ? `- edit: ${currentPriority.editPath}`
+    currentPriority?.fallbackCommand
+      ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
+    currentPriorityEditPaths.length > 1
+      ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
+      : (currentPriority?.editPath
+        ? `- edit: ${currentPriority.editPath}`
+        : null),
     currentPriority?.followUpCommand
       ? `- then run: ${currentPriority.followUpCommand}`
       : null,
@@ -2079,9 +2134,14 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.command
       ? `- runnable command: ${runnablePriority.command}`
       : null,
-    showRunnablePriority && runnablePriority?.editPath
-      ? `- runnable edit: ${runnablePriority.editPath}`
+    showRunnablePriority && runnablePriority?.fallbackCommand
+      ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
+    showRunnablePriority && runnablePriorityEditPaths.length > 1
+      ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
+      : (showRunnablePriority && runnablePriority?.editPath
+        ? `- runnable edit: ${runnablePriority.editPath}`
+        : null),
     showRunnablePriority && runnablePriority?.followUpCommand
       ? `- runnable then run: ${runnablePriority.followUpCommand}`
       : null,
@@ -2097,9 +2157,14 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriority?.command
       ? `- advisory command: ${actionableReadyPriority.command}`
       : null,
-    showActionableReadyPriority && actionableReadyPriority?.editPath
-      ? `- advisory edit: ${actionableReadyPriority.editPath}`
+    showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
+      ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,
+    showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
+      ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`
+      : (showActionableReadyPriority && actionableReadyPriority?.editPath
+        ? `- advisory edit: ${actionableReadyPriority.editPath}`
+        : null),
     showActionableReadyPriority && actionableReadyPriority?.followUpCommand
       ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
       : null,
@@ -2194,7 +2259,7 @@ function buildMemoryPreviewBlock(
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -2246,6 +2311,15 @@ function buildSkillsPreviewBlock(
       ...(remainingSkillCount > 0 ? [`+${remainingSkillCount} more`] : []),
     ].join('; ')
     : 'none';
+  const rawCategoryCounts = foundationSkills?.categoryCounts && typeof foundationSkills.categoryCounts === 'object'
+    ? foundationSkills.categoryCounts
+    : (skills.categoryCounts && typeof skills.categoryCounts === 'object' ? skills.categoryCounts : {});
+  const categoryEntries = Object.entries(rawCategoryCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([category, count]) => `${category} ${count}`);
+  const categorySummary = categoryEntries.length > 0
+    ? `- categories: ${categoryEntries.join(', ')}`
+    : null;
 
   const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
     ? foundationSkills.rootExcerpt.trim()
@@ -2270,6 +2344,7 @@ function buildSkillsPreviewBlock(
     rootSectionSummary,
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
+    categorySummary,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 

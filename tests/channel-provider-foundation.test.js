@@ -38,7 +38,7 @@ function seedMinimalRepo(rootDir) {
   fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-19.md'), '# Daily note\n\n- Checked delivery readiness.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');
@@ -247,10 +247,25 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
   assert.equal(summary.foundation.core.overview.readyAreaCount, 4);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
   assert.deepEqual(summary.foundation.core.overview.missingAreas, []);
+  assert.deepEqual(summary.foundation.core.memory.rootReadySections, ['what-belongs-here', 'buckets']);
+  assert.equal(summary.foundation.core.memory.rootReadySectionCount, 2);
+  assert.equal(summary.foundation.core.memory.rootTotalSectionCount, 2);
+  assert.equal(summary.foundation.core.memory.canonicalShortTermBucket, 'daily');
+  assert.deepEqual(summary.foundation.core.memory.legacyShortTermAliases, ['shortTermEntries', 'shortTermPresent']);
+  assert.deepEqual(summary.memory.populatedBuckets, ['daily', 'long-term', 'scratch']);
+  assert.equal(summary.memory.readyBucketCount, 3);
+  assert.equal(summary.memory.totalBucketCount, 3);
+  assert.equal(summary.memory.canonicalShortTermBucket, 'daily');
+  assert.deepEqual(summary.memory.legacyShortTermAliases, ['shortTermEntries', 'shortTermPresent']);
+  assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
+  assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
+  assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.deepEqual(summary.foundation.core.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
   assert.equal(summary.foundation.core.soul.readySectionCount, 4);
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
+  assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md\n- root sections: 2\/2 ready \(what-belongs-here, buckets\)/);
+  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.deepEqual(summary.channels.channels.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
   assert.deepEqual(summary.models.providers.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
   assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
@@ -1185,6 +1200,250 @@ test('default channel/provider factories expose scaffold metadata and runtime he
   }
 });
 
+test('default channel factories cover verification and richer inbound-event variants', () => {
+  const originalEnv = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    FEISHU_APP_ID: process.env.FEISHU_APP_ID,
+    FEISHU_APP_SECRET: process.env.FEISHU_APP_SECRET,
+  };
+
+  process.env.SLACK_BOT_TOKEN='***';
+  process.env.SLACK_SIGNING_SECRET='***';
+  process.env.TELEGRAM_BOT_TOKEN='***';
+  process.env.WHATSAPP_ACCESS_TOKEN='***';
+  process.env.WHATSAPP_PHONE_NUMBER_ID = '1234567890';
+  process.env.FEISHU_APP_ID = 'cli_a1b2c3';
+  process.env.FEISHU_APP_SECRET='***';
+
+  try {
+    const slack = createDefaultChannels().find((channel) => channel.id === 'slack');
+    const telegram = createDefaultChannels().find((channel) => channel.id === 'telegram');
+    const whatsapp = createDefaultChannels().find((channel) => channel.id === 'whatsapp');
+    const feishu = createDefaultChannels().find((channel) => channel.id === 'feishu');
+
+    assert.ok(slack);
+    assert.ok(telegram);
+    assert.ok(whatsapp);
+    assert.ok(feishu);
+
+    assert.deepEqual(
+      slack.normalizeInboundEvent({
+        authorizations: [{ team_id: 'T999' }],
+        event: {
+          type: 'message',
+          subtype: 'message_changed',
+          channel: 'C999',
+          ts: '1710000400.000100',
+          message: {
+            user: 'U999',
+            text: 'edited thread reply',
+            ts: '1710000400.000200',
+          },
+        },
+      }),
+      {
+        platform: 'slack',
+        eventType: 'message_changed',
+        channelId: 'C999',
+        senderId: 'U999',
+        text: 'edited thread reply',
+        ts: '1710000400.000200',
+        threadTs: '1710000400.000200',
+        teamId: 'T999',
+      },
+    );
+    assert.deepEqual(
+      slack.buildWebhookResponse({ type: 'url_verification', challenge: 'slack-challenge' }),
+      { challenge: 'slack-challenge' },
+    );
+
+    assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 88,
+        callback_query: {
+          id: 'cbq-88',
+          data: 'open-profile:harry-han',
+          from: { id: 99 },
+          message: {
+            message_id: 22,
+            message_thread_id: 7,
+            date: 1710000500,
+            chat: { id: -100456, type: 'supergroup' },
+            text: 'tap to inspect',
+          },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'callback_query',
+        updateId: 88,
+        callbackQueryId: 'cbq-88',
+        chatId: -100456,
+        senderId: 99,
+        text: 'open-profile:harry-han',
+        messageId: 22,
+        threadId: 7,
+        chatType: 'supergroup',
+        timestamp: 1710000500,
+      },
+    );
+    assert.deepEqual(
+      telegram.buildCallbackAnswer({
+        callbackQueryId: 'cbq-88',
+        text: 'Opening profile…',
+        showAlert: true,
+        url: 'https://example.com/profile/harry-han',
+        cacheTime: 30,
+      }),
+      {
+        callback_query_id: 'cbq-88',
+        text: 'Opening profile…',
+        show_alert: true,
+        url: 'https://example.com/profile/harry-han',
+        cache_time: 30,
+      },
+    );
+
+    assert.deepEqual(
+      whatsapp.normalizeInboundEvent({
+        entry: [{
+          changes: [{
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: '1234567890' },
+              contacts: [{ profile: { name: 'Harry' }, wa_id: '15551234567' }],
+              messages: [{
+                id: 'wamid.HBgNOD.list',
+                from: '15551234567',
+                timestamp: '1710000600',
+                type: 'interactive',
+                interactive: {
+                  list_reply: {
+                    id: 'topic-1',
+                    title: 'Profile intake',
+                    description: 'Review latest materials',
+                  },
+                },
+              }],
+            },
+          }],
+        }],
+      }),
+      {
+        platform: 'whatsapp',
+        eventType: 'interactive',
+        phoneNumberId: '1234567890',
+        senderId: '15551234567',
+        profileName: 'Harry',
+        text: 'Profile intake',
+        interactiveReplyType: 'list_reply',
+        interactiveReplyId: 'topic-1',
+        interactiveReplyTitle: 'Profile intake',
+        interactiveReplyDescription: 'Review latest materials',
+        messageId: 'wamid.HBgNOD.list',
+        contextMessageId: null,
+        timestamp: 1710000600,
+      },
+    );
+    assert.equal(
+      whatsapp.buildWebhookVerificationResponse({ 'hub.mode': 'subscribe', 'hub.challenge': 'whatsapp-challenge' }),
+      'whatsapp-challenge',
+    );
+
+    assert.deepEqual(
+      feishu.normalizeInboundEvent({
+        header: {
+          event_type: 'im.message.receive_v1',
+          tenant_key: 'tenant-key',
+        },
+        event: {
+          sender: {
+            sender_id: { user_id: 'ou_user' },
+          },
+          message: {
+            chat_id: 'oc_chat_post',
+            message_id: 'om_post',
+            message_type: 'post',
+            content: JSON.stringify({
+              post: {
+                en_us: {
+                  content: [
+                    [{ tag: 'text', text: 'hello' }, { tag: 'text', text: 'from' }],
+                    [{ tag: 'text', text: 'feishu post' }],
+                  ],
+                },
+              },
+            }),
+            create_time: '1710000700000',
+          },
+        },
+      }),
+      {
+        platform: 'feishu',
+        eventType: 'im.message.receive_v1',
+        tenantKey: 'tenant-key',
+        chatId: 'oc_chat_post',
+        senderId: 'ou_user',
+        messageId: 'om_post',
+        messageType: 'post',
+        text: 'hello from feishu post',
+        threadId: null,
+        timestamp: 1710000700000,
+      },
+    );
+    assert.deepEqual(
+      feishu.buildWebhookResponse({ type: 'url_verification', challenge: 'feishu-challenge' }),
+      { challenge: 'feishu-challenge' },
+    );
+  } finally {
+    if (originalEnv.SLACK_BOT_TOKEN === undefined) {
+      delete process.env.SLACK_BOT_TOKEN;
+    } else {
+      process.env.SLACK_BOT_TOKEN = originalEnv.SLACK_BOT_TOKEN;
+    }
+
+    if (originalEnv.SLACK_SIGNING_SECRET === undefined) {
+      delete process.env.SLACK_SIGNING_SECRET;
+    } else {
+      process.env.SLACK_SIGNING_SECRET = originalEnv.SLACK_SIGNING_SECRET;
+    }
+
+    if (originalEnv.TELEGRAM_BOT_TOKEN === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = originalEnv.TELEGRAM_BOT_TOKEN;
+    }
+
+    if (originalEnv.WHATSAPP_ACCESS_TOKEN === undefined) {
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+    } else {
+      process.env.WHATSAPP_ACCESS_TOKEN = originalEnv.WHATSAPP_ACCESS_TOKEN;
+    }
+
+    if (originalEnv.WHATSAPP_PHONE_NUMBER_ID === undefined) {
+      delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    } else {
+      process.env.WHATSAPP_PHONE_NUMBER_ID = originalEnv.WHATSAPP_PHONE_NUMBER_ID;
+    }
+
+    if (originalEnv.FEISHU_APP_ID === undefined) {
+      delete process.env.FEISHU_APP_ID;
+    } else {
+      process.env.FEISHU_APP_ID = originalEnv.FEISHU_APP_ID;
+    }
+
+    if (originalEnv.FEISHU_APP_SECRET === undefined) {
+      delete process.env.FEISHU_APP_SECRET;
+    } else {
+      process.env.FEISHU_APP_SECRET = originalEnv.FEISHU_APP_SECRET;
+    }
+  }
+});
+
 test('default provider factories expose runtime helpers for Minimax, GLM, and Qwen', () => {
   const originalEnv = {
     MINIMAX_API_KEY: process.env.MINIMAX_API_KEY,
@@ -1695,7 +1954,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.ok(channelsPriority);
     assert.equal(channelsPriority.status, 'queued');
     assert.equal(channelsPriority.command, 'cp .env.example .env');
-    assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
+    assert.deepEqual(channelsPriority.paths, ['.env.example']);
     assert.equal(
       channelsPriority.nextAction,
       'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET',

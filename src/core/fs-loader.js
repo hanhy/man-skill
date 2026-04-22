@@ -540,6 +540,7 @@ function buildIntakePaths(rootDir, profileId) {
   const importsDir = path.join(rootDir, 'profiles', profileId, 'imports');
   return {
     importsDir,
+    sampleImagesDirPath: path.join(importsDir, 'images'),
     intakeReadmePath: path.join(importsDir, 'README.md'),
     starterManifestPath: path.join(importsDir, 'materials.template.json'),
     sampleTextPath: path.join(importsDir, 'sample.txt'),
@@ -549,21 +550,24 @@ function buildIntakePaths(rootDir, profileId) {
 function loadProfileIntake(rootDir, profileId) {
   const paths = buildIntakePaths(rootDir, profileId);
   const importsDirPresent = fs.existsSync(paths.importsDir);
+  const sampleImagesDirPresent = fs.existsSync(paths.sampleImagesDirPath);
   const intakeReadmePresent = fs.existsSync(paths.intakeReadmePath);
   const starterManifestPresent = fs.existsSync(paths.starterManifestPath);
   const sampleTextPresent = fs.existsSync(paths.sampleTextPath);
   const relativePaths = {
     importsDir: path.relative(rootDir, paths.importsDir),
+    sampleImagesDirPath: path.relative(rootDir, paths.sampleImagesDirPath),
     intakeReadmePath: path.relative(rootDir, paths.intakeReadmePath),
     starterManifestPath: path.relative(rootDir, paths.starterManifestPath),
     sampleTextPath: path.relative(rootDir, paths.sampleTextPath),
   };
-  const ready = importsDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent;
+  const ready = importsDirPresent && sampleImagesDirPresent && intakeReadmePresent && starterManifestPresent && sampleTextPresent;
   const completion = ready
     ? 'ready'
-    : (importsDirPresent || intakeReadmePresent || starterManifestPresent || sampleTextPresent ? 'partial' : 'missing');
+    : (importsDirPresent || sampleImagesDirPresent || intakeReadmePresent || starterManifestPresent || sampleTextPresent ? 'partial' : 'missing');
   const missingPaths = [
     importsDirPresent ? null : relativePaths.importsDir,
+    sampleImagesDirPresent ? null : relativePaths.sampleImagesDirPath,
     intakeReadmePresent ? null : relativePaths.intakeReadmePath,
     starterManifestPresent ? null : relativePaths.starterManifestPath,
     sampleTextPresent ? null : relativePaths.sampleTextPath,
@@ -573,6 +577,7 @@ function loadProfileIntake(rootDir, profileId) {
     ready,
     completion,
     importsDirPresent,
+    sampleImagesDirPresent,
     intakeReadmePresent,
     starterManifestPresent,
     sampleTextPresent,

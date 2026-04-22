@@ -28,6 +28,39 @@ export interface MemoryStoreOptions {
   scratch?: unknown[];
 }
 
+function normalizeLegacyShortTermSourcePath(value: string): string {
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\/+/g, '/');
+}
+
+export function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
+  if (!Array.isArray(legacyShortTerm)) {
+    return [];
+  }
+
+  const normalizedSources: string[] = [];
+  const seenSources = new Set<string>();
+
+  legacyShortTerm.forEach((value) => {
+    if (typeof value !== 'string') {
+      return;
+    }
+
+    const normalizedValue = normalizeLegacyShortTermSourcePath(value);
+    if (normalizedValue.length === 0 || seenSources.has(normalizedValue)) {
+      return;
+    }
+
+    seenSources.add(normalizedValue);
+    normalizedSources.push(normalizedValue);
+  });
+
+  return normalizedSources;
+}
+
 export class MemoryStore {
   private _daily: unknown[];
   longTerm: unknown[];
@@ -38,9 +71,7 @@ export class MemoryStore {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
-    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
-      ? legacyShortTerm.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      : [];
+    this.legacyShortTermSources = normalizeLegacyShortTermSources(legacyShortTerm);
   }
 
   get daily(): unknown[] {

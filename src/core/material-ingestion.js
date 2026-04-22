@@ -606,6 +606,16 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
     && typeof manifest.entryTemplates === 'object'
     && !Array.isArray(manifest.entryTemplates)
     && Object.keys(manifest.entryTemplates).length > 0;
+
+  try {
+    validateProfileLocalManifestOwnership(manifest, expectedPersonId);
+  } catch (error) {
+    return {
+      status: 'invalid',
+      error: error instanceof Error ? error.message : 'Invalid intake manifest',
+    };
+  }
+
   if (hasStarterTemplates) {
     return {
       status: 'starter',
@@ -620,15 +630,6 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
     };
   }
 
-  try {
-    validateProfileLocalManifestOwnership(manifest, expectedPersonId);
-  } catch (error) {
-    return {
-      status: 'invalid',
-      error: error instanceof Error ? error.message : 'Invalid intake manifest',
-    };
-  }
-
   return {
     status: 'loaded',
     error: null,
@@ -640,7 +641,11 @@ function profileHasStarterIntakeManifest(rootDir, profile) {
     return false;
   }
 
-  return inspectIntakeManifestState(rootDir, profile.intake.starterManifestPath).status === 'starter';
+  const normalizedPersonId = isNonEmptyString(profile?.id)
+    ? profile.id
+    : (isNonEmptyString(profile?.personId) ? profile.personId : null);
+
+  return inspectIntakeManifestState(rootDir, profile.intake.starterManifestPath, normalizedPersonId).status === 'starter';
 }
 
 function buildStarterManifestDocument({
@@ -1026,6 +1031,7 @@ export class MaterialIngestion {
     return {
       ...profileUpdate,
       intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
+      sampleImagesDirPath: intakePaths.sampleImagesDirPath.split(path.sep).join('/'),
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
       invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'

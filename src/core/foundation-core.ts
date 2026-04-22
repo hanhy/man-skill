@@ -1,5 +1,6 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
 import { collectVisibleDocumentLines, findDocumentExcerpt } from './document-excerpt.ts';
+import { normalizeLegacyShortTermSources } from './memory-store.ts';
 import { SoulProfile } from './soul-profile.ts';
 import { VoiceProfile } from './voice-profile.ts';
 
@@ -48,6 +49,48 @@ function formatList(values: string[]): string {
   }
 
   return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
+}
+
+function getSkillCategory(skillId: string): string {
+  const normalizedSkillId = typeof skillId === 'string' ? skillId.trim() : '';
+  if (!normalizedSkillId) {
+    return 'root';
+  }
+
+  const [category] = normalizedSkillId.split('/');
+  return normalizedSkillId.includes('/') && category ? category : 'root';
+}
+
+function compareSkillCategory(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === 'root') {
+    return 1;
+  }
+
+  if (right === 'root') {
+    return -1;
+  }
+
+  return left.localeCompare(right);
+}
+
+function buildSkillCategoryCounts(skillNames: string[]): Record<string, number> {
+  const unsortedCounts = skillNames.reduce<Record<string, number>>((counts, skillName) => {
+    const skillCategory = getSkillCategory(skillName);
+    counts[skillCategory] = (counts[skillCategory] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(unsortedCounts).sort(([left], [right]) => compareSkillCategory(left, right)),
+  );
+}
+
+function hasGroupedSkillCategories(skillIds: string[]): boolean {
+  return skillIds.some((skillId) => typeof skillId === 'string' && skillId.includes('/'));
 }
 
 function buildMemoryBucketAction(emptyBuckets: string[]): string | null {
@@ -628,6 +671,8 @@ export interface CoreSkillsFoundationSummary {
   documentedCount: number;
   undocumentedCount: number;
   thinCount: number;
+  categoryCounts?: Record<string, number>;
+  documentedCategoryCounts?: Record<string, number>;
   sample: string[];
   samplePaths: string[];
   sampleExcerpts: string[];
@@ -1084,9 +1129,7 @@ export function buildCoreFoundationSummary({
   skillInventory = null,
 }: BuildCoreFoundationSummaryOptions = {}): CoreFoundationSummary {
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
-  const legacyShortTermSources = Array.isArray(memoryIndex?.legacyShortTerm)
-    ? memoryIndex.legacyShortTerm.filter((value): value is string => isNonEmptyString(value))
-    : [];
+  const legacyShortTermSources = normalizeLegacyShortTermSources(memoryIndex?.legacyShortTerm);
   const legacyShortTermPreview = collectLegacyShortTermPreviewSources(legacyShortTermSources);
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];
@@ -1205,6 +1248,10 @@ export function buildCoreFoundationSummary({
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
     thinCount: thinSkillNames.length,
+    ...(hasGroupedSkillCategories(safeSkillNames) ? {
+      categoryCounts: buildSkillCategoryCounts(safeSkillNames),
+      documentedCategoryCounts: buildSkillCategoryCounts(documentedSkillNames),
+    } : {}),
     sample: safeSkillNames.slice(0, 5),
     samplePaths: documentedSkillNames.slice(0, 5).map((skillName) => `skills/${skillName}/SKILL.md`),
     sampleExcerpts: documentedSkillNames

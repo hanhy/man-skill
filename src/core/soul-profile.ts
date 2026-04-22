@@ -68,7 +68,7 @@ function mapSoulHeadingToSection(heading: string): SoulSection {
   }
 }
 
-const LIST_MARKER_PATTERN = /^(?:[-*]|\d+[.)])\s+/;
+const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
 
 function cleanSoulLine(value: string) {
   return normalizeAdmonitionLine(

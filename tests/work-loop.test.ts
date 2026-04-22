@@ -21,7 +21,7 @@ function seedReadyFoundationRepo(rootDir: string) {
 
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
@@ -148,7 +148,7 @@ test('buildSummary work loop advances to ingestion when memory and skills root d
 
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes and the canonical checked-in short-term bucket\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(
     path.join(rootDir, 'skills', 'README.md'),
@@ -205,7 +205,7 @@ test('buildSummary work loop keeps foundation current when soul and voice docs o
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
@@ -921,7 +921,7 @@ test('buildSummary work loop uses thin-only foundation helper bundles when multi
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Daily note.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'repo.md'), 'Long-term note.\n');
@@ -1057,6 +1057,37 @@ test('buildSummary work loop prefers the checked-in sample manifest when the rep
   assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/harry-chat\.png/);
 });
 
+test('buildSummary work loop accepts BOM-prefixed checked-in sample manifests', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'samples', 'harry-materials.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Harry Han',
+      entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'loaded');
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt']);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import the checked-in sample target profile for Harry Han (harry-han)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt']);
+  assert.match(summary.promptPreview, /next action: import the checked-in sample target profile for Harry Han \(harry-han\)/);
+  assert.doesNotMatch(summary.promptPreview, /sample manifest invalid:/);
+});
+
 test('buildSummary work loop uses plural wording when the checked-in sample manifest spans multiple starter profiles', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -1148,13 +1179,14 @@ test('buildSummary work loop scaffolds intake before suggesting imports for meta
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports',
+    'profiles/metadata-only/imports/images',
     'profiles/metadata-only/imports/README.md',
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next action: scaffold the intake landing zone for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports, profiles\/metadata-only\/imports\/README\.md, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports, profiles\/metadata-only\/imports\/images, profiles\/metadata-only\/imports\/README\.md, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop completes partially scaffolded intake landing zones before suggesting imports', () => {
@@ -1182,11 +1214,12 @@ test('buildSummary work loop completes partially scaffolded intake landing zones
   assert.equal(summary.workLoop.currentPriority.nextAction, 'complete the intake landing zone for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/images',
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next action: complete the intake landing zone for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/images, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop prioritizes partially scaffolded intake profiles over fully missing ones', () => {
@@ -1230,9 +1263,11 @@ test('buildSummary work loop prioritizes partially scaffolded intake profiles ov
     "(node src/index.js update intake --person 'zeta-partial' --display-name 'Zeta Partial' --summary 'Needs the intake scaffold completed.') && (node src/index.js update intake --person 'alpha-missing' --display-name 'Alpha Missing' --summary 'No intake scaffold yet.')",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/zeta-partial/imports/images',
     'profiles/zeta-partial/imports/materials.template.json',
     'profiles/zeta-partial/imports/sample.txt',
     'profiles/alpha-missing/imports',
+    'profiles/alpha-missing/imports/images',
     'profiles/alpha-missing/imports/README.md',
     'profiles/alpha-missing/imports/materials.template.json',
     'profiles/alpha-missing/imports/sample.txt',
@@ -1782,6 +1817,46 @@ test('buildSummary work loop treats imported intake starter scaffolds as runnabl
   assert.match(summary.promptPreview, /imported intake: 0 ready, 1 starter template, 0 backfills, 0 invalid manifests/);
 });
 
+test('buildSummary work loop repairs imported starter manifests that target a different profile instead of treating them as runnable starters', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Repair the intake manifest before replaying it.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  const ingestionPriority = summary.workLoop.priorities.find((priority) => priority.id === 'ingestion');
+
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
+  assert.equal(ingestionPriority?.status, 'queued');
+  assert.match(summary.promptPreview, /imported intake: 0 ready, 0 starter templates, 0 backfills, 1 invalid manifest/);
+  assert.doesNotMatch(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
+});
+
 test('buildSummary work loop keeps imported intake starter follow-up as an advisory when foundation repairs stay current', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -1811,10 +1886,12 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.equal(summary.workLoop.actionableReadyPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.actionableReadyPriority?.status, 'ready');
   assert.equal(summary.workLoop.actionableReadyPriority?.command, null);
+  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.workLoop.actionableReadyPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.workLoop.actionableReadyPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -1825,7 +1902,8 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.match(summary.promptPreview, /advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(summary.promptPreview, /advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /advisory fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop carries imported starter intake edit and follow-up guidance when ingestion stays current', () => {
@@ -1855,10 +1933,12 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -1867,6 +1947,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('buildSummary work loop surfaces imported starter-manifest edits as runnable follow-up work when delivery auth bootstrap is current', () => {
@@ -1888,11 +1969,13 @@ test('buildSummary work loop surfaces imported starter-manifest edits as runnabl
   assert.equal(summary.workLoop.currentPriority.status, 'blocked');
   assert.equal(summary.workLoop.runnablePriority?.id, 'ingestion');
   assert.equal(summary.workLoop.runnablePriority?.status, 'ready');
+  assert.equal(summary.workLoop.runnablePriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /runnable next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('buildSummary work loop prefers the profile-local intake shortcut for imported profiles with loaded manifests', () => {
@@ -1983,13 +2066,19 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.equal(summary.workLoop.runnablePriority?.nextAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
   assert.equal(summary.workLoop.runnablePriority?.command, null);
   assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.runnablePriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
     'profiles/jane-doe/imports',
+    'profiles/jane-doe/imports/images',
     'profiles/jane-doe/imports/README.md',
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
@@ -1997,7 +2086,7 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 2 imported, 0 metadata-only, drafts 2 ready, 0 queued for refresh, 2 imported intake starter scaffolds available/);
   assert.match(summary.promptPreview, /runnable next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
-  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --imported --refresh-foundation/);
 });
 
@@ -2241,6 +2330,53 @@ test('buildSummary work loop includes manifest-backed file assets when a ready i
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
 });
 
+test('buildSummary work loop accepts BOM-prefixed ready intake manifests when collecting manifest-backed file assets', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const intakeDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.writeFileSync(path.join(intakeDir, 'metadata-shot.png'), 'fake screenshot bytes\n');
+  fs.writeFileSync(
+    path.join(intakeDir, 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      entries: [
+        { type: 'text', file: 'sample.txt' },
+        { type: 'screenshot', file: 'metadata-shot.png' },
+      ],
+    }, null, 2)}`,
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/sample.txt',
+    'profiles/metadata-only/imports/metadata-shot.png',
+  ]);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
+});
+
 test('buildSummary work loop prefers the exact ready-intake bundle when multiple metadata-only profiles are ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
@@ -2459,6 +2595,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -2466,10 +2603,10 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 intake backfill/);
   assert.match(summary.promptPreview, /next action: backfill the intake landing zone for imported profiles — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
-  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
-test('buildSummary work loop keeps credential bootstrap paths scoped to the template source during env copy', () => {
+test('buildSummary work loop keeps credential bootstrap paths source-focused on .env.example during env copy', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -2503,16 +2640,19 @@ test('buildSummary work loop keeps credential bootstrap paths scoped to the temp
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
-  assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env(?:,|$)/);
+  assert.match(workLoopBlock, /paths: \.env\.example/);
+  assert.doesNotMatch(workLoopBlock, /paths: .*\.env(?:,|$)/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
 });
 
-test('buildSummary work loop carries env bootstrap paths for both the template source and repo-local destination when checked-in delivery modules are runtime-ready', () => {
+test('buildSummary work loop keeps blocked env bootstrap paths source-focused on .env.example even when checked-in delivery modules are runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(path.join(rootDir, '.env.example'), [
@@ -2559,13 +2699,16 @@ test('buildSummary work loop carries env bootstrap paths for both the template s
   assert.equal(summary.workLoop.priorities[2].status, 'blocked');
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env(?:,|$)/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 1 queued, 1 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:queued/);
-  assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
+  assert.match(workLoopBlock, /paths: \.env\.example/);
+  assert.doesNotMatch(workLoopBlock, /paths: .*\.env(?:,|$)/);
   assert.doesNotMatch(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
 });
 
@@ -2600,10 +2743,12 @@ test('buildSummary work loop marks delivery blocked when the rollout leader is a
   assert.equal(summary.workLoop.queuedPriorityCount, 0);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1/4 present, implementations 1/4 ready');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 1\/4 present, implementations 1\/4 ready/);
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env(?:,|$)/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
 });
@@ -2707,10 +2852,12 @@ test('buildSummary work loop repairs missing credentials for active delivery int
   assert.equal(summary.workLoop.currentPriority.status, 'blocked');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4/4 present, implementations 4/4 ready');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
+  assert.match(summary.promptPreview, /paths: \.env\.example/);
+  assert.doesNotMatch(summary.promptPreview, /paths: .*\.env(?:,|$)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
 });
 
@@ -2756,7 +2903,7 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.match(workLoopBlock, /- runnable next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(workLoopBlock, /- runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(workLoopBlock, /- runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(workLoopBlock, /- runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(workLoopBlock, /- runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop uses quoted repo-local .env credentials with inline comments before env bootstrap guidance', () => {
