@@ -485,14 +485,7 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
     && typeof manifest.entryTemplates === 'object'
     && !Array.isArray(manifest.entryTemplates)
     && Object.keys(manifest.entryTemplates).length > 0;
-  if (hasStarterTemplates) {
-    return {
-      status: 'starter',
-      path: starterManifestPath,
-      error: null,
-    };
-  }
-  if (!Array.isArray(entries) || entries.length === 0) {
+  if (!Array.isArray(entries) && !hasStarterTemplates) {
     return {
       status: 'invalid',
       path: starterManifestPath,
@@ -564,6 +557,22 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
       status: 'invalid',
       path: starterManifestPath,
       error: error instanceof Error ? error.message : 'Invalid intake manifest',
+    };
+  }
+
+  if (hasStarterTemplates) {
+    return {
+      status: 'starter',
+      path: starterManifestPath,
+      error: null,
+    };
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      status: 'invalid',
+      path: starterManifestPath,
+      error: 'Manifest must contain a non-empty entries array',
     };
   }
 

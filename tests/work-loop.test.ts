@@ -1817,6 +1817,46 @@ test('buildSummary work loop treats imported intake starter scaffolds as runnabl
   assert.match(summary.promptPreview, /imported intake: 0 ready, 1 starter template, 0 backfills, 0 invalid manifests/);
 });
 
+test('buildSummary work loop repairs imported starter manifests that target a different profile instead of treating them as runnable starters', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  writeFullDeliveryEnv(rootDir, '.env');
+  seedRuntimeReadyDeliveryRepo(rootDir);
+  markManifestEntriesActive(rootDir, 'manifests/channels.json');
+  markManifestEntriesActive(rootDir, 'manifests/providers.json');
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Repair the intake manifest before replaying it.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: 'samples/harry-post.txt',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  const ingestionPriority = summary.workLoop.priorities.find((priority) => priority.id === 'ingestion');
+
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
+  assert.equal(ingestionPriority?.status, 'queued');
+  assert.match(summary.promptPreview, /imported intake: 0 ready, 0 starter templates, 0 backfills, 1 invalid manifest/);
+  assert.doesNotMatch(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
+});
+
 test('buildSummary work loop keeps imported intake starter follow-up as an advisory when foundation repairs stay current', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

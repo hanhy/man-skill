@@ -3504,6 +3504,50 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
 });
 
+test('buildSummary treats imported starter manifests with mismatched profile ownership as invalid', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'harry-han',
+    text: 'Starter scaffolds should not quietly point at another profile.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
+  assert.equal(harry?.intakeManifestStatus, 'invalid');
+  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.match(summary.promptPreview, /imported intake: 0 ready, 0 starter templates, 0 backfills, 1 invalid manifest/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
+});
+
 test('buildSummary keeps metadata-only profiles with invalid intake manifests visible in the ingestion entrance diagnostics', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

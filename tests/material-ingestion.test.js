@@ -1337,6 +1337,35 @@ test('importProfileIntakeManifest rejects a profile-local manifest that targets 
   assert.deepEqual(materialFiles, []);
 });
 
+test('importProfileIntakeManifest rejects a starter profile-local manifest that targets a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Starter scaffolds must stay bound to their owning profile.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'jane-doe',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /targets a different profile/i,
+  );
+});
+
 test('buildSummary prompt preview keeps starter-only metadata intake templates off the import-intake shortcut path', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
