@@ -824,6 +824,31 @@ test('default channel/provider factories expose scaffold metadata and runtime he
       },
     );
     assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 78,
+        edited_channel_post: {
+          message_id: 19,
+          date: 1710000101,
+          text: 'edited broadcast update',
+          chat: { id: -100124, type: 'channel' },
+          sender_chat: { id: -100124 },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'edited_channel_post',
+        updateId: 78,
+        callbackQueryId: null,
+        chatId: -100124,
+        senderId: -100124,
+        text: 'edited broadcast update',
+        messageId: 19,
+        threadId: null,
+        chatType: 'channel',
+        timestamp: 1710000101,
+      },
+    );
+    assert.deepEqual(
       telegram.buildCallbackAnswer({ callbackQueryId: 'cbq-77', text: 'roger that' }),
       {
         callback_query_id: 'cbq-77',
