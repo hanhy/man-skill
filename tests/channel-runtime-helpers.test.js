@@ -237,6 +237,41 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
   );
 
   assert.deepEqual(
+    channel.normalizeInboundEvent({
+      update_id: 1003,
+      edited_message: {
+        message_id: 402,
+        message_thread_id: 79,
+        date: 1710000103,
+        text: 'Anonymous admin update',
+        chat: {
+          id: -100779,
+          type: 'supergroup',
+        },
+        from: {
+          id: 1087968824,
+        },
+        sender_chat: {
+          id: -100779,
+        },
+      },
+    }),
+    {
+      platform: 'telegram',
+      eventType: 'edited_message',
+      updateId: 1003,
+      callbackQueryId: null,
+      chatId: -100779,
+      senderId: -100779,
+      text: 'Anonymous admin update',
+      messageId: 402,
+      threadId: 79,
+      chatType: 'supergroup',
+      timestamp: 1710000103,
+    },
+  );
+
+  assert.deepEqual(
     channel.buildCallbackAnswer({
       callbackQueryId: 'cbq-1',
       text: 'Queued for review.',

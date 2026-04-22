@@ -1317,6 +1317,33 @@ test('default channel factories cover verification and richer inbound-event vari
       },
     );
     assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 89,
+        edited_message: {
+          message_id: 23,
+          message_thread_id: 8,
+          date: 1710000501,
+          chat: { id: -100457, type: 'supergroup' },
+          text: 'posted as channel',
+          from: { id: 1087968824 },
+          sender_chat: { id: -100457 },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'edited_message',
+        updateId: 89,
+        callbackQueryId: null,
+        chatId: -100457,
+        senderId: -100457,
+        text: 'posted as channel',
+        messageId: 23,
+        threadId: 8,
+        chatType: 'supergroup',
+        timestamp: 1710000501,
+      },
+    );
+    assert.deepEqual(
       telegram.buildCallbackAnswer({
         callbackQueryId: 'cbq-88',
         text: 'Opening profile…',
