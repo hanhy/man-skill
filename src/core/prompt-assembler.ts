@@ -530,6 +530,8 @@ type IngestionHelperCommands = {
   importIntakeImported?: string | null;
   importIntakeImportedAndRefresh?: string | null;
   importIntakeBundle?: string | null;
+  inspectImportedStarterBundle?: string | null;
+  replayImportedStarterBundle?: string | null;
   starterImportBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
@@ -1560,6 +1562,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
+      pushHelperEntry(helperCommands.inspectImportedStarterBundle ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle}` : null);
+      pushHelperEntry(helperCommands.replayImportedStarterBundle ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle}` : null);
       pushHelperEntry(helperCommands.starterImportBundle ? `starter-import-bundle ${helperCommands.starterImportBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);

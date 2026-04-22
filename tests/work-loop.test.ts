@@ -2148,20 +2148,20 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.runnablePriority?.nextAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
   assert.equal(summary.workLoop.runnablePriority?.command, null);
-  assert.equal(summary.workLoop.runnablePriority?.inspectCommand, 'node src/index.js import intake --imported');
+  assert.equal(summary.workLoop.runnablePriority?.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
   assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(summary.workLoop.runnablePriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
   ]);
-  assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
-  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, 'node src/index.js import intake --imported');
+  assert.equal(summary.workLoop.runnablePriority?.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
   ]);
-  assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
+  assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
@@ -2179,8 +2179,8 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 2 imported, 0 metadata-only, drafts 2 ready, 0 queued for refresh, 2 imported intake starter scaffolds available/);
   assert.match(summary.promptPreview, /runnable next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
-  assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --imported/);
-  assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --imported --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable inspect after editing: \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
+  assert.match(summary.promptPreview, /runnable then run: \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
 });
 
 test('buildSummary work loop bundles imported invalid intake manifest repairs when multiple imported profiles are broken', () => {

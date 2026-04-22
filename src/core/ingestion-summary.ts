@@ -943,6 +943,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded')
         .map((profile) => profile?.importIntakeCommand),
     ),
+    inspectImportedStarterBundle: buildCommandBundle(
+      importedStarterIntakeProfiles
+        .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
+    ),
+    replayImportedStarterBundle: buildCommandBundle(
+      importedStarterIntakeProfiles
+        .map((profile) => profile?.followUpImportIntakeCommand),
+    ),
     starterImportBundle: buildCommandBundle(
       importedStarterIntakeProfiles
         .map((profile) => profile?.starterImportCommand),
@@ -1102,12 +1110,16 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
       : (recommendedEditPath ? [recommendedEditPath] : []);
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
-      ? helperCommands.importIntakeImported
+      ? (helperCommands.inspectImportedStarterBundle
+        ?? helperCommands.importIntakeImported
+        ?? null)
       : (firstImportedStarterIntakeProfile?.personId
         ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)}`
         : null);
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
-      ? helperCommands.importIntakeImportedAndRefresh
+      ? (helperCommands.replayImportedStarterBundle
+        ?? helperCommands.importIntakeImportedAndRefresh
+        ?? null)
       : (firstImportedStarterIntakeProfile?.personId
         ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
         : null);
@@ -1316,6 +1328,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     staleRefreshCommand: helperCommands.refreshStaleFoundation,
     refreshFoundationBundleCommand: helperCommands.refreshFoundationBundle,
     starterImportBundleCommand: helperCommands.starterImportBundle,
+    inspectImportedStarterBundleCommand: helperCommands.inspectImportedStarterBundle,
+    replayImportedStarterBundleCommand: helperCommands.replayImportedStarterBundle,
     repairInvalidIntakeBundleCommand: helperCommands.repairInvalidBundle,
     repairImportedInvalidIntakeBundleCommand: helperCommands.repairImportedInvalidBundle,
     updateProfileBundleCommand: helperCommands.updateProfileBundle,
