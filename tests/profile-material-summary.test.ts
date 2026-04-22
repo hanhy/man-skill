@@ -2119,6 +2119,7 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
       id: 'harry-han',
       materialCount: 2,
       latestMaterialAt: '2026-04-16T15:00:00.000Z',
+      latestMaterialId: ' 2026-04-16T15-00-00-000Z-message ',
       foundationDraftStatus: {
         complete: true,
         needsRefresh: true,
@@ -2143,6 +2144,7 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
       id: 'jane-doe',
       materialCount: 1,
       latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
       foundationDraftStatus: {
         complete: false,
         needsRefresh: true,
@@ -2176,6 +2178,10 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
     'missing-draft': 1,
     'new-material': 1,
   });
+  assert.equal(rollup.maintenance.recommendedLatestMaterialAt, '2026-04-16T16:00:00.000Z');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialId, '2026-04-16T15-00-00-000Z-message');
 });
 
 test('PromptAssembler includes aggregated foundation maintenance counts in the system prompt', () => {
@@ -2262,6 +2268,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
           'profiles/jane-doe/soul/README.md',
           'profiles/jane-doe/voice/README.md',
         ],
+        recommendedLatestMaterialAt: '2026-04-16T16:00:00.000Z',
+        recommendedLatestMaterialId: '2026-04-16T16-00-00-000Z-talk',
         recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         helperCommands: {
           refreshStale: 'node src/index.js update foundation --stale',
@@ -2275,6 +2283,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             generatedDraftCount: 0,
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+            latestMaterialAt: '2026-04-16T16:00:00.000Z',
+            latestMaterialId: '2026-04-16T16-00-00-000Z-talk',
             refreshReasons: ['missing drafts', 'metadata-updated'],
             draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
           },
@@ -2285,6 +2295,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             generatedDraftCount: 2,
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills'],
+            latestMaterialAt: '2026-04-16T15:00:00.000Z',
+            latestMaterialId: '2026-04-16T15-00-00-000Z-message',
             refreshReasons: ['missing drafts', 'new materials'],
           },
           {
@@ -2303,10 +2315,10 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   const systemPrompt = prompt.buildSystemPrompt();
   const preview = prompt.buildPreview(120000);
 
-  assert.match(systemPrompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
-  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(systemPrompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
+  assert.match(systemPrompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\); gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, latest material 2026-04-16T15:00:00\.000Z \(2026-04-16T15-00-00-000Z-message\), reasons missing drafts \+ new materials/);
   assert.match(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
   assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts/);
   assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, missing memory\/skills\/soul/);
@@ -2314,8 +2326,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   assert.doesNotMatch(systemPrompt, /- Sam Lane \(sam-lane\): needs-refresh, 1\/4 drafts generated/);
 
   assert.match(preview, /Foundation maintenance:\n- 0 ready, 3 queued for refresh, 3 incomplete/);
-  assert.match(preview, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(preview, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\); gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
   assert.match(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
   assert.doesNotMatch(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts/);
   assert.doesNotMatch(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, missing memory\/skills\/soul/);

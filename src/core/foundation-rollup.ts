@@ -183,6 +183,15 @@ function buildFoundationDraftPaths(profileId: string | null | undefined): string
   ];
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function summarizeDraftGap(summary: any, key: string): string | null {
   const totalSectionCount = summary?.totalSectionCount ?? 0;
   const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
@@ -257,7 +266,8 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         candidateDraftCount: countCandidateDrafts(profile),
         missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
         refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
-        latestMaterialAt: profile.latestMaterialAt ?? null,
+        latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
+        latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
@@ -309,6 +319,8 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       : null,
     recommendedCommand: recommendedProfile?.refreshCommand ?? null,
     recommendedPaths,
+    recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
+    recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
