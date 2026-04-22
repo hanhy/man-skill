@@ -941,6 +941,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const findSampleInlineCommand = (type) => sampleInlineCommands.find((entry) => entry?.type === type)?.command ?? null;
   const bootstrapProfileCommand = 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"';
   const importedIntakeScaffoldCommand = 'node src/index.js update intake --imported';
+  const intakeImportAllCommand = 'node src/index.js import intake --all';
+  const intakeImportAllAndRefreshCommand = 'node src/index.js import intake --all --refresh-foundation';
+  const intakeImportStaleCommand = 'node src/index.js import intake --stale';
+  const intakeImportStaleAndRefreshCommand = 'node src/index.js import intake --stale --refresh-foundation';
   const importedIntakeImportCommand = 'node src/index.js import intake --imported';
   const importedIntakeImportAndRefreshCommand = 'node src/index.js import intake --imported --refresh-foundation';
   const helperCommands = {
@@ -967,8 +971,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     ),
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
-    importIntakeAll: 'node src/index.js import intake --all',
-    importIntakeStale: 'node src/index.js import intake --stale',
+    importIntakeAll: intakeImportAllCommand,
+    importIntakeAllAndRefresh: intakeImportAllAndRefreshCommand,
+    importIntakeStale: intakeImportStaleCommand,
+    importIntakeStaleAndRefresh: intakeImportStaleAndRefreshCommand,
     importIntakeImported: importedIntakeImportCommand,
     importIntakeImportedAndRefresh: importedIntakeImportAndRefreshCommand,
     importIntakeBundle: buildCommandBundle(
@@ -1289,8 +1295,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeMissingProfileCount,
     intakeScaffoldProfileCount,
     intakeStaleProfileCount,
-    intakeImportAllCommand: 'node src/index.js import intake --all',
-    intakeImportStaleCommand: 'node src/index.js import intake --stale',
+    intakeImportAllCommand: intakeImportAllCommand,
+    intakeImportAllAndRefreshCommand: intakeImportAllAndRefreshCommand,
+    intakeImportStaleCommand: intakeImportStaleCommand,
+    intakeImportStaleAndRefreshCommand: intakeImportStaleAndRefreshCommand,
     intakeImportImportedCommand: importedIntakeImportCommand,
     intakeImportImportedAndRefreshCommand: importedIntakeImportAndRefreshCommand,
     supportedImportTypes: ['message', 'screenshot', 'talk', 'text'],

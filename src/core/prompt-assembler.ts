@@ -507,7 +507,9 @@ type IngestionHelperCommands = {
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
+  importIntakeAllAndRefresh?: string | null;
   importIntakeStale?: string | null;
+  importIntakeStaleAndRefresh?: string | null;
   importIntakeImported?: string | null;
   importIntakeImportedAndRefresh?: string | null;
   importIntakeBundle?: string | null;
@@ -545,6 +547,8 @@ type IngestionSummary = {
   intakeScaffoldProfileCount?: number;
   supportedImportTypes?: string[];
   bootstrapProfileCommand?: string | null;
+  intakeImportAllAndRefreshCommand?: string | null;
+  intakeImportStaleAndRefreshCommand?: string | null;
   intakeImportedCommand?: string | null;
   intakeImportImportedCommand?: string | null;
   intakeImportImportedAndRefreshCommand?: string | null;
@@ -1445,7 +1449,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
+      pushHelperEntry(helperCommands.importIntakeAllAndRefresh ? `import-all+refresh ${helperCommands.importIntakeAllAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
+      pushHelperEntry(helperCommands.importIntakeStaleAndRefresh ? `import-stale+refresh ${helperCommands.importIntakeStaleAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
