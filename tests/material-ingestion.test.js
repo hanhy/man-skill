@@ -926,11 +926,16 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
     screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
   });
+  assert.equal(result.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(result.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(result.helperCommands, {
     scaffold: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     importIntakeWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
     importIntake: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
-    importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+    importManifest: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+    importManifestAndRefresh: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+    importAfterEditingWithoutRefresh: "node src/index.js import intake --person 'harry-han'",
+    importAfterEditing: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'harry-han'",

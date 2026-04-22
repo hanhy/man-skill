@@ -168,10 +168,10 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`refresh-intake` via `node src\/index\.js update intake --person <id> \.\.\.`/i);
   assert.match(profilesDoc, /`after-editing import` via `node src\/index\.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet/i);
   assert.match(profilesDoc, /`after-editing import\+refresh` via `node src\/index\.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory \/ voice \/ soul \/ skills drafts/i);
-  assert.match(profilesDoc, /`importManifestWithoutRefreshCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`/i);
-  assert.match(profilesDoc, /`importManifestCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
+  assert.match(profilesDoc, /`importManifestWithoutRefreshCommand` plus `helperCommands\.importManifest` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`/i);
+  assert.match(profilesDoc, /`importManifestCommand` plus `helperCommands\.importManifestAndRefresh` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
-  assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand` so the prompt preview can surface the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that become runnable after editing the starter manifest/i);
+  assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` \/ `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` \/ `importAfterEditingCommand`, plus matching `helperCommands\.importAfterEditingWithoutRefresh` \/ `helperCommands\.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available/i);
   assert.match(profilesDoc, /`updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
 

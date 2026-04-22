@@ -50,10 +50,10 @@ The per-profile command palette still stays actionable in that starter-template 
 - `refresh-intake` via `node src/index.js update intake --person <id> ...`
 - `after-editing import` via `node src/index.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet
 - `after-editing import+refresh` via `node src/index.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory / voice / soul / skills drafts
-- `importManifestWithoutRefreshCommand` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'`
-- `importManifestCommand` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
+- `importManifestWithoutRefreshCommand` plus `helperCommands.importManifest` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'`
+- `importManifestCommand` plus `helperCommands.importManifestAndRefresh` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`
 - `starterImportCommand` for the checked-in `profiles/<id>/imports/sample.txt` starter import
-- both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand` so the prompt preview can surface the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that become runnable after editing the starter manifest
+- both `followUpImportIntakeWithoutRefreshCommand` / `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` / `importAfterEditingCommand`, plus matching `helperCommands.importAfterEditingWithoutRefresh` / `helperCommands.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available from either the higher-level ingestion summary or the direct `update intake` JSON result after editing the starter manifest
 - `updateProfileCommand` for metadata-only edits
 - `updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration
 
