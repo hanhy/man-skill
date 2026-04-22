@@ -356,6 +356,31 @@ function collectLegacyShortTermPreviewSources(legacyShortTermSources: string[], 
   };
 }
 
+function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
+  if (!Array.isArray(legacyShortTerm)) {
+    return [];
+  }
+
+  const normalizedSources: string[] = [];
+  const seenSources = new Set<string>();
+
+  legacyShortTerm.forEach((value) => {
+    if (!isNonEmptyString(value)) {
+      return;
+    }
+
+    const trimmedValue = value.trim();
+    if (seenSources.has(trimmedValue)) {
+      return;
+    }
+
+    seenSources.add(trimmedValue);
+    normalizedSources.push(trimmedValue);
+  });
+
+  return normalizedSources;
+}
+
 export function summarizeRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -1128,9 +1153,7 @@ export function buildCoreFoundationSummary({
   skillInventory = null,
 }: BuildCoreFoundationSummaryOptions = {}): CoreFoundationSummary {
   const daily = Array.isArray(memoryIndex?.daily) ? memoryIndex.daily : [];
-  const legacyShortTermSources = Array.isArray(memoryIndex?.legacyShortTerm)
-    ? memoryIndex.legacyShortTerm.filter((value): value is string => isNonEmptyString(value))
-    : [];
+  const legacyShortTermSources = normalizeLegacyShortTermSources(memoryIndex?.legacyShortTerm);
   const legacyShortTermPreview = collectLegacyShortTermPreviewSources(legacyShortTermSources);
   const longTerm = Array.isArray(memoryIndex?.longTerm) ? memoryIndex.longTerm : [];
   const scratch = Array.isArray(memoryIndex?.scratch) ? memoryIndex.scratch : [];

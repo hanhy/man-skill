@@ -220,6 +220,63 @@ test('memory store prefers daily over legacy shortTerm input and ignores non-arr
   });
 });
 
+test('memory summaries trim and dedupe legacy short-term provenance before exposing it', () => {
+  const memory = new MemoryStore({
+    daily: [{ id: 'daily-1' }],
+    legacyShortTerm: [
+      ' memory/short-term/legacy.md ',
+      'memory/short-term/legacy.md',
+      'memory/short-term/older.md',
+      '',
+      '   ',
+    ],
+  });
+
+  assert.deepEqual(memory.summary(), {
+    dailyEntries: 1,
+    longTermEntries: 0,
+    scratchEntries: 0,
+    totalEntries: 1,
+    dailyPresent: true,
+    longTermPresent: false,
+    scratchPresent: false,
+    shortTermEntries: 1,
+    shortTermPresent: true,
+    canonicalShortTermBucket: 'daily',
+    legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+    legacyShortTermSourceCount: 2,
+    legacyShortTermSources: ['memory/short-term/legacy.md', 'memory/short-term/older.md'],
+    legacyShortTermSampleSources: ['memory/short-term/legacy.md', 'memory/short-term/older.md'],
+    legacyShortTermSourceOverflowCount: 0,
+    readyBucketCount: 1,
+    totalBucketCount: 3,
+    populatedBuckets: ['daily'],
+    emptyBuckets: ['long-term', 'scratch'],
+  });
+
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable notes.\n\n## Buckets\n- daily/: short-term notes\n- long-term/: stable facts\n- scratch/: drafts\n',
+      daily: ['today.md'],
+      legacyShortTerm: [
+        ' memory/short-term/legacy.md ',
+        'memory/short-term/legacy.md',
+        'memory/short-term/older.md',
+        '',
+        '   ',
+      ],
+      longTerm: ['stable.md'],
+      scratch: ['draft.md'],
+    },
+    skillNames: ['delivery'],
+  });
+
+  assert.equal(foundation.memory.legacyShortTermSourceCount, 2);
+  assert.deepEqual(foundation.memory.legacyShortTermSources, ['memory/short-term/legacy.md', 'memory/short-term/older.md']);
+  assert.deepEqual(foundation.memory.legacyShortTermSampleSources, ['memory/short-term/legacy.md', 'memory/short-term/older.md']);
+  assert.equal(foundation.memory.legacyShortTermSourceOverflowCount, 0);
+});
+
 test('memory store keeps shortTerm as a writable alias of daily', () => {
   const memory = new MemoryStore({
     daily: [{ id: 'daily-1' }],

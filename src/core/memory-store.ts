@@ -28,6 +28,31 @@ export interface MemoryStoreOptions {
   scratch?: unknown[];
 }
 
+function normalizeLegacyShortTermSources(legacyShortTerm: unknown): string[] {
+  if (!Array.isArray(legacyShortTerm)) {
+    return [];
+  }
+
+  const normalizedSources: string[] = [];
+  const seenSources = new Set<string>();
+
+  legacyShortTerm.forEach((value) => {
+    if (typeof value !== 'string') {
+      return;
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0 || seenSources.has(trimmedValue)) {
+      return;
+    }
+
+    seenSources.add(trimmedValue);
+    normalizedSources.push(trimmedValue);
+  });
+
+  return normalizedSources;
+}
+
 export class MemoryStore {
   private _daily: unknown[];
   longTerm: unknown[];
@@ -38,9 +63,7 @@ export class MemoryStore {
     this._daily = Array.isArray(daily) ? daily : Array.isArray(shortTerm) ? shortTerm : [];
     this.longTerm = Array.isArray(longTerm) ? longTerm : [];
     this.scratch = Array.isArray(scratch) ? scratch : [];
-    this.legacyShortTermSources = Array.isArray(legacyShortTerm)
-      ? legacyShortTerm.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      : [];
+    this.legacyShortTermSources = normalizeLegacyShortTermSources(legacyShortTerm);
   }
 
   get daily(): unknown[] {
