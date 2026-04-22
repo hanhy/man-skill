@@ -57,6 +57,7 @@ export function normalizeTelegramInboundEvent(payload = {}) {
   const { eventType, callbackQueryId, event } = pickTelegramEventRecord(payload);
   const chat = event?.chat && typeof event.chat === 'object' ? event.chat : {};
   const sender = event?.from && typeof event.from === 'object' ? event.from : {};
+  const senderChat = event?.sender_chat && typeof event.sender_chat === 'object' ? event.sender_chat : {};
 
   return {
     platform: 'telegram',
@@ -64,7 +65,7 @@ export function normalizeTelegramInboundEvent(payload = {}) {
     updateId: Number.isFinite(payload?.update_id) ? payload.update_id : null,
     callbackQueryId,
     chatId: Number.isFinite(chat?.id) ? chat.id : null,
-    senderId: Number.isFinite(sender?.id) ? sender.id : null,
+    senderId: Number.isFinite(sender?.id) ? sender.id : (Number.isFinite(senderChat?.id) ? senderChat.id : null),
     text: typeof event?.text === 'string' && event.text.length > 0
       ? event.text
       : (typeof event?.caption === 'string' && event.caption.length > 0
