@@ -106,7 +106,20 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   const summary = new WorkLoop({
     priorities: [
       { id: 'foundation', label: 'Foundation', status: 'ready', summary: 'done', nextAction: null, command: null, paths: [] },
-      { id: 'ingestion', label: 'Ingestion', status: 'ready', summary: 'starter scaffold available', nextAction: 'populate starter manifest', command: null, paths: ['profiles/harry-han/imports/materials.template.json'] },
+      {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: 'starter scaffold available',
+        nextAction: 'populate starter manifest',
+        command: null,
+        fallbackCommand: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+        editPath: 'profiles/harry-han/imports/materials.template.json',
+        editPaths: ['profiles/harry-han/imports/materials.template.json'],
+        inspectCommand: "node src/index.js import intake --person 'harry-han'",
+        followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+        paths: ['profiles/harry-han/imports/materials.template.json'],
+      },
       { id: 'channels', label: 'Channels', status: 'blocked', summary: 'blocked on env', nextAction: 'set FEISHU_APP_ID', command: 'cp .env.example .env', paths: ['.env.example', '.env'] },
     ],
   }).summary();
@@ -114,6 +127,11 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.equal(summary.currentPriority?.id, 'channels');
   assert.equal(summary.runnablePriority?.id, 'ingestion');
   assert.equal(summary.recommendedPriority?.id, 'ingestion');
+  assert.equal(summary.recommendedPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.recommendedPriority?.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.equal(summary.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.recommendedPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
 });
 
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {
@@ -1987,6 +2005,11 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(summary.workLoop.currentPriority.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(summary.workLoop.recommendedPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
@@ -2132,6 +2155,13 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
     'profiles/jane-doe/imports/materials.template.json',
   ]);
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, 'node src/index.js import intake --imported');
+  assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
+  assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
