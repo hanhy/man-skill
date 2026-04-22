@@ -9,7 +9,7 @@ import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
-import { PromptAssembler } from '../src/core/prompt-assembler.ts';
+import { PromptAssembler, buildProfileSnapshotSummaries } from '../src/core/prompt-assembler.ts';
 import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
 
 function makeTempRepo() {
@@ -2528,6 +2528,107 @@ test('buildSummary exposes machine-readable profile foundation snapshots for emp
   const summary = buildSummary(rootDir);
 
   assert.deepEqual(summary.profileSnapshots, []);
+});
+
+test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and layer highlights without parsing snapshot text', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 2,
+      materialTypes: { message: 1, talk: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Direct operator with strong execution taste.',
+      },
+      foundationDraftStatus: {
+        generatedAt: '2026-04-20T12:05:00.000Z',
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestSummaries: ['Push the work loop forward.'],
+        },
+        voice: {
+          generated: true,
+          path: 'profiles/jane-doe/voice/README.md',
+          highlights: ['- keep it tight'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/README.md',
+          highlights: ['- stay grounded'],
+          readySectionCount: 3,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe'],
+          missingSections: ['continuity'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/README.md',
+          highlights: ['- execution heuristic', '- sample: ignore me'],
+          readySectionCount: 2,
+          totalSectionCount: 2,
+          readySections: ['what-lives-here', 'layout'],
+          missingSections: [],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Push the work loop forward.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['fallback voice'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['fallback soul'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['fallback skill'] },
+      },
+    },
+  ]);
+
+  assert.deepEqual(snapshot.draftFiles, {
+    memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+    skills: 'profiles/jane-doe/skills/README.md',
+    soul: 'profiles/jane-doe/soul/README.md',
+    voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.deepEqual(snapshot.draftGaps, [
+    'memory missing, 1 candidate (Push the work loop forward.)',
+    'soul 3/4 ready (core-truths, boundaries, vibe), missing continuity',
+  ]);
+  assert.deepEqual(snapshot.highlights, {
+    memory: ['Push the work loop forward.'],
+    voice: ['keep it tight'],
+    soul: ['stay grounded'],
+    skills: ['execution heuristic'],
+  });
+  assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);
+});
+
+test('buildProfileSnapshotSummaries keeps structured draft gaps stable when memory summaries contain pipe delimiters', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { talk: 1 },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the loop tight | but honest.'] },
+      },
+    },
+  ]);
+
+  assert.deepEqual(snapshot.draftGaps, ['memory missing, 1 candidate (Keep the loop tight | but honest.)']);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Keep the loop tight \| but honest\.\)/);
 });
 
 test('PromptAssembler prefers distilled generated skill highlights over sample lines', () => {

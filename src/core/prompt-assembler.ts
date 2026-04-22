@@ -82,6 +82,14 @@ export type ProfileSnapshotSummary = {
   label: string;
   snapshot: string;
   lines: string[];
+  draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
+  draftGaps: string[];
+  highlights: {
+    memory: string[];
+    voice: string[];
+    soul: string[];
+    skills: string[];
+  };
 };
 
 type RollupSection = {
@@ -697,7 +705,7 @@ function cleanHighlight(value: string) {
   return value.replace(/^[-\s]*/, '').trim();
 }
 
-function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+function collectDraftGaps(profile: ProfileSnapshot = {}) {
   const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
     ? profile.foundationDraftStatus.missingDrafts
     : [];
@@ -728,7 +736,7 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     return 'memory missing';
   })();
 
-  const gapSummaries = [
+  return [
     memoryGapSummary,
     ...draftKinds
       .map(({ key, summary }) => {
@@ -755,9 +763,12 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
 
         return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
       })
-      .filter(Boolean),
-  ].filter(Boolean);
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
 
+function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+  const gapSummaries = collectDraftGaps(profile);
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
 }
 
@@ -797,25 +808,58 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
   return sectionSummaries.length > 0 ? sectionSummaries.join(' | ') : null;
 }
 
-function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
+function collectDraftFiles(profile: ProfileSnapshot = {}) {
   const draftKinds = [
     { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
     { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
     { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
-  ];
+  ] as const;
 
-  const fileSummaries = draftKinds
-    .map(({ key, summary }) => {
-      if (!summary || summary.generated !== true || typeof summary.path !== 'string' || summary.path.length === 0) {
-        return null;
-      }
+  return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
+    if (!summary || summary.generated !== true || typeof summary.path !== 'string' || summary.path.length === 0) {
+      return accumulator;
+    }
 
-      return `${key} @ ${summary.path}`;
-    })
+    accumulator[key] = summary.path;
+    return accumulator;
+  }, {});
+}
+
+function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
+  const draftFiles = collectDraftFiles(profile);
+  const fileSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
+    .map((key) => draftFiles[key] ? `${key} @ ${draftFiles[key]}` : null)
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
+}
+
+function collectProfileSnapshotHighlights(profile: ProfileSnapshot = {}) {
+  const generatedVoiceHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
+  const generatedSoulHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
+  const generatedSkillSignals = (profile.foundationDraftSummaries?.skills?.highlights ?? [])
+    .map(cleanHighlight)
+    .filter((value) => value && !value.startsWith('sample:'));
+
+  return {
+    memory: profile.foundationDraftSummaries?.memory?.latestSummaries?.length
+      ? profile.foundationDraftSummaries.memory.latestSummaries
+      : (profile.foundationReadiness?.memory?.sampleSummaries ?? []),
+    voice: generatedVoiceHighlights.length > 0
+      ? generatedVoiceHighlights
+      : (profile.foundationReadiness?.voice?.sampleExcerpts ?? []),
+    soul: generatedSoulHighlights.length > 0
+      ? generatedSoulHighlights
+      : (profile.foundationReadiness?.soul?.sampleExcerpts ?? []),
+    skills: generatedSkillSignals.length > 0
+      ? generatedSkillSignals
+      : (profile.foundationReadiness?.skills?.sampleExcerpts ?? []),
+  };
+}
+
+function collectDraftGapList(profile: ProfileSnapshot = {}) {
+  return collectDraftGaps(profile);
 }
 
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
@@ -825,6 +869,9 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const lines = [
     `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
   ];
+  const draftFiles = collectDraftFiles(profile);
+  const highlights = collectProfileSnapshotHighlights(profile);
+  const draftGaps = collectDraftGapList(profile);
 
   if (profile.latestMaterialAt) {
     lines.push(`  latest material: ${profile.latestMaterialAt}`);
@@ -849,47 +896,29 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  draft sections: ${draftSections}`);
   }
 
-  const draftFiles = summarizeDraftFiles(profile);
-  if (draftFiles) {
-    lines.push(`  draft files: ${draftFiles}`);
+  const draftFilesSummary = summarizeDraftFiles(profile);
+  if (draftFilesSummary) {
+    lines.push(`  draft files: ${draftFilesSummary}`);
   }
 
-  const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries?.length
-    ? profile.foundationDraftSummaries.memory.latestSummaries
-    : (profile.foundationReadiness?.memory?.sampleSummaries ?? []);
-  if (memoryHighlights.length > 0) {
-    lines.push(`  memory highlights: ${memoryHighlights.join(' | ')}`);
+  if (highlights.memory.length > 0) {
+    lines.push(`  memory highlights: ${highlights.memory.join(' | ')}`);
   }
 
-  const voiceHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const voiceSnapshotHighlights = voiceHighlights.length > 0
-    ? voiceHighlights
-    : (profile.foundationReadiness?.voice?.sampleExcerpts ?? []);
-  if (voiceSnapshotHighlights.length > 0) {
-    lines.push(`  voice highlights: ${voiceSnapshotHighlights.join(' | ')}`);
+  if (highlights.voice.length > 0) {
+    lines.push(`  voice highlights: ${highlights.voice.join(' | ')}`);
   }
 
-  const soulHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const soulSnapshotHighlights = soulHighlights.length > 0
-    ? soulHighlights
-    : (profile.foundationReadiness?.soul?.sampleExcerpts ?? []);
-  if (soulSnapshotHighlights.length > 0) {
-    lines.push(`  soul highlights: ${soulSnapshotHighlights.join(' | ')}`);
+  if (highlights.soul.length > 0) {
+    lines.push(`  soul highlights: ${highlights.soul.join(' | ')}`);
   }
 
-  const generatedSkillSignals = (profile.foundationDraftSummaries?.skills?.highlights ?? [])
-    .map(cleanHighlight)
-    .filter((value) => value && !value.startsWith('sample:'));
-  const skillSignals = generatedSkillSignals.length > 0
-    ? generatedSkillSignals
-    : (profile.foundationReadiness?.skills?.sampleExcerpts ?? []);
-  if (skillSignals.length > 0) {
-    lines.push(`  skills signals: ${skillSignals.join(' | ')}`);
+  if (highlights.skills.length > 0) {
+    lines.push(`  skills signals: ${highlights.skills.join(' | ')}`);
   }
 
-  const draftGaps = summarizeDraftGaps(profile);
-  if (draftGaps) {
-    lines.push(`  draft gaps: ${draftGaps}`);
+  if (draftGaps.length > 0) {
+    lines.push(`  draft gaps: ${draftGaps.join(' | ')}`);
   }
 
   return {
@@ -897,6 +926,9 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     label: profileLabel,
     snapshot: lines.join('\n'),
     lines,
+    draftFiles,
+    draftGaps,
+    highlights,
   };
 }
 
