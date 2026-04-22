@@ -950,6 +950,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded')
         .map((profile) => profile?.importIntakeCommand),
     ),
+    starterImportBundle: buildCommandBundle(
+      importedStarterIntakeProfiles
+        .map((profile) => profile?.starterImportCommand),
+    ),
     updateProfileBundle: buildCommandBundle(
       orderedProfileCommands
         .map((profile) => profile?.updateProfileCommand),
@@ -1295,8 +1299,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleTextCommand: sampleText.command,
     sampleFileCommands,
     sampleInlineCommands,
-    staleRefreshCommand: 'node src/index.js update foundation --stale',
+    staleRefreshCommand: helperCommands.refreshStaleFoundation,
     refreshFoundationBundleCommand: helperCommands.refreshFoundationBundle,
+    starterImportBundleCommand: helperCommands.starterImportBundle,
     repairInvalidIntakeBundleCommand: helperCommands.repairInvalidBundle,
     repairImportedInvalidIntakeBundleCommand: helperCommands.repairImportedInvalidBundle,
     recommendedProfileId,
