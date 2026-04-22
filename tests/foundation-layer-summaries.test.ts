@@ -25,7 +25,7 @@ function seedMinimalRepo(rootDir: string) {
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -58,7 +58,7 @@ test('foundation layer primitives normalize legacy short-term provenance consist
   const memory = new MemoryStore({ legacyShortTerm: legacyShortTerm as unknown as string[] });
   const foundation = buildCoreFoundationSummary({
     memoryIndex: {
-      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts\n- scratch/: working drafts\n',
+      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts\n- scratch/: working drafts\n',
       daily: ['today.md'],
       legacyShortTerm: legacyShortTerm as unknown as string[],
       longTerm: ['stable.md'],
@@ -390,7 +390,7 @@ test('memory summaries treat legacy short-term files as canonical daily entries'
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'legacy.md'), 'legacy note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -430,7 +430,7 @@ test('memory alias summary keeps long legacy short-term backlogs compact in prom
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note 1');
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-02.md'), 'legacy note 2');
@@ -479,7 +479,7 @@ test('canonical daily counts keep same-basename legacy short-term files instead 
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'canonical daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', 'today.md'), 'legacy daily note with the same basename');
@@ -1405,7 +1405,7 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1442,7 +1442,7 @@ test('buildSummary carries compact legacy short-term provenance into ready core 
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'short-term', '2026-04-01.md'), 'legacy note one');
@@ -1587,7 +1587,7 @@ test('buildSummary skill preview shows descriptions and summarizes hidden skills
   fs.mkdirSync(path.join(rootDir, 'skills', 'providers'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1620,7 +1620,7 @@ test('buildSummary skill preview prefers described skills before placeholders', 
   fs.mkdirSync(path.join(rootDir, 'skills', 'foundation'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1648,7 +1648,7 @@ test('buildSummary skill preview truncates long skill descriptions to keep the b
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1674,7 +1674,7 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   fs.mkdirSync(path.join(rootDir, 'skills', 'providers', 'openai'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1770,7 +1770,7 @@ test('buildSummary marks skills as thin when skills README lacks structured sect
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1819,7 +1819,7 @@ test('buildSummary treats blockquoted memory sections and setext skills sections
   fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n<!--\n## What belongs here\n- Hidden placeholder should stay invisible.\n-->\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n>\n> ## Buckets\n> - daily/: short-lived run notes and the canonical checked-in short-term bucket\n> - long-term/: durable facts and conventions\n> - scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1855,7 +1855,7 @@ test('buildSummary foundation core marks partially structured soul and voice doc
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');
@@ -1908,7 +1908,7 @@ test('buildSummary ignores multiline html comments when deciding whether soul an
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', 'today.md'), 'note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'stable.md'), 'fact');

@@ -19,7 +19,7 @@ function quotePaths(paths: string[]): string {
 const DAILY_MEMORY_SEED_PATH = 'memory/daily/$(date +%F).md';
 const LONG_TERM_MEMORY_SEED_PATH = 'memory/long-term/notes.md';
 const SCRATCH_MEMORY_SEED_PATH = 'memory/scratch/draft.md';
-const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n';
+const MEMORY_README_TEMPLATE = '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n';
 const MEMORY_README_GUIDANCE_SENTINEL = '- Durable repo knowledge and operator context.';
 const MEMORY_README_SECTIONS = [
   {
@@ -32,9 +32,9 @@ const MEMORY_README_SECTIONS = [
   {
     heading: '## Buckets',
     aliases: ['Layout'],
-    sentinel: '- daily/: short-lived run notes',
-    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
-    existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    sentinel: '- daily/: short-lived run notes and the canonical checked-in short-term bucket',
+    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    existingBulletAppend: '- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   },
 ] as const;
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n';

@@ -38,7 +38,7 @@ function seedMinimalRepo(rootDir) {
   fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
-    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-19.md'), '# Daily note\n\n- Checked delivery readiness.\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.md'), '# Operator note\n\nSlack delivery stays concise.\n');

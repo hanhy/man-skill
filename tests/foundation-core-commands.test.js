@@ -48,9 +48,9 @@ const MEMORY_SECTIONS = [
   {
     heading: '## Buckets',
     aliases: ['Layout'],
-    sentinel: '- daily/: short-lived run notes',
-    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
-    existingBulletAppend: '- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    sentinel: '- daily/: short-lived run notes and the canonical checked-in short-term bucket',
+    missingSectionAppend: '\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    existingBulletAppend: '- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   },
 ];
 const SKILLS_README_TEMPLATE = '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n';
@@ -143,7 +143,7 @@ test('buildCoreFoundationCommand scaffolds missing memory buckets with seed file
       status: 'missing',
       paths: ['memory/README.md', 'memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     }),
-    "mkdir -p 'memory' 'memory/daily' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+    "mkdir -p 'memory' 'memory/daily' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\" 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
 });
 
@@ -154,7 +154,7 @@ test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () 
       status: 'thin',
       paths: ['memory/scratch/draft.md', 'memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
     }),
-    "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+    "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
   );
 });
 
@@ -167,7 +167,7 @@ test('buildCoreFoundationCommand daily memory scaffold expands the date at execu
 
   assert.equal(
     command,
-    "mkdir -p 'memory' 'memory/daily' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\"",
+    "mkdir -p 'memory' 'memory/daily' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch \"memory/daily/$(date +%F).md\"",
   );
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-memory-command-'));
@@ -200,7 +200,7 @@ test('buildCoreFoundationCommand repairs thin memory README sections without clo
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\nKeep durable memory organized by horizon.\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\nKeep durable memory organized by horizon.\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -221,7 +221,7 @@ test('buildCoreFoundationCommand repairs thin memory README headings with closin
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n### What belongs here ###\n- Durable repo knowledge and operator context.\n\n### Buckets ###\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n### What belongs here ###\n- Durable repo knowledge and operator context.\n\n### Buckets ###\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -245,7 +245,7 @@ test('buildCoreFoundationCommand repairs thin memory README setext headings with
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\nWhat belongs here\n-----------------\n- Durable repo knowledge and operator context.\n\nBuckets\n-------\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\nWhat belongs here\n-----------------\n- Durable repo knowledge and operator context.\n\nBuckets\n-------\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -269,7 +269,7 @@ test('buildCoreFoundationCommand repairs thin memory README blockquoted headings
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n> ## What belongs here\n> - Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -293,7 +293,7 @@ test('buildCoreFoundationCommand repairs thin memory README legacy sibling headi
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n## What lives here\n- Durable repo knowledge and operator context.\n\n## Layout\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n## What lives here\n- Durable repo knowledge and operator context.\n\n## Layout\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -317,7 +317,7 @@ test('buildCoreFoundationCommand repairs thin memory README sections when only c
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n<!-- explain the purpose here -->\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n```md\n- Example layout guidance lives here.\n```\n',
+    '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n<!-- explain the purpose here -->\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n```md\n- Example layout guidance lives here.\n```\n',
   );
 });
 
@@ -341,7 +341,7 @@ test('buildCoreFoundationCommand ignores memory root section headings that only 
 
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
-    '# Memory\n\n```md\n## What belongs here\n- Example only.\n\n## Buckets\n- Example only.\n```\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+    '# Memory\n\n```md\n## What belongs here\n- Example only.\n\n## Buckets\n- Example only.\n```\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
