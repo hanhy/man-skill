@@ -2590,6 +2590,10 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
     },
   ]);
 
+  assert.equal(snapshot.materialCount, 2);
+  assert.deepEqual(snapshot.materialTypes, { message: 1, talk: 1 });
+  assert.equal(snapshot.latestMaterialAt, '2026-04-20T12:00:00.000Z');
+  assert.equal(snapshot.profileSummary, 'Direct operator with strong execution taste.');
   assert.deepEqual(snapshot.draftFiles, {
     memory: 'profiles/jane-doe/memory/long-term/foundation.json',
     skills: 'profiles/jane-doe/skills/README.md',

@@ -82,6 +82,10 @@ export type ProfileSnapshotSummary = {
   label: string;
   snapshot: string;
   lines: string[];
+  materialCount: number;
+  materialTypes: Record<string, number>;
+  latestMaterialAt: string | null;
+  profileSummary: string | null;
   draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
   draftGaps: string[];
   highlights: {
@@ -933,6 +937,10 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     label: profileLabel,
     snapshot: lines.join('\n'),
     lines,
+    materialCount: profile.materialCount ?? 0,
+    materialTypes: { ...(profile.materialTypes ?? {}) },
+    latestMaterialAt: profile.latestMaterialAt ?? null,
+    profileSummary: profile.profile?.summary ?? null,
     draftFiles,
     draftGaps,
     highlights,
