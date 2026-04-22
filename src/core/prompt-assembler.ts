@@ -77,6 +77,13 @@ type ProfileSnapshot = {
   foundationReadiness?: FoundationReadiness;
 };
 
+export type ProfileSnapshotSummary = {
+  id: string;
+  label: string;
+  snapshot: string;
+  lines: string[];
+};
+
 type RollupSection = {
   profileCount?: number;
   generatedProfileCount?: number;
@@ -811,7 +818,7 @@ function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
   return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
 }
 
-function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
+function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = profile.profile?.displayName;
   const profileId = profile.id ?? 'unknown-profile';
   const profileLabel = displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
@@ -885,7 +892,24 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
     lines.push(`  draft gaps: ${draftGaps}`);
   }
 
-  return lines.join('\n');
+  return {
+    id: profileId,
+    label: profileLabel,
+    snapshot: lines.join('\n'),
+    lines,
+  };
+}
+
+function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
+  return buildProfileSnapshotSummary(profile).snapshot;
+}
+
+export function buildProfileSnapshotSummaries(profiles: ProfileSnapshot[] = []): ProfileSnapshotSummary[] {
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return [];
+  }
+
+  return profiles.map((profile) => buildProfileSnapshotSummary(profile));
 }
 
 function buildProfileSnapshots(profiles: ProfileSnapshot[] = []) {
@@ -893,7 +917,7 @@ function buildProfileSnapshots(profiles: ProfileSnapshot[] = []) {
     return null;
   }
 
-  return profiles.map((profile) => formatProfileSnapshot(profile)).join('\n');
+  return buildProfileSnapshotSummaries(profiles).map((profile) => profile.snapshot).join('\n');
 }
 
 function sanitizeProfilesForPrompt(profiles: ProfileSnapshot[] = []) {

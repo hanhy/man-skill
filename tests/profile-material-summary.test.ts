@@ -2522,6 +2522,14 @@ test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
   assert.doesNotMatch(prompt, /Profile foundation snapshots:/);
 });
 
+test('buildSummary exposes machine-readable profile foundation snapshots for empty repos', () => {
+  const rootDir = makeTempRepo();
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.profileSnapshots, []);
+});
+
 test('PromptAssembler prefers distilled generated skill highlights over sample lines', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

@@ -15,7 +15,7 @@ import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { CHANNEL_ROLLOUT_ORDER, PROVIDER_ROLLOUT_ORDER, buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
-import { PromptAssembler } from './core/prompt-assembler.ts';
+import { PromptAssembler, buildProfileSnapshotSummaries } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
 import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
@@ -1995,6 +1995,7 @@ export function buildSummary(rootDir: string) {
     ],
   });
   const workLoopSummary = workLoop.summary();
+  const profileSnapshots = buildProfileSnapshotSummaries(profiles);
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -2032,6 +2033,7 @@ export function buildSummary(rootDir: string) {
     models: modelsSummary,
     delivery: deliverySummary,
     profiles,
+    profileSnapshots,
     workLoop: workLoopSummary,
     promptPreview: prompt.buildPreview(120000),
   };
