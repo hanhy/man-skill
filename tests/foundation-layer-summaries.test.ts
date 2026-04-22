@@ -459,6 +459,41 @@ console.log(JSON.stringify(soul.summary()));
   assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
 });
 
+test('voice profile raw JS entrypoint stays aligned for blockquoted legacy structured docs', () => {
+  const document = [
+    '# Voice',
+    '',
+    '> Stay direct.',
+    '',
+    '> ## Tone',
+    '> Warm and grounded.',
+    '',
+    '> Voice should capture',
+    '> --------------------',
+    '> - Use crisp examples.',
+    '',
+    '> ## Voice should not capture ##',
+    '> - Never pad the answer.',
+    '',
+    '> ## Current default for Harry Han',
+    '> - Preserve English and 中文 phrasing from the source.',
+    '> - Lead with the operating takeaway.',
+    '',
+  ].join('\n');
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+});
+
 test('voice profile parses tone, signature moves, avoid, and language hints from voice docs', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n- Use crisp examples.\n- Close with a concrete next step.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n`);
 
