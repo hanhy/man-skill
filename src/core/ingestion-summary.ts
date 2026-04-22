@@ -1023,6 +1023,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedFallbackCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedEditPaths: string[] = [];
+  let recommendedManifestInspectCommand: string | null = null;
+  let recommendedManifestImportCommand: string | null = null;
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
@@ -1109,6 +1111,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
       : (recommendedEditPath ? [recommendedEditPath] : []);
+    recommendedManifestInspectCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
+    recommendedManifestImportCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.importManifestCommand ?? null);
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
@@ -1341,6 +1349,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedFallbackCommand,
     recommendedEditPath,
     recommendedEditPaths,
+    recommendedManifestInspectCommand,
+    recommendedManifestImportCommand,
     recommendedInspectCommand,
     recommendedFollowUpCommand,
     recommendedPaths,

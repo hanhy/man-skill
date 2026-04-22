@@ -3503,6 +3503,8 @@ test('buildSummary recommends populating imported starter intake manifests once 
     "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
   );
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(
     summary.ingestion.recommendedInspectCommand,
     "node src/index.js import intake --person 'harry-han'",
@@ -3518,7 +3520,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
@@ -3555,6 +3557,8 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.recommendedFallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
 });
@@ -3607,6 +3611,8 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
   ]);
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation) && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation)");
   assert.equal(summary.ingestion.helperCommands?.inspectImportedStarterBundle, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
   assert.equal(summary.ingestion.helperCommands?.replayImportedStarterBundle, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.equal(summary.ingestion.recommendedInspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
@@ -3623,7 +3629,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json; inspect after editing \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\); then run \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\); fallback \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json; manifest inspect \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json'\); manifest \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation\); inspect after editing \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\); then run \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\); fallback \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*inspect-starter-bundle \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
   assert.match(summary.promptPreview, /helpers: .*replay-starter-bundle \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\)/);
@@ -4189,6 +4195,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedFallbackCommand: null,
     recommendedEditPath: null,
     recommendedEditPaths: [],
+    recommendedManifestInspectCommand: null,
+    recommendedManifestImportCommand: null,
     recommendedInspectCommand: null,
     recommendedFollowUpCommand: null,
     recommendedPaths: [],

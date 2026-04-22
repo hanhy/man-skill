@@ -8,6 +8,8 @@ export interface WorkPriority {
   fallbackCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths: string[];
@@ -37,11 +39,11 @@ export interface WorkLoopOptions {
 
 function isActionableReadyPriority(priority: WorkPriority): boolean {
   return priority.status === 'ready'
-    && Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.inspectCommand || priority.followUpCommand);
+    && Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.manifestInspectCommand || priority.manifestImportCommand || priority.inspectCommand || priority.followUpCommand);
 }
 
 function isRunnablePriority(priority: WorkPriority): boolean {
-  return Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.inspectCommand || priority.followUpCommand);
+  return Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.manifestInspectCommand || priority.manifestImportCommand || priority.inspectCommand || priority.followUpCommand);
 }
 
 export class WorkLoop {

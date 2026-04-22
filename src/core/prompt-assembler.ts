@@ -624,6 +624,8 @@ type IngestionSummary = {
   recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
+  recommendedManifestInspectCommand?: string | null;
+  recommendedManifestImportCommand?: string | null;
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
@@ -643,6 +645,8 @@ type WorkLoopPriority = {
   fallbackCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
@@ -1510,6 +1514,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
     ? ingestion.recommendedInspectCommand
     : null;
+  const recommendedManifestInspectCommand = typeof ingestion?.recommendedManifestInspectCommand === 'string' && ingestion.recommendedManifestInspectCommand.length > 0
+    ? ingestion.recommendedManifestInspectCommand
+    : null;
+  const recommendedManifestImportCommand = typeof ingestion?.recommendedManifestImportCommand === 'string' && ingestion.recommendedManifestImportCommand.length > 0
+    ? ingestion.recommendedManifestImportCommand
+    : null;
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
@@ -1520,7 +1530,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2243,6 +2253,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (currentPriority?.editPath
         ? `- edit: ${currentPriority.editPath}`
         : null),
+    currentPriority?.manifestInspectCommand
+      ? `- manifest inspect: ${currentPriority.manifestInspectCommand}`
+      : null,
+    currentPriority?.manifestImportCommand
+      ? `- manifest: ${currentPriority.manifestImportCommand}`
+      : null,
     currentPriorityInspectCommand
       ? `- inspect after editing: ${currentPriorityInspectCommand}`
       : null,
@@ -2269,6 +2285,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showRunnablePriority && runnablePriority?.editPath
         ? `- runnable edit: ${runnablePriority.editPath}`
         : null),
+    showRunnablePriority && runnablePriority?.manifestInspectCommand
+      ? `- runnable manifest inspect: ${runnablePriority.manifestInspectCommand}`
+      : null,
+    showRunnablePriority && runnablePriority?.manifestImportCommand
+      ? `- runnable manifest: ${runnablePriority.manifestImportCommand}`
+      : null,
     showRunnablePriority && runnablePriorityInspectCommand
       ? `- runnable inspect after editing: ${runnablePriorityInspectCommand}`
       : null,
@@ -2295,6 +2317,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showActionableReadyPriority && actionableReadyPriority?.editPath
         ? `- advisory edit: ${actionableReadyPriority.editPath}`
         : null),
+    showActionableReadyPriority && actionableReadyPriority?.manifestInspectCommand
+      ? `- advisory manifest inspect: ${actionableReadyPriority.manifestInspectCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.manifestImportCommand
+      ? `- advisory manifest: ${actionableReadyPriority.manifestImportCommand}`
+      : null,
     showActionableReadyPriority && actionableReadyPriorityInspectCommand
       ? `- advisory inspect after editing: ${actionableReadyPriorityInspectCommand}`
       : null,
