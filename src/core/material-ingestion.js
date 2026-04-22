@@ -1026,6 +1026,7 @@ export class MaterialIngestion {
     return {
       ...profileUpdate,
       intakeReadmePath: intakePaths.intakeReadmePath.split(path.sep).join('/'),
+      sampleImagesDirPath: intakePaths.sampleImagesDirPath.split(path.sep).join('/'),
       starterManifestPath: intakePaths.starterManifestPath.split(path.sep).join('/'),
       sampleTextPath: relativeSampleTextPath,
       invalidStarterManifestBackupPath: typeof invalidStarterManifestBackupPath === 'string'

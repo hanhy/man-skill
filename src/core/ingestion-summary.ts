@@ -569,7 +569,7 @@ function summarizeIntakeStatus(intake, manifestInspection = null) {
   }
 
   if (!intake || typeof intake !== 'object') {
-    return 'missing — create imports, README.md, materials.template.json, sample.txt';
+    return 'missing — create imports, images, README.md, materials.template.json, sample.txt';
   }
 
   if (intake.ready) {
@@ -589,7 +589,7 @@ function summarizeIntakeStatus(intake, manifestInspection = null) {
 
   return missingLabels.length > 0
     ? `missing — create ${missingLabels.join(', ')}`
-    : 'missing — create imports/, README.md, materials.template.json, sample.txt';
+    : 'missing — create imports/, images, README.md, materials.template.json, sample.txt';
 }
 
 function buildProfileCommands(profile, options: any = {}) {
@@ -702,7 +702,13 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestStatus: intakeManifest.status,
     intakeManifestPath: intakeManifest.path,
     intakeManifestError: intakeManifest.error,
-    intakePaths: intake ? [intake.importsDir, intake.intakeReadmePath, intake.starterManifestPath, intake.sampleTextPath].filter(Boolean) : [],
+    intakePaths: intake ? [
+      intake.importsDir,
+      intake.sampleImagesDirPath,
+      intake.intakeReadmePath,
+      intake.starterManifestPath,
+      intake.sampleTextPath,
+    ].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestCommand: intakeImportManifestCommand,
     refreshFoundationCommand,

@@ -1148,13 +1148,14 @@ test('buildSummary work loop scaffolds intake before suggesting imports for meta
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/metadata-only/imports',
+    'profiles/metadata-only/imports/images',
     'profiles/metadata-only/imports/README.md',
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next action: scaffold the intake landing zone for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports, profiles\/metadata-only\/imports\/README\.md, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports, profiles\/metadata-only\/imports\/images, profiles\/metadata-only\/imports\/README\.md, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop completes partially scaffolded intake landing zones before suggesting imports', () => {
@@ -1182,11 +1183,12 @@ test('buildSummary work loop completes partially scaffolded intake landing zones
   assert.equal(summary.workLoop.currentPriority.nextAction, 'complete the intake landing zone for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/images',
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next action: complete the intake landing zone for Metadata Only \(metadata-only\)/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/images, profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop prioritizes partially scaffolded intake profiles over fully missing ones', () => {
@@ -1230,9 +1232,11 @@ test('buildSummary work loop prioritizes partially scaffolded intake profiles ov
     "(node src/index.js update intake --person 'zeta-partial' --display-name 'Zeta Partial' --summary 'Needs the intake scaffold completed.') && (node src/index.js update intake --person 'alpha-missing' --display-name 'Alpha Missing' --summary 'No intake scaffold yet.')",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/zeta-partial/imports/images',
     'profiles/zeta-partial/imports/materials.template.json',
     'profiles/zeta-partial/imports/sample.txt',
     'profiles/alpha-missing/imports',
+    'profiles/alpha-missing/imports/images',
     'profiles/alpha-missing/imports/README.md',
     'profiles/alpha-missing/imports/materials.template.json',
     'profiles/alpha-missing/imports/sample.txt',
@@ -1815,6 +1819,7 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.equal(summary.workLoop.actionableReadyPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -1825,7 +1830,7 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.match(summary.promptPreview, /advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(summary.promptPreview, /advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop carries imported starter intake edit and follow-up guidance when ingestion stays current', () => {
@@ -1859,6 +1864,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -1986,10 +1992,12 @@ test('buildSummary work loop uses the imported intake replay bundle when multipl
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
     'profiles/jane-doe/imports',
+    'profiles/jane-doe/imports/images',
     'profiles/jane-doe/imports/README.md',
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
@@ -2506,6 +2514,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports',
+    'profiles/harry-han/imports/images',
     'profiles/harry-han/imports/README.md',
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -2513,7 +2522,7 @@ test('buildSummary work loop backfills missing intake landing zones for imported
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 intake backfill/);
   assert.match(summary.promptPreview, /next action: backfill the intake landing zone for imported profiles — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
-  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop keeps credential bootstrap paths on both the template source and target during env copy', () => {
@@ -2807,7 +2816,7 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.match(workLoopBlock, /- runnable next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(workLoopBlock, /- runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(workLoopBlock, /- runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(workLoopBlock, /- runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(workLoopBlock, /- runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
 test('buildSummary work loop uses quoted repo-local .env credentials with inline comments before env bootstrap guidance', () => {
