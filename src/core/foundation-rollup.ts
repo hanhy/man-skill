@@ -245,6 +245,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
     .map((profile) => {
       const draftGapCounts = buildDraftGapCounts(profile);
+      const draftPaths = buildFoundationDraftPaths(profile.id ?? null);
       return {
         id: profile.id ?? null,
         displayName: profile.profile?.displayName ?? null,
@@ -261,6 +262,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
         refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
+        paths: draftPaths,
       };
     })
     .sort((left, right) => {

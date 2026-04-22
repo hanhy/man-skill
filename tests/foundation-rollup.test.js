@@ -256,6 +256,12 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
+        paths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
       },
     ],
   });
@@ -581,6 +587,12 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
+        paths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
       },
     ],
   });
