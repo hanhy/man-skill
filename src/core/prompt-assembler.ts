@@ -2441,6 +2441,15 @@ function buildSkillsPreviewBlock(
   const categorySummary = categoryEntries.length > 0
     ? `- categories: ${categoryEntries.join(', ')}`
     : null;
+  const rawFoundationStatusCounts = skills.foundationStatusCounts && typeof skills.foundationStatusCounts === 'object'
+    ? skills.foundationStatusCounts
+    : {};
+  const foundationStatusEntries = Object.entries(rawFoundationStatusCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([status, count]) => `${status} ${count}`);
+  const foundationStatusSummary = foundationStatusEntries.length > 0
+    ? `- foundation statuses: ${foundationStatusEntries.join(', ')}`
+    : null;
   const rawDocumentedCategoryCounts = foundationSkills?.documentedCategoryCounts
     && typeof foundationSkills.documentedCategoryCounts === 'object'
       ? foundationSkills.documentedCategoryCounts
@@ -2475,6 +2484,7 @@ function buildSkillsPreviewBlock(
     rootSectionSummary,
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
+    foundationStatusSummary,
     categorySummary,
     documentedCategorySummary,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');

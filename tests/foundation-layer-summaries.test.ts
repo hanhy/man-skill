@@ -103,8 +103,8 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
     scratch: [{ id: 'scratch-1' }],
   });
   const skills = new SkillRegistry([
-    'delivery',
-    { id: 'foundation', name: 'Foundation', description: 'core foundations', status: 'custom' },
+    { id: 'delivery', name: 'delivery', description: null, status: 'discovered', foundationStatus: 'ready' },
+    { id: 'foundation', name: 'Foundation', description: 'core foundations', status: 'custom', foundationStatus: 'thin' },
   ]);
 
   assert.deepEqual(soul.summary(), {
@@ -151,18 +151,24 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
       custom: 1,
       discovered: 1,
     },
+    foundationStatusCounts: {
+      ready: 1,
+      thin: 1,
+    },
     skills: [
       {
         id: 'delivery',
         name: 'delivery',
         description: null,
         status: 'discovered',
+        foundationStatus: 'ready',
       },
       {
         id: 'foundation',
         name: 'Foundation',
         description: 'core foundations',
         status: 'custom',
+        foundationStatus: 'thin',
       },
     ],
   });
@@ -1618,6 +1624,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.equal(summary.skills.discoveredCount, 1);
   assert.equal(summary.skills.customCount, 0);
   assert.deepEqual(summary.skills.statusCounts, { discovered: 1 });
+  assert.deepEqual(summary.skills.foundationStatusCounts, { thin: 1 });
   assert.equal(summary.foundation.core.skills.hasRootDocument, false);
   assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
   assert.equal(summary.foundation.core.skills.rootExcerpt, null);
@@ -1626,7 +1633,7 @@ test('buildSummary carries the richer foundation layer summaries at top level', 
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: Serve faithfully\.\n- core truths: 0\n- boundaries: 0\n- vibe: 0\n- continuity: 0/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: Warm and grounded\.\n- style: documented\n- constraints: 1 \(Never pad the answer\.\)\n- signatures: 2 \(Use crisp examples\.; Close with a concrete next step\.\)\n- language hints: 1 \(Preserve bilingual phrasing when the source material switches languages\.\)/);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- buckets: 2\/3 ready \(daily, long-term\), missing scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- top skills: delivery \[discovered, thin\]\n- foundation statuses: thin 1/);
   assert.doesNotMatch(summary.promptPreview, /"constraints": \[/);
   assert.match(summary.promptPreview, /coverage: 1\/4 ready; thin memory, skills, soul/);
   assert.match(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/today\.md, long-term\/stable\.md; root: Durable repo knowledge and operator context\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
@@ -1747,6 +1754,10 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.skills.skillCount, 2);
+  assert.deepEqual(summary.skills.foundationStatusCounts, {
+    missing: 1,
+    ready: 1,
+  });
   assert.deepEqual(summary.skills.categoryCounts, {
     channels: 1,
     providers: 1,
@@ -1760,7 +1771,7 @@ test('buildSummary discovers nested skill directories as leaf skills instead of 
   });
   assert.match(
     summary.promptPreview,
-    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]\n- categories: channels 1, providers 1\n- documented categories: channels 1/,
+    /Skill registry:\n- total: 2\n- discovered: 2\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/slack \[discovered\]: Deliver concise Slack thread updates\.; providers\/openai \[discovered, missing\]\n- foundation statuses: ready 1, missing 1\n- categories: channels 1, providers 1\n- documented categories: channels 1/,
   );
   assert.equal(summary.foundation.core.skills.documentedCount, 1);
   assert.equal(summary.foundation.core.skills.undocumentedCount, 1);

@@ -1,5 +1,22 @@
 import { BaseRegistry } from './base-registry.js';
 
+function compareFoundationStatus(left, right) {
+  const order = ['ready', 'thin', 'missing'];
+  const leftIndex = order.indexOf(left);
+  const rightIndex = order.indexOf(right);
+  if (leftIndex >= 0 || rightIndex >= 0) {
+    if (leftIndex < 0) {
+      return 1;
+    }
+    if (rightIndex < 0) {
+      return -1;
+    }
+    return leftIndex - rightIndex;
+  }
+
+  return left.localeCompare(right);
+}
+
 export class SkillRegistry extends BaseRegistry {
   normalize(skill) {
     if (typeof skill === 'string') {
@@ -26,6 +43,19 @@ export class SkillRegistry extends BaseRegistry {
       counts[status] = (counts[status] ?? 0) + 1;
       return counts;
     }, {});
+    const foundationStatusCounts = Object.fromEntries(
+      Object.entries(skills.reduce((counts, skill) => {
+        const foundationStatus = typeof skill.foundationStatus === 'string' && skill.foundationStatus.trim().length > 0
+          ? skill.foundationStatus.trim()
+          : null;
+        if (!foundationStatus) {
+          return counts;
+        }
+
+        counts[foundationStatus] = (counts[foundationStatus] ?? 0) + 1;
+        return counts;
+      }, {})).sort(([left], [right]) => compareFoundationStatus(left, right)),
+    );
     const unsortedCategoryCounts = skills.reduce((counts, skill) => {
       const skillId = typeof skill.id === 'string' ? skill.id : skill.name;
       const normalizedSkillId = typeof skillId === 'string' ? skillId.trim() : '';
@@ -60,6 +90,7 @@ export class SkillRegistry extends BaseRegistry {
       discoveredCount: statusCounts.discovered ?? 0,
       customCount: statusCounts.custom ?? 0,
       statusCounts,
+      ...(Object.keys(foundationStatusCounts).length > 0 ? { foundationStatusCounts } : {}),
       ...(hasGroupedCategories ? { categoryCounts } : {}),
       skills,
     };
