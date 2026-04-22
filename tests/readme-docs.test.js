@@ -28,8 +28,8 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /work-loop queue follow that same order/i);
   assert.match(readme, /runtime-ready integrations that are still waiting on auth\/configuration/i);
   assert.match(readme, /\.env\.example/);
-  assert.match(readme, /bootstrap blast radius explicit/i);
-  assert.match(readme, /keeps both `?\.env\.example`? and `?\.env`? visible in `paths`/i);
+  assert.match(readme, /bootstrap blast radius honest/i);
+  assert.match(readme, /`paths` stays source-focused on `?\.env\.example`?/i);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
 });
@@ -45,7 +45,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
-  assert.match(architectureDoc, /during bootstrap that means `paths` includes both `\.env\.example` and `\.env` so the copy step's read\/write blast radius stays explicit/i);
+  assert.match(architectureDoc, /during bootstrap that means `paths` stays source-focused on `\.env\.example` so the active step names the shared template rather than both source and destination/i);
   assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
   assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
   assert.match(architectureDoc, /sampleStarterSource/);
@@ -67,7 +67,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
-  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command while keeping bootstrap `paths` aligned with both `\.env\.example` and `\.env`/);
+  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command while keeping bootstrap `paths` source-focused on `\.env\.example`/);
   assert.match(ingestionDoc, /once `\.env` already exists, the blocked delivery step narrows to the repo-local `touch '\.env' && \.{3}` populate helper so `paths` drops back to `\.env`/i);
   assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
