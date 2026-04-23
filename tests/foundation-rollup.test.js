@@ -406,8 +406,22 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
       foundationDraftSummaries: {
         memory: { generated: false, entryCount: 0, latestSummaries: [] },
         skills: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 3 },
-        soul: { generated: false, highlights: [], readySectionCount: 2, totalSectionCount: 4, readySections: ['core-truths', 'boundaries'] },
-        voice: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 4, readySections: ['tone'] },
+        soul: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 2,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries'],
+          headingAliases: ['core-values->core-truths'],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          headingAliases: ['voice-should-capture->signature-moves'],
+        },
       },
       foundationReadiness: {
         memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
@@ -421,11 +435,11 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
 
   assert.equal(
     rollup.maintenance.recommendedDraftGapSummary,
-    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries); aliases core-values->core-truths | voice 1/4 ready (tone); aliases voice-should-capture->signature-moves',
   );
   assert.equal(
     rollup.maintenance.queuedProfiles[0]?.draftGapSummary,
-    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries); aliases core-values->core-truths | voice 1/4 ready (tone); aliases voice-should-capture->signature-moves',
   );
 });
 

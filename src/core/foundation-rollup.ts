@@ -186,6 +186,22 @@ function normalizeOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function formatHeadingAliasSummary(headingAliases: unknown): string | null {
+  const normalizedAliases = Array.from(new Set(
+    Array.isArray(headingAliases)
+      ? headingAliases
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim())
+      : [],
+  ));
+
+  if (normalizedAliases.length === 0) {
+    return null;
+  }
+
+  return `; aliases ${normalizedAliases.join(', ')}`;
+}
+
 function summarizeDraftGap(summary: any, key: string): string | null {
   const totalSectionCount = summary?.totalSectionCount ?? 0;
   const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
@@ -205,7 +221,9 @@ function summarizeDraftGap(summary: any, key: string): string | null {
     return null;
   }
 
-  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
+  const headingAliasSummary = formatHeadingAliasSummary(summary?.headingAliases);
+
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${headingAliasSummary ?? ''}`;
 }
 
 function summarizeMemoryDraftGap(profile: any): string | null {
