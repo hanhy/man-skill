@@ -974,6 +974,48 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
 });
 
+test('buildSummary work loop carries profile draft edit paths when queued foundation refreshes outrank later priorities', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'jane-doe',
+    'display-name': 'Jane Doe',
+    summary: 'Fast feedback beats polished drift.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'jane-post.txt'), 'Turn sharp notes into an actual next step.\n');
+  runImportCommand(rootDir, 'text', {
+    person: 'jane-doe',
+    file: path.join(rootDir, 'samples', 'jane-post.txt'),
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.status, 'queued');
+  assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update foundation --person 'jane-doe'");
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/jane-doe/memory/long-term/foundation.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.match(summary.workLoop.currentPriority.summary, /core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.promptPreview, /next action: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ new materials/);
+  assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.match(summary.promptPreview, /edit paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
+  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
+});
+
 test('buildSummary work loop uses missing-only foundation helper bundles when multiple core areas are absent', () => {
   const rootDir = makeTempRepo();
   fs.writeFileSync(

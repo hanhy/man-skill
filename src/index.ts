@@ -939,6 +939,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
         missingDrafts: queuedProfileSummary?.foundationDraftStatus?.missingDrafts ?? null,
       })))
     : [];
+  const profileEditPaths: string[] = Array.from(new Set(profilePaths));
+  const profileEditPath: string | null = profileEditPaths[0] ?? null;
 
   const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
 
@@ -949,8 +951,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
     command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
-    editPath: hasQueuedCoreFoundation ? coreEditPath : null,
-    editPaths: hasQueuedCoreFoundation ? coreEditPaths : [],
+    editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
+    editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,
     followUpCommand,
     paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
   };
