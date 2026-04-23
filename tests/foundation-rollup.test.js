@@ -1552,12 +1552,12 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     readyAreaCount: 0,
     missingAreaCount: 2,
     thinAreaCount: 2,
-    recommendedArea: 'memory',
+    recommendedArea: null,
     recommendedStatus: null,
     recommendedSummary: null,
-    recommendedAction: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-    recommendedCommand: memoryCommand,
-    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
+    recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+    recommendedCommand: scaffoldAllCommand,
+    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -1612,7 +1612,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
+  assert.match(summary.promptPreview, /- next repair: scaffold missing or thin core foundation areas — starting with add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]*\) && \(mkdir -p 'skills\/starter'[\s\S]*\) && \(node --input-type=module -e[\s\S]*\) && \(mkdir -p voice && printf %s '# Voice[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);

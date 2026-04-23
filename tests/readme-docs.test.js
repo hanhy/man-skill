@@ -452,7 +452,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /foundation\.core\.maintenance\.queuedAreas\[\*\]\.rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
   assert.match(readme, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
-  assert.match(readme, /when the queue narrows to a single area, `recommendedStatus` and `recommendedSummary` carry that same target's detailed context/i);
+  assert.match(readme, /when the queue narrows to a single area, `recommendedArea`, `recommendedStatus`, and `recommendedSummary` carry that same target's detailed context/i);
+  assert.match(readme, /multi-area queues leave `recommendedArea` null and promote the same aggregate `scaffoldAll\|scaffoldMissing\|scaffoldThin` bundle plus the union of queued paths into the canonical `recommended\*` entrance/i);
   assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths.*recommendedLatestMaterialAt.*recommendedLatestMaterialId.*recommendedLatestMaterialSourcePath.*queuedProfiles\[\*\]\.paths.*queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(readme, /next repair.*next refresh.*latest material <timestamp> \(<material-id>\)(?: @ <source-path>)?/i);
   assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
@@ -476,7 +477,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /voice-should-capture->signature-moves.*voice-should-not-capture->avoid.*current-default->language-hints/i);
   assert.match(architectureDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
-  assert.match(architectureDoc, /single-target-only detail fields \(`recommendedStatus`, `recommendedSummary` when exactly one area is queued\)/i);
+  assert.match(architectureDoc, /single-target-only detail fields \(`recommendedArea`, `recommendedStatus`, `recommendedSummary` when exactly one area is queued\)/i);
+  assert.match(architectureDoc, /multiple areas are queued, keep that same canonical `recommended\*` entrance pointed at the aggregate `scaffoldAll\|scaffoldMissing\|scaffoldThin` helper bundle and the union of queued paths, leave `recommendedArea` null/i);
   assert.match(architectureDoc, /mirror those same `foundation\.core\.soul\|voice` root excerpts, section counts, and optional heading aliases into the compact top-level `Soul profile:` \/ `Voice profile:` prompt blocks/i);
   assert.match(architectureDoc, /checked-in root `SOUL\.md` stable on `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`/i);
   assert.match(architectureDoc, /checked-in root `voice\/README\.md` stable on `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
@@ -529,7 +531,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /compact ready-state line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(ingestionDoc, /all-ready `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance/i);
   assert.match(ingestionDoc, /first three `memory\/short-term\/\.\.\.` paths plus a `\+N more` remainder marker/i);
-  assert.match(ingestionDoc, /when the queue narrows to one area, the additive `recommendedStatus` and `recommendedSummary` fields carry that single target's detailed context/i);
+  assert.match(ingestionDoc, /when the queue narrows to one area, the additive `recommendedArea`, `recommendedStatus`, and `recommendedSummary` fields carry that single target's detailed context/i);
+  assert.match(ingestionDoc, /multi-area queues leave `recommendedArea` null and promote the same aggregate `helperCommands\.scaffoldAll\|scaffoldMissing\|scaffoldThin` bundle plus the union of queued paths into the canonical `recommended\*` entrance/i);
   assert.match(ingestionDoc, /starterImportCommand.*helperCommands` block .*starterImport/i);
   assert.match(ingestionDoc, /checked-in root docs stay parser-aligned: `SOUL\.md` should keep `## Core truths`, `## Boundaries`, `## Vibe`, and `## Continuity`, while `voice\/README\.md` should keep `## Tone`, `## Signature moves`, `## Avoid`, and `## Language hints`/i);
 

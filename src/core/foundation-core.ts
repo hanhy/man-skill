@@ -608,13 +608,47 @@ function buildCoreFoundationMaintenance({
     voice: queue.find((area) => area.area === 'voice')?.command ?? null,
   };
   const recommendedQueueItem = queue[0] ?? null;
-  const recommendedArea = recommendedQueueItem?.area ?? null;
+  const recommendedArea = queue.length === 1 ? (recommendedQueueItem?.area ?? null) : null;
   const recommendedStatus = queue.length === 1 ? (recommendedQueueItem?.status ?? null) : null;
   const recommendedSummary = queue.length === 1 ? (recommendedQueueItem?.summary ?? null) : null;
-  const recommendedPaths = [...(recommendedQueueItem?.paths ?? [])];
   const queuedStatuses = new Set(queue.map((area) => area.status));
-  const recommendedCommand = recommendedQueueItem?.command ?? null;
-  const recommendedAction = recommendedQueueItem?.action ?? null;
+  const recommendedCommand = (() => {
+    if (queue.length <= 1) {
+      return recommendedQueueItem?.command ?? null;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
+      return helperCommands.scaffoldMissing ?? helperCommands.scaffoldAll;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
+      return helperCommands.scaffoldThin ?? helperCommands.scaffoldAll;
+    }
+
+    return helperCommands.scaffoldAll;
+  })();
+  const recommendedAction = (() => {
+    if (!recommendedQueueItem?.action) {
+      return null;
+    }
+
+    if (queue.length <= 1) {
+      return recommendedQueueItem.action;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('missing')) {
+      return `scaffold missing core foundation areas — starting with ${recommendedQueueItem.action}`;
+    }
+
+    if (queuedStatuses.size === 1 && queuedStatuses.has('thin')) {
+      return `repair thin core foundation areas — starting with ${recommendedQueueItem.action}`;
+    }
+
+    return `scaffold missing or thin core foundation areas — starting with ${recommendedQueueItem.action}`;
+  })();
+  const recommendedPaths = queue.length <= 1
+    ? [...(recommendedQueueItem?.paths ?? [])]
+    : Array.from(new Set(queue.flatMap((area) => area.paths)));
 
   return {
     areaCount: areas.length,
