@@ -2865,6 +2865,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
   });
   assert.deepEqual(snapshot.draftSources, {
     memory: {
+      path: 'profiles/jane-doe/memory/long-term/foundation.json',
       generated: true,
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
@@ -2874,6 +2875,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       entryCount: 1,
     },
     skills: {
+      path: 'profiles/jane-doe/skills/README.md',
       generated: true,
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
@@ -2882,6 +2884,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       materialTypes: { talk: 1 },
     },
     soul: {
+      path: 'profiles/jane-doe/soul/README.md',
       generated: true,
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
@@ -2890,6 +2893,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       materialTypes: { talk: 1 },
     },
     voice: {
+      path: 'profiles/jane-doe/voice/README.md',
       generated: true,
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
@@ -3022,6 +3026,24 @@ test('buildProfileSnapshotSummaries keeps stale draft file paths in structured d
     skills: 'profiles/jane-doe/skills/README.md',
     soul: 'profiles/jane-doe/soul/README.md',
     voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.deepEqual(snapshot.draftSources, {
+    memory: {
+      path: 'profiles/jane-doe/memory/long-term/foundation.json',
+      generated: false,
+    },
+    skills: {
+      path: 'profiles/jane-doe/skills/README.md',
+      generated: false,
+    },
+    soul: {
+      path: 'profiles/jane-doe/soul/README.md',
+      generated: false,
+    },
+    voice: {
+      path: 'profiles/jane-doe/voice/README.md',
+      generated: false,
+    },
   });
   assert.deepEqual(snapshot.draftSections, {
     skills: {

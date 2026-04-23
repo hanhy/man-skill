@@ -86,6 +86,7 @@ type ProfileSnapshotRefreshInfo = {
 };
 
 type ProfileSnapshotDraftSourceSummary = {
+  path?: string | null;
   generated: boolean;
   generatedAt?: string | null;
   latestMaterialAt?: string | null;
@@ -958,6 +959,7 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
       return accumulator;
     }
 
+    const path = normalizeOptionalString(summary.path);
     const generatedAt = normalizeOptionalString(summary.generatedAt);
     const latestMaterialAt = normalizeOptionalString(summary.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(summary.latestMaterialId);
@@ -965,11 +967,12 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
     const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
     const materialTypes = normalizeMaterialTypes(summary.materialTypes);
 
-    if (!generatedAt && !latestMaterialAt && !latestMaterialId && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+    if (!path && !generatedAt && !latestMaterialAt && !latestMaterialId && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
       return accumulator;
     }
 
     accumulator[key] = {
+      ...(path ? { path } : {}),
       generated: summary.generated === true,
       ...(generatedAt ? { generatedAt } : {}),
       ...(latestMaterialAt ? { latestMaterialAt } : {}),

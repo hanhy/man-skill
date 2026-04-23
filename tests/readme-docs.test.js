@@ -280,6 +280,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.deepEqual(summary.profileSnapshots[0].readiness, summary.profiles[0].foundationReadiness);
   assert.deepEqual(summary.profileSnapshots[0].draftSources, {
     memory: {
+      path: summary.profiles[0].foundationDraftSummaries.memory.path,
       generated: true,
       generatedAt: summary.profiles[0].foundationDraftSummaries.memory.generatedAt,
       latestMaterialAt: summary.profiles[0].foundationDraftSummaries.memory.latestMaterialAt,
@@ -289,6 +290,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
       entryCount: summary.profiles[0].foundationDraftSummaries.memory.entryCount,
     },
     skills: {
+      path: summary.profiles[0].foundationDraftSummaries.skills.path,
       generated: true,
       generatedAt: summary.profiles[0].foundationDraftSummaries.skills.generatedAt,
       latestMaterialAt: summary.profiles[0].foundationDraftSummaries.skills.latestMaterialAt,
@@ -297,6 +299,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
       materialTypes: summary.profiles[0].foundationDraftSummaries.skills.materialTypes,
     },
     soul: {
+      path: summary.profiles[0].foundationDraftSummaries.soul.path,
       generated: true,
       generatedAt: summary.profiles[0].foundationDraftSummaries.soul.generatedAt,
       latestMaterialAt: summary.profiles[0].foundationDraftSummaries.soul.latestMaterialAt,
@@ -305,6 +308,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
       materialTypes: summary.profiles[0].foundationDraftSummaries.soul.materialTypes,
     },
     voice: {
+      path: summary.profiles[0].foundationDraftSummaries.voice.path,
       generated: true,
       generatedAt: summary.profiles[0].foundationDraftSummaries.voice.generatedAt,
       latestMaterialAt: summary.profiles[0].foundationDraftSummaries.voice.latestMaterialAt,
@@ -459,11 +463,14 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, and `highlights`\)/i);
+  assert.match(readme, /`draftSources` now keeps each layer's generated-or-stale draft `path` beside .*`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`,.*`entryCount`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata so downstream tooling can inspect the same generated or stale artifact without cross-referencing `draftFiles`/i);
   assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`draftSources` keeps the concrete draft `path` for each memory \/ skills \/ soul \/ voice layer together with provenance metadata, so stale profile snapshots stay inspectable even when the prompt omits the human `draft files:` line/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);
