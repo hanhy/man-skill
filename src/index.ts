@@ -1394,6 +1394,8 @@ function buildDeliveryPriority({
   const resolvedPaths = command && command === envConfigPopulateCommand && envConfigPaths.length > 0
     ? envConfigPaths
     : paths;
+  const editPaths = Array.from(new Set(resolvedPaths));
+  const editPath = editPaths[0] ?? null;
 
   return {
     id,
@@ -1405,6 +1407,8 @@ function buildDeliveryPriority({
     nextAction,
     command,
     paths: resolvedPaths,
+    editPath,
+    editPaths,
   };
 }
 

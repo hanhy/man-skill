@@ -2899,10 +2899,13 @@ test('buildSummary work loop includes both .env.example and .env in credential b
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.editPath, '.env.example');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /command: cp \.env\.example \.env/);
   assert.match(summary.promptPreview, /paths: \.env\.example, \.env/);
+  assert.match(summary.promptPreview, /edit paths: \.env\.example, \.env/);
   assert.match(workLoopBlock, /paths: \.env\.example, \.env/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*src\/channels\/slack\.js/);
@@ -3380,12 +3383,15 @@ test('buildSummary work loop uses repo-local channel env repair commands once a 
     assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
     assert.equal(summary.workLoop.currentPriority.command, summary.delivery.helperCommands.populateChannelEnv);
     assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
+    assert.equal(summary.workLoop.currentPriority.editPath, '.env');
+    assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['.env']);
     assert.equal(summary.delivery.envTemplateCommand, null);
     assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
     assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
     assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
     assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
     assert.match(summary.promptPreview, /paths: \.env/);
+    assert.match(summary.promptPreview, /edit: \.env/);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
     for (const [key, value] of Object.entries(originalEnv)) {
