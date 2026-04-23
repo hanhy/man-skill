@@ -172,6 +172,7 @@ type MaintenanceQueueItem = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
   draftGapCount?: number;
   draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
@@ -198,6 +199,7 @@ type FoundationMaintenance = {
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
   recommendedLatestMaterialSourcePath?: string | null;
+  recommendedCandidateSignalSummary?: string | null;
   recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
@@ -1427,10 +1429,13 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const draftGapCountSuffix = Number.isFinite(profile.draftGapCount) && (profile.draftGapCount ?? 0) > 0
       ? `, ${profile.draftGapCount} draft gap${profile.draftGapCount === 1 ? '' : 's'}${draftGapBreakdownSuffix ? ` (${draftGapBreakdownSuffix})` : ''}`
       : '';
+    const candidateSignalSuffix = normalizeOptionalString(profile.candidateSignalSummary)
+      ? `, evidence ${normalizeOptionalString(profile.candidateSignalSummary)}`
+      : '';
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${candidateSignalSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles

@@ -756,7 +756,7 @@ function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleMan
 
 
 function buildFoundationRefreshLabel(
-  reasonsSource: { refreshReasons?: string[] } | null,
+  reasonsSource: { refreshReasons?: string[]; candidateSignalSummary?: string | null } | null,
   label: string | null = null,
 ): string | null {
   const normalizedLabel = typeof label === 'string' && label.length > 0 ? label : null;
@@ -768,10 +768,13 @@ function buildFoundationRefreshLabel(
     ? reasonsSource.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const refreshLabel = `refresh ${normalizedLabel}`;
+  const candidateSignalSummary = typeof reasonsSource?.candidateSignalSummary === 'string' && reasonsSource.candidateSignalSummary.length > 0
+    ? reasonsSource.candidateSignalSummary
+    : null;
 
-  return reasons.length > 0
+  return `${reasons.length > 0
     ? `${refreshLabel} — reasons ${reasons.join(' + ')}`
-    : refreshLabel;
+    : refreshLabel}${candidateSignalSummary ? `; evidence ${candidateSignalSummary}` : ''}`;
 }
 
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
@@ -826,8 +829,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? recommendedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
   const queuedProfileLabel = recommendedProfile?.label ?? recommendedProfile?.id ?? null;
+  const queuedProfileCandidateSignalSummary = typeof recommendedProfile?.candidateSignalSummary === 'string' && recommendedProfile.candidateSignalSummary.length > 0
+    ? recommendedProfile.candidateSignalSummary
+    : null;
   const bulkRefreshLabel = queuedProfileLabel
-    ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}`
+    ? `refresh stale or incomplete target profiles — starting with ${queuedProfileLabel}${queuedProfileReasons.length > 0 ? ` (${queuedProfileReasons.join(' + ')})` : ''}${queuedProfileCandidateSignalSummary ? `; evidence ${queuedProfileCandidateSignalSummary}` : ''}`
     : 'refresh stale or incomplete target profiles';
   const queuedProfileSummaries = useBulkRefreshCommand
     ? (Array.isArray(maintenance.queuedProfiles)

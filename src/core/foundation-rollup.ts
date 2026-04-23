@@ -186,6 +186,38 @@ function normalizeOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeStringArray(values: unknown): string[] {
+  return Array.from(new Set(
+    Array.isArray(values)
+      ? values
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim())
+      : [],
+  ));
+}
+
+function buildCandidateSignalSummary(profile: any): string | null {
+  const readiness = profile?.foundationReadiness ?? {};
+  let hasNonZeroCandidate = false;
+  const segments = ['memory', 'voice', 'soul', 'skills'].map((key) => {
+    const signal = readiness?.[key] ?? {};
+    const candidateCount = Number(signal?.candidateCount ?? 0);
+    const normalizedCount = Number.isFinite(candidateCount) && candidateCount > 0 ? candidateCount : 0;
+    if (normalizedCount > 0) {
+      hasNonZeroCandidate = true;
+    }
+    const types = normalizeStringArray(key === 'memory'
+      ? (signal?.latestTypes ?? signal?.sampleTypes)
+      : (signal?.sampleTypes ?? signal?.latestTypes));
+    const typeSuffix = normalizedCount > 0 && types.length > 0
+      ? ` (${types.sort((left, right) => left.localeCompare(right)).join(', ')})`
+      : '';
+    return `${key} ${normalizedCount}${typeSuffix}`;
+  });
+
+  return hasNonZeroCandidate && segments.length > 0 ? segments.join(' | ') : null;
+}
+
 function formatHeadingAliasSummary(headingAliases: unknown): string | null {
   const normalizedAliases = Array.from(new Set(
     Array.isArray(headingAliases)
@@ -283,6 +315,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         draftFiles: collectProfileDraftFiles(profile),
         missingDrafts: profile.foundationDraftStatus?.missingDrafts,
       });
+      const candidateSignalSummary = buildCandidateSignalSummary(profile);
       return {
         id: profile.id ?? null,
         displayName: profile.profile?.displayName ?? null,
@@ -297,6 +330,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
+        candidateSignalSummary,
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
@@ -345,13 +379,14 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     recommendedProfileId: recommendedProfile?.id ?? null,
     recommendedLabel: recommendedProfile?.label ?? recommendedProfile?.id ?? null,
     recommendedAction: recommendedProfile
-      ? `refresh ${recommendedProfile.label ?? recommendedProfile.id}${(recommendedProfile.refreshReasons ?? []).length > 0 ? ` — reasons ${(recommendedProfile.refreshReasons ?? []).join(' + ')}` : ''}`
+      ? `refresh ${recommendedProfile.label ?? recommendedProfile.id}${(recommendedProfile.refreshReasons ?? []).length > 0 ? ` — reasons ${(recommendedProfile.refreshReasons ?? []).join(' + ')}` : ''}${recommendedProfile?.candidateSignalSummary ? `; evidence ${recommendedProfile.candidateSignalSummary}` : ''}`
       : null,
     recommendedCommand: recommendedProfile?.refreshCommand ?? null,
     recommendedPaths,
     recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
     recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
     recommendedLatestMaterialSourcePath: recommendedProfile?.latestMaterialSourcePath ?? null,
+    recommendedCandidateSignalSummary: recommendedProfile?.candidateSignalSummary ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,
