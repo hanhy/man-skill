@@ -3309,6 +3309,7 @@ test('buildProfileSnapshotSummaries keeps stale draft source paths visible in th
     'memory missing, 1 candidate (Keep the loop tight | but honest.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/4 ready (core-truths), missing boundaries/vibe/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
   );
   assert.doesNotMatch(snapshot.snapshot, /draft files:/);
+  assert.match(snapshot.snapshot, /draft sections: skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| soul 1\/4 ready \(core-truths\), missing boundaries\/vibe\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
   assert.match(snapshot.snapshot, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \| skills @ profiles\/jane-doe\/skills\/README\.md \| soul @ profiles\/jane-doe\/soul\/README\.md \| voice @ profiles\/jane-doe\/voice\/README\.md/);
   assert.deepEqual(snapshot.draftGaps, [
     'memory missing, 1 candidate (Keep the loop tight | but honest.)',

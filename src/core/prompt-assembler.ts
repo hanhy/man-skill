@@ -959,7 +959,7 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
 
   const sectionSummaries = draftKinds
     .map(({ key, summary }) => {
-      if (!summary || summary.generated !== true) {
+      if (!summary) {
         return null;
       }
 
