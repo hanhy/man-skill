@@ -1,3 +1,18 @@
+function cloneStringArray(values) {
+  return Array.isArray(values) ? [...values] : [];
+}
+
+function cloneChannelAuth(auth) {
+  if (!auth || typeof auth !== 'object') {
+    return null;
+  }
+
+  return {
+    ...auth,
+    envVars: cloneStringArray(auth.envVars),
+  };
+}
+
 export class BaseChannel {
   constructor({
     id,
@@ -16,11 +31,11 @@ export class BaseChannel {
     this.id = id;
     this.name = name;
     this.transport = transport;
-    this.direction = direction;
+    this.direction = cloneStringArray(direction);
     this.status = status;
-    this.capabilities = capabilities;
-    this.auth = auth;
-    this.deliveryModes = deliveryModes;
+    this.capabilities = cloneStringArray(capabilities);
+    this.auth = cloneChannelAuth(auth);
+    this.deliveryModes = cloneStringArray(deliveryModes);
     this.inboundPath = inboundPath;
     this.outboundMode = outboundMode;
     this.implementationPath = implementationPath;
@@ -49,11 +64,11 @@ export class BaseChannel {
       id: this.id,
       name: this.name,
       transport: this.transport,
-      direction: this.direction,
+      direction: cloneStringArray(this.direction),
       status: this.status,
-      capabilities: this.capabilities,
-      auth: this.auth,
-      deliveryModes: this.deliveryModes,
+      capabilities: cloneStringArray(this.capabilities),
+      auth: cloneChannelAuth(this.auth),
+      deliveryModes: cloneStringArray(this.deliveryModes),
       inboundPath: this.inboundPath,
       outboundMode: this.outboundMode,
       implementationPath: this.implementationPath,

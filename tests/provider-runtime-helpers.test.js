@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { normalizeProviderToolArguments, extractProviderTextContent } from '../src/models/base-provider.js';
-import { createOpenAIProvider, normalizeOpenAIChatResponse } from '../src/models/openai.js';
+import { createOpenAIProvider, normalizeOpenAIChatResponse, openaiProviderScaffold } from '../src/models/openai.js';
 import { createAnthropicProvider, buildAnthropicMessagesRequest, normalizeAnthropicMessagesResponse } from '../src/models/anthropic.js';
 import { createKimiProvider, normalizeKimiChatResponse } from '../src/models/kimi.js';
 import { createMinimaxProvider, buildMinimaxChatRequest, normalizeMinimaxChatResponse } from '../src/models/minimax.js';
@@ -50,6 +50,30 @@ test('provider runtime helpers expose required env vars and configuration checks
   assert.equal(openai.isConfigured({ OPENAI_API_KEY: '   ' }), false);
   assert.deepEqual(anthropic.missingEnvVars({}), ['ANTHROPIC_API_KEY']);
   assert.equal(anthropic.isConfigured({ ANTHROPIC_API_KEY: 'test-key' }), true);
+});
+
+test('provider factories keep runtime helper mutations isolated from the canonical provider scaffolds', () => {
+  const provider = createOpenAIProvider();
+
+  provider.models.push('gpt-test');
+  provider.features.push('batch');
+  provider.modalities.push('audio');
+
+  assert.deepEqual(openaiProviderScaffold.models, ['gpt-4.1', 'gpt-4o', 'gpt-5']);
+  assert.deepEqual(openaiProviderScaffold.features, ['chat', 'tools', 'reasoning']);
+  assert.deepEqual(openaiProviderScaffold.modalities, ['chat', 'reasoning', 'vision']);
+
+  const summary = provider.summary();
+  summary.models.push('gpt-summary');
+  summary.features.push('structured-output');
+  summary.modalities.push('video');
+
+  assert.deepEqual(provider.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-test']);
+  assert.deepEqual(provider.features, ['chat', 'tools', 'reasoning', 'batch']);
+  assert.deepEqual(provider.modalities, ['chat', 'reasoning', 'vision', 'audio']);
+  assert.deepEqual(openaiProviderScaffold.models, ['gpt-4.1', 'gpt-4o', 'gpt-5']);
+  assert.deepEqual(openaiProviderScaffold.features, ['chat', 'tools', 'reasoning']);
+  assert.deepEqual(openaiProviderScaffold.modalities, ['chat', 'reasoning', 'vision']);
 });
 
 test('base provider helpers normalize whitespace-only tool arguments and SDK-style parts arrays', () => {

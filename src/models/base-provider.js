@@ -16,6 +16,10 @@ export function normalizeProviderToolArguments(argumentsValue) {
   return '{}';
 }
 
+function cloneStringArray(values) {
+  return Array.isArray(values) ? [...values] : [];
+}
+
 export class BaseProvider {
   constructor({
     id,
@@ -32,11 +36,11 @@ export class BaseProvider {
     this.id = id;
     this.name = name;
     this.status = status;
-    this.models = models;
-    this.features = features;
+    this.models = cloneStringArray(models);
+    this.features = cloneStringArray(features);
     this.defaultModel = defaultModel;
     this.authEnvVar = authEnvVar;
-    this.modalities = modalities;
+    this.modalities = cloneStringArray(modalities);
     this.implementationPath = implementationPath;
     this.nextStep = nextStep;
   }
@@ -67,11 +71,11 @@ export class BaseProvider {
       id: this.id,
       name: this.name,
       status: this.status,
-      models: this.models,
-      features: this.features,
+      models: cloneStringArray(this.models),
+      features: cloneStringArray(this.features),
       defaultModel: this.defaultModel,
       authEnvVar: this.authEnvVar,
-      modalities: this.modalities,
+      modalities: cloneStringArray(this.modalities),
       implementationPath: this.implementationPath,
       nextStep: this.nextStep,
     };
