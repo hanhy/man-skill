@@ -21,6 +21,18 @@ function slugifyPersonId(value) {
     .replace(/^-+|-+$/g, '');
 }
 
+function normalizeEntryTemplateTypes(entryTemplates) {
+  if (!entryTemplates || typeof entryTemplates !== 'object' || Array.isArray(entryTemplates)) {
+    return [];
+  }
+
+  const supportedTypes = new Set(['message', 'screenshot', 'talk', 'text']);
+  return Array.from(new Set(Object.entries(entryTemplates)
+    .filter(([key, value]) => supportedTypes.has(key) && value && typeof value === 'object' && !Array.isArray(value))
+    .map(([key]) => key)))
+    .sort((left, right) => left.localeCompare(right));
+}
+
 function normalizeManifest(parsedManifest) {
   if (!parsedManifest || typeof parsedManifest !== 'object') {
     return null;
@@ -127,6 +139,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'missing',
       path: manifestPath,
       error: null,
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -136,6 +150,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'missing',
       path: manifestPath,
       error: 'Starter intake manifest is missing',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -147,6 +163,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: error instanceof Error ? error.message : 'Unable to parse intake manifest',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -156,22 +174,27 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must be an array or object',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
   const entries = manifest.entries;
+  const entryTemplateTypes = normalizeEntryTemplateTypes(manifest.entryTemplates);
   const hasStarterTemplates = Array.isArray(entries)
     && entries.length === 0
     && manifest.entryTemplates
     && typeof manifest.entryTemplates === 'object'
     && !Array.isArray(manifest.entryTemplates)
-    && Object.keys(manifest.entryTemplates).length > 0;
+    && entryTemplateTypes.length > 0;
 
   if (!Array.isArray(entries) && !hasStarterTemplates) {
     return {
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must contain a non-empty entries array',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -190,6 +213,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: error instanceof Error ? error.message : 'Invalid intake manifest',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -198,6 +223,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'starter',
       path: manifestPath,
       error: null,
+      entryTemplateTypes,
+      entryTemplateCount: entryTemplateTypes.length,
     };
   }
 
@@ -206,6 +233,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must contain a non-empty entries array',
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
     };
   }
 
@@ -213,5 +242,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
     status: 'loaded',
     path: manifestPath,
     error: null,
+    entryTemplateTypes: [],
+    entryTemplateCount: 0,
   };
 }

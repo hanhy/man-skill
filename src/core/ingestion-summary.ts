@@ -542,7 +542,12 @@ function summarizeIntakeStatus(intake, manifestInspection = null) {
   }
 
   if (manifestInspection?.status === 'starter') {
-    return 'starter template — add entries before import';
+    const entryTemplateTypes = Array.isArray(manifestInspection?.entryTemplateTypes)
+      ? manifestInspection.entryTemplateTypes.filter((value) => typeof value === 'string' && value.length > 0)
+      : [];
+    return entryTemplateTypes.length > 0
+      ? `starter template — add entries before import (templates: ${entryTemplateTypes.join(', ')})`
+      : 'starter template — add entries before import';
   }
 
   if (!intake || typeof intake !== 'object') {
@@ -628,6 +633,12 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${shellQuote(profile.id)}` : null;
+  const intakeManifestEntryTemplateTypes = Array.isArray((intakeManifest as any)?.entryTemplateTypes)
+    ? [...(intakeManifest as any).entryTemplateTypes]
+    : [];
+  const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
+    ? (intakeManifest as any).entryTemplateCount
+    : 0;
   const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
@@ -684,6 +695,8 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestStatus: intakeManifest.status,
     intakeManifestPath: intakeManifest.path,
     intakeManifestError: intakeManifest.error,
+    intakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateCount,
     intakePaths: intake ? [
       intake.importsDir,
       intake.sampleImagesDirPath,
