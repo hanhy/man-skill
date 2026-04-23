@@ -1936,6 +1936,41 @@ test('CLI update profile can refresh foundation drafts after metadata changes', 
   assert.equal(memoryDraft.generatedAt >= result.profile.updatedAt, true);
 });
 
+test('CLI update profile skips foundation refresh when metadata-only profiles have no imported materials', () => {
+  const rootDir = makeTempRepo();
+
+  const output = execFileSync(
+    'node',
+    [
+      cliEntrypoint,
+      'update',
+      'profile',
+      '--person',
+      'Harry Han',
+      '--display-name',
+      'Harry Han',
+      '--summary',
+      'Metadata only profile.',
+      '--refresh-foundation',
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+    },
+  );
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.personId, 'harry-han');
+  assert.equal(result.profile.displayName, 'Harry Han');
+  assert.equal(result.profile.summary, 'Metadata only profile.');
+  assert.equal(result.foundationRefresh, null);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'memory')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'voice')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'soul')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'skills')), false);
+});
+
 test('CLI update intake scaffolds starter manifest files for a target person', () => {
   const rootDir = makeTempRepo();
 

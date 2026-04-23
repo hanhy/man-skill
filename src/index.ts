@@ -1700,12 +1700,17 @@ export function runUpdateCommand(rootDir: string, subcommand: string | undefined
       summary: typeof options.summary === 'string' ? options.summary : undefined,
     });
 
-    return options['refresh-foundation']
-      ? {
-          ...result,
-          foundationRefresh: relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId: result.personId })),
-        }
-      : result;
+    if (!options['refresh-foundation']) {
+      return result;
+    }
+
+    const hasImportedMaterials = ingestion.loadMaterialRecords(result.personId).length > 0;
+    return {
+      ...result,
+      foundationRefresh: hasImportedMaterials
+        ? relativizeDraftPaths(rootDir, ingestion.refreshFoundationDrafts({ personId: result.personId }))
+        : null,
+    };
   }
 
   if (subcommand === 'intake') {
