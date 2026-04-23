@@ -970,11 +970,8 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
       const readySections = normalizeStringArray(summary.readySections);
       const missingSections = normalizeStringArray(summary.missingSections);
       const headingAliases = normalizeStringArray(summary.headingAliases);
-      if (missingSections.length > 0) {
-        return null;
-      }
 
-      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
+      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
     })
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
 

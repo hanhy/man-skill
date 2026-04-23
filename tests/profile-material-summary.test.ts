@@ -3046,7 +3046,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
     skills: ['execution heuristic'],
   });
   assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
-  assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
+  assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
   assert.match(snapshot.snapshot, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry \| skills 1 source \(talk:1\) \| soul 1 source \(talk:1\) \| voice 2 sources \(message:1, talk:1\)/);
   assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths/);
