@@ -682,6 +682,8 @@ type IngestionSummary = {
   recommendedEditPaths?: string[];
   recommendedManifestInspectCommand?: string | null;
   recommendedManifestImportCommand?: string | null;
+  recommendedIntakeManifestEntryTemplateTypes?: string[];
+  recommendedIntakeManifestEntryTemplateCount?: number;
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
@@ -703,6 +705,8 @@ type WorkLoopPriority = {
   editPaths?: string[];
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateCount?: number;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];

@@ -10,6 +10,8 @@ export interface WorkPriority {
   editPaths?: string[];
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateCount?: number;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths: string[];

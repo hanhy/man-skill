@@ -1030,6 +1030,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedEditPaths: string[] = [];
   let recommendedManifestInspectCommand: string | null = null;
   let recommendedManifestImportCommand: string | null = null;
+  let recommendedIntakeManifestEntryTemplateTypes: string[] = [];
+  let recommendedIntakeManifestEntryTemplateCount = 0;
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
@@ -1122,6 +1124,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedManifestImportCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestCommand ?? null);
+    recommendedIntakeManifestEntryTemplateTypes = Array.isArray(firstImportedStarterIntakeProfile?.intakeManifestEntryTemplateTypes)
+      ? [...firstImportedStarterIntakeProfile.intakeManifestEntryTemplateTypes]
+      : [];
+    recommendedIntakeManifestEntryTemplateCount = Number.isFinite(firstImportedStarterIntakeProfile?.intakeManifestEntryTemplateCount)
+      ? firstImportedStarterIntakeProfile.intakeManifestEntryTemplateCount
+      : recommendedIntakeManifestEntryTemplateTypes.length;
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
@@ -1356,6 +1364,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedEditPaths,
     recommendedManifestInspectCommand,
     recommendedManifestImportCommand,
+    recommendedIntakeManifestEntryTemplateTypes,
+    recommendedIntakeManifestEntryTemplateCount,
     recommendedInspectCommand,
     recommendedFollowUpCommand,
     recommendedPaths,
