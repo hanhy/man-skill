@@ -333,6 +333,78 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
   });
 });
 
+test('buildFoundationRollup keeps maintenance refresh paths aligned with concrete generated draft files', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-23T10:00:00.000Z',
+      latestMaterialId: '2026-04-23T10-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-23T10-00-00-000Z-talk.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['voice'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/custom-foundation.json',
+          entryCount: 2,
+          latestSummaries: ['Preserve the concrete draft paths.'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/CUSTOM.md',
+          highlights: ['- execution checklist'],
+          readySectionCount: 3,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/CUSTOM.md',
+          highlights: ['- Protect the operator context.'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+          missingSections: [],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Preserve the concrete draft paths.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution checklist'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Protect the operator context.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the next step direct.'] },
+      },
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Tight loops beat big plans.',
+      },
+    },
+  ]);
+
+  const expectedPaths = [
+    'profiles/jane-doe/memory/custom-foundation.json',
+    'profiles/jane-doe/skills/CUSTOM.md',
+    'profiles/jane-doe/soul/CUSTOM.md',
+    'profiles/jane-doe/voice/README.md',
+  ];
+
+  assert.deepEqual(rollup.maintenance.recommendedPaths, expectedPaths);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
+});
+
 test('buildFoundationRollup shell-quotes refresh commands for profile ids with spaces and apostrophes', () => {
   const rollup = buildFoundationRollup([
     {

@@ -261,12 +261,28 @@ function summarizeProfileDraftGaps(profile: any): string | null {
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
 }
 
+function collectProfileDraftFiles(profile: any): Partial<Record<(typeof FOUNDATION_DRAFT_KEYS)[number], string>> {
+  return FOUNDATION_DRAFT_KEYS.reduce<Partial<Record<(typeof FOUNDATION_DRAFT_KEYS)[number], string>>>((draftFiles, draftKey) => {
+    const draftPath = normalizeOptionalString(profile?.foundationDraftSummaries?.[draftKey]?.path);
+    if (!draftPath) {
+      return draftFiles;
+    }
+
+    draftFiles[draftKey] = draftPath;
+    return draftFiles;
+  }, {});
+}
+
 function summarizeMaintenanceQueue(profiles: any[] = []) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
     .map((profile) => {
       const draftGapCounts = buildDraftGapCounts(profile);
-      const draftPaths = buildFoundationDraftPaths({ profileId: profile.id ?? null });
+      const draftPaths = buildFoundationDraftPaths({
+        profileId: profile.id ?? null,
+        draftFiles: collectProfileDraftFiles(profile),
+        missingDrafts: profile.foundationDraftStatus?.missingDrafts,
+      });
       return {
         id: profile.id ?? null,
         displayName: profile.profile?.displayName ?? null,
@@ -309,7 +325,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         || (left.label ?? '').localeCompare(right.label ?? '');
     });
   const recommendedProfile = queuedProfiles[0] ?? null;
-  const recommendedPaths = buildFoundationDraftPaths({ profileId: recommendedProfile?.id ?? null });
+  const recommendedPaths = recommendedProfile?.paths ?? [];
 
   return {
     profileCount: profiles.length,
