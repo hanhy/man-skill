@@ -529,6 +529,7 @@ function loadMaterialSummaries(materialsDir) {
     materialTypes,
     latestMaterialAt: newestRecords[0]?.createdAt ?? null,
     latestMaterialId: newestRecords[0]?.id ?? null,
+    latestMaterialSourcePath: newestRecords[0]?.sourceFile ?? newestRecords[0]?.assetPath ?? null,
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
   };
 }
@@ -1058,6 +1059,7 @@ export class FileSystemLoader {
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         latestMaterialId: profileSummary.latestMaterialId,
+        latestMaterialSourcePath: profileSummary.latestMaterialSourcePath,
         intake: loadProfileIntake(this.rootDir, profileId),
         foundationDrafts: loadFoundationDrafts(this.rootDir, profileId),
         foundationDraftStatus: loadFoundationDraftStatus(

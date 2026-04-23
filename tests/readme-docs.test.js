@@ -277,6 +277,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(summary.profileSnapshots[0].materialCount, 4);
   assert.deepEqual(summary.profileSnapshots[0].materialTypes, { message: 1, screenshot: 1, talk: 1, text: 1 });
   assert.equal(summary.profileSnapshots[0].latestMaterialId, summary.profiles[0].latestMaterialId);
+  assert.equal(summary.profileSnapshots[0].latestMaterialSourcePath, summary.profiles[0].latestMaterialSourcePath);
   assert.equal(summary.profileSnapshots[0].refreshCommand, null);
   assert.deepEqual(summary.profileSnapshots[0].refreshPaths, []);
   assert.deepEqual(summary.profileSnapshots[0].draftStatus, {
@@ -471,16 +472,16 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
-  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, and `highlights`\)/i);
+  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, and `highlights`\)/i);
   assert.match(readme, /`draftSources` now keeps each layer's generated-or-stale draft `path` beside .*`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`,.*`entryCount`/i);
   assert.match(readme, /human `draft sources:` line falls back to compact `memory @ profiles\/\.\.\.`-style path summaries when a stale draft only exposes its artifact path/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
-  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata so downstream tooling can inspect the same generated or stale artifact without cross-referencing `draftFiles`/i);
   assert.match(architectureDoc, /prompt-side `draft sources:` snapshot line can still fall back to compact `memory @ profiles\/\.\.\.` path summaries when stale drafts no longer carry source counts yet/i);
-  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /`draftSources` keeps the concrete draft `path` for each memory \/ skills \/ soul \/ voice layer together with provenance metadata, so stale profile snapshots stay inspectable even when the prompt omits the human `draft files:` line/i);
   assert.match(ingestionDoc, /prompt-side `draft sources:` fallback can still render `memory @ profiles\/\.\.\.`-style path-only summaries when counts are unavailable/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);

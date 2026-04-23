@@ -75,6 +75,7 @@ type ProfileSnapshot = {
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string;
   foundationDraftStatus?: FoundationDraftStatus;
   foundationDraftSummaries?: FoundationDraftSummaries;
   foundationReadiness?: FoundationReadiness;
@@ -113,6 +114,7 @@ export type ProfileSnapshotSummary = {
   materialTypes: Record<string, number>;
   latestMaterialAt: string | null;
   latestMaterialId: string | null;
+  latestMaterialSourcePath: string | null;
   profileSummary: string | null;
   refreshCommand: string | null;
   refreshPaths: string[];
@@ -1148,9 +1150,10 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
 
   const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
   const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
+  const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath) ?? null;
 
   if (latestMaterialAt || latestMaterialId) {
-    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`);
+    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`);
   }
 
   if (profileSummary) {
@@ -1219,6 +1222,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     materialTypes: { ...(profile.materialTypes ?? {}) },
     latestMaterialAt,
     latestMaterialId,
+    latestMaterialSourcePath,
     profileSummary,
     refreshCommand: refreshInfo.refreshCommand,
     refreshPaths: refreshInfo.refreshPaths,
