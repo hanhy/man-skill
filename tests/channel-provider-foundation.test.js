@@ -824,6 +824,31 @@ test('default channel/provider factories expose scaffold metadata and runtime he
       },
     );
     assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 78,
+        edited_channel_post: {
+          message_id: 19,
+          date: 1710000101,
+          text: 'edited broadcast update',
+          chat: { id: -100124, type: 'channel' },
+          sender_chat: { id: -100124 },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'edited_channel_post',
+        updateId: 78,
+        callbackQueryId: null,
+        chatId: -100124,
+        senderId: -100124,
+        text: 'edited broadcast update',
+        messageId: 19,
+        threadId: null,
+        chatType: 'channel',
+        timestamp: 1710000101,
+      },
+    );
+    assert.deepEqual(
       telegram.buildCallbackAnswer({ callbackQueryId: 'cbq-77', text: 'roger that' }),
       {
         callback_query_id: 'cbq-77',
@@ -1289,6 +1314,33 @@ test('default channel factories cover verification and richer inbound-event vari
         threadId: 7,
         chatType: 'supergroup',
         timestamp: 1710000500,
+      },
+    );
+    assert.deepEqual(
+      telegram.normalizeInboundEvent({
+        update_id: 89,
+        edited_message: {
+          message_id: 23,
+          message_thread_id: 8,
+          date: 1710000501,
+          chat: { id: -100457, type: 'supergroup' },
+          text: 'posted as channel',
+          from: { id: 1087968824 },
+          sender_chat: { id: -100457 },
+        },
+      }),
+      {
+        platform: 'telegram',
+        eventType: 'edited_message',
+        updateId: 89,
+        callbackQueryId: null,
+        chatId: -100457,
+        senderId: -100457,
+        text: 'posted as channel',
+        messageId: 23,
+        threadId: 8,
+        chatType: 'supergroup',
+        timestamp: 1710000501,
       },
     );
     assert.deepEqual(

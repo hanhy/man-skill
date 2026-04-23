@@ -175,6 +175,103 @@ test('Telegram channel runtime helpers cover readiness, callback normalization, 
   );
 
   assert.deepEqual(
+    channel.normalizeInboundEvent({
+      update_id: 1001,
+      channel_post: {
+        message_id: 400,
+        date: 1710000101,
+        caption: 'Channel caption update',
+        chat: {
+          id: -100777,
+          type: 'channel',
+        },
+        sender_chat: {
+          id: -100777,
+        },
+      },
+    }),
+    {
+      platform: 'telegram',
+      eventType: 'channel_post',
+      updateId: 1001,
+      callbackQueryId: null,
+      chatId: -100777,
+      senderId: -100777,
+      text: 'Channel caption update',
+      messageId: 400,
+      threadId: null,
+      chatType: 'channel',
+      timestamp: 1710000101,
+    },
+  );
+
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      update_id: 1002,
+      edited_channel_post: {
+        message_id: 401,
+        date: 1710000102,
+        text: 'Edited channel broadcast',
+        chat: {
+          id: -100778,
+          type: 'channel',
+        },
+        sender_chat: {
+          id: -100778,
+        },
+      },
+    }),
+    {
+      platform: 'telegram',
+      eventType: 'edited_channel_post',
+      updateId: 1002,
+      callbackQueryId: null,
+      chatId: -100778,
+      senderId: -100778,
+      text: 'Edited channel broadcast',
+      messageId: 401,
+      threadId: null,
+      chatType: 'channel',
+      timestamp: 1710000102,
+    },
+  );
+
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      update_id: 1003,
+      edited_message: {
+        message_id: 402,
+        message_thread_id: 79,
+        date: 1710000103,
+        text: 'Anonymous admin update',
+        chat: {
+          id: -100779,
+          type: 'supergroup',
+        },
+        from: {
+          id: 1087968824,
+        },
+        sender_chat: {
+          id: -100779,
+        },
+      },
+    }),
+    {
+      platform: 'telegram',
+      eventType: 'edited_message',
+      updateId: 1003,
+      callbackQueryId: null,
+      chatId: -100779,
+      senderId: -100779,
+      text: 'Anonymous admin update',
+      messageId: 402,
+      threadId: 79,
+      chatType: 'supergroup',
+      timestamp: 1710000103,
+    },
+  );
+
+  assert.deepEqual(
     channel.buildCallbackAnswer({
       callbackQueryId: 'cbq-1',
       text: 'Queued for review.',
