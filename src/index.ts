@@ -913,11 +913,13 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreCommand = useBulkCoreScaffoldCommand
     ? bulkCoreScaffoldCommand
     : (recommendedCoreCommand ?? queuedAreaCommand);
-  const corePaths = useBulkCoreScaffoldCommand
+  const corePaths: string[] = useBulkCoreScaffoldCommand
     ? bulkCoreScaffoldPaths
     : (recommendedCorePaths.length > 0
       ? recommendedCorePaths
       : (Array.isArray(queuedArea?.paths) ? queuedArea.paths.filter((value: unknown): value is string => typeof value === 'string') : []));
+  const coreEditPaths: string[] = Array.from(new Set(corePaths));
+  const coreEditPath: string | null = coreEditPaths[0] ?? null;
   const profileNextAction = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand ? bulkRefreshLabel : (recommendedProfileAction ?? buildFoundationRefreshLabel(recommendedProfile, queuedProfileLabel)))
     : null;
@@ -945,6 +947,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
     command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
+    editPath: hasQueuedCoreFoundation ? coreEditPath : null,
+    editPaths: hasQueuedCoreFoundation ? coreEditPaths : [],
     paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
   };
 }

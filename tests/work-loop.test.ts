@@ -955,11 +955,14 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.match(summary.workLoop.currentPriority.summary, /core .* ready/i);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'memory/README.md');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.priorities[1].status, 'queued');
   assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.doesNotMatch(summary.promptPreview, /lead: Foundation \[queued\]/);
+  assert.match(summary.promptPreview, /edit paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
 });
 
@@ -1022,11 +1025,14 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'add missing sections to memory/README.md: what-belongs-here, buckets');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.memory);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'memory/README.md');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['memory/README.md']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md']);
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add missing sections to memory\/README\.md: what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /command: node -e 'const fs = require\('/);
+  assert.match(summary.promptPreview, /edit: memory\/README\.md/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
