@@ -11,11 +11,21 @@ type FoundationDraftPathOptions = {
 };
 
 function normalizeProfileId(profileId: string | null | undefined): string | null {
-  return typeof profileId === 'string' && profileId.length > 0 ? profileId : null;
+  if (typeof profileId !== 'string') {
+    return null;
+  }
+
+  const trimmed = profileId.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function normalizeDraftPath(value: string | null | undefined): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null;
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function buildFoundationDraftPathMap(profileId: string): Record<FoundationDraftKey, string> {
@@ -30,7 +40,9 @@ function buildFoundationDraftPathMap(profileId: string): Record<FoundationDraftK
 function normalizeMissingDraftSet(missingDrafts: string[] | null | undefined): Set<FoundationDraftKey> {
   return new Set(
     Array.isArray(missingDrafts)
-      ? missingDrafts.filter((value): value is FoundationDraftKey => FOUNDATION_DRAFT_KEYS.includes(value as FoundationDraftKey))
+      ? missingDrafts
+        .map((value) => typeof value === 'string' ? value.trim() : value)
+        .filter((value): value is FoundationDraftKey => FOUNDATION_DRAFT_KEYS.includes(value as FoundationDraftKey))
       : [],
   );
 }
