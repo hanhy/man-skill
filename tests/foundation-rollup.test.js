@@ -163,6 +163,52 @@ test('buildFoundationRollup uses latest material ids to break stale-queue ties w
   assert.deepEqual(buildFoundationRollup(profiles), rollup);
 });
 
+test('buildFoundationRollup normalizes stale maintenance queue metadata before exposing it', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: '  jane-doe  ',
+      materialCount: 1,
+      profile: {
+        displayName: '  Jane Doe  ',
+        summary: '  Tight loops beat big plans.  ',
+      },
+      latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+      latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+      latestMaterialSourcePath: ' profiles/jane-doe/materials/2026-04-16T16-00-00-000Z-talk.json ',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: [' memory ', 'skills', 'memory', '', '   '],
+        refreshReasons: [' missing drafts ', 'metadata-updated', 'missing drafts', '', '   '],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'jane-doe');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialAt, '2026-04-16T16:00:00.000Z');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/jane-doe/materials/2026-04-16T16-00-00-000Z-talk.json');
+  assert.match(rollup.maintenance.recommendedAction ?? '', /^refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; evidence memory 1 \| voice 0 \| soul 0 \| skills 0$/);
+  assert.deepEqual(rollup.maintenance.missingDraftCounts, {
+    memory: 1,
+    skills: 1,
+    soul: 0,
+    voice: 0,
+  });
+  assert.deepEqual(rollup.maintenance.refreshReasonCounts, {
+    'metadata-updated': 1,
+    'missing drafts': 1,
+  });
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.label, 'Jane Doe (jane-doe)');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.displayName, 'Jane Doe');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.summary, 'Tight loops beat big plans.');
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.missingDrafts, ['memory', 'skills']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['missing drafts', 'metadata-updated']);
+});
+
 test('buildFoundationRollup aggregates generated, stale, and candidate foundation signals across profiles', () => {
   const rollup = buildFoundationRollup([
     {

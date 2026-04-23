@@ -2328,6 +2328,46 @@ test('PromptAssembler includes aggregated foundation maintenance counts in the s
   assert.match(prompt, /- refresh reasons: metadata-updated 1, missing-draft 1, new-material 1/);
 });
 
+test('PromptAssembler renders normalized foundation maintenance queue metadata from the rollup', () => {
+  const foundationRollup = buildFoundationRollup([
+    {
+      id: '  jane-doe  ',
+      materialCount: 1,
+      profile: {
+        displayName: '  Jane Doe  ',
+        summary: '  Tight loops beat big plans.  ',
+      },
+      latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+      latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+      latestMaterialSourcePath: ' profiles/jane-doe/materials/2026-04-16T16-00-00-000Z-talk.json ',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: [' memory ', 'skills', 'memory', '', '   '],
+        refreshReasons: [' missing drafts ', 'metadata-updated', 'missing drafts', '', '   '],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+      },
+    },
+  ]);
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    profiles: [],
+    foundationRollup,
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; evidence memory 1 \| voice 0 \| soul 0 \| skills 0; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md; latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\) @ profiles\/jane-doe\/materials\/2026-04-16T16-00-00-000Z-talk\.json/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\) @ profiles\/jane-doe\/materials\/2026-04-16T16-00-00-000Z-talk\.json, reasons missing drafts \+ metadata-updated, evidence memory 1 \| voice 0 \| soul 0 \| skills 0/);
+  assert.doesNotMatch(prompt, /missing drafts \+ metadata-updated \+ missing drafts/);
+  assert.doesNotMatch(prompt, /missing memory\/skills\/memory/);
+});
+
 test('PromptAssembler keeps foundation maintenance previews compact when many queued profiles need refresh', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

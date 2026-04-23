@@ -309,24 +309,34 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
   const queuedProfiles = profiles
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
     .map((profile) => {
+      const profileId = normalizeOptionalString(profile.id);
       const draftGapCounts = buildDraftGapCounts(profile);
       const draftPaths = buildFoundationDraftPaths({
-        profileId: profile.id ?? null,
+        profileId,
         draftFiles: collectProfileDraftFiles(profile),
         missingDrafts: profile.foundationDraftStatus?.missingDrafts,
       });
       const candidateSignalSummary = buildCandidateSignalSummary(profile);
+      const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts).sort((left, right) => left.localeCompare(right));
+      const refreshReasons = normalizeStringArray(profile.foundationDraftStatus?.refreshReasons);
       return {
-        id: profile.id ?? null,
-        displayName: profile.profile?.displayName ?? null,
-        summary: profile.profile?.summary ?? null,
-        label: buildProfileLabel(profile),
+        id: profileId,
+        displayName: normalizeOptionalString(profile.profile?.displayName),
+        summary: normalizeOptionalString(profile.profile?.summary),
+        label: buildProfileLabel({
+          ...profile,
+          id: profileId,
+          profile: {
+            ...(profile?.profile ?? {}),
+            displayName: normalizeOptionalString(profile.profile?.displayName),
+          },
+        }),
         status: 'stale',
         generatedDraftCount: countGeneratedDrafts(profile),
         expectedDraftCount: FOUNDATION_DRAFT_KEYS.length,
         candidateDraftCount: countCandidateDrafts(profile),
-        missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
-        refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
+        missingDrafts,
+        refreshReasons,
         latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
@@ -334,7 +344,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
-        refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
+        refreshCommand: buildFoundationRefreshCommand(profileId),
         paths: draftPaths,
       };
     })
