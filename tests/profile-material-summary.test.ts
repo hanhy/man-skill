@@ -231,6 +231,42 @@ test('buildProfileSnapshotSummaries keeps latest material source paths visible e
   assert.match(snapshot.snapshot, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/images\/chat\.png/);
 });
 
+test('buildProfileSnapshotSummaries merges latest and sample memory types in candidate signal lines', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 3,
+    materialTypes: { text: 1, message: 1, screenshot: 1 },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 3,
+        latestTypes: ['text'],
+        sampleTypes: ['message', 'screenshot', 'text'],
+        sampleSummaries: ['Keep it inspectable.'],
+      },
+      voice: {
+        candidateCount: 1,
+        sampleTypes: ['message'],
+        sampleExcerpts: ['Keep it tight.'],
+      },
+      soul: {
+        candidateCount: 0,
+      },
+      skills: {
+        candidateCount: 0,
+      },
+    },
+    foundationDraftStatus: {
+      complete: false,
+      missingDrafts: ['memory'],
+      needsRefresh: true,
+    },
+  }]);
+
+  assert.deepEqual(snapshot.readiness.memory.latestTypes, ['text']);
+  assert.deepEqual(snapshot.readiness.memory.sampleTypes, ['message', 'screenshot', 'text']);
+  assert.match(snapshot.snapshot, /memory candidates: 3 \(message, screenshot, text\) \| voice: 1 \(message\) \| soul: 0 \| skills: 0/);
+});
+
 test('buildProfileSnapshotSummaries falls back to readiness memory highlights when generated summaries normalize to empty strings', () => {
   const [snapshot] = buildProfileSnapshotSummaries([{
     id: 'jane-doe',
@@ -258,6 +294,46 @@ test('buildProfileSnapshotSummaries falls back to readiness memory highlights wh
   assert.deepEqual(snapshot.highlights.memory, ['Tight loops beat big plans.']);
   assert.match(snapshot.snapshot, /memory highlights: Tight loops beat big plans\./);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\)/);
+});
+
+test('buildFoundationRollup merges latest and sample memory types in candidate signal summaries', () => {
+  const rollup = buildFoundationRollup([{
+    id: 'jane-doe',
+    materialCount: 3,
+    profile: {
+      displayName: 'Jane Doe',
+    },
+    latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    latestMaterialId: '2026-04-16T15-00-00-000Z-text',
+    foundationReadiness: {
+      memory: {
+        candidateCount: 3,
+        latestTypes: ['text'],
+        sampleTypes: ['message', 'screenshot', 'text'],
+        sampleSummaries: ['Keep it inspectable.'],
+      },
+      voice: {
+        candidateCount: 1,
+        sampleTypes: ['message'],
+        sampleExcerpts: ['Keep it tight.'],
+      },
+      soul: {
+        candidateCount: 0,
+      },
+      skills: {
+        candidateCount: 0,
+      },
+    },
+    foundationDraftStatus: {
+      complete: false,
+      needsRefresh: true,
+      missingDrafts: ['memory'],
+      refreshReasons: ['new-material'],
+    },
+  }]);
+
+  assert.equal(rollup.maintenance.recommendedCandidateSignalSummary, 'memory 3 (message, screenshot, text) | voice 1 (message) | soul 0 | skills 0');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.candidateSignalSummary, 'memory 3 (message, screenshot, text) | voice 1 (message) | soul 0 | skills 0');
 });
 
 test('buildProfileSnapshotSummaries keeps fully missing structured drafts visible in draft gap summaries', () => {

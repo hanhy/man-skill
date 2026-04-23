@@ -1207,6 +1207,17 @@ function formatProfileSnapshotCandidateSignal(label: string, candidateCount: num
   return `${label}: ${candidateCount}${typeSuffix}`;
 }
 
+function collectProfileSnapshotCandidateTypes(signal: ReadinessSignal | undefined, primarySource: 'latest' | 'sample' = 'sample') {
+  const primaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.latestTypes
+    : signal?.sampleTypes);
+  const secondaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.sampleTypes
+    : signal?.latestTypes);
+
+  return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
@@ -1245,7 +1256,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
 
   if (profile.foundationReadiness) {
     lines.push(
-      `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, readiness.memory?.latestTypes)} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, readiness.voice?.sampleTypes)} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, readiness.soul?.sampleTypes)} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, readiness.skills?.sampleTypes)}`,
+      `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.memory, 'latest'))} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.voice, 'sample'))} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.soul, 'sample'))} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.skills, 'sample'))}`,
     );
   }
 

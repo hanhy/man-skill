@@ -196,6 +196,17 @@ function normalizeStringArray(values: unknown): string[] {
   ));
 }
 
+function collectCandidateSignalTypes(signal: any, primarySource: 'latest' | 'sample' = 'sample'): string[] {
+  const primaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.latestTypes
+    : signal?.sampleTypes);
+  const secondaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.sampleTypes
+    : signal?.latestTypes);
+
+  return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
+}
+
 function buildCandidateSignalSummary(profile: any): string | null {
   const readiness = profile?.foundationReadiness ?? {};
   let hasNonZeroCandidate = false;
@@ -206,9 +217,7 @@ function buildCandidateSignalSummary(profile: any): string | null {
     if (normalizedCount > 0) {
       hasNonZeroCandidate = true;
     }
-    const types = normalizeStringArray(key === 'memory'
-      ? (signal?.latestTypes ?? signal?.sampleTypes)
-      : (signal?.sampleTypes ?? signal?.latestTypes));
+    const types = collectCandidateSignalTypes(signal, key === 'memory' ? 'latest' : 'sample');
     const typeSuffix = normalizedCount > 0 && types.length > 0
       ? ` (${types.sort((left, right) => left.localeCompare(right)).join(', ')})`
       : '';
