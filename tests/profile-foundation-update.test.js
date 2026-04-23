@@ -170,6 +170,9 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
   assert.match(intakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(intakeReadme, /Rerun safety:/);
+  assert.match(intakeReadme, /re-running `node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'` preserves starter entries, entry templates, and the managed Custom notes block/i);
+  assert.match(intakeReadme, /if `materials\.template\.json` becomes invalid JSON, the same rerun snapshots it to `profiles\/harry-han\/imports\/materials\.template\.json\.invalid-<timestamp>\.bak` before rebuilding the starter scaffold/i);
   assert.match(intakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
   assert.match(intakeReadme, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
@@ -214,6 +217,9 @@ test('scaffoldProfileIntake labels loaded manifests as profile-local reruns and 
   assert.match(intakeReadme, /profile-local intake shortcut and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(intakeReadme, /Rerun safety:/);
+  assert.match(intakeReadme, /re-running `node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'` preserves starter entries, entry templates, and the managed Custom notes block/i);
+  assert.match(intakeReadme, /if `materials\.template\.json` becomes invalid JSON, the same rerun snapshots it to `profiles\/harry-han\/imports\/materials\.template\.json\.invalid-<timestamp>\.bak` before rebuilding the starter scaffold/i);
   assert.match(intakeReadme, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 });

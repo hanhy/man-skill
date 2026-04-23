@@ -13,6 +13,10 @@ Suggested flow:
 2. Copy the entryTemplates from materials.template.json into entries and fill in real content.
 3. Run the import command above to ingest materials and refresh foundation drafts.
 
+Rerun safety:
+- re-running `node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'` preserves starter entries, entry templates, and the managed Custom notes block.
+- if `materials.template.json` becomes invalid JSON, the same rerun snapshots it to `profiles/harry-han/imports/materials.template.json.invalid-<timestamp>.bak` before rebuilding the starter scaffold.
+
 Path rule:
 - `materials.template.json` resolves every `file` relative to `profiles/harry-han/imports/`.
 - Keep local screenshots or attachments next to `sample.txt` or inside a small subdirectory like `profiles/harry-han/imports/images/`.
