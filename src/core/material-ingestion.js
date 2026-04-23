@@ -1371,6 +1371,9 @@ export class MaterialIngestion {
         summary: profile.summary,
       };
     });
+    const declaredProfileIds = new Set(validatedProfiles
+      .map((profile) => slugifyPersonId(profile.personId))
+      .filter((personId) => personId.length > 0));
 
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
@@ -1378,13 +1381,15 @@ export class MaterialIngestion {
     }
 
     const defaultPersonId = shorthandProfile?.personId ?? null;
+    const normalizedDefaultPersonId = isNonEmptyString(defaultPersonId) ? slugifyPersonId(defaultPersonId) : null;
     const manifestDir = path.dirname(validatedManifestPath);
     const validatedEntries = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      const resolvedPersonId = entry.personId ?? defaultPersonId;
+      const explicitPersonId = entry.personId;
+      const resolvedPersonId = explicitPersonId ?? defaultPersonId;
       if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
@@ -1392,6 +1397,15 @@ export class MaterialIngestion {
       const normalizedPersonId = slugifyPersonId(resolvedPersonId);
       if (!normalizedPersonId) {
         throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      const normalizedExplicitPersonId = isNonEmptyString(explicitPersonId) ? slugifyPersonId(explicitPersonId) : null;
+      if (normalizedDefaultPersonId && normalizedExplicitPersonId && normalizedExplicitPersonId !== normalizedDefaultPersonId) {
+        throw new Error(`Manifest entry ${index} targets a different profile than manifest.personId: expected ${normalizedDefaultPersonId}`);
+      }
+
+      if (declaredProfileIds.size > 0 && !declaredProfileIds.has(normalizedPersonId)) {
+        throw new Error(`Manifest entry ${index} targets undeclared profile: ${normalizedPersonId}`);
       }
 
       if (entry.type === 'text') {

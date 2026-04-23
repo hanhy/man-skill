@@ -5236,6 +5236,54 @@ test('buildSummary treats parseable but semantically invalid sample manifests as
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 is missing personId @ samples\/harry-materials\.json/);
 });
 
+test('buildSummary treats sample manifests with undeclared entry targets as invalid and hides broken starter commands', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      profiles: [{ personId: 'Harry Han', displayName: 'Harry Han' }],
+      entries: [{ personId: 'Jane Doe', type: 'message', text: 'Ship the thin slice first.' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, []);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 targets undeclared profile: jane-doe/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 targets undeclared profile: jane-doe @ samples\/harry-materials\.json/);
+  assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
+});
+
+test('buildSummary treats shorthand sample manifests with conflicting entry targets as invalid', () => {
+  const rootDir = makeTempRepo();
+  const sampleDir = path.join(rootDir, 'samples');
+  fs.mkdirSync(sampleDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sampleDir, 'harry-materials.json'),
+    JSON.stringify({
+      personId: 'Harry Han',
+      displayName: 'Harry Han',
+      entries: [{ personId: 'Jane Doe', type: 'message', text: 'Ship the thin slice first.' }],
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 targets a different profile than manifest\.personId: expected harry-han/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 targets a different profile than manifest\.personId: expected harry-han @ samples\/harry-materials\.json/);
+});
+
 test('buildSummary treats sample manifests with missing referenced files as invalid and hides broken starter commands', () => {
   const rootDir = makeTempRepo();
   const sampleDir = path.join(rootDir, 'samples');

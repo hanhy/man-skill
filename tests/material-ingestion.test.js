@@ -572,6 +572,57 @@ test('importManifest supports a single-target shorthand profile and inherits per
   assert.equal(materials.length, 2);
 });
 
+test('importManifest rejects entries that target profiles not declared in a multi-profile manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        profiles: [{ personId: 'Harry Han', displayName: 'Harry Han' }],
+        entries: [{ personId: 'Jane Doe', type: 'message', text: 'This should not import.' }],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /Manifest entry 0 targets undeclared profile: jane-doe/,
+  );
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe', 'profile.json')), false);
+});
+
+test('importManifest rejects shorthand manifests whose entries target a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        entries: [{ personId: 'Jane Doe', type: 'message', text: 'This should not import.' }],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /Manifest entry 0 targets a different profile than manifest\.personId: expected harry-han/,
+  );
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe', 'profile.json')), false);
+});
+
 test('importManifest shell-quotes manifest helper commands when the manifest path contains spaces', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

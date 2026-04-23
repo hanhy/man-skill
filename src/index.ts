@@ -450,6 +450,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
 
   try {
     const profileIds = new Set<string>();
+    const declaredProfileIds = new Set<string>();
     const materialTypes: Record<string, number> = {};
     const textFilePersonIds: Record<string, string> = {};
     const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
@@ -484,6 +485,13 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       }
       return normalized;
     };
+    const registerDeclaredPersonId = (value: unknown, displayName?: unknown) => {
+      const normalized = registerPersonId(value, displayName);
+      if (normalized) {
+        declaredProfileIds.add(normalized);
+      }
+      return normalized;
+    };
 
     const manifest = Array.isArray(parsed)
       ? { entries: parsed }
@@ -493,7 +501,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       throw new Error('Sample manifest must be an array or object');
     }
 
-    const fallbackPersonId = registerPersonId(
+    const fallbackPersonId = registerDeclaredPersonId(
       manifest.personId,
       typeof (manifest as { displayName?: unknown }).displayName === 'string'
         ? (manifest as { displayName?: string }).displayName
@@ -507,7 +515,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
           throw new Error(`Manifest profile ${index} must be an object`);
         }
 
-        const profilePersonId = registerPersonId(
+        const profilePersonId = registerDeclaredPersonId(
           (profileEntry as { personId?: unknown }).personId,
           (profileEntry as { displayName?: unknown }).displayName,
         );
@@ -528,10 +536,22 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       }
 
       const entryRecord = entry as { personId?: unknown; type?: unknown; file?: unknown; text?: unknown };
-      const resolvedPersonId = entryRecord.personId ?? fallbackPersonId;
+      const explicitPersonId = typeof entryRecord.personId === 'string' ? entryRecord.personId : null;
+      const resolvedPersonId = explicitPersonId ?? fallbackPersonId;
       const normalizedPersonId = registerPersonId(resolvedPersonId);
       if (!normalizedPersonId) {
         throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      const normalizedExplicitPersonId = typeof explicitPersonId === 'string' && explicitPersonId.trim().length > 0
+        ? slugifyPersonId(explicitPersonId.trim())
+        : null;
+      if (fallbackPersonId && normalizedExplicitPersonId && normalizedExplicitPersonId !== fallbackPersonId) {
+        throw new Error(`Manifest entry ${index} targets a different profile than manifest.personId: expected ${fallbackPersonId}`);
+      }
+
+      if (declaredProfileIds.size > 0 && !declaredProfileIds.has(normalizedPersonId)) {
+        throw new Error(`Manifest entry ${index} targets undeclared profile: ${normalizedPersonId}`);
       }
 
       if (typeof entryRecord.type !== 'string' || !supportedEntryTypes.has(entryRecord.type)) {
