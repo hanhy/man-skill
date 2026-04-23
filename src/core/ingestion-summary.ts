@@ -73,6 +73,33 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function collectRecommendedStarterTemplateSummary(profiles: Array<any>): { types: string[]; count: number } {
+  const types = Array.from(new Set(
+    profiles.flatMap((profile) => Array.isArray(profile?.intakeManifestEntryTemplateTypes)
+      ? profile.intakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : []),
+  )).sort((left, right) => left.localeCompare(right));
+
+  if (types.length > 0) {
+    return {
+      types,
+      count: types.length,
+    };
+  }
+
+  const fallbackCount = profiles.reduce((maxCount, profile) => {
+    const entryTemplateCount = Number.isFinite(profile?.intakeManifestEntryTemplateCount)
+      ? Number(profile.intakeManifestEntryTemplateCount)
+      : 0;
+    return Math.max(maxCount, entryTemplateCount);
+  }, 0);
+
+  return {
+    types: [],
+    count: fallbackCount,
+  };
+}
+
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
 
 function countGeneratedDrafts(profile) {
@@ -1125,6 +1152,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : (firstInvalidImportedIntakeProfile?.intakeManifestPath ? [firstInvalidImportedIntakeProfile.intakeManifestPath] : []);
   } else if (importedStarterIntakeProfiles.length > 0) {
     const firstImportedStarterIntakeProfile = importedStarterIntakeProfiles[0] ?? null;
+    const starterTemplateSummary = collectRecommendedStarterTemplateSummary(importedStarterIntakeProfiles);
     recommendedProfileId = firstImportedStarterIntakeProfile?.personId ?? null;
     recommendedLabel = firstImportedStarterIntakeProfile?.label ?? firstImportedStarterIntakeProfile?.personId ?? null;
     recommendedAction = recommendedLabel
@@ -1149,12 +1177,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedManifestImportCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestCommand ?? null);
-    recommendedIntakeManifestEntryTemplateTypes = Array.isArray(firstImportedStarterIntakeProfile?.intakeManifestEntryTemplateTypes)
-      ? [...firstImportedStarterIntakeProfile.intakeManifestEntryTemplateTypes]
-      : [];
-    recommendedIntakeManifestEntryTemplateCount = Number.isFinite(firstImportedStarterIntakeProfile?.intakeManifestEntryTemplateCount)
-      ? firstImportedStarterIntakeProfile.intakeManifestEntryTemplateCount
-      : recommendedIntakeManifestEntryTemplateTypes.length;
+    recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+    recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported

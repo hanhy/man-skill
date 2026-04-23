@@ -4165,6 +4165,10 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       summary: 'Direct operator with a bias for momentum.',
       sampleFile: 'samples/harry-post.txt',
       sampleText: 'Ship the first slice before polishing the plan.\n',
+      starterTemplates: {
+        message: { text: 'Keep the operating note concise.' },
+        text: { file: 'sample.txt' },
+      },
     },
     {
       person: 'jane-doe',
@@ -4172,6 +4176,11 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       summary: 'Fast feedback beats polished drift.',
       sampleFile: 'samples/jane-post.txt',
       sampleText: 'Turn sharp notes into the next visible step.\n',
+      starterTemplates: {
+        screenshot: { file: 'images/chat.png' },
+        talk: { text: 'Ship the correction while it is still fresh.' },
+        text: { file: 'sample.txt' },
+      },
     },
   ]) {
     runUpdateCommand(rootDir, 'profile', {
@@ -4186,6 +4195,15 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       sourceFile: path.join(rootDir, profile.sampleFile),
     });
     ingestion.refreshFoundationDrafts({ personId: profile.person });
+    fs.writeFileSync(
+      path.join(rootDir, 'profiles', profile.person, 'imports', 'materials.template.json'),
+      `${JSON.stringify({
+        version: 1,
+        personId: profile.person,
+        entries: [],
+        entryTemplates: profile.starterTemplates,
+      }, null, 2)}\n`,
+    );
   }
 
   const summary = buildSummary(rootDir);
