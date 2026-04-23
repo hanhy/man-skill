@@ -599,6 +599,7 @@ type IngestionHelperCommands = {
   refreshStaleFoundation?: string | null;
   refreshFoundationBundle?: string | null;
   sampleStarter?: string | null;
+  sampleManifestInspect?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
   sampleMessage?: string | null;
@@ -647,6 +648,7 @@ type IngestionSummary = {
   sampleStarterCommand?: string | null;
   sampleStarterSource?: string | null;
   sampleStarterLabel?: string | null;
+  sampleManifestInspectCommand?: string | null;
   sampleManifestCommand?: string | null;
   sampleTextPath?: string | null;
   sampleTextPresent?: boolean;
@@ -1782,6 +1784,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.importManifestAndRefreshCommand
       || helperCommands.importManifest
       || helperCommands.importManifestAndRefresh
+      || ingestion?.sampleManifestInspectCommand
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.refreshAllFoundationCommand
@@ -1902,6 +1905,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
       pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
       pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
+      pushHelperEntry(helperCommands.sampleManifestInspect ? `sample-manifest-inspect ${helperCommands.sampleManifestInspect}` : null);
       pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
       pushHelperEntry(helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null);
       pushHelperEntry(helperCommands.sampleMessage ? `sample-message ${helperCommands.sampleMessage}` : null);
@@ -1942,6 +1946,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       : null,
     ingestion.sampleStarterCommand
       ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}${ingestion.sampleStarterLabel ? ` for ${ingestion.sampleStarterLabel}` : ''}`
+      : null,
+    ingestion.sampleManifestPresent && ingestion.sampleManifestInspectCommand
+      ? `- sample manifest inspect: ${ingestion.sampleManifestInspectCommand}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`

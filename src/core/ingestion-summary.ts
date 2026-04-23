@@ -978,6 +978,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
       : null,
+    sampleManifestInspect: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)}`
+      : null,
     sampleManifest: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
       : null,
@@ -1055,6 +1058,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           : `import the checked-in sample target profile for ${sampleManifest.starterLabel}`)
         : 'import the checked-in sample target profile';
       recommendedCommand = exactSampleManifestCommand ?? sampleStarterCommand;
+      recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
       recommendedAction = sampleManifestInvalidReason
@@ -1340,6 +1344,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : null,
     sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? sampleManifest.starterLabel
+      : null,
+    sampleManifestInspectCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)}`
       : null,
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`

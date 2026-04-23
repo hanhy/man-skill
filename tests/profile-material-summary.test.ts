@@ -3743,6 +3743,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
   assert.equal(summary.ingestion.sampleStarterSource, 'samples/harry-materials.json');
   assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
+  assert.equal(summary.ingestion.sampleManifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
   assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation");
   assert.equal(summary.ingestion.sampleTextPath, 'samples/harry-post.txt');
   assert.equal(summary.ingestion.sampleTextPresent, true);
@@ -3788,6 +3789,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     refreshStaleFoundation: 'node src/index.js update foundation --stale',
     refreshFoundationBundle: "node src/index.js update foundation --person 'jane-doe'",
     sampleStarter: 'node src/index.js import sample',
+    sampleManifestInspect: "node src/index.js import manifest --file 'samples/harry-materials.json'",
     sampleManifest: "node src/index.js import manifest --file 'samples/harry-materials.json' --refresh-foundation",
     sampleText: "node src/index.js import text --person harry-han --file 'samples/harry-post.txt' --refresh-foundation",
     sampleMessage: "node src/index.js import message --person harry-han --text 'Ship the thin slice first.' --refresh-foundation",
@@ -4708,6 +4710,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     sampleStarterCommand: null,
     sampleStarterSource: null,
     sampleStarterLabel: null,
+    sampleManifestInspectCommand: null,
     sampleManifestCommand: null,
     sampleTextPath: null,
     sampleTextPresent: false,
@@ -4766,6 +4769,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       refreshStaleFoundation: 'node src/index.js update foundation --stale',
       refreshFoundationBundle: null,
       sampleStarter: null,
+      sampleManifestInspect: null,
       sampleManifest: null,
       sampleText: null,
       sampleMessage: null,
