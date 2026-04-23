@@ -1405,6 +1405,24 @@ test('soul profile strips numbered list markers inside structured sections', () 
   });
 });
 
+test('soul profile preserves multiline prose and indented list continuations inside structured sections', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\nStay faithful to the source material\n  and prefer verified slices over big rewrites.\n\n## Boundaries\n- Do not bluff certainty\n  when the materials stay ambiguous.\n\n## Vibe\nGrounded and direct\n  with enough urgency to keep momentum.\n\n## Continuity\n- Carry durable lessons forward\n  even when the next task changes shape.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture.',
+    coreTruths: ['Stay faithful to the source material and prefer verified slices over big rewrites.'],
+    boundaries: ['Do not bluff certainty when the materials stay ambiguous.'],
+    vibe: ['Grounded and direct with enough urgency to keep momentum.'],
+    continuity: ['Carry durable lessons forward even when the next task changes shape.'],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile parses setext headings inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\nCore truths\n-----------\n- Stay faithful to the source material.\n- Prefer verified slices over big rewrites.\n\nBoundaries\n----------\n- Do not bluff certainty.\n\nVibe\n-----\n- Grounded and direct.\n\nContinuity\n----------\n- Carry durable lessons forward.\n`);
 
