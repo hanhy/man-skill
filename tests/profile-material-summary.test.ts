@@ -3555,7 +3555,7 @@ test('loadProfilesIndex skips malformed material records while keeping valid sum
   const [profile] = loader.loadProfilesIndex();
 
   assert.equal(profile.id, 'harry-han');
-  assert.equal(profile.materialCount, 2);
+  assert.equal(profile.materialCount, 1);
   assert.deepEqual(profile.materialTypes, { message: 1 });
   assert.equal(profile.foundationReadiness.memory.candidateCount, 1);
 });

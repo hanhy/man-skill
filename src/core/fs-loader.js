@@ -582,6 +582,7 @@ function loadMaterialSummaries(materialsDir) {
   }
 
   return {
+    materialCount: materialRecords.length,
     materialTypes,
     latestMaterialAt: newestRecords[0]?.createdAt ?? null,
     latestMaterialId: newestRecords[0]?.id ?? null,
@@ -861,6 +862,64 @@ export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, 
     || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
 }
 
+function normalizeMaterialTypeCounts(materialTypes = null) {
+  if (!materialTypes || typeof materialTypes !== 'object') {
+    return {};
+  }
+
+  return Object.entries(materialTypes).reduce((summary, [type, count]) => {
+    if (!isNonEmptyString(type) || !Number.isFinite(count) || count <= 0) {
+      return summary;
+    }
+
+    summary[type] = count;
+    return summary;
+  }, {});
+}
+
+function countMaterialTypes(materialTypes = null) {
+  return Object.values(normalizeMaterialTypeCounts(materialTypes))
+    .reduce((total, count) => total + count, 0);
+}
+
+function haveSameMaterialTypeCounts(leftMaterialTypes = null, rightMaterialTypes = null) {
+  const left = normalizeMaterialTypeCounts(leftMaterialTypes);
+  const right = normalizeMaterialTypeCounts(rightMaterialTypes);
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+
+  for (const key of keys) {
+    if ((left[key] ?? 0) !== (right[key] ?? 0)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function hasFoundationDraftMaterialMetadataMismatch(
+  draftMetadata = null,
+  latestMaterialAt = null,
+  latestMaterialId = null,
+  materialCount = null,
+  materialTypes = null,
+) {
+  if (!draftMetadata?.valid) {
+    return false;
+  }
+
+  const normalizedExpectedMaterialTypes = normalizeMaterialTypeCounts(materialTypes);
+  const normalizedDraftMaterialTypes = normalizeMaterialTypeCounts(draftMetadata.materialTypes);
+  const expectedSourceCount = Number.isFinite(materialCount)
+    ? materialCount
+    : countMaterialTypes(normalizedExpectedMaterialTypes);
+  const draftSourceCount = Number.isFinite(draftMetadata.sourceCount) ? draftMetadata.sourceCount : 0;
+
+  return (draftMetadata.latestMaterialAt ?? null) !== (latestMaterialAt ?? null)
+    || (draftMetadata.latestMaterialId ?? null) !== (latestMaterialId ?? null)
+    || draftSourceCount !== expectedSourceCount
+    || !haveSameMaterialTypeCounts(normalizedDraftMaterialTypes, normalizedExpectedMaterialTypes);
+}
+
 export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = null, profileId, profileDocument = null) {
   if (!memoryDraft) {
     return false;
@@ -875,7 +934,7 @@ export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = nu
     || (memoryDraft.summary ?? null) !== expectedSummary;
 }
 
-export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null) {
+export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, profileDocument = null, materialCount = null, materialTypes = null) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -906,10 +965,24 @@ export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt =
     }
   }
 
+  const availableMarkdownDrafts = [
+    ['voice', voiceMetadata],
+    ['soul', soulMetadata],
+    ['skills', skillsMetadata],
+  ].filter(([draftName]) => !missingDrafts.has(draftName));
+
   const generatedAt = memoryDraft?.generatedAt ?? null;
   const hasProfileMetadataMismatch = hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft, profileId, profileDocument);
-  const hasMarkdownMetadataMismatch = [voiceMetadata, soulMetadata, skillsMetadata]
-    .some((draftMetadata) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
+  const hasMarkdownMetadataMismatch = availableMarkdownDrafts
+    .some(([, draftMetadata]) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
+  const hasMarkdownMaterialMetadataMismatch = availableMarkdownDrafts
+    .some(([, draftMetadata]) => hasFoundationDraftMaterialMetadataMismatch(
+      draftMetadata,
+      latestMaterialAt,
+      latestMaterialId,
+      materialCount,
+      materialTypes,
+    ));
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
@@ -917,9 +990,9 @@ export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt =
     missingDrafts.size > 0 ? 'missing drafts' : null,
     hasNewerMaterial ? 'new materials' : null,
     hasProfileMetadataMismatch ? 'profile metadata drift' : null,
-    hasMarkdownMetadataMismatch ? 'draft metadata drift' : null,
+    hasMarkdownMetadataMismatch || hasMarkdownMaterialMetadataMismatch ? 'draft metadata drift' : null,
   ].filter(Boolean);
-  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch || hasMarkdownMetadataMismatch;
+  const needsRefresh = missingDrafts.size > 0 || hasNewerMaterial || hasProfileMetadataMismatch || hasMarkdownMetadataMismatch || hasMarkdownMaterialMetadataMismatch;
 
   return {
     generatedAt,
@@ -1113,13 +1186,15 @@ export class FileSystemLoader {
       const materialsDir = path.join(profilesDir, profileId, 'materials');
       const profileSummary = loadMaterialSummaries(materialsDir);
       const profileDocument = loadProfileDocument(this.rootDir, profileId);
+      const materialCount = profileSummary.materialCount;
+      const screenshotCount = listFilesIfExists(path.join(materialsDir, 'screenshots')).length;
 
       return {
         id: profileId,
         profile: profileDocument,
         hasProfile: Boolean(profileDocument),
-        materialCount: listFilesIfExists(materialsDir).filter((name) => name.endsWith('.json')).length,
-        screenshotCount: listFilesIfExists(path.join(materialsDir, 'screenshots')).length,
+        materialCount,
+        screenshotCount,
         materialTypes: profileSummary.materialTypes,
         latestMaterialAt: profileSummary.latestMaterialAt,
         latestMaterialId: profileSummary.latestMaterialId,
@@ -1132,6 +1207,8 @@ export class FileSystemLoader {
           profileSummary.latestMaterialAt,
           profileSummary.latestMaterialId,
           profileDocument,
+          materialCount,
+          profileSummary.materialTypes,
         ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,

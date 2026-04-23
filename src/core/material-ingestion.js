@@ -1795,12 +1795,22 @@ export class MaterialIngestion {
         const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
         const latestMaterialId = latestMaterialRecord?.id ?? null;
         const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
+        const materialTypes = materialRecords.reduce((summary, record) => {
+          if (!isNonEmptyString(record?.type)) {
+            return summary;
+          }
+
+          summary[record.type] = (summary[record.type] ?? 0) + 1;
+          return summary;
+        }, {});
         const foundationDraftStatus = loadFoundationDraftStatus(
           this.rootDir,
           profileId,
           latestMaterialAt,
           latestMaterialId,
           profileDocument,
+          materialRecords.length,
+          materialTypes,
         );
 
         return foundationDraftStatus.needsRefresh;

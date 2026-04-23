@@ -1533,7 +1533,7 @@ test('refreshStaleFoundationDrafts follows the same stale-foundation status as l
     },
     {
       personId: 'stale-person',
-      refreshReasons: ['new materials'],
+      refreshReasons: ['new materials', 'draft metadata drift'],
     },
   ]);
 });
@@ -1773,6 +1773,41 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft metada
   assert.match(refreshedVoiceDraft, /Summary: Direct operator with a bias for momentum\./);
   assert.doesNotMatch(refreshedVoiceDraft, /Display name: Old Harry/);
   assert.doesNotMatch(refreshedVoiceDraft, /Summary: Outdated summary\./);
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft material metadata drifts from imported materials', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+    .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(refreshedVoiceDraft, /Source materials: 2 \(message:1, talk:1\)/);
+  assert.doesNotMatch(refreshedVoiceDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
+  assert.doesNotMatch(refreshedVoiceDraft, /Source materials: 1 \(message:1\)/);
 });
 
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
