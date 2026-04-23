@@ -21,6 +21,51 @@ const harryIntakeReadme = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry
 const harryIntakeManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'materials.template.json'), 'utf8'));
 const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'sample.txt'), 'utf8');
 
+function formatMaterialTypes(materialTypes = {}) {
+  return Object.entries(materialTypes)
+    .filter(([, count]) => Number.isFinite(count) && Number(count) > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([type, count]) => `${type}:${count}`)
+    .join(', ');
+}
+
+function formatCountLabel(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function formatDraftSourcesLine(draftSources = {}) {
+  const orderedKeys = ['memory', 'skills', 'soul', 'voice'];
+  const parts = orderedKeys
+    .map((key) => {
+      const source = draftSources[key];
+      if (!source) {
+        return null;
+      }
+
+      const sourceCount = Number(source.sourceCount ?? 0);
+      const entryCount = Number(source.entryCount ?? 0);
+      const materialTypes = formatMaterialTypes(source.materialTypes ?? {});
+      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+        return null;
+      }
+
+      const sourceLabel = sourceCount > 0
+        ? `${formatCountLabel(sourceCount, 'source')}${materialTypes ? ` (${materialTypes})` : ''}`
+        : materialTypes
+          ? `(${materialTypes})`
+          : null;
+      const detailParts = [
+        sourceLabel,
+        entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null,
+      ].filter(Boolean);
+
+      return detailParts.length > 0 ? `${key} ${detailParts.join(', ')}` : null;
+    })
+    .filter(Boolean);
+
+  return parts.length > 0 ? `draft sources: ${parts.join(' | ')}` : null;
+}
+
 test('README documents the default delivery foundation targets and repo manifests', () => {
   assert.match(readme, /Delivery foundation/i);
   assert.match(readme, /Feishu, Telegram, WhatsApp, and Slack/);
@@ -231,6 +276,41 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     refreshReasons: summary.profiles[0].foundationDraftStatus.refreshReasons,
   });
   assert.deepEqual(summary.profileSnapshots[0].readiness, summary.profiles[0].foundationReadiness);
+  assert.deepEqual(summary.profileSnapshots[0].draftSources, {
+    memory: {
+      generated: true,
+      generatedAt: summary.profiles[0].foundationDraftSummaries.memory.generatedAt,
+      latestMaterialAt: summary.profiles[0].foundationDraftSummaries.memory.latestMaterialAt,
+      latestMaterialId: summary.profiles[0].foundationDraftSummaries.memory.latestMaterialId,
+      sourceCount: summary.profiles[0].foundationDraftSummaries.memory.sourceCount,
+      materialTypes: summary.profiles[0].foundationDraftSummaries.memory.materialTypes,
+      entryCount: summary.profiles[0].foundationDraftSummaries.memory.entryCount,
+    },
+    skills: {
+      generated: true,
+      generatedAt: summary.profiles[0].foundationDraftSummaries.skills.generatedAt,
+      latestMaterialAt: summary.profiles[0].foundationDraftSummaries.skills.latestMaterialAt,
+      latestMaterialId: summary.profiles[0].foundationDraftSummaries.skills.latestMaterialId,
+      sourceCount: summary.profiles[0].foundationDraftSummaries.skills.sourceCount,
+      materialTypes: summary.profiles[0].foundationDraftSummaries.skills.materialTypes,
+    },
+    soul: {
+      generated: true,
+      generatedAt: summary.profiles[0].foundationDraftSummaries.soul.generatedAt,
+      latestMaterialAt: summary.profiles[0].foundationDraftSummaries.soul.latestMaterialAt,
+      latestMaterialId: summary.profiles[0].foundationDraftSummaries.soul.latestMaterialId,
+      sourceCount: summary.profiles[0].foundationDraftSummaries.soul.sourceCount,
+      materialTypes: summary.profiles[0].foundationDraftSummaries.soul.materialTypes,
+    },
+    voice: {
+      generated: true,
+      generatedAt: summary.profiles[0].foundationDraftSummaries.voice.generatedAt,
+      latestMaterialAt: summary.profiles[0].foundationDraftSummaries.voice.latestMaterialAt,
+      latestMaterialId: summary.profiles[0].foundationDraftSummaries.voice.latestMaterialId,
+      sourceCount: summary.profiles[0].foundationDraftSummaries.voice.sourceCount,
+      materialTypes: summary.profiles[0].foundationDraftSummaries.voice.materialTypes,
+    },
+  });
   assert.deepEqual(summary.profileSnapshots[0].draftSections, {
     skills: {
       generated: true,
@@ -255,6 +335,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     },
   });
   assert.equal(summary.profileSnapshots[0].profileSummary, 'Direct operator with a bias for momentum and fast feedback loops.');
+  assert.match(summary.profileSnapshots[0].snapshot, new RegExp(formatDraftSourcesLine(summary.profileSnapshots[0].draftSources).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
   assert.ok(harryCommand);
@@ -375,12 +456,12 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
-  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, and `highlights`\)/i);
+  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, and `highlights`\)/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
-  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
-  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);

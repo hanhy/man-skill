@@ -2759,7 +2759,7 @@ test('buildSummary exposes machine-readable profile foundation snapshots for emp
   assert.deepEqual(summary.profileSnapshots, []);
 });
 
-test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and layer highlights without parsing snapshot text', () => {
+test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap summaries, and layer highlights without parsing snapshot text', () => {
   const [snapshot] = buildProfileSnapshotSummaries([
     {
       id: 'jane-doe',
@@ -2780,11 +2780,22 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
         memory: {
           generated: true,
           path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          generatedAt: '2026-04-20T12:05:00.000Z',
+          latestMaterialAt: '2026-04-20T12:00:00.000Z',
+          latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
+          entryCount: 1,
           latestSummaries: ['Push the work loop forward.'],
         },
         voice: {
           generated: true,
           path: 'profiles/jane-doe/voice/README.md',
+          generatedAt: '2026-04-20T12:05:00.000Z',
+          latestMaterialAt: '2026-04-20T12:00:00.000Z',
+          latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
           highlights: ['- keep it tight'],
           readySectionCount: 4,
           totalSectionCount: 4,
@@ -2794,6 +2805,11 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
         soul: {
           generated: true,
           path: 'profiles/jane-doe/soul/README.md',
+          generatedAt: '2026-04-20T12:05:00.000Z',
+          latestMaterialAt: '2026-04-20T12:00:00.000Z',
+          latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
           highlights: ['- stay grounded'],
           readySectionCount: 3,
           totalSectionCount: 4,
@@ -2803,6 +2819,11 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
         skills: {
           generated: true,
           path: 'profiles/jane-doe/skills/README.md',
+          generatedAt: '2026-04-20T12:05:00.000Z',
+          latestMaterialAt: '2026-04-20T12:00:00.000Z',
+          latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
           highlights: ['- execution heuristic', '- sample: ignore me'],
           readySectionCount: 2,
           totalSectionCount: 2,
@@ -2842,6 +2863,41 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
     soul: 'profiles/jane-doe/soul/README.md',
     voice: 'profiles/jane-doe/voice/README.md',
   });
+  assert.deepEqual(snapshot.draftSources, {
+    memory: {
+      generated: true,
+      generatedAt: '2026-04-20T12:05:00.000Z',
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      sourceCount: 2,
+      materialTypes: { message: 1, talk: 1 },
+      entryCount: 1,
+    },
+    skills: {
+      generated: true,
+      generatedAt: '2026-04-20T12:05:00.000Z',
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      sourceCount: 1,
+      materialTypes: { talk: 1 },
+    },
+    soul: {
+      generated: true,
+      generatedAt: '2026-04-20T12:05:00.000Z',
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      sourceCount: 1,
+      materialTypes: { talk: 1 },
+    },
+    voice: {
+      generated: true,
+      generatedAt: '2026-04-20T12:05:00.000Z',
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+      sourceCount: 2,
+      materialTypes: { message: 1, talk: 1 },
+    },
+  });
   assert.deepEqual(snapshot.draftSections, {
     skills: {
       generated: true,
@@ -2876,6 +2932,7 @@ test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and laye
     skills: ['execution heuristic'],
   });
   assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
+  assert.match(snapshot.snapshot, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry \| skills 1 source \(talk:1\) \| soul 1 source \(talk:1\) \| voice 2 sources \(message:1, talk:1\)/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);
 });
 

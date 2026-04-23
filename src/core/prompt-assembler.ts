@@ -84,6 +84,16 @@ type ProfileSnapshotRefreshInfo = {
   refreshPaths: string[];
 };
 
+type ProfileSnapshotDraftSourceSummary = {
+  generated: boolean;
+  generatedAt?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  sourceCount?: number;
+  materialTypes?: MaterialTypes;
+  entryCount?: number;
+};
+
 type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', {
   generated: boolean;
   readySectionCount: number;
@@ -118,6 +128,7 @@ export type ProfileSnapshotSummary = {
     skills: ReadinessSignal;
   };
   draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
+  draftSources: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', ProfileSnapshotDraftSourceSummary>>;
   draftSections: ProfileSnapshotDraftSections;
   draftGaps: string[];
   highlights: {
@@ -737,6 +748,28 @@ function formatMaterialTypes(materialTypes: MaterialTypes = {}) {
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
 }
 
+function normalizeMaterialTypes(materialTypes: unknown): MaterialTypes | undefined {
+  if (!materialTypes || typeof materialTypes !== 'object' || Array.isArray(materialTypes)) {
+    return undefined;
+  }
+
+  const normalizedEntries = Object.entries(materialTypes as Record<string, unknown>)
+    .filter(([key, value]) => normalizeOptionalString(key) && Number.isFinite(value) && Number(value) > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => [key, Number(value)] as const);
+
+  if (normalizedEntries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(normalizedEntries);
+}
+
+function formatCountLabel(count: number, singular: string, plural?: string) {
+  const normalizedPlural = plural ?? `${singular}s`;
+  return `${count} ${count === 1 ? singular : normalizedPlural}`;
+}
+
 function normalizeOptionalString(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -911,6 +944,73 @@ function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
   return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
 }
 
+function collectDraftSources(profile: ProfileSnapshot = {}) {
+  const draftKinds = [
+    { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+  ] as const;
+
+  return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', ProfileSnapshotDraftSourceSummary>>>((accumulator, { key, summary }) => {
+    if (!summary) {
+      return accumulator;
+    }
+
+    const generatedAt = normalizeOptionalString(summary.generatedAt);
+    const latestMaterialAt = normalizeOptionalString(summary.latestMaterialAt);
+    const latestMaterialId = normalizeOptionalString(summary.latestMaterialId);
+    const sourceCount = Number(summary.sourceCount ?? 0);
+    const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
+    const materialTypes = normalizeMaterialTypes(summary.materialTypes);
+
+    if (!generatedAt && !latestMaterialAt && !latestMaterialId && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+      return accumulator;
+    }
+
+    accumulator[key] = {
+      generated: summary.generated === true,
+      ...(generatedAt ? { generatedAt } : {}),
+      ...(latestMaterialAt ? { latestMaterialAt } : {}),
+      ...(latestMaterialId ? { latestMaterialId } : {}),
+      ...(sourceCount > 0 ? { sourceCount } : {}),
+      ...(materialTypes ? { materialTypes } : {}),
+      ...(key === 'memory' && entryCount > 0 ? { entryCount } : {}),
+    };
+    return accumulator;
+  }, {});
+}
+
+function summarizeDraftSources(profile: ProfileSnapshot = {}) {
+  const draftSources = collectDraftSources(profile);
+  const sourceSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
+    .map((key) => {
+      const summary = draftSources[key];
+      if (!summary) {
+        return null;
+      }
+
+      const sourceCount = Number(summary.sourceCount ?? 0);
+      const entryCount = Number(summary.entryCount ?? 0);
+      const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
+      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+        return null;
+      }
+
+      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
+      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
+      const parts = [
+        sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null,
+        entryLabel,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
+}
+
 function buildMissingDraftPaths(profileId: string, missingDrafts: string[]) {
   const draftPathByKey: Record<string, string> = {
     memory: `profiles/${profileId}/memory/long-term/foundation.json`,
@@ -1031,6 +1131,10 @@ function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): P
   }, {});
 }
 
+function normalizeProfileSnapshotDraftSources(profile: ProfileSnapshot = {}) {
+  return collectDraftSources(profile);
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
@@ -1042,6 +1146,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftStatus = normalizeProfileSnapshotDraftStatus(profile);
   const readiness = normalizeProfileSnapshotReadiness(profile);
   const draftFiles = collectDraftFiles(profile);
+  const draftSources = normalizeProfileSnapshotDraftSources(profile);
   const draftSections = normalizeProfileSnapshotDraftSections(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
@@ -1076,6 +1181,11 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftFilesSummary = summarizeDraftFiles(profile);
   if (draftFilesSummary) {
     lines.push(`  draft files: ${draftFilesSummary}`);
+  }
+
+  const draftSourcesSummary = summarizeDraftSources(profile);
+  if (draftSourcesSummary) {
+    lines.push(`  draft sources: ${draftSourcesSummary}`);
   }
 
   if (refreshInfo.refreshCommand) {
@@ -1117,6 +1227,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     draftStatus,
     readiness,
     draftFiles,
+    draftSources,
     draftSections,
     draftGaps,
     highlights,
@@ -1300,10 +1411,6 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
       ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${formatCountLabel(skills.repoStaleProfileCount ?? 0, 'repo-stale profile')}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
-}
-
-function formatCountLabel(count: number, singularLabel: string) {
-  return `${count} ${singularLabel}${count === 1 ? '' : 's'}`;
 }
 
 function formatChannelAuth(auth: ChannelAuth | null | undefined) {
