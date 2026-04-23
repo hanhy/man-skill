@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 import { buildSummary } from '../src/index.js';
+import { buildPopulateEnvCommand } from '../src/core/delivery-summary.ts';
 import { ChannelRegistry as JsChannelRegistry } from '../src/core/channel-registry.js';
 import { ModelRegistry as JsModelRegistry } from '../src/core/model-registry.js';
 import { slackChannelScaffold } from '../src/channels/slack.js';
@@ -27,6 +29,22 @@ import { ManifestLoader as TsManifestLoader } from '../src/core/manifest-loader.
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-channel-provider-'));
 }
+
+test('buildPopulateEnvCommand preserves export-prefixed env entries instead of appending duplicates', () => {
+  const rootDir = makeTempRepo();
+  const envPath = path.join(rootDir, '.env');
+  fs.writeFileSync(envPath, 'export OPENAI_API_KEY=already-set\n');
+
+  const command = buildPopulateEnvCommand(['OPENAI_API_KEY', 'GLM_API_KEY']);
+  assert.ok(command);
+
+  execFileSync('/bin/sh', ['-lc', command], { cwd: rootDir });
+
+  assert.equal(
+    fs.readFileSync(envPath, 'utf8'),
+    'export OPENAI_API_KEY=already-set\nGLM_API_KEY=\n',
+  );
+});
 
 function seedMinimalRepo(rootDir) {
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -357,11 +375,11 @@ test('buildSummary keeps active delivery integrations in the env repair backlog 
   assert.equal(summary.delivery.authBlockedProviderCount, 6);
   assert.equal(
     summary.delivery.helperCommands.populateChannelEnv,
-    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
   );
   assert.equal(
     summary.delivery.helperCommands.populateProviderEnv,
-    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
   );
 });
 
@@ -1916,9 +1934,9 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.deepEqual(summary.delivery.helperCommands, {
       bootstrapEnv: 'cp .env.example .env',
       populateEnvTemplate: null,
-      populateDeliveryEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
-      populateChannelEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
-      populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateDeliveryEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateChannelEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+      populateProviderEnv: "touch '.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
       scaffoldChannelManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
       scaffoldProviderManifest: "mkdir -p 'manifests' && touch 'manifests/providers.json'",
       scaffoldChannelImplementation: null,
@@ -1950,7 +1968,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
       nextStep: null,
       helperCommands: {
         bootstrapEnv: 'cp .env.example .env',
-        populateEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+        populateEnv: "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
         scaffoldManifest: "mkdir -p 'manifests' && touch 'manifests/channels.json'",
         scaffoldImplementation: null,
       },
@@ -1987,7 +2005,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channels: 4 total \(0 active, 0 planned, 4 candidate\)/);
     assert.match(summary.promptPreview, /env template: \.env\.example \(13\/13 required vars\)/);
     assert.match(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
-    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
+    assert.match(summary.promptPreview, /helpers: env cp \.env\.example \.env \| delivery env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channel env touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider env touch '\.env' && for key in 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| channels mkdir -p 'manifests' && touch 'manifests\/channels\.json' \| providers mkdir -p 'manifests' && touch 'manifests\/providers\.json'/);
     assert.match(summary.promptPreview, /auth readiness: 1\/4 channels configured, 1\/6 providers configured/);
     assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
     assert.match(summary.promptPreview, /Telegram \[candidate, scaffold-only\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
@@ -1996,7 +2014,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.match(summary.promptPreview, /channel env backlog: FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID/);
     assert.match(summary.promptPreview, /provider env backlog: ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY/);
     assert.match(summary.promptPreview, /channel queue: 4 pending \(3 auth-blocked\), manifest missing, scaffolds 4\/4 present, implementations 0\/4 ready via manifests\/channels\.json/);
-    assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
+    assert.match(summary.promptPreview, /Feishu \[candidate, scaffold-only\]: set FEISHU_APP_ID, FEISHU_APP_SECRET via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app; caps tenant-app, docs, bot\] @ src\/channels\/feishu\.js \| helpers: env cp \.env\.example \.env \| populate touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| manifest mkdir -p 'manifests' && touch 'manifests\/channels\.json'/);
     assert.match(summary.promptPreview, /\+3 more queued channels: Telegram \[candidate, scaffold-only\], WhatsApp \[candidate, scaffold-only\], Slack \[candidate, configured, scaffold-only\]/);
     assert.match(summary.promptPreview, /models: 6 total \(0 active, 0 planned, 6 candidate\)/);
     assert.match(summary.promptPreview, /provider queue: 6 pending \(5 auth-blocked\), manifest missing, scaffolds 6\/6 present, implementations 0\/6 ready via manifests\/providers\.json/);
@@ -2117,9 +2135,9 @@ test('buildSummary exposes delivery helper commands for first missing implementa
   assert.deepEqual(summary.delivery.helperCommands, {
     bootstrapEnv: null,
     populateEnvTemplate: null,
-    populateDeliveryEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    populateDeliveryEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     populateChannelEnv: null,
-    populateProviderEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    populateProviderEnv: "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
     scaffoldChannelManifest: null,
     scaffoldProviderManifest: null,
     scaffoldChannelImplementation: null,
@@ -2128,7 +2146,7 @@ test('buildSummary exposes delivery helper commands for first missing implementa
     scaffoldProviderImplementationBundle: "mkdir -p 'src/models' && touch 'src/models/openai.js'",
   });
   assert.equal(summary.delivery.providerQueue[0].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/openai.js'");
-  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
+  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/openai\.js'/);
 });
 
 
@@ -2165,7 +2183,7 @@ test('buildSummary delivery helper commands skip scaffolded queue leaders and ta
   assert.equal(summary.delivery.providerQueue[1].helperCommands.scaffoldImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementation, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
   assert.equal(summary.delivery.helperCommands.scaffoldProviderImplementationBundle, "mkdir -p 'src/models' && touch 'src/models/anthropic.js'");
-  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
+  assert.match(summary.promptPreview, /helpers: provider env touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done \| provider impl mkdir -p 'src\/models' && touch 'src\/models\/anthropic\.js'/);
 });
 
 test('buildSummary prompt preview surfaces delivery implementation bundles when multiple scaffolds are missing', () => {
@@ -2286,10 +2304,10 @@ test('buildSummary exposes env template population helpers when .env.example is 
   assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
   assert.equal(
     summary.delivery.helperCommands.populateEnvTemplate,
-    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
   assert.match(summary.promptPreview, /env template: \.env\.example \(2\/13 required vars; missing FEISHU_APP_ID, FEISHU_APP_SECRET, TELEGRAM_BOT_TOKEN, WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID, SLACK_SIGNING_SECRET, ANTHROPIC_API_KEY, KIMI_API_KEY, MINIMAX_API_KEY, GLM_API_KEY, QWEN_API_KEY\)/);
-  assert.match(summary.promptPreview, /helpers: template env touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /helpers: template env touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
 });
 

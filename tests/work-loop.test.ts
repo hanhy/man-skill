@@ -2617,12 +2617,12 @@ test('buildSummary work loop repairs the env template before channel scaffolding
   assert.equal(summary.delivery.providerQueue[0].helperCommands.bootstrapEnv, null);
   assert.equal(
     summary.delivery.helperCommands.populateEnvTemplate,
-    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
   assert.equal(summary.workLoop.currentPriority.nextAction, 'update .env.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
+    "touch '.env.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env.example' || printf '%s=\\n' \"$key\" >> '.env.example'; done",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example']);
   assert.match(summary.promptPreview, /current: Channels \[queued\] — 4 pending, 0 configured, 4 auth-blocked, manifest missing, scaffolds 0\/4 present/);
@@ -2630,7 +2630,7 @@ test('buildSummary work loop repairs the env template before channel scaffolding
   assert.doesNotMatch(summary.promptPreview, /env bootstrap: cp \.env\.example \.env/);
   assert.doesNotMatch(summary.promptPreview, /\| helpers: env cp \.env\.example \.env/);
   assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
-  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /paths: .*manifests\/channels\.json/);
 });
@@ -2684,7 +2684,7 @@ test('buildSummary work loop repairs the env template before channel credential 
   assert.match(summary.promptPreview, /next action: update \.env\.example with missing delivery credentials; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
   assert.match(summary.promptPreview, /priorities: 4 total \(2 ready, 0 queued, 2 blocked\)/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:blocked \| providers:blocked/);
-  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
+  assert.match(summary.promptPreview, /command: touch '\.env\.example' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_SIGNING_SECRET' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env\.example' \|\| printf '%s=\\n' \"\$key\" >> '\.env\.example'; done/);
   assert.match(summary.promptPreview, /paths: \.env\.example/);
   assert.doesNotMatch(summary.promptPreview, /command: cp \.env\.example \.env/);
 });
@@ -2909,11 +2909,11 @@ test('buildSummary work loop switches blocked channel rollout to the repo-local 
   assert.equal(summary.workLoop.currentPriority.status, 'blocked');
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set FEISHU_APP_ID, FEISHU_APP_SECRET');
-  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
   assert.match(workLoopBlock, /paths: \.env/);
   assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
 });
@@ -2951,12 +2951,12 @@ test('buildSummary work loop switches blocked provider rollout to the repo-local
   assert.equal(summary.workLoop.currentPriority.status, 'blocked');
   assert.equal(
     summary.workLoop.currentPriority.command,
-    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"^${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    "touch '.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
   );
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'set OPENAI_API_KEY for gpt-5');
   assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
-  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+  assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
   assert.match(workLoopBlock, /paths: \.env/);
   assert.doesNotMatch(workLoopBlock, /paths: \.env\.example, \.env/);
 });
@@ -3264,7 +3264,7 @@ test('buildSummary work loop uses repo-local channel env repair commands once a 
     assert.equal(summary.delivery.helperCommands.bootstrapEnv, null);
     assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
     assert.match(summary.promptPreview, /next action: set FEISHU_APP_ID, FEISHU_APP_SECRET/);
-    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID' 'SLACK_BOT_TOKEN' 'SLACK_SIGNING_SECRET'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
     assert.match(summary.promptPreview, /paths: \.env/);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
@@ -3344,7 +3344,7 @@ test('buildSummary work loop uses repo-local provider env repair commands once c
     assert.equal(summary.delivery.configuredProviderCount, 0);
     assert.match(summary.promptPreview, /current: Providers \[blocked\] — 6 pending, 0 configured, 6 auth-blocked, manifest ready, scaffolds 6\/6 present, implementations 6\/6 ready/);
     assert.match(summary.promptPreview, /next action: set OPENAI_API_KEY for gpt-5/);
-    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -q \"\^\$\{key\}=\" '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
+    assert.match(summary.promptPreview, /command: touch '\.env' && for key in 'OPENAI_API_KEY' 'ANTHROPIC_API_KEY' 'KIMI_API_KEY' 'MINIMAX_API_KEY' 'GLM_API_KEY' 'QWEN_API_KEY'; do grep -Eq .*\$\{key\}=.* '\.env' \|\| printf '%s=\\n' \"\$key\" >> '\.env'; done/);
     assert.match(summary.promptPreview, /paths: \.env/);
     assert.doesNotMatch(summary.promptPreview, /paths: .*\.env\.example/);
   } finally {
