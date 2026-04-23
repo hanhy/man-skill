@@ -1911,11 +1911,20 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedRefreshIntakeCommand = typeof ingestion?.recommendedRefreshIntakeCommand === 'string' && ingestion.recommendedRefreshIntakeCommand.length > 0
     ? ingestion.recommendedRefreshIntakeCommand
     : null;
+  const recommendedIntakeManifestEntryTemplateTypes = Array.isArray(ingestion?.recommendedIntakeManifestEntryTemplateTypes)
+    ? ingestion.recommendedIntakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const recommendedIntakeManifestEntryTemplateCount = typeof ingestion?.recommendedIntakeManifestEntryTemplateCount === 'number'
+    ? ingestion.recommendedIntakeManifestEntryTemplateCount
+    : 0;
+  const recommendedTemplateSummary = recommendedIntakeManifestEntryTemplateTypes.length > 0
+    ? `${recommendedIntakeManifestEntryTemplateTypes.join(', ')}${recommendedIntakeManifestEntryTemplateCount > 0 ? ` (${recommendedIntakeManifestEntryTemplateCount} total)` : ''}`
+    : null;
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2600,6 +2609,23 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const actionableReadyPriorityInspectCommand = typeof actionableReadyPriority?.inspectCommand === 'string' && actionableReadyPriority.inspectCommand.length > 0
     ? actionableReadyPriority.inspectCommand
     : null;
+  const formatPriorityTemplateSummary = (priority?: WorkLoopPriority | null): string | null => {
+    const templateTypes = Array.isArray(priority?.intakeManifestEntryTemplateTypes)
+      ? priority.intakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const templateCount = typeof priority?.intakeManifestEntryTemplateCount === 'number'
+      ? priority.intakeManifestEntryTemplateCount
+      : 0;
+
+    if (templateTypes.length === 0) {
+      return null;
+    }
+
+    return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
+  };
+  const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
+  const runnablePriorityTemplateSummary = formatPriorityTemplateSummary(runnablePriority);
+  const actionableReadyPriorityTemplateSummary = formatPriorityTemplateSummary(actionableReadyPriority);
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2640,6 +2666,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.refreshIntakeCommand
       ? `- refresh intake: ${currentPriority.refreshIntakeCommand}`
       : null,
+    currentPriorityTemplateSummary
+      ? `- starter templates: ${currentPriorityTemplateSummary}`
+      : null,
     currentPriorityEditPaths.length > 1
       ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
       : (currentPriority?.editPath
@@ -2675,6 +2704,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.refreshIntakeCommand
       ? `- runnable refresh intake: ${runnablePriority.refreshIntakeCommand}`
       : null,
+    showRunnablePriority && runnablePriorityTemplateSummary
+      ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
+      : null,
     showRunnablePriority && runnablePriorityEditPaths.length > 1
       ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
       : (showRunnablePriority && runnablePriority?.editPath
@@ -2709,6 +2741,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     showActionableReadyPriority && actionableReadyPriority?.refreshIntakeCommand
       ? `- advisory refresh intake: ${actionableReadyPriority.refreshIntakeCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriorityTemplateSummary
+      ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
       ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`
