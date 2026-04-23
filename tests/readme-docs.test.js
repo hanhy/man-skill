@@ -430,11 +430,13 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /memorySummary\.legacyShortTermSourceCount.*memorySummary\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
   assert.match(readme, /first three `memory\/short-term\/\.\.\.` paths plus a `\+N more` remainder marker/i);
   assert.match(readme, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
+  assert.match(readme, /top-level `Memory store:` preview.*root heading aliases.*what-lives-here->what-belongs-here.*layout->buckets/i);
   assert.match(readme, /all-green `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance visible/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
   assert.match(readme, /summary\.skills\.categoryCounts.*summary\.skills\.foundationStatusCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
   assert.match(readme, /top-level `Skill registry:` block now mirrors those readiness counts as `- foundation statuses: \.\.\.` plus the grouped-category lines `- categories: \.\.\.` and `- documented categories: \.\.\.`/i);
+  assert.match(readme, /top-level `Skill registry:` block.*root heading aliases.*what-belongs-here->what-lives-here.*buckets->layout/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /top-level `Soul profile:` and `Voice profile:` preview blocks.*foundation\.core\.soul\|voice\.rootExcerpt.*rootPath.*heading aliases/i);
@@ -460,7 +462,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
   assert.match(architectureDoc, /summary\.skills\.categoryCounts.*summary\.skills\.foundationStatusCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
   assert.match(architectureDoc, /compact `Skill registry:` preview should mirror those readiness counts as `- foundation statuses: \.\.\.` plus the grouped-category lines `- categories: \.\.\.` and `- documented categories: \.\.\.`/i);
+  assert.match(architectureDoc, /compact `Skill registry:` preview.*root heading aliases.*what-belongs-here->what-lives-here.*buckets->layout/i);
   assert.match(architectureDoc, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
+  assert.match(architectureDoc, /top-level `Memory store:` preview.*root heading aliases.*what-lives-here->what-belongs-here.*layout->buckets/i);
 
   assert.match(architectureDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
@@ -508,7 +512,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /repo loading also folds legacy `memory\/short-term\/` files into that canonical `daily` lane/i);
   assert.match(ingestionDoc, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
   assert.match(ingestionDoc, /memorySummary\.legacyShortTermSourceCount.*memorySummary\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
+  assert.match(ingestionDoc, /top-level `Memory store:` preview.*root heading aliases.*what-lives-here->what-belongs-here.*layout->buckets/i);
   assert.match(ingestionDoc, /foundation\.core\.skills\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
+  assert.match(ingestionDoc, /top-level `Skill registry:` block.*root heading aliases.*what-belongs-here->what-lives-here.*buckets->layout/i);
   assert.match(ingestionDoc, /what-lives-here->what-belongs-here.*layout->buckets/i);
   assert.match(ingestionDoc, /what-belongs-here->what-lives-here.*buckets->layout/i);
   assert.match(ingestionDoc, /foundation\.core\.soul.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
