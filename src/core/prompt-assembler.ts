@@ -51,6 +51,7 @@ type HighlightDraftSummary = {
   totalSectionCount?: number;
   readySections?: string[];
   missingSections?: string[];
+  headingAliases?: string[];
   [key: string]: unknown;
 };
 
@@ -103,6 +104,7 @@ type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', 
   totalSectionCount: number;
   readySections: string[];
   missingSections: string[];
+  headingAliases?: string[];
 }>>;
 
 export type ProfileSnapshotSummary = {
@@ -906,11 +908,12 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
 
       const readySections = normalizeStringArray(summary.readySections);
       const missingSections = normalizeStringArray(summary.missingSections);
+      const headingAliases = normalizeStringArray(summary.headingAliases);
       if (missingSections.length > 0) {
         return null;
       }
 
-      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}`;
+      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
     })
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
@@ -1124,6 +1127,9 @@ function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): P
       totalSectionCount,
       readySections: normalizeStringArray(summary.readySections),
       missingSections: normalizeStringArray(summary.missingSections),
+      ...(normalizeStringArray(summary.headingAliases).length > 0
+        ? { headingAliases: normalizeStringArray(summary.headingAliases) }
+        : {}),
     };
     return accumulator;
   }, {});

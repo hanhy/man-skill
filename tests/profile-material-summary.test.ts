@@ -1111,6 +1111,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     totalSectionCount: 4,
     readySections: ['core-truths'],
     missingSections: ['boundaries', 'vibe', 'continuity'],
+    headingAliases: ['core-values->core-truths'],
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
@@ -1208,6 +1209,12 @@ test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice he
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.headingAliases, [
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
+  assert.equal(profile.foundationDraftSummaries.soul.headingAliases, undefined);
 });
 
 test('loadProfilesIndex marks valid markdown drafts as stale when their target-person metadata drifts', () => {
@@ -2835,6 +2842,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           totalSectionCount: 4,
           readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
           missingSections: [],
+          headingAliases: ['voice-should-capture->signature-moves'],
         },
         soul: {
           generated: true,
@@ -2849,6 +2857,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           totalSectionCount: 4,
           readySections: ['core-truths', 'boundaries', 'vibe'],
           missingSections: ['continuity'],
+          headingAliases: ['core-values->core-truths'],
         },
         skills: {
           generated: true,
@@ -2950,6 +2959,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       totalSectionCount: 4,
       readySections: ['core-truths', 'boundaries', 'vibe'],
       missingSections: ['continuity'],
+      headingAliases: ['core-values->core-truths'],
     },
     voice: {
       generated: true,
@@ -2957,6 +2967,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       totalSectionCount: 4,
       readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
       missingSections: [],
+      headingAliases: ['voice-should-capture->signature-moves'],
     },
   });
   assert.deepEqual(snapshot.draftGaps, [
@@ -2970,6 +2981,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
     skills: ['execution heuristic'],
   });
   assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
+  assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
   assert.match(snapshot.snapshot, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry \| skills 1 source \(talk:1\) \| soul 1 source \(talk:1\) \| voice 2 sources \(message:1, talk:1\)/);
   assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);

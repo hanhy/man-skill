@@ -299,15 +299,47 @@ function isCurrentDefaultVoiceHeading(value) {
 const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   voice: [
     { key: 'tone', headings: ['tone'] },
-    { key: 'signature-moves', headings: ['signature moves', 'voice should capture'] },
-    { key: 'avoid', headings: ['avoid', 'voice should not capture'] },
-    { key: 'language-hints', headings: ['language hints', 'current default for manskill'], matchesHeading: isCurrentDefaultVoiceHeading },
+    {
+      key: 'signature-moves',
+      headings: ['signature moves', 'voice should capture'],
+      headingAliases: {
+        'voice should capture': 'voice-should-capture->signature-moves',
+      },
+    },
+    {
+      key: 'avoid',
+      headings: ['avoid', 'voice should not capture'],
+      headingAliases: {
+        'voice should not capture': 'voice-should-not-capture->avoid',
+      },
+    },
+    {
+      key: 'language-hints',
+      headings: ['language hints', 'current default for manskill'],
+      matchesHeading: isCurrentDefaultVoiceHeading,
+      headingAliases: {
+        'current default for manskill': 'current-default->language-hints',
+      },
+      matchHeadingAliasLabel: 'current-default->language-hints',
+    },
   ],
   soul: [
-    { key: 'core-truths', headings: ['core values', 'core truths'] },
+    {
+      key: 'core-truths',
+      headings: ['core values', 'core truths'],
+      headingAliases: {
+        'core values': 'core-values->core-truths',
+      },
+    },
     { key: 'boundaries', headings: ['boundaries'] },
     { key: 'vibe', headings: ['vibe'] },
-    { key: 'continuity', headings: ['decision rules', 'continuity'] },
+    {
+      key: 'continuity',
+      headings: ['decision rules', 'continuity'],
+      headingAliases: {
+        'decision rules': 'decision-rules->continuity',
+      },
+    },
   ],
   skills: [
     { key: 'candidate-skills', headings: ['candidate skills'] },
@@ -316,6 +348,30 @@ const FOUNDATION_DRAFT_SECTION_DEFINITIONS = {
   ],
 };
 
+function resolveFoundationDraftHeadingAlias(section, headingText) {
+  if (!section || !isNonEmptyString(headingText)) {
+    return null;
+  }
+
+  if (section.headingAliases && typeof section.headingAliases === 'object') {
+    const aliasLabel = section.headingAliases[headingText];
+    if (isNonEmptyString(aliasLabel)) {
+      return aliasLabel;
+    }
+  }
+
+  const hasExplicitHeadingMatch = Array.isArray(section.headings) && section.headings.includes(headingText);
+  if (
+    isNonEmptyString(section.matchHeadingAliasLabel)
+    && typeof section.matchesHeading === 'function'
+    && section.matchesHeading(headingText) === true
+    && (!hasExplicitHeadingMatch || Boolean(section.headingAliases?.[headingText]))
+  ) {
+    return section.matchHeadingAliasLabel;
+  }
+
+  return null;
+}
 
 function collectSkillSectionState(document) {
   if (!isNonEmptyString(document)) {
@@ -710,14 +766,16 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     return null;
   }
 
-  const resolvedContent = typeof content === 'string' ? content : readTextIfExists(filePath);
-  if (!isNonEmptyString(resolvedContent)) {
+  const document = typeof content === 'string' ? content : readTextIfExists(filePath);
+  if (!isNonEmptyString(document)) {
     return null;
   }
 
-  const lines = extractVisibleDocumentBodyLines(resolvedContent);
+  const lines = extractVisibleDocumentBodyLines(document);
   const readySections = [];
   const missingSections = [];
+  const headingAliases = [];
+  const seenHeadingAliases = new Set();
 
   for (const section of sectionDefinitions) {
     let inSection = false;
@@ -734,6 +792,11 @@ function summarizeFoundationDraftSections(filePath, content = null) {
           inSection = true;
           hasContent = false;
           sectionHeadingLevel = heading.level;
+          const headingAlias = resolveFoundationDraftHeadingAlias(section, heading.text);
+          if (isNonEmptyString(headingAlias) && !seenHeadingAliases.has(headingAlias)) {
+            seenHeadingAliases.add(headingAlias);
+            headingAliases.push(headingAlias);
+          }
           continue;
         }
 
@@ -761,6 +824,7 @@ function summarizeFoundationDraftSections(filePath, content = null) {
     totalSectionCount: sectionDefinitions.length,
     readySections,
     missingSections,
+    ...(headingAliases.length > 0 ? { headingAliases } : {}),
   };
 }
 
