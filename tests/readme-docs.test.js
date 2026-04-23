@@ -45,7 +45,8 @@ function formatDraftSourcesLine(draftSources = {}) {
       const sourceCount = Number(source.sourceCount ?? 0);
       const entryCount = Number(source.entryCount ?? 0);
       const materialTypes = formatMaterialTypes(source.materialTypes ?? {});
-      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+      const sourcePath = typeof source.path === 'string' && source.path.length > 0 ? source.path : null;
+      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !sourcePath) {
         return null;
       }
 
@@ -58,6 +59,10 @@ function formatDraftSourcesLine(draftSources = {}) {
         sourceLabel,
         entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null,
       ].filter(Boolean);
+
+      if (detailParts.length === 0 && sourcePath) {
+        return `${key} @ ${sourcePath}`;
+      }
 
       return detailParts.length > 0 ? `${key} ${detailParts.join(', ')}` : null;
     })
@@ -464,13 +469,16 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, and `highlights`\)/i);
   assert.match(readme, /`draftSources` now keeps each layer's generated-or-stale draft `path` beside .*`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`,.*`entryCount`/i);
+  assert.match(readme, /human `draft sources:` line falls back to compact `memory @ profiles\/\.\.\.`-style path summaries when a stale draft only exposes its artifact path/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata so downstream tooling can inspect the same generated or stale artifact without cross-referencing `draftFiles`/i);
+  assert.match(architectureDoc, /prompt-side `draft sources:` snapshot line can still fall back to compact `memory @ profiles\/\.\.\.` path summaries when stale drafts no longer carry source counts yet/i);
   assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /`draftSources` keeps the concrete draft `path` for each memory \/ skills \/ soul \/ voice layer together with provenance metadata, so stale profile snapshots stay inspectable even when the prompt omits the human `draft files:` line/i);
+  assert.match(ingestionDoc, /prompt-side `draft sources:` fallback can still render `memory @ profiles\/\.\.\.`-style path-only summaries when counts are unavailable/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);

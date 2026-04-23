@@ -2958,7 +2958,7 @@ test('buildProfileSnapshotSummaries humanizes slug-only profile ids when display
   assert.match(snapshot.snapshot, /^- Jane Doe \(jane-doe\): 1 material \(message:1\)/);
 });
 
-test('buildProfileSnapshotSummaries keeps stale draft file paths in structured data without forcing them into the prompt snapshot', () => {
+test('buildProfileSnapshotSummaries keeps stale draft source paths visible in the prompt snapshot', () => {
   const [snapshot] = buildProfileSnapshotSummaries([
     {
       id: 'jane-doe',
@@ -3069,6 +3069,7 @@ test('buildProfileSnapshotSummaries keeps stale draft file paths in structured d
     },
   });
   assert.doesNotMatch(snapshot.snapshot, /draft files:/);
+  assert.match(snapshot.snapshot, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \| skills @ profiles\/jane-doe\/skills\/README\.md \| soul @ profiles\/jane-doe\/soul\/README\.md \| voice @ profiles\/jane-doe\/voice\/README\.md/);
   assert.deepEqual(snapshot.draftGaps, [
     'memory missing, 1 candidate (Keep the loop tight | but honest.)',
     'skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',

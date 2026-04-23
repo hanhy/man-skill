@@ -997,7 +997,8 @@ function summarizeDraftSources(profile: ProfileSnapshot = {}) {
       const sourceCount = Number(summary.sourceCount ?? 0);
       const entryCount = Number(summary.entryCount ?? 0);
       const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
-      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+      const path = normalizeOptionalString(summary.path);
+      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !path) {
         return null;
       }
 
@@ -1007,6 +1008,10 @@ function summarizeDraftSources(profile: ProfileSnapshot = {}) {
         sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null,
         entryLabel,
       ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      if (parts.length === 0 && path) {
+        return `${key} @ ${path}`;
+      }
 
       return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
     })
