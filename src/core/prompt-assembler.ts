@@ -1391,19 +1391,22 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
+  const memoryCandidateLabel = formatCountLabel(memory?.candidateCount ?? 0, 'candidate');
+  const voiceCandidateLabel = formatCountLabel(voice?.candidateCount ?? 0, 'candidate');
+  const soulCandidateLabel = formatCountLabel(soul?.candidateCount ?? 0, 'candidate');
   const skillsCandidateCount = skills?.candidateCount ?? 0;
   const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
   const skillsCandidateProfileLabel = formatCountLabel(skills?.candidateProfileCount ?? 0, 'candidate profile');
 
   return [
     memory
-      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${memoryCandidateLabel}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
-      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(voice.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, ${voiceCandidateLabel}, ${formatCountLabel(voice.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
       : null,
     soul
-      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(soul.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, ${soulCandidateLabel}, ${formatCountLabel(soul.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
       ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${formatCountLabel(skills.repoStaleProfileCount ?? 0, 'repo-stale profile')}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`

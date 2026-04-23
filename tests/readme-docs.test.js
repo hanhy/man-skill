@@ -108,9 +108,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
-  assert.match(architectureDoc, /skills candidate-profile coverage/i);
+  assert.match(architectureDoc, /count-aware candidate coverage across memory, voice, soul, and skills/i);
   assert.match(architectureDoc, /keep both files in the canonical `daily` count\/list rather than collapsing them to one basename match/i);
-  assert.match(ingestionDoc, /skills candidate-profile coverage/i);
+  assert.match(ingestionDoc, /count-aware candidate coverage across memory, voice, soul, and skills/i);
   assert.match(ingestionDoc, /keeps both files in the canonical `daily` count\/list instead of collapsing them to one basename match/i);
   assert.match(architectureDoc, /repair-invalid-bundle/i);
   assert.match(architectureDoc, /repair-imported-invalid-bundle/i);

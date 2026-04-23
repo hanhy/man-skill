@@ -38,6 +38,10 @@ function countCandidateProfiles(profiles: any[], key: string): number {
   return profiles.filter((profile) => (profile.foundationReadiness?.[key]?.candidateCount ?? 0) > 0).length;
 }
 
+function countCandidates(profiles: any[], key: string): number {
+  return profiles.reduce((total, profile) => total + (profile.foundationReadiness?.[key]?.candidateCount ?? 0), 0);
+}
+
 function countStringValues(values: unknown[]): Record<string, number> {
   return values.reduce<Record<string, number>>((counts, value) => {
     if (typeof value !== 'string') {
@@ -333,6 +337,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'memory'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'memory'),
+      candidateCount: countCandidates(safeProfiles, 'memory'),
       repoStaleProfileCount: staleProfileCount,
       totalEntries: safeProfiles.reduce(
         (total, profile) => total + (profile.foundationDraftSummaries?.memory?.entryCount ?? 0),
@@ -353,6 +358,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'voice'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'voice'),
+      candidateCount: countCandidates(safeProfiles, 'voice'),
       repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {
@@ -369,6 +375,7 @@ export function buildFoundationRollup(profiles: any[] = []) {
       profileCount: safeProfiles.length,
       generatedProfileCount: countGenerated(safeProfiles, 'soul'),
       candidateProfileCount: countCandidateProfiles(safeProfiles, 'soul'),
+      candidateCount: countCandidates(safeProfiles, 'soul'),
       repoStaleProfileCount: staleProfileCount,
       highlights: collectUnique(
         safeProfiles.flatMap((profile) => {

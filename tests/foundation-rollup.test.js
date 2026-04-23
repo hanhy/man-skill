@@ -168,6 +168,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Ship the first slice.', 'Keep the scope tight.', 'Tight loops beat big plans.'],
@@ -176,6 +177,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     highlights: ['[message] Ship the first slice.', 'Tight loops beat big plans.'],
   });
@@ -183,6 +185,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 2,
     repoStaleProfileCount: 1,
     highlights: ['[text] Keep the scope tight.', 'Tight loops beat big plans.'],
   });
@@ -441,6 +444,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 3,
         repoStaleProfileCount: 1,
         totalEntries: 2,
         highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.'],
@@ -449,6 +453,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 2,
         repoStaleProfileCount: 1,
         highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
       },
@@ -456,6 +461,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 2,
         repoStaleProfileCount: 1,
         highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
       },
@@ -482,9 +488,9 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
   }).buildPreview(10000);
 
   assert.match(preview, /Foundation rollup:/);
-  assert.match(preview, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 entries, highlights: Keep the feedback loop short\. \| Ship the thin slice first\./);
-  assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
-  assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /memory: 1\/2 generated, 2 candidate profiles, 3 candidates, 1 repo-stale profile, 2 entries, highlights: Keep the feedback loop short\. \| Ship the thin slice first\./);
+  assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
 });
 
@@ -526,6 +532,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.', 'Tight loops beat big plans.'],
@@ -534,6 +541,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     highlights: ['[talk] Keep the feedback loop short.', '[message] Ship the thin slice first.', 'Tight loops beat big plans.'],
   });
@@ -541,6 +549,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 2,
     repoStaleProfileCount: 1,
     highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
   });
@@ -667,6 +676,7 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
     profileCount: 0,
     generatedProfileCount: 0,
     candidateProfileCount: 0,
+    candidateCount: 0,
     repoStaleProfileCount: 0,
     totalEntries: 0,
     highlights: [],

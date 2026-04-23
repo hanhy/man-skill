@@ -321,7 +321,7 @@ Running `node src/index.js` will also expose these generated draft paths under `
 
 ## Current limitation
 
-The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup, including memory and skills candidate-profile coverage when some profiles still need draft refreshes.
+The update command now creates first-pass drafts from imported materials and the repo summary aggregates them into a compact foundation rollup with count-aware candidate coverage across memory, voice, soul, and skills whenever some profiles still need draft refreshes.
 
-That rollup is intentionally symmetric across durable layers: prompt previews and repo summaries should mention both memory and skills candidate-profile coverage whenever stale or missing drafts mean some profiles still have candidate materials waiting to be turned into generated markdown.
+That rollup is intentionally symmetric across durable layers: prompt previews and repo summaries should mention both candidate-profile coverage and aggregate candidate counts across memory, voice, soul, and skills whenever stale or missing drafts mean some profiles still have candidate materials waiting to be turned into generated markdown.
 They are still heuristic draft artifacts rather than a fully learned memory store, reusable skill schema, or production channel/provider runtime.
