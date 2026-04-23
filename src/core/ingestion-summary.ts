@@ -94,6 +94,22 @@ function compareFoundationRefreshPriority(left, right) {
     || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
 }
 
+function formatHeadingAliasSummary(headingAliases: unknown): string | null {
+  const normalizedAliases = Array.from(new Set(
+    Array.isArray(headingAliases)
+      ? headingAliases
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim())
+      : [],
+  ));
+
+  if (normalizedAliases.length === 0) {
+    return null;
+  }
+
+  return `; aliases ${normalizedAliases.join(', ')}`;
+}
+
 function summarizeDraftGap(summary: any, key: string): string | null {
   const totalSectionCount = summary?.totalSectionCount ?? 0;
   const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
@@ -103,6 +119,7 @@ function summarizeDraftGap(summary: any, key: string): string | null {
   const missingSections = Array.isArray(summary?.missingSections)
     ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const headingAliasSummary = formatHeadingAliasSummary(summary?.headingAliases);
 
   if (totalSectionCount <= 0) {
     return null;
@@ -113,7 +130,7 @@ function summarizeDraftGap(summary: any, key: string): string | null {
     return null;
   }
 
-  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${headingAliasSummary ?? ''}`;
 }
 
 function summarizeMemoryDraftGap(profile): string | null {
