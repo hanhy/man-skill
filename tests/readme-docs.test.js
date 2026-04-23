@@ -444,8 +444,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /when the queue narrows to a single area, `recommendedStatus` and `recommendedSummary` carry that same target's detailed context/i);
-  assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths.*recommendedLatestMaterialAt.*recommendedLatestMaterialId.*queuedProfiles\[\*\]\.paths/i);
-  assert.match(readme, /next repair.*next refresh.*latest material <timestamp> \(<material-id>\)/i);
+  assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths.*recommendedLatestMaterialAt.*recommendedLatestMaterialId.*recommendedLatestMaterialSourcePath.*queuedProfiles\[\*\]\.paths.*queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
+  assert.match(readme, /next repair.*next refresh.*latest material <timestamp> \(<material-id>\)(?: @ <source-path>)?/i);
   assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
   assert.match(architectureDoc, /legacy `memory\/short-term\/` files still fold into the canonical `daily` lane/i);
   assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
@@ -476,8 +476,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /`draftSources` now keeps each layer's generated-or-stale draft `path` beside .*`generatedAt`, `latestMaterialAt`, `latestMaterialId`, `sourceCount`, `materialTypes`,.*`entryCount`/i);
   assert.match(readme, /human `draft sources:` line falls back to compact `memory @ profiles\/\.\.\.`-style path summaries when a stale draft only exposes its artifact path/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
-  assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
+  assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedLatestMaterialSourcePath`, `recommendedDraftGapSummary`/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
+  assert.match(architectureDoc, /queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata so downstream tooling can inspect the same generated or stale artifact without cross-referencing `draftFiles`/i);
   assert.match(architectureDoc, /prompt-side `draft sources:` snapshot line can still fall back to compact `memory @ profiles\/\.\.\.` path summaries when stale drafts no longer carry source counts yet/i);
@@ -485,8 +486,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /`draftSources` keeps the concrete draft `path` for each memory \/ skills \/ soul \/ voice layer together with provenance metadata, so stale profile snapshots stay inspectable even when the prompt omits the human `draft files:` line/i);
   assert.match(ingestionDoc, /prompt-side `draft sources:` fallback can still render `memory @ profiles\/\.\.\.`-style path-only summaries when counts are unavailable/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
-  assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
+  assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedLatestMaterialSourcePath`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);
+  assert.match(ingestionDoc, /queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);

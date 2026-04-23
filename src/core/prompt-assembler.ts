@@ -166,6 +166,7 @@ type MaintenanceQueueItem = {
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
   draftGapCount?: number;
   draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
@@ -191,6 +192,7 @@ type FoundationMaintenance = {
   recommendedPaths?: string[];
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
+  recommendedLatestMaterialSourcePath?: string | null;
   recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
@@ -1317,8 +1319,9 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     : null;
   const recommendedLatestMaterialAt = normalizeOptionalString(maintenance.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(maintenance.recommendedLatestMaterialId);
-  const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId
-    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}`
+  const recommendedLatestMaterialSourcePath = normalizeOptionalString(maintenance.recommendedLatestMaterialSourcePath);
+  const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
+    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
     ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
@@ -1332,8 +1335,9 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
     const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
-    const latestMaterialSuffix = latestMaterialAt || latestMaterialId
-      ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`
+    const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath);
+    const latestMaterialSuffix = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
+      ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
       : '';
     const reasonSuffix = (profile.refreshReasons ?? []).length > 0
       ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`

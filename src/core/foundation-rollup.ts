@@ -262,6 +262,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
         latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
+        latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
@@ -316,6 +317,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     recommendedPaths,
     recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
     recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
+    recommendedLatestMaterialSourcePath: recommendedProfile?.latestMaterialSourcePath ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,

@@ -113,6 +113,7 @@ test('buildFoundationRollup uses latest material ids to break stale-queue ties w
       profile: { displayName: 'Alpha Operator' },
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+      latestMaterialSourcePath: 'profiles/alpha-operator/materials/2026-04-20T12-00-00-000Z-message.json',
       foundationDraftStatus: {
         needsRefresh: true,
         complete: false,
@@ -132,6 +133,7 @@ test('buildFoundationRollup uses latest material ids to break stale-queue ties w
       profile: { displayName: 'Beta Operator' },
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json',
       foundationDraftStatus: {
         needsRefresh: true,
         complete: false,
@@ -151,10 +153,13 @@ test('buildFoundationRollup uses latest material ids to break stale-queue ties w
 
   assert.equal(rollup.maintenance.recommendedProfileId, 'beta-operator');
   assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json');
   assert.equal(rollup.maintenance.queuedProfiles[0]?.id, 'beta-operator');
   assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialSourcePath, 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json');
   assert.equal(rollup.maintenance.queuedProfiles[1]?.id, 'alpha-operator');
   assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialId, '2026-04-20T12-00-00-000Z-message');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialSourcePath, 'profiles/alpha-operator/materials/2026-04-20T12-00-00-000Z-message.json');
   assert.deepEqual(buildFoundationRollup(profiles), rollup);
 });
 
@@ -286,6 +291,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     ],
     recommendedLatestMaterialAt: null,
     recommendedLatestMaterialId: null,
+    recommendedLatestMaterialSourcePath: null,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -306,6 +312,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
         latestMaterialId: null,
+        latestMaterialSourcePath: null,
         draftGapCount: 8,
         draftGapCounts: {
           memory: 1,
@@ -533,9 +540,32 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         incompleteProfileCount: 1,
         missingDraftCounts: { memory: 1, skills: 1, soul: 1, voice: 1 },
         refreshReasonCounts: { 'missing drafts': 1 },
+        recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts',
+        recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
+        recommendedPaths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
+        recommendedLatestMaterialAt: '2026-04-20T12:00:00.000Z',
+        recommendedLatestMaterialId: '2026-04-20T12-00-00-000Z-text',
+        recommendedLatestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
         staleRefreshCommand: "node src/index.js update foundation --stale",
         helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
-        queuedProfiles: [],
+        queuedProfiles: [
+          {
+            id: 'jane-doe',
+            label: 'Jane Doe (jane-doe)',
+            status: 'stale',
+            generatedDraftCount: 0,
+            expectedDraftCount: 4,
+            missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+            latestMaterialAt: '2026-04-20T12:00:00.000Z',
+            latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+            latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+          },
+        ],
       },
     },
   }).buildPreview(10000);
@@ -545,6 +575,8 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
   assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
+  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json/);
+  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json/);
 });
 
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {
@@ -651,6 +683,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     ],
     recommendedLatestMaterialAt: summary.foundation.maintenance.recommendedLatestMaterialAt,
     recommendedLatestMaterialId: summary.foundation.maintenance.recommendedLatestMaterialId,
+    recommendedLatestMaterialSourcePath: summary.foundation.maintenance.recommendedLatestMaterialSourcePath,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -671,6 +704,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
         latestMaterialId: summary.foundation.maintenance.queuedProfiles[0].latestMaterialId,
+        latestMaterialSourcePath: summary.foundation.maintenance.queuedProfiles[0].latestMaterialSourcePath,
         draftGapCount: 12,
         draftGapCounts: {
           memory: 1,
