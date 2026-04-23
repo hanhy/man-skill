@@ -221,6 +221,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`manifest inspect:` and `manifest:` inside its `Direct import commands:` block/i);
   assert.match(profilesDoc, /`updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
+  assert.match(profilesDoc, /if `materials\.template\.json` becomes invalid JSON, re-running `update intake` snapshots the broken file to `materials\.template\.json\.invalid-<timestamp>\.bak`, returns `invalidStarterManifestBackupPath`, and then rebuilds the starter manifest so operators can recover the previous draft/i);
+  assert.match(ingestionDoc, /if `materials\.template\.json` becomes invalid JSON, `update intake` first snapshots the broken file to `materials\.template\.json\.invalid-<timestamp>\.bak`, returns `invalidStarterManifestBackupPath`, and then rebuilds the starter manifest so the last edit can still be recovered/i);
 
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);

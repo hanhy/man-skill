@@ -59,6 +59,8 @@ The per-profile command palette still stays actionable in that starter-template 
 - `updateProfileCommand` for metadata-only edits
 - `updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration
 
+If `materials.template.json` becomes invalid JSON, re-running `update intake` snapshots the broken file to `materials.template.json.invalid-<timestamp>.bak`, returns `invalidStarterManifestBackupPath`, and then rebuilds the starter manifest so operators can recover the previous draft instead of losing the last edit during intake repair.
+
 `memory/long-term/foundation.json` carries the generated memory draft plus provenance like `latestMaterialId` and `materialTypes`, while `voice/README.md`, `soul/README.md`, and `skills/README.md` now stamp `Generated at`, `Latest material`, and `Source materials` headers so each artifact stays auditable on its own.
 
 `profile.json` can also store user-facing metadata like `displayName` and `summary`, either through `node src/index.js update profile --person <id> --display-name ... --summary ...`, through `node src/index.js update profile --person <id> --summary ... --refresh-foundation` when you want metadata edits to immediately regenerate the derived drafts, through the optional `profiles` block in a manifest import, or through a single-target manifest shorthand that puts `personId`, `displayName`, and `summary` at the top level and lets each entry omit `personId`. The plain `node src/index.js update profile --person <id>` path keeps metadata edits without requiring a new material import.
