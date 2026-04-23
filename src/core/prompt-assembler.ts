@@ -883,8 +883,9 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
         }
 
         const readySections = normalizeStringArray(summary.readySections);
+        const headingAliases = normalizeStringArray(summary.headingAliases);
 
-        return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
+        return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
       })
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
