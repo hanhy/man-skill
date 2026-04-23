@@ -1503,7 +1503,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /- Harry Han \(harry-han\): 3 materials \(message:1, screenshot:1, text:1\)/);
   assert.match(prompt, /profile summary: Direct operator with a bias for momentum\./);
   assert.match(prompt, /drafts: fresh, complete, generated 2026-04-16T15:00:01.000Z/);
-  assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
+  assert.match(prompt, /memory candidates: 3 \(message, screenshot, text\) \| voice: 2 \(message, text\) \| soul: 1 \(text\) \| skills: 0/);
   assert.match(prompt, /draft sections: skills 3\/3 ready \(candidate-skills, evidence, gaps-to-validate\) \| soul 4\/4 ready \(core-truths, boundaries, vibe, continuity\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
   assert.match(prompt, /draft files: memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \| skills @ profiles\/harry-han\/skills\/README\.md \| soul @ profiles\/harry-han\/soul\/README\.md \| voice @ profiles\/harry-han\/voice\/README\.md/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);

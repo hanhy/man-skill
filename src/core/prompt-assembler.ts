@@ -1197,6 +1197,14 @@ function normalizeProfileSnapshotDraftSources(profile: ProfileSnapshot = {}) {
   return collectDraftSources(profile);
 }
 
+function formatProfileSnapshotCandidateSignal(label: string, candidateCount: number, types: string[] = []) {
+  const normalizedTypes = normalizeStringArray(types).sort((left, right) => left.localeCompare(right));
+  const typeSuffix = candidateCount > 0 && normalizedTypes.length > 0
+    ? ` (${normalizedTypes.join(', ')})`
+    : '';
+  return `${label}: ${candidateCount}${typeSuffix}`;
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
@@ -1235,7 +1243,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
 
   if (profile.foundationReadiness) {
     lines.push(
-      `  memory candidates: ${profile.foundationReadiness.memory?.candidateCount ?? 0} | voice: ${profile.foundationReadiness.voice?.candidateCount ?? 0} | soul: ${profile.foundationReadiness.soul?.candidateCount ?? 0} | skills: ${profile.foundationReadiness.skills?.candidateCount ?? 0}`,
+      `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, readiness.memory?.latestTypes)} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, readiness.voice?.sampleTypes)} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, readiness.soul?.sampleTypes)} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, readiness.skills?.sampleTypes)}`,
     );
   }
 
