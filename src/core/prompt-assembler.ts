@@ -678,6 +678,7 @@ type IngestionSummary = {
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
+  recommendedRefreshIntakeCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
   recommendedManifestInspectCommand?: string | null;
@@ -701,6 +702,7 @@ type WorkLoopPriority = {
   nextAction?: string | null;
   command?: string | null;
   fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -1834,11 +1836,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedFallbackCommand = typeof ingestion?.recommendedFallbackCommand === 'string' && ingestion.recommendedFallbackCommand.length > 0
     ? ingestion.recommendedFallbackCommand
     : null;
+  const recommendedRefreshIntakeCommand = typeof ingestion?.recommendedRefreshIntakeCommand === 'string' && ingestion.recommendedRefreshIntakeCommand.length > 0
+    ? ingestion.recommendedRefreshIntakeCommand
+    : null;
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2556,6 +2561,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
+    currentPriority?.refreshIntakeCommand
+      ? `- refresh intake: ${currentPriority.refreshIntakeCommand}`
+      : null,
     currentPriorityEditPaths.length > 1
       ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
       : (currentPriority?.editPath
@@ -2588,6 +2596,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
+    showRunnablePriority && runnablePriority?.refreshIntakeCommand
+      ? `- runnable refresh intake: ${runnablePriority.refreshIntakeCommand}`
+      : null,
     showRunnablePriority && runnablePriorityEditPaths.length > 1
       ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
       : (showRunnablePriority && runnablePriority?.editPath
@@ -2619,6 +2630,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.refreshIntakeCommand
+      ? `- advisory refresh intake: ${actionableReadyPriority.refreshIntakeCommand}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
       ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`

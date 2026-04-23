@@ -1112,6 +1112,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedFallbackCommand = typeof ingestionSummary?.recommendedFallbackCommand === 'string' && ingestionSummary.recommendedFallbackCommand.length > 0
     ? ingestionSummary.recommendedFallbackCommand
     : null;
+  const recommendedRefreshIntakeCommand = typeof ingestionSummary?.recommendedRefreshIntakeCommand === 'string' && ingestionSummary.recommendedRefreshIntakeCommand.length > 0
+    ? ingestionSummary.recommendedRefreshIntakeCommand
+    : null;
   const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
     ? ingestionSummary.recommendedEditPath
     : null;
@@ -1164,6 +1167,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     nextAction: recommendedAction,
     command: recommendedCommand,
     fallbackCommand: recommendedFallbackCommand,
+    refreshIntakeCommand: recommendedRefreshIntakeCommand,
     editPath: recommendedEditPath,
     editPaths: recommendedEditPaths,
     manifestInspectCommand: recommendedManifestInspectCommand,

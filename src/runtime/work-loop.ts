@@ -1,11 +1,12 @@
-export interface WorkPriority {
+export type WorkPriority = {
   id: string;
   label: string;
-  status: 'ready' | 'queued' | 'blocked';
+  status: 'queued' | 'blocked' | 'ready';
   summary: string;
   nextAction: string | null;
   command: string | null;
   fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -44,6 +45,7 @@ function hasActionablePrioritySurface(priority: WorkPriority): boolean {
     priority.nextAction
       || priority.command
       || priority.fallbackCommand
+      || priority.refreshIntakeCommand
       || priority.editPath
       || priority.editPaths?.length
       || priority.manifestInspectCommand

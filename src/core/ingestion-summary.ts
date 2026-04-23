@@ -1026,6 +1026,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedAction: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
+  let recommendedRefreshIntakeCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedEditPaths: string[] = [];
   let recommendedManifestInspectCommand: string | null = null;
@@ -1114,6 +1115,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
       : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
+    recommendedRefreshIntakeCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.updateIntakeCommand ?? null);
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
@@ -1360,6 +1364,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedAction,
     recommendedCommand,
     recommendedFallbackCommand,
+    recommendedRefreshIntakeCommand,
     recommendedEditPath,
     recommendedEditPaths,
     recommendedManifestInspectCommand,
