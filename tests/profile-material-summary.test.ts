@@ -260,6 +260,60 @@ test('buildProfileSnapshotSummaries falls back to readiness memory highlights wh
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\)/);
 });
 
+test('buildProfileSnapshotSummaries keeps fully missing structured drafts visible in draft gap summaries', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { talk: 1 },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        sampleSummaries: ['Tight loops beat big plans.'],
+      },
+      skills: {
+        candidateCount: 1,
+        sampleExcerpts: ['execution heuristic'],
+      },
+      soul: {
+        candidateCount: 1,
+        sampleExcerpts: ['Protect the operator loop.'],
+      },
+      voice: {
+        candidateCount: 1,
+        sampleExcerpts: ['Keep it tight.'],
+      },
+    },
+    foundationDraftStatus: {
+      complete: false,
+      missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      needsRefresh: true,
+    },
+    foundationDraftSummaries: {
+      skills: {
+        generated: false,
+        highlights: [],
+      },
+      soul: {
+        generated: false,
+        highlights: [],
+      },
+      voice: {
+        generated: false,
+        highlights: [],
+      },
+    },
+  }]);
+
+  assert.deepEqual(snapshot.draftGaps, [
+    'memory missing, 1 candidate (Tight loops beat big plans.)',
+    'skills missing',
+    'soul missing',
+    'voice missing',
+  ]);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills missing \| soul missing \| voice missing/);
+  assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
+});
+
 test('JS ingestion summary shim stays aligned with the TypeScript implementation', () => {
   const profiles = [
     {

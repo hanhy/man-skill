@@ -860,13 +860,13 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
     ...draftKinds
       .map(({ key, summary }) => {
         if (!summary) {
-          return null;
+          return missingDrafts.includes(key) ? `${key} missing` : null;
         }
 
         const readySectionCount = Number(summary.readySectionCount ?? 0);
         const totalSectionCount = Number(summary.totalSectionCount ?? 0);
         if (totalSectionCount <= 0) {
-          return null;
+          return missingDrafts.includes(key) ? `${key} missing` : null;
         }
 
         const missingSections = normalizeStringArray(summary.missingSections);
