@@ -694,6 +694,28 @@ test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent while nor
   assert.match(command ?? '', /current default for manskill/);
 });
 
+test('buildCoreFoundationCommand routes prohibitions from current-default voice headings into Avoid while keeping language hints separate', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-current-default-voice-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Current default for OpenClaw\n- Do not bury the answer in setup.\n- Prefer English unless the source clearly code-switches.\n- Lead with the operating takeaway.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\n- Describe the target cadence, directness, and emotional texture here.\n\n## Signature moves\n- Lead with the operating takeaway.\n\n## Avoid\n- Do not bury the answer in setup.\n\n## Language hints\n- Prefer English unless the source clearly code-switches.\n',
+  );
+});
+
 test('buildCoreFoundationCommand normalizes legacy voice headings toward openclaw when repairing thin scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'voice',
