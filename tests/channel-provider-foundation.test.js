@@ -1830,7 +1830,7 @@ test('buildSummary counts the checked-in channel delivery modules and all provid
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
   assert.match(summary.promptPreview, /channel env backlog: .*TELEGRAM_BOT_TOKEN.*WHATSAPP_ACCESS_TOKEN.*WHATSAPP_PHONE_NUMBER_ID.*SLACK_BOT_TOKEN.*SLACK_SIGNING_SECRET/);
   assert.match(summary.promptPreview, /provider env backlog: .*OPENAI_API_KEY.*ANTHROPIC_API_KEY.*KIMI_API_KEY.*MINIMAX_API_KEY.*GLM_API_KEY.*QWEN_API_KEY/);
-  assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: credentials present via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
+  assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]: (?:credentials present|set FEISHU_APP_ID, FEISHU_APP_SECRET) via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events/);
   assert.doesNotMatch(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\]:[^\n]*; next: hook tenant-app event subscriptions into inbound delivery flow/);
   assert.match(summary.promptPreview, /Feishu \[candidate(?:, configured)?, runtime-ready\] via event-subscription\/webhook -> bot-message @ \/hooks\/feishu\/events \[tenant-app: FEISHU_APP_ID, FEISHU_APP_SECRET\]/);
   assert.match(summary.promptPreview, /Telegram \[candidate, runtime-ready\] via polling\/webhook -> chat-send @ \/hooks\/telegram \[bot-token: TELEGRAM_BOT_TOKEN\]/);
