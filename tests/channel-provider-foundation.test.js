@@ -2006,7 +2006,7 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.ok(channelsPriority);
     assert.equal(channelsPriority.status, 'queued');
     assert.equal(channelsPriority.command, 'cp .env.example .env');
-    assert.deepEqual(channelsPriority.paths, ['.env.example']);
+    assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
     assert.equal(
       channelsPriority.nextAction,
       'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET',

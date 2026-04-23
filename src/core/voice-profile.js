@@ -9,7 +9,11 @@ const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
 const LANGUAGE_HINT_PATTERN = /\b(?:language|languages|bilingual|multilingual|dialect|code-switch(?:ing)?|english|spanish|arabic|mandarin|cantonese|french|german|japanese|korean|hindi|urdu|russian|portuguese|italian)\b/u;
 
 function normalizeDocument(document) {
-  return typeof document === 'string' ? document : '';
+  if (typeof document !== 'string') {
+    return '';
+  }
+
+  return document.charCodeAt(0) === 0xFEFF ? document.slice(1) : document;
 }
 
 function normalizeHeadingText(value) {

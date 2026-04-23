@@ -12,7 +12,11 @@ function stripWrappingQuotes(value: string): string {
 }
 
 export function normalizeDocument(document: unknown): string {
-  return typeof document === 'string' ? document : '';
+  if (typeof document !== 'string') {
+    return '';
+  }
+
+  return document.charCodeAt(0) === 0xFEFF ? document.slice(1) : document;
 }
 
 export function extractFrontmatterDescription(document: unknown): string | null {

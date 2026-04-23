@@ -1,1 +1,1 @@
-export { PromptAssembler } from './prompt-assembler.ts';
+export { PromptAssembler, buildProfileSnapshotSummaries } from './prompt-assembler.ts';

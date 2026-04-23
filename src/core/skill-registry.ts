@@ -13,6 +13,7 @@ export interface SkillRegistrySummary {
   discoveredCount: number;
   customCount: number;
   statusCounts: Record<string, number>;
+  foundationStatusCounts?: Record<string, number>;
   categoryCounts?: Record<string, number>;
   skills: SkillRecord[];
 }
@@ -47,6 +48,23 @@ function hasGroupedSkillCategories(skillIds: string[]): boolean {
   return skillIds.some((skillId) => typeof skillId === 'string' && skillId.includes('/'));
 }
 
+function compareFoundationStatus(left: string, right: string): number {
+  const order = ['ready', 'thin', 'missing'];
+  const leftIndex = order.indexOf(left);
+  const rightIndex = order.indexOf(right);
+  if (leftIndex >= 0 || rightIndex >= 0) {
+    if (leftIndex < 0) {
+      return 1;
+    }
+    if (rightIndex < 0) {
+      return -1;
+    }
+    return leftIndex - rightIndex;
+  }
+
+  return left.localeCompare(right);
+}
+
 export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
   normalize(skill: string | SkillRecord): SkillRecord {
     if (typeof skill === 'string') {
@@ -73,6 +91,19 @@ export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
       counts[status] = (counts[status] ?? 0) + 1;
       return counts;
     }, {});
+    const foundationStatusCounts = Object.fromEntries(
+      Object.entries(skills.reduce<Record<string, number>>((counts, skill) => {
+        const foundationStatus = typeof skill.foundationStatus === 'string' && skill.foundationStatus.trim().length > 0
+          ? skill.foundationStatus.trim()
+          : null;
+        if (!foundationStatus) {
+          return counts;
+        }
+
+        counts[foundationStatus] = (counts[foundationStatus] ?? 0) + 1;
+        return counts;
+      }, {})).sort(([left], [right]) => compareFoundationStatus(left, right)),
+    );
     const unsortedCategoryCounts = skills.reduce<Record<string, number>>((counts, skill) => {
       const skillCategory = getSkillCategory(typeof skill.id === 'string' ? skill.id : skill.name);
       counts[skillCategory] = (counts[skillCategory] ?? 0) + 1;
@@ -88,6 +119,7 @@ export class SkillRegistry extends BaseRegistry<string | SkillRecord> {
       discoveredCount: statusCounts.discovered ?? 0,
       customCount: statusCounts.custom ?? 0,
       statusCounts,
+      ...(Object.keys(foundationStatusCounts).length > 0 ? { foundationStatusCounts } : {}),
       ...(hasGroupedSkillCategories(skillIds) ? { categoryCounts } : {}),
       skills,
     };

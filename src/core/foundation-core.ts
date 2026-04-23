@@ -1,5 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
-import { collectVisibleDocumentLines, findDocumentExcerpt } from './document-excerpt.ts';
+import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 import { normalizeLegacyShortTermSources } from './memory-store.ts';
 import { SoulProfile } from './soul-profile.ts';
 import { VoiceProfile } from './voice-profile.ts';
@@ -787,14 +787,15 @@ function normalizeSetextHeadingLines(lines: string[]): string[] {
 }
 
 function stripFrontmatter(document: string | null | undefined): string {
-  if (!isNonEmptyString(document) || !document.startsWith('---')) {
-    return document ?? '';
+  const normalizedDocument = normalizeDocument(document);
+  if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
+    return normalizedDocument;
   }
 
-  const lines = document.split(/\r?\n/);
+  const lines = normalizedDocument.split(/\r?\n/);
   const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
   if (closingIndex < 0) {
-    return document;
+    return normalizedDocument;
   }
 
   return lines.slice(closingIndex + 2).join('\n');

@@ -219,8 +219,8 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
-    recommendedLabel: 'jane-doe',
-    recommendedAction: 'refresh jane-doe — reasons missing drafts',
+    recommendedLabel: 'Jane Doe (jane-doe)',
+    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts',
     recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
@@ -228,6 +228,8 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
       'profiles/jane-doe/soul/README.md',
       'profiles/jane-doe/voice/README.md',
     ],
+    recommendedLatestMaterialAt: null,
+    recommendedLatestMaterialId: null,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -239,7 +241,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         id: 'jane-doe',
         displayName: null,
         summary: null,
-        label: 'jane-doe',
+        label: 'Jane Doe (jane-doe)',
         status: 'stale',
         generatedDraftCount: 0,
         expectedDraftCount: 4,
@@ -247,6 +249,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
+        latestMaterialId: null,
         draftGapCount: 8,
         draftGapCounts: {
           memory: 1,
@@ -256,6 +259,12 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
+        paths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
       },
     ],
   });
@@ -292,6 +301,31 @@ test('buildFoundationRollup shell-quotes refresh commands for profile ids with s
   assert.equal(rollup.maintenance.recommendedCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
   assert.equal(rollup.maintenance.helperCommands.refreshBundle, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
   assert.equal(rollup.maintenance.queuedProfiles[0]?.refreshCommand, "node src/index.js update foundation --person 'o'\"'\"'brien lane'");
+});
+
+test('buildFoundationRollup humanizes queued profile labels when display names are missing', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-19T01:05:00.000Z',
+      foundationDraftStatus: { needsRefresh: true, complete: false, missingDrafts: ['memory'], refreshReasons: ['missing drafts'] },
+      foundationDraftSummaries: {
+        memory: { generated: false, entryCount: 0, latestSummaries: [] },
+        voice: { generated: false, highlights: [] },
+        soul: { generated: false, highlights: [] },
+        skills: { generated: false, highlights: [] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 0, sampleExcerpts: [] },
+        soul: { candidateCount: 0, sampleExcerpts: [] },
+        skills: { candidateCount: 0, sampleExcerpts: [] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.label, 'Jane Doe (jane-doe)');
 });
 
 test('buildFoundationRollup preserves aggregate draft gap counts when section names are unavailable', () => {
@@ -553,6 +587,8 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
       'profiles/jane-doe/soul/README.md',
       'profiles/jane-doe/voice/README.md',
     ],
+    recommendedLatestMaterialAt: summary.foundation.maintenance.recommendedLatestMaterialAt,
+    recommendedLatestMaterialId: summary.foundation.maintenance.recommendedLatestMaterialId,
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -572,6 +608,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         missingDrafts: ['memory', 'skills', 'soul', 'voice'],
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
+        latestMaterialId: summary.foundation.maintenance.queuedProfiles[0].latestMaterialId,
         draftGapCount: 12,
         draftGapCounts: {
           memory: 1,
@@ -581,6 +618,12 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         },
         draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
+        paths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
       },
     ],
   });
@@ -588,6 +631,14 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   assert.match(summary.promptPreview, /Ingestion entrance:/);
   assert.match(summary.promptPreview, /drafts: 1 ready, 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /helpers: .*refresh-all node src\/index\.js update foundation --all .* refresh-bundle node src\/index\.js update foundation --person 'jane-doe'/);
+  assert.equal(summary.profileSnapshots[1].refreshCommand, "node src/index.js update foundation --person 'jane-doe'");
+  assert.deepEqual(summary.profileSnapshots[1].refreshPaths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ]);
+  assert.match(summary.profileSnapshots[1].snapshot, /refresh drafts: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
 });
 
@@ -868,6 +919,40 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.match(summary.promptPreview, /memory: README yes, daily 1, long-term 1, scratch 1; buckets 3\/3 ready \(daily, long-term, scratch\); aliases daily canonical via shortTermEntries, shortTermPresent; samples: daily\/2026-04-18\.md, long-term\/operator\.json, scratch\/draft\.txt; root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md; root sections 0\/2 ready, missing what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
+  assert.doesNotMatch(summary.promptPreview, /root: description:/);
+  assert.doesNotMatch(summary.promptPreview, /root: >/);
+});
+
+test('buildSummary accepts BOM-prefixed frontmatter descriptions for root foundation docs', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    `\uFEFF${['---', 'description: Keep shared operator procedures discoverable.', '---', '', '# Skills', '', '## What lives here', '- Keep shared operator procedures discoverable.', '', '## Layout', '- skills/<name>/SKILL.md stores the per-skill workflow.'].join('\n')}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    `\uFEFF${['---', 'description: >', '  Keep durable repo knowledge organized', '  without leaking raw YAML metadata.', '---', '', '# Memory', '', 'Buckets live below.'].join('\n')}`,
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge organized without leaking raw YAML metadata.');
+  assert.equal(summary.foundation.core.skills.rootExcerpt, 'Keep shared operator procedures discoverable.');
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
   assert.doesNotMatch(summary.promptPreview, /root: >/);
 });

@@ -8,7 +8,11 @@ const SOUL_STARTER_GUIDANCE_LINES = new Set([
 const LIST_MARKER_PATTERN = /^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
 
 function normalizeDocument(document) {
-  return typeof document === 'string' ? document : '';
+  if (typeof document !== 'string') {
+    return '';
+  }
+
+  return document.charCodeAt(0) === 0xFEFF ? document.slice(1) : document;
 }
 
 function normalizeHeadingText(value) {

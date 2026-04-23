@@ -15,9 +15,10 @@ import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
 import { CHANNEL_ROLLOUT_ORDER, PROVIDER_ROLLOUT_ORDER, buildDeliverySummary, buildPopulateEnvCommand, orderStringsByPreferredSequence } from './core/delivery-summary.ts';
 import { collectVisibleDocumentLines } from './core/document-excerpt.ts';
-import { PromptAssembler } from './core/prompt-assembler.ts';
+import { PromptAssembler, buildProfileSnapshotSummaries } from './core/prompt-assembler.ts';
 import { MaterialIngestion } from './core/material-ingestion.js';
 import { ManifestLoader } from './core/manifest-loader.ts';
+import { buildProfileLabel as formatProfileLabel } from './core/profile-label.js';
 import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
 type OptionValue = string | boolean | undefined;
@@ -393,12 +394,7 @@ function slugifyPersonId(value: string) {
 }
 
 function buildSampleProfileLabel(personId: string, displayName?: string | null) {
-  const normalizedDisplayName = typeof displayName === 'string' ? displayName.trim() : '';
-  if (!normalizedDisplayName || normalizedDisplayName === personId) {
-    return personId;
-  }
-
-  return `${normalizedDisplayName} (${personId})`;
+  return formatProfileLabel(personId, displayName);
 }
 
 function readSampleManifestSummary(rootDir: string, relativePath: string | null): SampleManifestSummary {
@@ -1144,6 +1140,15 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedEditPaths = Array.isArray(ingestionSummary?.recommendedEditPaths)
     ? ingestionSummary.recommendedEditPaths.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const recommendedInspectCommand = typeof ingestionSummary?.recommendedInspectCommand === 'string' && ingestionSummary.recommendedInspectCommand.length > 0
+    ? ingestionSummary.recommendedInspectCommand
+    : null;
+  const recommendedManifestInspectCommand = typeof ingestionSummary?.recommendedManifestInspectCommand === 'string' && ingestionSummary.recommendedManifestInspectCommand.length > 0
+    ? ingestionSummary.recommendedManifestInspectCommand
+    : null;
+  const recommendedManifestImportCommand = typeof ingestionSummary?.recommendedManifestImportCommand === 'string' && ingestionSummary.recommendedManifestImportCommand.length > 0
+    ? ingestionSummary.recommendedManifestImportCommand
+    : null;
   const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
     ? ingestionSummary.recommendedFollowUpCommand
     : null;
@@ -1177,6 +1182,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     fallbackCommand: recommendedFallbackCommand,
     editPath: recommendedEditPath,
     editPaths: recommendedEditPaths,
+    manifestInspectCommand: recommendedManifestInspectCommand,
+    manifestImportCommand: recommendedManifestImportCommand,
+    inspectCommand: recommendedInspectCommand,
     followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,
   };
@@ -1302,10 +1310,10 @@ function buildDeliveryPriority({
   const bundledImplementationBacklog = !manifestMissing && implementationNeedsWork && bundledImplementationCount > 1;
   const includeEnvTemplatePath = (needsCredentialBootstrap && typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0)
     || needsEnvTemplateRepair;
-  // Keep bootstrap paths source-focused: `cp .env.example .env` reads the shared template, but the
-  // operator-facing path list should name the source asset that drives the next step rather than both
-  // the input and destination.
-  const normalizedEnvBootstrapPaths = [envTemplatePath].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
+  const normalizedEnvBootstrapPaths = [
+    envTemplatePath,
+    ...(needsCredentialBootstrap ? [envConfigPath] : []),
+  ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
   const envConfigPaths = [
     envConfigPath,
   ].filter((value, index, values): value is string => typeof value === 'string' && value.length > 0 && values.indexOf(value) === index);
@@ -1991,6 +1999,7 @@ export function buildSummary(rootDir: string) {
     ],
   });
   const workLoopSummary = workLoop.summary();
+  const profileSnapshots = buildProfileSnapshotSummaries(profiles);
   const prompt = new PromptAssembler({
     profile: profile.summary(),
     soul: soulDocument,
@@ -2028,6 +2037,7 @@ export function buildSummary(rootDir: string) {
     models: modelsSummary,
     delivery: deliverySummary,
     profiles,
+    profileSnapshots,
     workLoop: workLoopSummary,
     promptPreview: prompt.buildPreview(120000),
   };

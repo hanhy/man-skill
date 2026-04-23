@@ -1,3 +1,5 @@
+import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
+
 function cleanHighlight(value: unknown): string | null {
   return typeof value === 'string' ? value.replace(/^-\s*/, '').trim() : null;
 }
@@ -54,7 +56,7 @@ function countStringValues(values: unknown[]): Record<string, number> {
 function buildProfileLabel(profile: any): string {
   const profileId = profile?.id ?? 'unknown-profile';
   const displayName = profile?.profile?.displayName;
-  return displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+  return formatProfileLabel(profileId, displayName);
 }
 
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'] as const;
@@ -183,6 +185,15 @@ function buildFoundationDraftPaths(profileId: string | null | undefined): string
   ];
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function summarizeDraftGap(summary: any, key: string): string | null {
   const totalSectionCount = summary?.totalSectionCount ?? 0;
   const readySectionCount = summary?.readySectionCount ?? totalSectionCount;
@@ -245,6 +256,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
     .map((profile) => {
       const draftGapCounts = buildDraftGapCounts(profile);
+      const draftPaths = buildFoundationDraftPaths(profile.id ?? null);
       return {
         id: profile.id ?? null,
         displayName: profile.profile?.displayName ?? null,
@@ -256,11 +268,13 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         candidateDraftCount: countCandidateDrafts(profile),
         missingDrafts: [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort(),
         refreshReasons: [...(profile.foundationDraftStatus?.refreshReasons ?? [])],
-        latestMaterialAt: profile.latestMaterialAt ?? null,
+        latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
+        latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
         refreshCommand: buildFoundationRefreshCommand(profile.id ?? null),
+        paths: draftPaths,
       };
     })
     .sort((left, right) => {
@@ -307,6 +321,8 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       : null,
     recommendedCommand: recommendedProfile?.refreshCommand ?? null,
     recommendedPaths,
+    recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
+    recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
       refreshAll: profiles.length > 0 ? 'node src/index.js update foundation --all' : null,

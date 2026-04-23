@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
 
@@ -25,6 +26,7 @@ type ReadinessSignal = {
 
 type MemoryDraftSummary = {
   generated?: boolean;
+  path?: string | null;
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
@@ -37,6 +39,7 @@ type MemoryDraftSummary = {
 
 type HighlightDraftSummary = {
   generated?: boolean;
+  path?: string | null;
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
@@ -70,9 +73,59 @@ type ProfileSnapshot = {
   materialCount?: number;
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string;
+  latestMaterialId?: string;
   foundationDraftStatus?: FoundationDraftStatus;
   foundationDraftSummaries?: FoundationDraftSummaries;
   foundationReadiness?: FoundationReadiness;
+};
+
+type ProfileSnapshotRefreshInfo = {
+  refreshCommand: string | null;
+  refreshPaths: string[];
+};
+
+type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', {
+  generated: boolean;
+  readySectionCount: number;
+  totalSectionCount: number;
+  readySections: string[];
+  missingSections: string[];
+}>>;
+
+export type ProfileSnapshotSummary = {
+  id: string;
+  label: string;
+  snapshot: string;
+  lines: string[];
+  materialCount: number;
+  materialTypes: Record<string, number>;
+  latestMaterialAt: string | null;
+  latestMaterialId: string | null;
+  profileSummary: string | null;
+  refreshCommand: string | null;
+  refreshPaths: string[];
+  draftStatus: {
+    generatedAt?: string | null;
+    complete?: boolean;
+    needsRefresh?: boolean;
+    missingDrafts: string[];
+    refreshReasons: string[];
+  };
+  readiness: {
+    memory: ReadinessSignal;
+    voice: ReadinessSignal;
+    soul: ReadinessSignal;
+    skills: ReadinessSignal;
+  };
+  draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
+  draftSections: ProfileSnapshotDraftSections;
+  draftGaps: string[];
+  highlights: {
+    memory: string[];
+    voice: string[];
+    soul: string[];
+    skills: string[];
+  };
 };
 
 type RollupSection = {
@@ -97,6 +150,7 @@ type MaintenanceQueueItem = {
   missingDrafts?: string[];
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
   draftGapCount?: number;
   draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
@@ -120,6 +174,8 @@ type FoundationMaintenance = {
   recommendedAction?: string | null;
   recommendedCommand?: string | null;
   recommendedPaths?: string[];
+  recommendedLatestMaterialAt?: string | null;
+  recommendedLatestMaterialId?: string | null;
   recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
@@ -478,6 +534,8 @@ type IngestionProfileCommand = {
   starterImportCommand?: string | null;
   followUpImportIntakeWithoutRefreshCommand?: string | null;
   followUpImportIntakeCommand?: string | null;
+  importAfterEditingWithoutRefreshCommand?: string | null;
+  importAfterEditingCommand?: string | null;
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
@@ -513,6 +571,8 @@ type IngestionHelperCommands = {
   importIntakeImported?: string | null;
   importIntakeImportedAndRefresh?: string | null;
   importIntakeBundle?: string | null;
+  inspectImportedStarterBundle?: string | null;
+  replayImportedStarterBundle?: string | null;
   starterImportBundle?: string | null;
   updateProfileBundle?: string | null;
   updateProfileAndRefreshBundle?: string | null;
@@ -592,6 +652,8 @@ type IngestionSummary = {
   starterImportBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
+  updateProfileBundleCommand?: string | null;
+  updateProfileAndRefreshBundleCommand?: string | null;
   recommendedProfileId?: string | null;
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
@@ -599,6 +661,9 @@ type IngestionSummary = {
   recommendedFallbackCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
+  recommendedManifestInspectCommand?: string | null;
+  recommendedManifestImportCommand?: string | null;
+  recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
   helperCommands?: IngestionHelperCommands;
@@ -617,6 +682,9 @@ type WorkLoopPriority = {
   fallbackCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
+  inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
 };
@@ -633,6 +701,7 @@ type WorkLoopSummary = {
   currentPriority?: WorkLoopPriority | null;
   runnablePriority?: WorkLoopPriority | null;
   actionableReadyPriority?: WorkLoopPriority | null;
+  recommendedPriority?: WorkLoopPriority | null;
   priorities?: WorkLoopPriority[];
 } | null;
 
@@ -668,25 +737,56 @@ function formatMaterialTypes(materialTypes: MaterialTypes = {}) {
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeStringArray(values: unknown, mapper?: (value: string) => string | null): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalizedValues: string[] = [];
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+
+    const normalized = mapper ? mapper(value) : normalizeOptionalString(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    normalizedValues.push(normalized);
+  }
+
+  return normalizedValues;
+}
+
 function formatDraftStatus(status: FoundationDraftStatus = {}) {
   const freshness = status.needsRefresh ? 'stale' : 'fresh';
-  const completeness = status.complete ? 'complete' : `missing ${(status.missingDrafts ?? []).join('/') || 'drafts'}`;
-  const generatedAt = status.generatedAt ? `, generated ${status.generatedAt}` : '';
-  const refreshReasons = Array.isArray(status.refreshReasons)
-    ? status.refreshReasons.filter((value): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  const missingDrafts = normalizeStringArray(status.missingDrafts);
+  const completeness = status.complete ? 'complete' : `missing ${missingDrafts.join('/') || 'drafts'}`;
+  const generatedAtValue = normalizeOptionalString(status.generatedAt);
+  const generatedAt = generatedAtValue ? `, generated ${generatedAtValue}` : '';
+  const refreshReasons = normalizeStringArray(status.refreshReasons);
   const reasonsSuffix = refreshReasons.length > 0 ? `, reasons ${refreshReasons.join(' + ')}` : '';
   return `${freshness}, ${completeness}${generatedAt}${reasonsSuffix}`;
 }
 
 function cleanHighlight(value: string) {
-  return value.replace(/^[-\s]*/, '').trim();
+  return normalizeOptionalString(value.replace(/^[-\s]*/, ''));
 }
 
-function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
-  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
-    ? profile.foundationDraftStatus.missingDrafts
-    : [];
+function collectDraftGaps(profile: ProfileSnapshot = {}) {
+  const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts);
   const draftKinds = [
     { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
     { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
@@ -699,10 +799,10 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     }
 
     const candidateCount = Number(profile.foundationReadiness?.memory?.candidateCount ?? 0);
-    const memoryHighlights = [
+    const memoryHighlights = normalizeStringArray([
       ...(profile.foundationDraftSummaries?.memory?.latestSummaries ?? []),
       ...(profile.foundationReadiness?.memory?.sampleSummaries ?? []),
-    ].filter((value, index, values) => typeof value === 'string' && value.trim().length > 0 && values.indexOf(value) === index);
+    ]);
 
     if (candidateCount > 0) {
       const candidateLabel = `${candidateCount} candidate${candidateCount === 1 ? '' : 's'}`;
@@ -714,7 +814,7 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
     return 'memory missing';
   })();
 
-  const gapSummaries = [
+  return [
     memoryGapSummary,
     ...draftKinds
       .map(({ key, summary }) => {
@@ -728,22 +828,21 @@ function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
           return null;
         }
 
-        const missingSections = Array.isArray(summary.missingSections)
-          ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
+        const missingSections = normalizeStringArray(summary.missingSections);
         if (missingSections.length === 0 && !missingDrafts.includes(key)) {
           return null;
         }
 
-        const readySections = Array.isArray(summary.readySections)
-          ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-          : [];
+        const readySections = normalizeStringArray(summary.readySections);
 
         return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
       })
-      .filter(Boolean),
-  ].filter(Boolean);
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
 
+function summarizeDraftGaps(profile: ProfileSnapshot = {}) {
+  const gapSummaries = collectDraftGaps(profile);
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
 }
 
@@ -766,12 +865,8 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
         return null;
       }
 
-      const readySections = Array.isArray(summary.readySections)
-        ? summary.readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
-      const missingSections = Array.isArray(summary.missingSections)
-        ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
-        : [];
+      const readySections = normalizeStringArray(summary.readySections);
+      const missingSections = normalizeStringArray(summary.missingSections);
       if (missingSections.length > 0) {
         return null;
       }
@@ -783,20 +878,184 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
   return sectionSummaries.length > 0 ? sectionSummaries.join(' | ') : null;
 }
 
-function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
-  const displayName = profile.profile?.displayName;
-  const profileId = profile.id ?? 'unknown-profile';
-  const profileLabel = displayName && displayName !== profileId ? `${displayName} (${profileId})` : (displayName ?? profileId);
+function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOnly?: boolean } = {}) {
+  const { generatedOnly = false } = options;
+  const draftKinds = [
+    { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+  ] as const;
+
+  return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
+    const normalizedPath = normalizeOptionalString(summary?.path);
+    if (!summary || !normalizedPath) {
+      return accumulator;
+    }
+
+    if (generatedOnly && summary.generated !== true) {
+      return accumulator;
+    }
+
+    accumulator[key] = normalizedPath;
+    return accumulator;
+  }, {});
+}
+
+function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
+  const draftFiles = collectDraftFiles(profile, { generatedOnly: true });
+  const fileSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
+    .map((key) => draftFiles[key] ? `${key} @ ${draftFiles[key]}` : null)
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
+}
+
+function buildMissingDraftPaths(profileId: string, missingDrafts: string[]) {
+  const draftPathByKey: Record<string, string> = {
+    memory: `profiles/${profileId}/memory/long-term/foundation.json`,
+    skills: `profiles/${profileId}/skills/README.md`,
+    soul: `profiles/${profileId}/soul/README.md`,
+    voice: `profiles/${profileId}/voice/README.md`,
+  };
+
+  return missingDrafts
+    .filter((draftKey): draftKey is keyof typeof draftPathByKey => draftKey in draftPathByKey)
+    .map((draftKey) => draftPathByKey[draftKey]);
+}
+
+function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
+  if (profile.foundationDraftStatus?.needsRefresh !== true || !profileId) {
+    return {
+      refreshCommand: null,
+      refreshPaths: [],
+    };
+  }
+
+  const refreshCommand = `node src/index.js update foundation --person '${profileId.replace(/'/g, `'"'"'`)}'`;
+  const generatedDraftFiles = collectDraftFiles(profile);
+  const refreshPaths = [
+    ...(['memory', 'skills', 'soul', 'voice'] as const)
+      .map((key) => generatedDraftFiles[key] ?? null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ...buildMissingDraftPaths(profileId, normalizeStringArray(profile.foundationDraftStatus?.missingDrafts)),
+  ];
+
+  return {
+    refreshCommand,
+    refreshPaths: Array.from(new Set(refreshPaths)),
+  };
+}
+
+function collectProfileSnapshotHighlights(profile: ProfileSnapshot = {}) {
+  const generatedVoiceHighlights = normalizeStringArray(profile.foundationDraftSummaries?.voice?.highlights, cleanHighlight);
+  const generatedSoulHighlights = normalizeStringArray(profile.foundationDraftSummaries?.soul?.highlights, cleanHighlight);
+  const generatedSkillSignals = normalizeStringArray(
+    profile.foundationDraftSummaries?.skills?.highlights,
+    (value) => {
+      const normalized = cleanHighlight(value);
+      return normalized && !normalized.startsWith('sample:') ? normalized : null;
+    },
+  );
+  const generatedMemoryHighlights = normalizeStringArray(profile.foundationDraftSummaries?.memory?.latestSummaries);
+  const fallbackMemoryHighlights = normalizeStringArray(profile.foundationReadiness?.memory?.sampleSummaries);
+
+  return {
+    memory: generatedMemoryHighlights.length > 0 ? generatedMemoryHighlights : fallbackMemoryHighlights,
+    voice: generatedVoiceHighlights.length > 0
+      ? generatedVoiceHighlights
+      : normalizeStringArray(profile.foundationReadiness?.voice?.sampleExcerpts),
+    soul: generatedSoulHighlights.length > 0
+      ? generatedSoulHighlights
+      : normalizeStringArray(profile.foundationReadiness?.soul?.sampleExcerpts),
+    skills: generatedSkillSignals.length > 0
+      ? generatedSkillSignals
+      : normalizeStringArray(profile.foundationReadiness?.skills?.sampleExcerpts),
+  };
+}
+
+function collectDraftGapList(profile: ProfileSnapshot = {}) {
+  return collectDraftGaps(profile);
+}
+
+function normalizeProfileSnapshotDraftStatus(profile: ProfileSnapshot = {}) {
+  return {
+    ...(profile.foundationDraftStatus?.generatedAt !== undefined
+      ? { generatedAt: normalizeOptionalString(profile.foundationDraftStatus.generatedAt) }
+      : {}),
+    ...(profile.foundationDraftStatus?.complete !== undefined ? { complete: profile.foundationDraftStatus.complete } : {}),
+    ...(profile.foundationDraftStatus?.needsRefresh !== undefined ? { needsRefresh: profile.foundationDraftStatus.needsRefresh } : {}),
+    missingDrafts: normalizeStringArray(profile.foundationDraftStatus?.missingDrafts),
+    refreshReasons: normalizeStringArray(profile.foundationDraftStatus?.refreshReasons),
+  };
+}
+
+function normalizeProfileSnapshotReadiness(profile: ProfileSnapshot = {}) {
+  const normalizeReadinessSignal = (signal: ReadinessSignal | undefined = {}) => ({
+    ...signal,
+    ...(signal.latestTypes !== undefined ? { latestTypes: normalizeStringArray(signal.latestTypes) } : {}),
+    ...(signal.sampleSummaries !== undefined ? { sampleSummaries: normalizeStringArray(signal.sampleSummaries) } : {}),
+    ...(signal.sampleTypes !== undefined ? { sampleTypes: normalizeStringArray(signal.sampleTypes) } : {}),
+    ...(signal.sampleExcerpts !== undefined ? { sampleExcerpts: normalizeStringArray(signal.sampleExcerpts) } : {}),
+  });
+
+  return {
+    memory: normalizeReadinessSignal(profile.foundationReadiness?.memory),
+    voice: normalizeReadinessSignal(profile.foundationReadiness?.voice),
+    soul: normalizeReadinessSignal(profile.foundationReadiness?.soul),
+    skills: normalizeReadinessSignal(profile.foundationReadiness?.skills),
+  };
+}
+
+function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): ProfileSnapshotDraftSections {
+  return (['skills', 'soul', 'voice'] as const).reduce<ProfileSnapshotDraftSections>((accumulator, key) => {
+    const summary = profile.foundationDraftSummaries?.[key];
+    if (!summary) {
+      return accumulator;
+    }
+
+    const readySectionCount = Number(summary.readySectionCount ?? 0);
+    const totalSectionCount = Number(summary.totalSectionCount ?? 0);
+    if (totalSectionCount <= 0) {
+      return accumulator;
+    }
+
+    accumulator[key] = {
+      generated: summary.generated === true,
+      readySectionCount,
+      totalSectionCount,
+      readySections: normalizeStringArray(summary.readySections),
+      missingSections: normalizeStringArray(summary.missingSections),
+    };
+    return accumulator;
+  }, {});
+}
+
+function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
+  const displayName = normalizeOptionalString(profile.profile?.displayName);
+  const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
+  const profileLabel = formatProfileLabel(profileId, displayName);
+  const profileSummary = normalizeOptionalString(profile.profile?.summary);
   const lines = [
     `- ${profileLabel}: ${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`,
   ];
+  const draftStatus = normalizeProfileSnapshotDraftStatus(profile);
+  const readiness = normalizeProfileSnapshotReadiness(profile);
+  const draftFiles = collectDraftFiles(profile);
+  const draftSections = normalizeProfileSnapshotDraftSections(profile);
+  const highlights = collectProfileSnapshotHighlights(profile);
+  const draftGaps = collectDraftGapList(profile);
+  const refreshInfo = buildProfileSnapshotRefreshInfo(profile, profileId);
 
-  if (profile.latestMaterialAt) {
-    lines.push(`  latest material: ${profile.latestMaterialAt}`);
+  const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
+  const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
+
+  if (latestMaterialAt || latestMaterialId) {
+    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`);
   }
 
-  if (profile.profile?.summary) {
-    lines.push(`  profile summary: ${profile.profile.summary}`);
+  if (profileSummary) {
+    lines.push(`  profile summary: ${profileSummary}`);
   }
 
   if (profile.foundationDraftStatus) {
@@ -809,50 +1068,71 @@ function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
     );
   }
 
-  const draftSections = summarizeDraftSections(profile);
-  if (draftSections) {
-    lines.push(`  draft sections: ${draftSections}`);
+  const promptDraftSections = summarizeDraftSections(profile);
+  if (promptDraftSections) {
+    lines.push(`  draft sections: ${promptDraftSections}`);
   }
 
-  const memoryHighlights = profile.foundationDraftSummaries?.memory?.latestSummaries?.length
-    ? profile.foundationDraftSummaries.memory.latestSummaries
-    : (profile.foundationReadiness?.memory?.sampleSummaries ?? []);
-  if (memoryHighlights.length > 0) {
-    lines.push(`  memory highlights: ${memoryHighlights.join(' | ')}`);
+  const draftFilesSummary = summarizeDraftFiles(profile);
+  if (draftFilesSummary) {
+    lines.push(`  draft files: ${draftFilesSummary}`);
   }
 
-  const voiceHighlights = (profile.foundationDraftSummaries?.voice?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const voiceSnapshotHighlights = voiceHighlights.length > 0
-    ? voiceHighlights
-    : (profile.foundationReadiness?.voice?.sampleExcerpts ?? []);
-  if (voiceSnapshotHighlights.length > 0) {
-    lines.push(`  voice highlights: ${voiceSnapshotHighlights.join(' | ')}`);
+  if (refreshInfo.refreshCommand) {
+    lines.push(`  refresh drafts: ${refreshInfo.refreshCommand}`);
   }
 
-  const soulHighlights = (profile.foundationDraftSummaries?.soul?.highlights ?? []).map(cleanHighlight).filter(Boolean);
-  const soulSnapshotHighlights = soulHighlights.length > 0
-    ? soulHighlights
-    : (profile.foundationReadiness?.soul?.sampleExcerpts ?? []);
-  if (soulSnapshotHighlights.length > 0) {
-    lines.push(`  soul highlights: ${soulSnapshotHighlights.join(' | ')}`);
+  if (highlights.memory.length > 0) {
+    lines.push(`  memory highlights: ${highlights.memory.join(' | ')}`);
   }
 
-  const generatedSkillSignals = (profile.foundationDraftSummaries?.skills?.highlights ?? [])
-    .map(cleanHighlight)
-    .filter((value) => value && !value.startsWith('sample:'));
-  const skillSignals = generatedSkillSignals.length > 0
-    ? generatedSkillSignals
-    : (profile.foundationReadiness?.skills?.sampleExcerpts ?? []);
-  if (skillSignals.length > 0) {
-    lines.push(`  skills signals: ${skillSignals.join(' | ')}`);
+  if (highlights.voice.length > 0) {
+    lines.push(`  voice highlights: ${highlights.voice.join(' | ')}`);
   }
 
-  const draftGaps = summarizeDraftGaps(profile);
-  if (draftGaps) {
-    lines.push(`  draft gaps: ${draftGaps}`);
+  if (highlights.soul.length > 0) {
+    lines.push(`  soul highlights: ${highlights.soul.join(' | ')}`);
   }
 
-  return lines.join('\n');
+  if (highlights.skills.length > 0) {
+    lines.push(`  skills signals: ${highlights.skills.join(' | ')}`);
+  }
+
+  if (draftGaps.length > 0) {
+    lines.push(`  draft gaps: ${draftGaps.join(' | ')}`);
+  }
+
+  return {
+    id: profileId,
+    label: profileLabel,
+    snapshot: lines.join('\n'),
+    lines,
+    materialCount: profile.materialCount ?? 0,
+    materialTypes: { ...(profile.materialTypes ?? {}) },
+    latestMaterialAt,
+    latestMaterialId,
+    profileSummary,
+    refreshCommand: refreshInfo.refreshCommand,
+    refreshPaths: refreshInfo.refreshPaths,
+    draftStatus,
+    readiness,
+    draftFiles,
+    draftSections,
+    draftGaps,
+    highlights,
+  };
+}
+
+function formatProfileSnapshot(profile: ProfileSnapshot = {}) {
+  return buildProfileSnapshotSummary(profile).snapshot;
+}
+
+export function buildProfileSnapshotSummaries(profiles: ProfileSnapshot[] = []): ProfileSnapshotSummary[] {
+  if (!Array.isArray(profiles) || profiles.length === 0) {
+    return [];
+  }
+
+  return profiles.map((profile) => buildProfileSnapshotSummary(profile));
 }
 
 function buildProfileSnapshots(profiles: ProfileSnapshot[] = []) {
@@ -860,7 +1140,7 @@ function buildProfileSnapshots(profiles: ProfileSnapshot[] = []) {
     return null;
   }
 
-  return profiles.map((profile) => formatProfileSnapshot(profile)).join('\n');
+  return buildProfileSnapshotSummaries(profiles).map((profile) => profile.snapshot).join('\n');
 }
 
 function sanitizeProfilesForPrompt(profiles: ProfileSnapshot[] = []) {
@@ -922,8 +1202,13 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const recommendedDraftGapSummary = typeof maintenance.recommendedDraftGapSummary === 'string' && maintenance.recommendedDraftGapSummary.length > 0
     ? maintenance.recommendedDraftGapSummary
     : null;
+  const recommendedLatestMaterialAt = normalizeOptionalString(maintenance.recommendedLatestMaterialAt);
+  const recommendedLatestMaterialId = normalizeOptionalString(maintenance.recommendedLatestMaterialId);
+  const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId
+    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}`
+    : '';
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
-    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
   const draftGapCountSummary = Number.isFinite(maintenance.draftGapCountTotal) && (maintenance.draftGapCountTotal ?? 0) > 0
     ? `${maintenance.draftGapCountTotal} total`
@@ -932,6 +1217,11 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const missingDraftSummary = formatCountMap(maintenance.missingDraftCounts);
   const refreshReasonSummary = formatCountMap(maintenance.refreshReasonCounts);
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
+    const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
+    const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
+    const latestMaterialSuffix = latestMaterialAt || latestMaterialId
+      ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`
+      : '';
     const reasonSuffix = (profile.refreshReasons ?? []).length > 0
       ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
       : '';
@@ -945,7 +1235,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
@@ -1403,6 +1693,15 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedEditPaths = Array.isArray(ingestion?.recommendedEditPaths)
     ? ingestion.recommendedEditPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (recommendedEditPath ? [recommendedEditPath] : []);
+  const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
+    ? ingestion.recommendedInspectCommand
+    : null;
+  const recommendedManifestInspectCommand = typeof ingestion?.recommendedManifestInspectCommand === 'string' && ingestion.recommendedManifestInspectCommand.length > 0
+    ? ingestion.recommendedManifestInspectCommand
+    : null;
+  const recommendedManifestImportCommand = typeof ingestion?.recommendedManifestImportCommand === 'string' && ingestion.recommendedManifestImportCommand.length > 0
+    ? ingestion.recommendedManifestImportCommand
+    : null;
   const recommendedFollowUpCommand = typeof ingestion?.recommendedFollowUpCommand === 'string' && ingestion.recommendedFollowUpCommand.length > 0
     ? ingestion.recommendedFollowUpCommand
     : null;
@@ -1413,7 +1712,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -1463,6 +1762,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
+      pushHelperEntry(helperCommands.inspectImportedStarterBundle ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle}` : null);
+      pushHelperEntry(helperCommands.replayImportedStarterBundle ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle}` : null);
       pushHelperEntry(helperCommands.starterImportBundle ? `starter-import-bundle ${helperCommands.starterImportBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
       pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
@@ -2060,6 +2361,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const currentPriority = workLoop.currentPriority;
   const runnablePriority = workLoop.runnablePriority;
   const actionableReadyPriority = workLoop.actionableReadyPriority;
+  const recommendedPriority = workLoop.recommendedPriority;
   const priorities = workLoop.priorities ?? [];
   const showLeadingPriority = Boolean(
     leadingPriority && (!currentPriority || (leadingPriority.id ?? leadingPriority.label) !== (currentPriority.id ?? currentPriority.label)),
@@ -2076,12 +2378,21 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
     ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (currentPriority?.editPath ? [currentPriority.editPath] : []);
+  const currentPriorityInspectCommand = typeof currentPriority?.inspectCommand === 'string' && currentPriority.inspectCommand.length > 0
+    ? currentPriority.inspectCommand
+    : null;
   const runnablePriorityEditPaths = Array.isArray(runnablePriority?.editPaths)
     ? runnablePriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (runnablePriority?.editPath ? [runnablePriority.editPath] : []);
+  const runnablePriorityInspectCommand = typeof runnablePriority?.inspectCommand === 'string' && runnablePriority.inspectCommand.length > 0
+    ? runnablePriority.inspectCommand
+    : null;
   const actionableReadyPriorityEditPaths = Array.isArray(actionableReadyPriority?.editPaths)
     ? actionableReadyPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (actionableReadyPriority?.editPath ? [actionableReadyPriority.editPath] : []);
+  const actionableReadyPriorityInspectCommand = typeof actionableReadyPriority?.inspectCommand === 'string' && actionableReadyPriority.inspectCommand.length > 0
+    ? actionableReadyPriority.inspectCommand
+    : null;
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2104,6 +2415,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showLeadingPriority && leadingPriority
       ? `- lead: ${leadingPriority.label ?? leadingPriority.id ?? 'Leading priority'} [${leadingPriority.status ?? 'unknown'}] — ${leadingPriority.summary ?? 'needs review'}`
       : null,
+    recommendedPriority
+      ? `- recommended: ${recommendedPriority.label ?? recommendedPriority.id ?? 'Recommended priority'} [${recommendedPriority.status ?? 'unknown'}] — ${recommendedPriority.nextAction ?? recommendedPriority.summary ?? 'needs review'}`
+      : null,
     currentPriority
       ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
       : null,
@@ -2121,6 +2435,15 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (currentPriority?.editPath
         ? `- edit: ${currentPriority.editPath}`
         : null),
+    currentPriority?.manifestInspectCommand
+      ? `- manifest inspect: ${currentPriority.manifestInspectCommand}`
+      : null,
+    currentPriority?.manifestImportCommand
+      ? `- manifest: ${currentPriority.manifestImportCommand}`
+      : null,
+    currentPriorityInspectCommand
+      ? `- inspect after editing: ${currentPriorityInspectCommand}`
+      : null,
     currentPriority?.followUpCommand
       ? `- then run: ${currentPriority.followUpCommand}`
       : null,
@@ -2144,6 +2467,15 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showRunnablePriority && runnablePriority?.editPath
         ? `- runnable edit: ${runnablePriority.editPath}`
         : null),
+    showRunnablePriority && runnablePriority?.manifestInspectCommand
+      ? `- runnable manifest inspect: ${runnablePriority.manifestInspectCommand}`
+      : null,
+    showRunnablePriority && runnablePriority?.manifestImportCommand
+      ? `- runnable manifest: ${runnablePriority.manifestImportCommand}`
+      : null,
+    showRunnablePriority && runnablePriorityInspectCommand
+      ? `- runnable inspect after editing: ${runnablePriorityInspectCommand}`
+      : null,
     showRunnablePriority && runnablePriority?.followUpCommand
       ? `- runnable then run: ${runnablePriority.followUpCommand}`
       : null,
@@ -2167,6 +2499,15 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : (showActionableReadyPriority && actionableReadyPriority?.editPath
         ? `- advisory edit: ${actionableReadyPriority.editPath}`
         : null),
+    showActionableReadyPriority && actionableReadyPriority?.manifestInspectCommand
+      ? `- advisory manifest inspect: ${actionableReadyPriority.manifestInspectCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.manifestImportCommand
+      ? `- advisory manifest: ${actionableReadyPriority.manifestImportCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriorityInspectCommand
+      ? `- advisory inspect after editing: ${actionableReadyPriorityInspectCommand}`
+      : null,
     showActionableReadyPriority && actionableReadyPriority?.followUpCommand
       ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
       : null,
@@ -2261,7 +2602,7 @@ function buildMemoryPreviewBlock(
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -2322,6 +2663,25 @@ function buildSkillsPreviewBlock(
   const categorySummary = categoryEntries.length > 0
     ? `- categories: ${categoryEntries.join(', ')}`
     : null;
+  const rawFoundationStatusCounts = skills.foundationStatusCounts && typeof skills.foundationStatusCounts === 'object'
+    ? skills.foundationStatusCounts
+    : {};
+  const foundationStatusEntries = Object.entries(rawFoundationStatusCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([status, count]) => `${status} ${count}`);
+  const foundationStatusSummary = foundationStatusEntries.length > 0
+    ? `- foundation statuses: ${foundationStatusEntries.join(', ')}`
+    : null;
+  const rawDocumentedCategoryCounts = foundationSkills?.documentedCategoryCounts
+    && typeof foundationSkills.documentedCategoryCounts === 'object'
+      ? foundationSkills.documentedCategoryCounts
+      : {};
+  const documentedCategoryEntries = Object.entries(rawDocumentedCategoryCounts as Record<string, number>)
+    .filter(([, count]) => typeof count === 'number' && Number.isFinite(count) && count > 0)
+    .map(([category, count]) => `${category} ${count}`);
+  const documentedCategorySummary = documentedCategoryEntries.length > 0
+    ? `- documented categories: ${documentedCategoryEntries.join(', ')}`
+    : null;
 
   const rootExcerpt = typeof foundationSkills?.rootExcerpt === 'string' && foundationSkills.rootExcerpt.trim().length > 0
     ? foundationSkills.rootExcerpt.trim()
@@ -2346,7 +2706,9 @@ function buildSkillsPreviewBlock(
     rootSectionSummary,
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
+    foundationStatusSummary,
     categorySummary,
+    documentedCategorySummary,
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 

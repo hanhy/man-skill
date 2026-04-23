@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,12 +10,228 @@ import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
-import { PromptAssembler } from '../src/core/prompt-assembler.ts';
+import * as promptAssemblerJsShim from '../src/core/prompt-assembler.js';
+import { PromptAssembler, buildProfileSnapshotSummaries } from '../src/core/prompt-assembler.ts';
+import * as promptAssemblerTsModule from '../src/core/prompt-assembler.ts';
 import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
 }
+
+test('JS prompt assembler shim stays aligned with the TypeScript profile snapshot helpers', () => {
+  assert.equal(typeof promptAssemblerJsShim.PromptAssembler, 'function');
+  assert.equal(typeof promptAssemblerTsModule.PromptAssembler, 'function');
+  assert.equal(typeof promptAssemblerJsShim.buildProfileSnapshotSummaries, 'function');
+  assert.equal(typeof promptAssemblerTsModule.buildProfileSnapshotSummaries, 'function');
+
+  const profiles = [{
+    id: 'harry-han',
+    materialCount: 2,
+    materialTypes: { text: 1, message: 1 },
+    latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    latestMaterialId: '2026-04-16T15-00-00-000Z-message',
+    foundationReadiness: {
+      memory: { candidateCount: 2, latestTypes: ['message', 'text'], sampleSummaries: ['Ship the first slice.'] },
+      voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Ship the first slice.'] },
+      soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Protect the operator loop.'] },
+      skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+    },
+    foundationDraftStatus: {
+      generatedAt: '2026-04-16T15:00:01.000Z',
+      complete: false,
+      missingDrafts: ['skills'],
+      needsRefresh: true,
+      refreshReasons: ['new-material'],
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        path: 'profiles/harry-han/memory/long-term/foundation.json',
+        generatedAt: '2026-04-16T15:00:01.000Z',
+        latestMaterialAt: '2026-04-16T15:00:00.000Z',
+        latestMaterialId: '2026-04-16T15-00-00-000Z-message',
+        sourceCount: 2,
+        materialTypes: { text: 1, message: 1 },
+        entryCount: 2,
+        latestSummaries: ['Ship the first slice.'],
+      },
+      voice: {
+        generated: true,
+        path: 'profiles/harry-han/voice/README.md',
+        highlights: ['- [message] Ship the first slice.'],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+      },
+      soul: {
+        generated: true,
+        path: 'profiles/harry-han/soul/README.md',
+        highlights: ['- [text] Protect the operator loop.'],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+      },
+      skills: {
+        generated: false,
+        path: 'profiles/harry-han/skills/README.md',
+        highlights: [],
+        readySectionCount: 2,
+        totalSectionCount: 3,
+        readySections: ['candidate-skills', 'evidence'],
+        missingSections: ['gaps-to-validate'],
+      },
+    },
+  }];
+
+  assert.deepEqual(
+    promptAssemblerJsShim.buildProfileSnapshotSummaries(profiles),
+    promptAssemblerTsModule.buildProfileSnapshotSummaries(profiles),
+  );
+
+  const exportedKeys = execFileSync(
+    'node',
+    ['--input-type=module', '-e', "import('./src/core/prompt-assembler.js').then((module) => console.log(Object.keys(module).sort().join(',')))"],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    },
+  ).trim();
+
+  assert.equal(exportedKeys, 'PromptAssembler,buildProfileSnapshotSummaries');
+});
+
+test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata before exposing it', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    latestMaterialAt: '2026-04-16T15:00:00.000Z',
+    latestMaterialId: ' 2026-04-16T15-00-00-000Z-text ',
+    profile: {
+      displayName: 'Jane Doe',
+      summary: '  Tight loops beat big plans.  ',
+    },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        latestTypes: [' text ', 'text', ''],
+        sampleSummaries: ['  Tight loops beat big plans.  ', 'Tight loops beat big plans.', ''],
+      },
+      voice: {
+        candidateCount: 1,
+        sampleTypes: [' message ', 'message', ''],
+        sampleExcerpts: ['  Keep it tight.  ', 'Keep it tight.', ''],
+      },
+      soul: {
+        candidateCount: 1,
+        sampleTypes: [' talk ', 'talk', ''],
+        sampleExcerpts: ['  Protect the operator loop.  ', 'Protect the operator loop.', ''],
+      },
+      skills: {
+        candidateCount: 1,
+        sampleTypes: [' talk ', 'talk', ''],
+        sampleExcerpts: ['  feedback-loop heuristic  ', 'feedback-loop heuristic', ''],
+      },
+    },
+    foundationDraftStatus: {
+      generatedAt: '2026-04-16T15:00:01.000Z',
+      complete: false,
+      missingDrafts: [' memory ', 'voice', 'memory', ''],
+      needsRefresh: true,
+      refreshReasons: ['  new-material  ', 'new-material', ''],
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        path: ' profiles/jane-doe/memory/long-term/foundation.json ',
+        latestSummaries: ['  Tight loops beat big plans.  ', 'Tight loops beat big plans.', ''],
+      },
+      voice: {
+        generated: true,
+        path: ' profiles/jane-doe/voice/README.md ',
+        highlights: [' - [message] Keep it tight. ', '[message] Keep it tight.', ''],
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: [' tone ', 'tone', ''],
+        missingSections: [' avoid ', 'avoid', ''],
+      },
+      soul: {
+        generated: true,
+        path: ' profiles/jane-doe/soul/README.md ',
+        highlights: [' - [talk] Protect the operator loop. ', '[talk] Protect the operator loop.', ''],
+        readySectionCount: 1,
+        totalSectionCount: 4,
+        readySections: [' core-truths ', 'core-truths', ''],
+        missingSections: [' boundaries ', 'boundaries', ''],
+      },
+      skills: {
+        generated: true,
+        path: ' profiles/jane-doe/skills/README.md ',
+        highlights: ['  feedback-loop heuristic  ', 'feedback-loop heuristic', ''],
+        readySectionCount: 1,
+        totalSectionCount: 3,
+        readySections: [' candidate-skills ', 'candidate-skills', ''],
+        missingSections: [' evidence ', 'evidence', ''],
+      },
+    },
+  }]);
+
+  assert.equal(snapshot.profileSummary, 'Tight loops beat big plans.');
+  assert.deepEqual(snapshot.draftStatus.missingDrafts, ['memory', 'voice']);
+  assert.deepEqual(snapshot.draftStatus.refreshReasons, ['new-material']);
+  assert.deepEqual(snapshot.readiness.memory.latestTypes, ['text']);
+  assert.deepEqual(snapshot.readiness.memory.sampleSummaries, ['Tight loops beat big plans.']);
+  assert.deepEqual(snapshot.readiness.voice.sampleTypes, ['message']);
+  assert.deepEqual(snapshot.readiness.voice.sampleExcerpts, ['Keep it tight.']);
+  assert.equal(snapshot.latestMaterialId, '2026-04-16T15-00-00-000Z-text');
+  assert.equal(snapshot.draftFiles.memory, 'profiles/jane-doe/memory/long-term/foundation.json');
+  assert.equal(snapshot.draftFiles.voice, 'profiles/jane-doe/voice/README.md');
+  assert.deepEqual(snapshot.draftSections.voice?.readySections, ['tone']);
+  assert.deepEqual(snapshot.draftSections.voice?.missingSections, ['avoid']);
+  assert.deepEqual(snapshot.draftSections.soul?.readySections, ['core-truths']);
+  assert.deepEqual(snapshot.draftSections.skills?.missingSections, ['evidence']);
+  assert.deepEqual(snapshot.highlights.memory, ['Tight loops beat big plans.']);
+  assert.deepEqual(snapshot.highlights.voice, ['[message] Keep it tight.']);
+  assert.deepEqual(snapshot.highlights.soul, ['[talk] Protect the operator loop.']);
+  assert.deepEqual(snapshot.highlights.skills, ['feedback-loop heuristic']);
+  assert.match(snapshot.snapshot, /latest material: 2026-04-16T15:00:00.000Z \(2026-04-16T15-00-00-000Z-text\)/);
+  assert.match(snapshot.snapshot, /drafts: stale, missing memory\/voice, generated 2026-04-16T15:00:01.000Z, reasons new-material/);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence \| soul 1\/4 ready \(core-truths\), missing boundaries \| voice 1\/4 ready \(tone\), missing avoid/);
+  assert.doesNotMatch(snapshot.snapshot, /\s\|\s\|/);
+  assert.doesNotMatch(snapshot.snapshot, /memory\/voice\/memory/);
+});
+
+test('buildProfileSnapshotSummaries falls back to readiness memory highlights when generated summaries normalize to empty strings', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        sampleSummaries: ['  Tight loops beat big plans.  ', ''],
+      },
+    },
+    foundationDraftStatus: {
+      complete: false,
+      missingDrafts: ['memory'],
+      needsRefresh: true,
+    },
+    foundationDraftSummaries: {
+      memory: {
+        generated: true,
+        latestSummaries: ['   ', ''],
+      },
+    },
+  }]);
+
+  assert.deepEqual(snapshot.highlights.memory, ['Tight loops beat big plans.']);
+  assert.match(snapshot.snapshot, /memory highlights: Tight loops beat big plans\./);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Tight loops beat big plans\.\)/);
+});
 
 test('JS ingestion summary shim stays aligned with the TypeScript implementation', () => {
   const profiles = [
@@ -598,6 +815,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
   assert.deepEqual(profile.foundationDraftStatus.refreshReasons, []);
   assert.equal(profile.foundationDraftSummaries.memory.generated, true);
+  assert.equal(profile.foundationDraftSummaries.memory.path, 'profiles/harry-han/memory/long-term/foundation.json');
   assert.equal(profile.foundationDraftSummaries.memory.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialAt, profile.latestMaterialAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialId, profile.latestMaterialId);
@@ -610,6 +828,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.memory.entryCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.latestSummaries.slice().sort(), ['Direct writing sample.', 'Ship the first slice.']);
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.path, 'profiles/harry-han/voice/README.md');
   assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
   assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {
@@ -629,6 +848,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.deepEqual(profile.foundationDraftSummaries.voice.missingSections, []);
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: true,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
@@ -646,6 +866,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: true,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
@@ -735,6 +956,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['missing drafts']);
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
+    path: 'profiles/harry-han/voice/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -748,6 +970,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: false,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -761,6 +984,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -835,6 +1059,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
 
   assert.deepEqual(profile.foundationDraftSummaries.voice, {
     generated: false,
+    path: 'profiles/harry-han/voice/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -848,6 +1073,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
   });
   assert.deepEqual(profile.foundationDraftSummaries.soul, {
     generated: false,
+    path: 'profiles/harry-han/soul/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -861,6 +1087,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
   });
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: false,
+    path: 'profiles/harry-han/skills/README.md',
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
@@ -1071,6 +1298,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
         foundationDraftSummaries: {
           memory: {
             generated: true,
+            path: 'profiles/harry-han/memory/long-term/foundation.json',
             generatedAt: '2026-04-16T15:00:01.000Z',
             latestMaterialAt: '2026-04-16T15:00:00.000Z',
             latestMaterialId: '2026-04-16T15-00-00-000Z-screenshot',
@@ -1081,6 +1309,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           voice: {
             generated: true,
+            path: 'profiles/harry-han/voice/README.md',
             highlights: ['- [message] Ship the first slice.'],
             readySectionCount: 4,
             totalSectionCount: 4,
@@ -1089,6 +1318,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           soul: {
             generated: true,
+            path: 'profiles/harry-han/soul/README.md',
             highlights: ['- [text] Direct writing sample.'],
             readySectionCount: 4,
             totalSectionCount: 4,
@@ -1097,6 +1327,7 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
           },
           skills: {
             generated: true,
+            path: 'profiles/harry-han/skills/README.md',
             highlights: [],
             readySectionCount: 3,
             totalSectionCount: 3,
@@ -1177,8 +1408,9 @@ test('PromptAssembler includes compact profile foundation snapshots when provide
   assert.match(prompt, /drafts: fresh, complete, generated 2026-04-16T15:00:01.000Z/);
   assert.match(prompt, /memory candidates: 3 \| voice: 2 \| soul: 1 \| skills: 0/);
   assert.match(prompt, /draft sections: skills 3\/3 ready \(candidate-skills, evidence, gaps-to-validate\) \| soul 4\/4 ready \(core-truths, boundaries, vibe, continuity\) \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\)/);
+  assert.match(prompt, /draft files: memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \| skills @ profiles\/harry-han\/skills\/README\.md \| soul @ profiles\/harry-han\/soul\/README\.md \| voice @ profiles\/harry-han\/voice\/README\.md/);
   assert.match(prompt, /voice highlights: \[message\] Ship the first slice\./);
-  assert.match(prompt, /- jane-doe: 1 material \(talk:1\)/);
+  assert.match(prompt, /- Jane Doe \(jane-doe\): 1 material \(talk:1\)/);
   assert.match(prompt, /drafts: stale, missing memory\/skills\/soul\/voice, reasons missing-draft \+ new-material/);
   assert.match(prompt, /memory highlights: Tight loops beat big plans\./);
   assert.match(prompt, /skills signals: execution heuristic/);
@@ -1887,6 +2119,7 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
       id: 'harry-han',
       materialCount: 2,
       latestMaterialAt: '2026-04-16T15:00:00.000Z',
+      latestMaterialId: ' 2026-04-16T15-00-00-000Z-message ',
       foundationDraftStatus: {
         complete: true,
         needsRefresh: true,
@@ -1911,6 +2144,7 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
       id: 'jane-doe',
       materialCount: 1,
       latestMaterialAt: '2026-04-16T16:00:00.000Z',
+      latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
       foundationDraftStatus: {
         complete: false,
         needsRefresh: true,
@@ -1944,6 +2178,10 @@ test('buildFoundationRollup maintenance aggregates missing draft coverage and re
     'missing-draft': 1,
     'new-material': 1,
   });
+  assert.equal(rollup.maintenance.recommendedLatestMaterialAt, '2026-04-16T16:00:00.000Z');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialId, '2026-04-16T15-00-00-000Z-message');
 });
 
 test('PromptAssembler includes aggregated foundation maintenance counts in the system prompt', () => {
@@ -2030,6 +2268,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
           'profiles/jane-doe/soul/README.md',
           'profiles/jane-doe/voice/README.md',
         ],
+        recommendedLatestMaterialAt: '2026-04-16T16:00:00.000Z',
+        recommendedLatestMaterialId: '2026-04-16T16-00-00-000Z-talk',
         recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
         helperCommands: {
           refreshStale: 'node src/index.js update foundation --stale',
@@ -2043,6 +2283,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             generatedDraftCount: 0,
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+            latestMaterialAt: '2026-04-16T16:00:00.000Z',
+            latestMaterialId: '2026-04-16T16-00-00-000Z-talk',
             refreshReasons: ['missing drafts', 'metadata-updated'],
             draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
           },
@@ -2053,6 +2295,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
             generatedDraftCount: 2,
             expectedDraftCount: 4,
             missingDrafts: ['memory', 'skills'],
+            latestMaterialAt: '2026-04-16T15:00:00.000Z',
+            latestMaterialId: '2026-04-16T15-00-00-000Z-message',
             refreshReasons: ['missing drafts', 'new materials'],
           },
           {
@@ -2071,10 +2315,10 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   const systemPrompt = prompt.buildSystemPrompt();
   const preview = prompt.buildPreview(120000);
 
-  assert.match(systemPrompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated/);
-  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(systemPrompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, reasons missing drafts \+ new materials/);
+  assert.match(systemPrompt, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\); gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated/);
+  assert.match(systemPrompt, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(systemPrompt, /- Harry Han \(harry-han\): needs-refresh, 2\/4 drafts generated, missing memory\/skills, latest material 2026-04-16T15:00:00\.000Z \(2026-04-16T15-00-00-000Z-message\), reasons missing drafts \+ new materials/);
   assert.match(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
   assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts/);
   assert.doesNotMatch(systemPrompt, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, missing memory\/skills\/soul/);
@@ -2082,8 +2326,8 @@ test('PromptAssembler keeps foundation maintenance previews compact when many qu
   assert.doesNotMatch(systemPrompt, /- Sam Lane \(sam-lane\): needs-refresh, 1\/4 drafts generated/);
 
   assert.match(preview, /Foundation maintenance:\n- 0 ready, 3 queued for refresh, 3 incomplete/);
-  assert.match(preview, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
-  assert.match(preview, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\); gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
+  assert.match(preview, /- Jane Doe \(jane-doe\): needs-refresh, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\), reasons missing drafts \+ metadata-updated, gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| soul 1\/3 ready \(core-truths\), missing boundaries\/continuity \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints/);
   assert.match(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh\]/);
   assert.doesNotMatch(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, 1\/4 drafts/);
   assert.doesNotMatch(preview, /- \+1 more queued profile: Sam Lane \(sam-lane\) \[needs-refresh, missing memory\/skills\/soul/);
@@ -2127,6 +2371,8 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
       ],
       sampleInlineCommands: [],
       staleRefreshCommand: 'node src/index.js update foundation --stale',
+      updateProfileBundleCommand: "(node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe') && (node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.')",
+      updateProfileAndRefreshBundleCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
       helperCommands: {
         updateProfileBundle: "(node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe') && (node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.')",
         updateProfileAndRefreshBundle: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -2367,6 +2613,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
         command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
         editPath: 'profiles/harry-han/imports/materials.template.json',
         editPaths: ['profiles/harry-han/imports/materials.template.json'],
+        inspectCommand: "node src/index.js import intake --person 'harry-han'",
         followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
         paths: [],
       },
@@ -2388,6 +2635,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
           nextAction: 'bootstrap a target profile',
           command: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
           editPath: 'profiles/harry-han/imports/materials.template.json',
+          inspectCommand: "node src/index.js import intake --person 'harry-han'",
           followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
           paths: [],
         },
@@ -2420,6 +2668,7 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /next action: bootstrap a target profile/);
   assert.match(prompt, /command: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(prompt, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(prompt, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
@@ -2500,6 +2749,253 @@ test('PromptAssembler omits empty profile foundation snapshot blocks', () => {
   }).buildSystemPrompt();
 
   assert.doesNotMatch(prompt, /Profile foundation snapshots:/);
+});
+
+test('buildSummary exposes machine-readable profile foundation snapshots for empty repos', () => {
+  const rootDir = makeTempRepo();
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.profileSnapshots, []);
+});
+
+test('buildProfileSnapshotSummaries exposes draft files, gap summaries, and layer highlights without parsing snapshot text', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 2,
+      materialTypes: { message: 1, talk: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Direct operator with strong execution taste.',
+      },
+      foundationDraftStatus: {
+        generatedAt: '2026-04-20T12:05:00.000Z',
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestSummaries: ['Push the work loop forward.'],
+        },
+        voice: {
+          generated: true,
+          path: 'profiles/jane-doe/voice/README.md',
+          highlights: ['- keep it tight'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/README.md',
+          highlights: ['- stay grounded'],
+          readySectionCount: 3,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe'],
+          missingSections: ['continuity'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/README.md',
+          highlights: ['- execution heuristic', '- sample: ignore me'],
+          readySectionCount: 2,
+          totalSectionCount: 2,
+          readySections: ['what-lives-here', 'layout'],
+          missingSections: [],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Push the work loop forward.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['fallback voice'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['fallback soul'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['fallback skill'] },
+      },
+    },
+  ]);
+
+  assert.equal(snapshot.materialCount, 2);
+  assert.deepEqual(snapshot.materialTypes, { message: 1, talk: 1 });
+  assert.equal(snapshot.latestMaterialAt, '2026-04-20T12:00:00.000Z');
+  assert.equal(snapshot.profileSummary, 'Direct operator with strong execution taste.');
+  assert.deepEqual(snapshot.draftStatus, {
+    generatedAt: '2026-04-20T12:05:00.000Z',
+    complete: false,
+    needsRefresh: true,
+    missingDrafts: ['memory'],
+    refreshReasons: [],
+  });
+  assert.deepEqual(snapshot.readiness, {
+    memory: { candidateCount: 1, sampleSummaries: ['Push the work loop forward.'] },
+    voice: { candidateCount: 1, sampleExcerpts: ['fallback voice'] },
+    soul: { candidateCount: 1, sampleExcerpts: ['fallback soul'] },
+    skills: { candidateCount: 1, sampleExcerpts: ['fallback skill'] },
+  });
+  assert.deepEqual(snapshot.draftFiles, {
+    memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+    skills: 'profiles/jane-doe/skills/README.md',
+    soul: 'profiles/jane-doe/soul/README.md',
+    voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.deepEqual(snapshot.draftSections, {
+    skills: {
+      generated: true,
+      readySectionCount: 2,
+      totalSectionCount: 2,
+      readySections: ['what-lives-here', 'layout'],
+      missingSections: [],
+    },
+    soul: {
+      generated: true,
+      readySectionCount: 3,
+      totalSectionCount: 4,
+      readySections: ['core-truths', 'boundaries', 'vibe'],
+      missingSections: ['continuity'],
+    },
+    voice: {
+      generated: true,
+      readySectionCount: 4,
+      totalSectionCount: 4,
+      readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+      missingSections: [],
+    },
+  });
+  assert.deepEqual(snapshot.draftGaps, [
+    'memory missing, 1 candidate (Push the work loop forward.)',
+    'soul 3/4 ready (core-truths, boundaries, vibe), missing continuity',
+  ]);
+  assert.deepEqual(snapshot.highlights, {
+    memory: ['Push the work loop forward.'],
+    voice: ['keep it tight'],
+    soul: ['stay grounded'],
+    skills: ['execution heuristic'],
+  });
+  assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready/);
+});
+
+test('buildProfileSnapshotSummaries humanizes slug-only profile ids when display names are missing', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { message: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      profile: {
+        summary: 'Direct operator with strong execution taste.',
+      },
+    },
+  ]);
+
+  assert.equal(snapshot.label, 'Jane Doe (jane-doe)');
+  assert.match(snapshot.snapshot, /^- Jane Doe \(jane-doe\): 1 material \(message:1\)/);
+});
+
+test('buildProfileSnapshotSummaries keeps stale draft file paths in structured data without forcing them into the prompt snapshot', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      materialTypes: { talk: 1 },
+      foundationDraftStatus: {
+        complete: false,
+        needsRefresh: true,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: false,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestSummaries: [],
+        },
+        voice: {
+          generated: false,
+          path: 'profiles/jane-doe/voice/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+          highlights: [],
+        },
+        soul: {
+          generated: false,
+          path: 'profiles/jane-doe/soul/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['core-truths'],
+          missingSections: ['boundaries', 'vibe', 'continuity'],
+          highlights: [],
+        },
+        skills: {
+          generated: false,
+          path: 'profiles/jane-doe/skills/README.md',
+          readySectionCount: 1,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills'],
+          missingSections: ['evidence', 'gaps-to-validate'],
+          highlights: [],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the loop tight | but honest.'] },
+      },
+    },
+  ]);
+
+  assert.deepEqual(snapshot.draftStatus, {
+    complete: false,
+    needsRefresh: true,
+    missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+    refreshReasons: [],
+  });
+  assert.deepEqual(snapshot.readiness, {
+    memory: { candidateCount: 1, sampleSummaries: ['Keep the loop tight | but honest.'] },
+    voice: {},
+    soul: {},
+    skills: {},
+  });
+  assert.deepEqual(snapshot.draftFiles, {
+    memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+    skills: 'profiles/jane-doe/skills/README.md',
+    soul: 'profiles/jane-doe/soul/README.md',
+    voice: 'profiles/jane-doe/voice/README.md',
+  });
+  assert.deepEqual(snapshot.draftSections, {
+    skills: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 3,
+      readySections: ['candidate-skills'],
+      missingSections: ['evidence', 'gaps-to-validate'],
+    },
+    soul: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 4,
+      readySections: ['core-truths'],
+      missingSections: ['boundaries', 'vibe', 'continuity'],
+    },
+    voice: {
+      generated: false,
+      readySectionCount: 1,
+      totalSectionCount: 4,
+      readySections: ['tone'],
+      missingSections: ['signature-moves', 'avoid', 'language-hints'],
+    },
+  });
+  assert.doesNotMatch(snapshot.snapshot, /draft files:/);
+  assert.deepEqual(snapshot.draftGaps, [
+    'memory missing, 1 candidate (Keep the loop tight | but honest.)',
+    'skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate',
+    'soul 1/4 ready (core-truths), missing boundaries/vibe/continuity',
+    'voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
+  ]);
+  assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Keep the loop tight \| but honest\.\)/);
 });
 
 test('PromptAssembler prefers distilled generated skill highlights over sample lines', () => {
@@ -3102,6 +3598,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importIntakeImported: 'node src/index.js import intake --imported',
     importIntakeImportedAndRefresh: 'node src/index.js import intake --imported --refresh-foundation',
     importIntakeBundle: null,
+    inspectImportedStarterBundle: "(node src/index.js import intake --person 'jane-doe') && (node src/index.js import intake --person 'harry-han')",
+    replayImportedStarterBundle: "(node src/index.js import intake --person 'jane-doe' --refresh-foundation) && (node src/index.js import intake --person 'harry-han' --refresh-foundation)",
     starterImportBundle: "(node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation)",
     updateProfileBundle: "(node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe') && (node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.')",
     updateProfileAndRefreshBundle: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
@@ -3142,6 +3640,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.equal(janeCommand.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation");
   assert.equal(janeCommand.refreshFoundationCommand, "node src/index.js update foundation --person 'jane-doe'");
   assert.equal(janeCommand.starterImportCommand, "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation");
+  assert.equal(janeCommand.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'jane-doe'");
+  assert.equal(janeCommand.importAfterEditingCommand, "node src/index.js import intake --person 'jane-doe' --refresh-foundation");
   assert.equal(janeCommand.importMaterialCommand, null);
   assert.deepEqual(janeCommand.importCommands, {
     text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
@@ -3156,6 +3656,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     importManifestWithoutRefresh: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json'",
     importManifest: "node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation",
     starterImport: "node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation",
+    importAfterEditingWithoutRefresh: "node src/index.js import intake --person 'jane-doe'",
+    importAfterEditing: "node src/index.js import intake --person 'jane-doe' --refresh-foundation",
     updateProfile: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
     updateProfileAndRefresh: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'jane-doe'",
@@ -3185,6 +3687,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     starterImportCommand: null,
     followUpImportIntakeWithoutRefreshCommand: null,
     followUpImportIntakeCommand: null,
+    importAfterEditingWithoutRefreshCommand: null,
+    importAfterEditingCommand: null,
     intakeReady: false,
     intakeCompletion: 'missing',
     intakeStatusSummary: 'missing — create imports, images, README.md, materials.template.json, sample.txt',
@@ -3221,6 +3725,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
       importManifestWithoutRefresh: null,
       importManifest: null,
       starterImport: null,
+      importAfterEditingWithoutRefresh: null,
+      importAfterEditing: null,
       updateProfile: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
       updateProfileAndRefresh: null,
       refreshFoundation: null,
@@ -3308,9 +3814,15 @@ test('buildSummary recommends populating imported starter intake manifests once 
   ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
 
   const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
 
+  assert.ok(harry);
   assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 0);
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
+  assert.equal(harry.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harry.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(harry.helperCommands?.importAfterEditingWithoutRefresh, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(harry.helperCommands?.importAfterEditing, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedProfileId, 'harry-han');
   assert.equal(summary.ingestion.recommendedLabel, 'Harry Han (harry-han)');
   assert.equal(summary.ingestion.recommendedAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');
@@ -3322,6 +3834,12 @@ test('buildSummary recommends populating imported starter intake manifests once 
     "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
   );
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(
+    summary.ingestion.recommendedInspectCommand,
+    "node src/index.js import intake --person 'harry-han'",
+  );
   assert.equal(
     summary.ingestion.recommendedFollowUpCommand,
     "node src/index.js import intake --person 'harry-han' --refresh-foundation",
@@ -3333,7 +3851,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
@@ -3370,6 +3888,9 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.recommendedFallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
 });
 
@@ -3421,7 +3942,12 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
   ]);
-  assert.equal(summary.ingestion.recommendedFollowUpCommand, 'node src/index.js import intake --imported --refresh-foundation');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation) && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation)");
+  assert.equal(summary.ingestion.helperCommands?.inspectImportedStarterBundle, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
+  assert.equal(summary.ingestion.helperCommands?.replayImportedStarterBundle, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
+  assert.equal(summary.ingestion.recommendedInspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
@@ -3434,7 +3960,9 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json; then run node src\/index\.js import intake --imported --refresh-foundation; fallback \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json; manifest inspect \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json'\); manifest \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation\); inspect after editing \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\); then run \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\); fallback \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\) @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports, profiles\/jane-doe\/imports\/images, profiles\/jane-doe\/imports\/README\.md, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /helpers: .*inspect-starter-bundle \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
+  assert.match(summary.promptPreview, /helpers: .*replay-starter-bundle \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
   assert.match(summary.promptPreview, /helpers: .*starter-import-bundle \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\)/);
 });
 
@@ -3547,10 +4075,10 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(summary.ingestion.helperCommands?.repairImportedInvalidBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
   assert.equal(harry?.intakeReady, true);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
-  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (invalid JSON)');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\)/);
 });
 
 test('buildSummary treats imported starter manifests with mismatched profile ownership as invalid', () => {
@@ -3592,9 +4120,9 @@ test('buildSummary treats imported starter manifests with mismatched profile own
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
   assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 1);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
-  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (targets a different profile)');
   assert.match(summary.promptPreview, /imported intake: 0 ready, 0 starter templates, 0 backfills, 1 invalid manifest/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(targets a different profile\)/);
 });
 
 test('buildSummary keeps metadata-only profiles with invalid intake manifests visible in the ingestion entrance diagnostics', () => {
@@ -3910,7 +4438,7 @@ test('buildSummary suppresses broken intake import shortcuts when a profile-loca
   assert.equal(metadataOnlyCommand.intakeReady, true);
   assert.equal(metadataOnlyCommand.intakeManifestStatus, 'invalid');
   assert.match(metadataOnlyCommand.intakeManifestError, /missing file/);
-  assert.equal(metadataOnlyCommand.intakeStatusSummary, 'invalid manifest — repair materials.template.json');
+  assert.equal(metadataOnlyCommand.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
   assert.equal(metadataOnlyCommand.importIntakeCommand, null);
   assert.equal(metadataOnlyCommand.importManifestCommand, null);
   assert.equal(metadataOnlyCommand.importMaterialCommand, null);
@@ -3919,7 +4447,7 @@ test('buildSummary suppresses broken intake import shortcuts when a profile-loca
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.match(
     summary.promptPreview,
-    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\) \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
   );
   assert.doesNotMatch(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
@@ -3985,8 +4513,12 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     staleRefreshCommand: 'node src/index.js update foundation --stale',
     refreshFoundationBundleCommand: null,
     starterImportBundleCommand: null,
+    inspectImportedStarterBundleCommand: null,
+    replayImportedStarterBundleCommand: null,
     repairInvalidIntakeBundleCommand: null,
     repairImportedInvalidIntakeBundleCommand: null,
+    updateProfileBundleCommand: null,
+    updateProfileAndRefreshBundleCommand: null,
     recommendedProfileId: null,
     recommendedLabel: null,
     recommendedAction: 'bootstrap a target profile',
@@ -3994,6 +4526,9 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedFallbackCommand: null,
     recommendedEditPath: null,
     recommendedEditPaths: [],
+    recommendedManifestInspectCommand: null,
+    recommendedManifestImportCommand: null,
+    recommendedInspectCommand: null,
     recommendedFollowUpCommand: null,
     recommendedPaths: [],
     helperCommands: {
@@ -4014,6 +4549,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       importIntakeImported: 'node src/index.js import intake --imported',
       importIntakeImportedAndRefresh: 'node src/index.js import intake --imported --refresh-foundation',
       importIntakeBundle: null,
+      inspectImportedStarterBundle: null,
+      replayImportedStarterBundle: null,
       starterImportBundle: null,
       updateProfileBundle: null,
       updateProfileAndRefreshBundle: null,

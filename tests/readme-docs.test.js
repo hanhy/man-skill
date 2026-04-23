@@ -29,7 +29,14 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /runtime-ready integrations that are still waiting on auth\/configuration/i);
   assert.match(readme, /\.env\.example/);
   assert.match(readme, /bootstrap blast radius honest/i);
-  assert.match(readme, /`paths` stays source-focused on `?\.env\.example`?/i);
+  assert.match(readme, /paths` includes both `?\.env\.example`? and `?\.env`?/i);
+  assert.match(readme, /`leadingPriority` keeps the first lane in the configured order even when it is already ready/i);
+  assert.match(readme, /`currentPriority` keeps the queued-or-blocked lane that is actively holding progress/i);
+  assert.match(readme, /`runnablePriority` keeps the first priority-order lane with a primary `command`/i);
+  assert.match(readme, /`actionableReadyPriority` keeps the narrower ready-only advisory alias.*imported starter-manifest edits/i);
+  assert.match(readme, /`recommendedPriority` stays a stable best-next-action alias by scanning priority order for the earliest queued\/blocked lane or ready advisory/i);
+  assert.match(readme, /`readyPriorityCount`, `queuedPriorityCount`, and `blockedPriorityCount`/i);
+  assert.match(readme, /separate `lead:`, `current:`, `runnable:`, and `advisory:` lines/i);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
 });
@@ -39,13 +46,14 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /canonical rollout order: OpenAI, Anthropic, Kimi, Minimax, GLM, Qwen/);
   assert.match(architectureDoc, /keep Feishu, Telegram, WhatsApp, and Slack adapter manifests\/implementations visible in the delivery summary/);
   assert.match(architectureDoc, /surfacing both `leadingPriority` \(the first item in order, even when it is already ready\) and the queued-or-blocked `currentPriority`/);
-  assert.match(architectureDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported intake starter manifest/i);
-  assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias/);
+  assert.match(architectureDoc, /`runnablePriority` for the first priority-order lane with a primary `command`/i);
+  assert.match(architectureDoc, /`actionableReadyPriority` as the narrower ready-only advisory alias.*imported intake starter manifest/i);
+  assert.match(architectureDoc, /`recommendedPriority` as one stable best-next-action alias that scans priority order for the earliest queued\/blocked lane or ready advisory/);
   assert.match(architectureDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
-  assert.match(architectureDoc, /during bootstrap that means `paths` stays source-focused on `\.env\.example` so the active step names the shared template rather than both source and destination/i);
+  assert.match(architectureDoc, /during bootstrap that means `paths` includes both `\.env\.example` and `\.env` so the active step names the full copy surface rather than only the shared template/i);
   assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
   assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
   assert.match(architectureDoc, /sampleStarterSource/);
@@ -61,13 +69,24 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sample-screenshot/i);
   assert.match(architectureDoc, /update-bundle/i);
   assert.match(architectureDoc, /sync-bundle/i);
+  assert.match(architectureDoc, /updateProfileBundleCommand/i);
+  assert.match(architectureDoc, /updateProfileAndRefreshBundleCommand/i);
+  assert.match(architectureDoc, /additive follow-up metadata \(`fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, `followUpCommand`\)/i);
+  assert.match(architectureDoc, /prompt-preview `Work loop:` block also serializes the same `fallback`, `edit` \/ `edit paths`, `manifest inspect`, `manifest`, `inspect after editing`, and `then run` surfaces/i);
+  assert.match(ingestionDoc, /top-level `ingestion` entrance data .*`recommendedEditPath`, `recommendedEditPaths`, `recommendedManifestInspectCommand`, `recommendedManifestImportCommand`, `recommendedInspectCommand`, `recommendedFollowUpCommand`, `recommendedPaths`, `helperCommands`, `profileCommands`, `allProfileCommands`/i);
   assert.match(ingestionDoc, /the top-level `workLoop` summary now also exposes both `leadingPriority` and `currentPriority`/);
-  assert.match(ingestionDoc, /`runnablePriority` for the first still-runnable step in priority order.*ready follow-up.*imported starter-manifest edits/i);
-  assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias/);
+  assert.match(ingestionDoc, /`runnablePriority` for the first priority-order lane with a primary `command`/i);
+  assert.match(ingestionDoc, /each `workLoop` priority row can now also carry additive follow-up metadata \(`fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, `followUpCommand`\)/i);
+  assert.match(ingestionDoc, /prompt-preview `Work loop:` block now also serializes the same `fallback`, `edit` \/ `edit paths`, `manifest inspect`, `manifest`, `inspect after editing`, and `then run` surfaces/i);
+  assert.match(readme, /each priority can carry additive follow-up surfaces like `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
+  assert.match(readme, /explicit `fallback:`, `edit:`, `edit paths:`, `manifest inspect:`, `manifest:`, `inspect after editing:`, and `then run:` lines/i);
+  assert.match(profilesDoc, /same contract now propagates into `workLoop\.currentPriority\|actionableReadyPriority\|recommendedPriority` through `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
+  assert.match(ingestionDoc, /`actionableReadyPriority` as the ready-only advisory alias.*imported starter-manifest edits/i);
+  assert.match(ingestionDoc, /`recommendedPriority` as the stable best-next-action alias that scans priority order for the earliest queued\/blocked lane or ready advisory/);
   assert.match(ingestionDoc, /split readiness counters \(`readyPriorityCount`, `queuedPriorityCount`, `blockedPriorityCount`\)/);
   assert.match(ingestionDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop, while still accepting blockquoted visible headings and list items/i);
   assert.match(ingestionDoc, /metadata-only intake headline now treats `intakeReadyProfileCount` as `import-ready` coverage only/);
-  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command while keeping bootstrap `paths` source-focused on `\.env\.example`/);
+  assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command while keeping bootstrap `paths` on `\.env\.example, \.env`/);
   assert.match(ingestionDoc, /once `\.env` already exists, the blocked delivery step narrows to the repo-local `touch '\.env' && \.{3}` populate helper so `paths` drops back to `\.env`/i);
   assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
@@ -87,6 +106,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /sample-screenshot/i);
   assert.match(ingestionDoc, /update-bundle/i);
   assert.match(ingestionDoc, /sync-bundle/i);
+  assert.match(ingestionDoc, /updateProfileBundleCommand/i);
+  assert.match(ingestionDoc, /updateProfileAndRefreshBundleCommand/i);
 });
 
 test('checked-in USER current product direction stays aligned with the default work-loop objectives', () => {
@@ -131,9 +152,9 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(ingestionDoc, /`update intake` bootstraps a profile-local landing zone at `profiles\/<person-id>\/imports\/` with a `README\.md`, an `images\/` folder for screenshot assets, a `sample\.txt` placeholder, and a `materials\.template\.json` starter manifest/i);
   assert.match(readme, /`materials\.template\.json` file paths resolve relative to `profiles\/<person-id>\/imports\/`, so local screenshots or attachments can live beside `sample\.txt` \(or under a small subdirectory like `imports\/images\/`\)/i);
   assert.match(ingestionDoc, /`materials\.template\.json` resolves `file` paths relative to `profiles\/<person-id>\/imports\/`, so operators can keep local assets beside `sample\.txt` or under a small sibling folder like `imports\/images\/`/i);
-  assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath`, `recommendedEditPaths`, `recommendedFollowUpCommand`, and `recommendedFallbackCommand`, so operators know which file to edit in the single-profile case, which manifest set to edit in the bundled multi-profile case, which `import intake --person <id> --refresh-foundation` replay to run next, and which direct starter import still works as a fallback/i);
+  assert.match(readme, /Once an already-imported profile's drafts are fresh and it still has only the untouched `profiles\/<person-id>\/imports\/materials\.template\.json` starter manifest, the ingestion entrance keeps the top-level `next intake` step descriptive while also surfacing `recommendedEditPath`, `recommendedEditPaths`, `recommendedManifestInspectCommand`, `recommendedManifestImportCommand`, `recommendedInspectCommand`, `recommendedFollowUpCommand`, and `recommendedFallbackCommand`, so operators know which file to edit in the single-profile case, which manifest set to edit in the bundled multi-profile case, which plain `import intake --person <id>` inspection replay to run first, which `import intake --person <id> --refresh-foundation` replay to run next, and which direct starter import still works as a fallback/i);
   assert.match(readme, /per-profile prompt-preview line now also keeps the local scaffold refresh visible as `refresh-intake node src\/index\.js update intake --person \.{3}`, an `inspect-after-edit node src\/index\.js import intake --person \.{3}` replay for a plain post-edit inspection pass, and a matching `replay-after-edit node src\/index\.js import intake --person \.{3} --refresh-foundation` follow-up/i);
-  assert.match(ingestionDoc, /recommendedEditPath`.*`recommendedEditPaths`.*`recommendedFollowUpCommand`/i);
+  assert.match(ingestionDoc, /recommendedEditPath`.*`recommendedEditPaths`.*`recommendedManifestInspectCommand`.*`recommendedManifestImportCommand`.*`recommendedInspectCommand`.*`recommendedFollowUpCommand`/i);
   assert.match(ingestionDoc, /starter-template profile rows in the prompt preview now also keep `refresh-intake node src\/index\.js update intake --person \.{3}` visible beside manifest\/import actions, plus both post-edit intake reruns: `inspect-after-edit node src\/index\.js import intake --person <id>` for a plain replay and `replay-after-edit node src\/index\.js import intake --person <id> --refresh-foundation` when the same pass should regenerate drafts too/i);
   assert.match(ingestionDoc, /per-profile command bundles now also carry both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand`, so starter-template profiles advertise the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that becomes runnable after editing a starter manifest/i);
   assert.match(profilesDoc, /profiles\/<person-id>\/imports\//);
@@ -142,21 +163,24 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /plain `node src\/index\.js import intake --person <id>` replay path that keeps derived drafts untouched for inspection/i);
   assert.match(profilesDoc, /`node src\/index\.js import intake --person <id> --refresh-foundation` variant when the same rerun should regenerate memory \/ voice \/ soul \/ skills drafts/i);
   assert.match(profilesDoc, /direct `import manifest --file \.\.\. --refresh-foundation` and one-off `import text\|message\|talk\|screenshot \.\.\.` paths/i);
-  assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest for a single starter-template profile, `recommendedEditPaths` expands that into a bundled manifest set when multiple imported starter templates are queued, `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay to run after the edit, and `recommendedFallbackCommand` keeps the seeded direct starter import visible when operators want a stopgap import before customizing the manifest/i);
+  assert.match(profilesDoc, /top-level recommendation stays edit-first: `recommendedCommand` remains empty while `recommendedEditPath` points at the manifest for a single starter-template profile, `recommendedEditPaths` expands that into a bundled manifest set when multiple imported starter templates are queued, `recommendedManifestInspectCommand` \/ `recommendedManifestImportCommand` keep the direct `import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'` inspect\/refresh commands visible during the edit, `recommendedInspectCommand` shows the plain `import intake --person <id>` inspection replay to run right after the edit, `recommendedFollowUpCommand` shows the `import intake --person <id> --refresh-foundation` replay to run after that, and `recommendedFallbackCommand` keeps the seeded direct starter import visible when operators want a stopgap import before customizing the manifest/i);
   assert.match(profilesDoc, /per-profile command palette still stays actionable in that starter-template state/i);
   assert.match(profilesDoc, /`refresh-intake` via `node src\/index\.js update intake --person <id> \.\.\.`/i);
   assert.match(profilesDoc, /`after-editing import` via `node src\/index\.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet/i);
   assert.match(profilesDoc, /`after-editing import\+refresh` via `node src\/index\.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory \/ voice \/ soul \/ skills drafts/i);
-  assert.match(profilesDoc, /`importManifestWithoutRefreshCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`/i);
-  assert.match(profilesDoc, /`importManifestCommand` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
+  assert.match(profilesDoc, /`importManifestWithoutRefreshCommand` plus `helperCommands\.importManifest` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`/i);
+  assert.match(profilesDoc, /`importManifestCommand` plus `helperCommands\.importManifestAndRefresh` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
-  assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` and `followUpImportIntakeCommand` so the prompt preview can surface the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay that become runnable after editing the starter manifest/i);
+  assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` \/ `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` \/ `importAfterEditingCommand`, plus matching `helperCommands\.importAfterEditingWithoutRefresh` \/ `helperCommands\.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available/i);
+  assert.match(profilesDoc, /generated `profiles\/<id>\/imports\/README\.md` also keeps the manifest helper bullets explicit: `inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'` and `import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
+  assert.match(profilesDoc, /`manifest inspect:` and `manifest:` inside its `Direct import commands:` block/i);
   assert.match(profilesDoc, /`updateProfileAndRefreshCommand` for metadata edits plus immediate draft regeneration/i);
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
 
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(harryIntakeReadme, /Sample text placeholder: profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(harryIntakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(harryIntakeReadme, /`materials\.template\.json` resolves every `file` relative to `profiles\/harry-han\/imports\/`\./);
   assert.match(harryIntakeReadme, /if you save a screenshot at `profiles\/harry-han\/imports\/images\/chat\.png`, use `images\/chat\.png` inside the manifest/i);
@@ -190,6 +214,48 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeSample, /Replace this file with a real writing sample for Harry Han\./);
 
   const summary = buildSummary(repoRoot);
+  assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
+  assert.equal(summary.profileSnapshots.length, 1);
+  assert.match(summary.profileSnapshots[0].label, /^Harry Han \(harry-han\)$/);
+  assert.match(summary.profileSnapshots[0].snapshot, /^- Harry Han \(harry-han\): 4 materials \(message:1, screenshot:1, talk:1, text:1\)/);
+  assert.equal(summary.profileSnapshots[0].materialCount, 4);
+  assert.deepEqual(summary.profileSnapshots[0].materialTypes, { message: 1, screenshot: 1, talk: 1, text: 1 });
+  assert.equal(summary.profileSnapshots[0].latestMaterialId, summary.profiles[0].latestMaterialId);
+  assert.equal(summary.profileSnapshots[0].refreshCommand, null);
+  assert.deepEqual(summary.profileSnapshots[0].refreshPaths, []);
+  assert.deepEqual(summary.profileSnapshots[0].draftStatus, {
+    generatedAt: summary.profiles[0].foundationDraftStatus.generatedAt,
+    complete: summary.profiles[0].foundationDraftStatus.complete,
+    needsRefresh: summary.profiles[0].foundationDraftStatus.needsRefresh,
+    missingDrafts: summary.profiles[0].foundationDraftStatus.missingDrafts,
+    refreshReasons: summary.profiles[0].foundationDraftStatus.refreshReasons,
+  });
+  assert.deepEqual(summary.profileSnapshots[0].readiness, summary.profiles[0].foundationReadiness);
+  assert.deepEqual(summary.profileSnapshots[0].draftSections, {
+    skills: {
+      generated: true,
+      readySectionCount: 3,
+      totalSectionCount: 3,
+      readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+      missingSections: [],
+    },
+    soul: {
+      generated: true,
+      readySectionCount: 4,
+      totalSectionCount: 4,
+      readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+      missingSections: [],
+    },
+    voice: {
+      generated: true,
+      readySectionCount: 4,
+      totalSectionCount: 4,
+      readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+      missingSections: [],
+    },
+  });
+  assert.equal(summary.profileSnapshots[0].profileSummary, 'Direct operator with a bias for momentum and fast feedback loops.');
+  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
   assert.ok(harryCommand);
   assert.equal(harryCommand.intakeReady, true);
@@ -212,14 +278,35 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(summary.ingestion.recommendedCommand, null);
   assert.equal(summary.ingestion.recommendedFallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(
     summary.ingestion.recommendedFollowUpCommand,
     "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   );
+  assert.equal(
+    summary.workLoop.recommendedPriority?.fallbackCommand,
+    "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+  );
+  assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.equal(summary.workLoop.recommendedPriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.workLoop.recommendedPriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(
+    summary.workLoop.recommendedPriority?.followUpCommand,
+    "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+  );
   assert.match(
     summary.promptPreview,
-    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
+  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /advisory fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /advisory inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(
     summary.promptPreview,
     /Harry Han \(harry-han\): 4 materials \(message:1, screenshot:1, talk:1, text:1\), latest .* intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
@@ -228,6 +315,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
 
 test('repo memory, skills, soul, and voice docs stay aligned with the structured foundation sections', () => {
   assert.match(readme, /Foundation contract/i);
+  assert.match(readme, /top-level `workLoop` summary exposes the queue from a few complementary angles/i);
+  assert.match(readme, /each priority can carry additive follow-up surfaces like `fallbackCommand`, `editPath`, `editPaths`, `manifestInspectCommand`, `manifestImportCommand`, `inspectCommand`, and `followUpCommand`/i);
   assert.match(readme, /OpenClaw-like/i);
   assert.match(readme, /memory\/README\.md.*What belongs here.*Buckets/i);
   assert.match(readme, /`daily\/` as the canonical short-term working-memory bucket/i);
@@ -240,7 +329,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /all-green `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance visible/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
   assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron`/i);
-  assert.match(readme, /summary\.skills\.categoryCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
+  assert.match(readme, /summary\.skills\.categoryCounts.*summary\.skills\.foundationStatusCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
+  assert.match(readme, /top-level `Skill registry:` block now mirrors those readiness counts as `- foundation statuses: \.\.\.` plus the grouped-category lines `- categories: \.\.\.` and `- documented categories: \.\.\.`/i);
   assert.match(readme, /SOUL\.md.*Core truths.*Boundaries.*Vibe.*Continuity/i);
   assert.match(readme, /voice\/README\.md.*Tone.*Signature moves.*Avoid.*Language hints/i);
   assert.match(readme, /top-level `Soul profile:` and `Voice profile:` preview blocks.*foundation\.core\.soul\|voice\.rootExcerpt.*rootPath.*heading aliases/i);
@@ -257,14 +347,15 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /when the queue narrows to a single area, `recommendedStatus` and `recommendedSummary` carry that same target's detailed context/i);
-  assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
-  assert.match(readme, /next repair.*next refresh/i);
+  assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths.*recommendedLatestMaterialAt.*recommendedLatestMaterialId.*queuedProfiles\[\*\]\.paths/i);
+  assert.match(readme, /next repair.*next refresh.*latest material <timestamp> \(<material-id>\)/i);
   assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
   assert.match(architectureDoc, /legacy `memory\/short-term\/` files still fold into the canonical `daily` lane/i);
   assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
   assert.match(architectureDoc, /memorySummary\.canonicalShortTermBucket.*memorySummary\.legacyShortTermAliases/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
-  assert.match(architectureDoc, /summary\.skills\.categoryCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
+  assert.match(architectureDoc, /summary\.skills\.categoryCounts.*summary\.skills\.foundationStatusCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
+  assert.match(architectureDoc, /compact `Skill registry:` preview should mirror those readiness counts as `- foundation statuses: \.\.\.` plus the grouped-category lines `- categories: \.\.\.` and `- documented categories: \.\.\.`/i);
   assert.match(architectureDoc, /top-level `Memory store:` preview.*foundation\.core\.memory\.rootExcerpt.*rootPath.*memory\/README\.md/i);
 
   assert.match(architectureDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
@@ -284,6 +375,15 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /compact `ready details` line.*`@ memory\/README\.md`, `@ skills\/README\.md`, `@ SOUL\.md`, `@ voice\/README\.md`/i);
   assert.match(architectureDoc, /`ready details` memory segment should keep the first three source paths plus `\+N more`/i);
   assert.match(architectureDoc, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
+  assert.match(readme, /`buildSummary\(\.\.\.\)`.*top-level `profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, and `highlights`\)/i);
+  assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
+  assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`/i);
+  assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
+  assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `profileSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSections`, `draftGaps`, `highlights`\)/i);
+  assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
+  assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
+  assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.canonicalShortTermBucket.*foundation\.core\.memory\.legacyShortTermAliases/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.legacyShortTermSourceCount.*foundation\.core\.memory\.legacyShortTermSources.*legacyShortTermSampleSources.*legacyShortTermSourceOverflowCount/i);
@@ -342,6 +442,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.skills.categoryCounts, { channels: 4, providers: 6, root: 1 });
   assert.deepEqual(summary.foundation.core.skills.categoryCounts, { channels: 4, providers: 6, root: 1 });
   assert.deepEqual(summary.foundation.core.skills.documentedCategoryCounts, { channels: 4, providers: 6, root: 1 });
+  assert.deepEqual(summary.skills.foundationStatusCounts, { ready: 11 });
   assert.deepEqual(summary.skills.skills.map((skill) => skill.id), [
     'channels/feishu',
     'channels/slack',
@@ -369,5 +470,5 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 11\/11 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
   assert.doesNotMatch(summary.promptPreview, /- skills: 11 registered, 11 documented/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 11\n- discovered: 11\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+8 more\n- categories: channels 4, providers 6, root 1/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 11\n- discovered: 11\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+8 more\n- foundation statuses: ready 11\n- categories: channels 4, providers 6, root 1\n- documented categories: channels 4, providers 6, root 1/);
 });

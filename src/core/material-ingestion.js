@@ -5,6 +5,7 @@ import {
   FileSystemLoader,
   loadFoundationDraftStatus,
 } from './fs-loader.js';
+import { inspectProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value) {
   if (typeof value !== 'string') {
@@ -535,105 +536,12 @@ function normalizeExistingStarterManifest(parsedTemplate) {
   return parsedTemplate;
 }
 
-function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
-  if (!isNonEmptyString(expectedPersonId)) {
-    return;
-  }
-
-  const normalizedExpectedPersonId = slugifyPersonId(expectedPersonId);
-  if (!normalizedExpectedPersonId) {
-    return;
-  }
-
-  const manifestPersonId = isNonEmptyString(manifest?.personId) ? manifest.personId : null;
-  if (manifestPersonId && slugifyPersonId(manifestPersonId) !== normalizedExpectedPersonId) {
-    throw new Error(`Profile intake manifest targets a different profile: expected ${normalizedExpectedPersonId}`);
-  }
-
-  const entries = Array.isArray(manifest?.entries) ? manifest.entries : [];
-  entries.forEach((entry, index) => {
-    if (!entry || typeof entry !== 'object') {
-      throw new Error(`Manifest entry ${index} must be an object`);
-    }
-
-    const resolvedPersonId = isNonEmptyString(entry.personId) ? entry.personId : manifestPersonId;
-    if (!isNonEmptyString(resolvedPersonId)) {
-      throw new Error(`Profile intake manifest entry ${index} is missing personId for ${normalizedExpectedPersonId}`);
-    }
-
-    if (slugifyPersonId(resolvedPersonId) !== normalizedExpectedPersonId) {
-      throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${normalizedExpectedPersonId}`);
-    }
-  });
-}
-
 function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPersonId = null) {
-  if (!isNonEmptyString(starterManifestPath)) {
-    return {
-      status: 'missing',
-      error: 'Starter intake manifest path is required',
-    };
-  }
-
-  const absoluteManifestPath = path.join(rootDir, starterManifestPath);
-  const fileState = readJsonFileState(absoluteManifestPath);
-  if (!fileState.exists) {
-    return {
-      status: 'missing',
-      error: 'Starter intake manifest is missing',
-    };
-  }
-
-  if (fileState.parseError) {
-    return {
-      status: 'invalid',
-      error: fileState.parseError,
-    };
-  }
-
-  const manifest = normalizeExistingStarterManifest(fileState.parsed);
-  if (!manifest || typeof manifest !== 'object') {
-    return {
-      status: 'invalid',
-      error: 'Manifest must be an array or object',
-    };
-  }
-
-  const entries = manifest.entries;
-  const hasStarterTemplates = Array.isArray(entries)
-    && entries.length === 0
-    && manifest.entryTemplates
-    && typeof manifest.entryTemplates === 'object'
-    && !Array.isArray(manifest.entryTemplates)
-    && Object.keys(manifest.entryTemplates).length > 0;
-
-  try {
-    validateProfileLocalManifestOwnership(manifest, expectedPersonId);
-  } catch (error) {
-    return {
-      status: 'invalid',
-      error: error instanceof Error ? error.message : 'Invalid intake manifest',
-    };
-  }
-
-  if (hasStarterTemplates) {
-    return {
-      status: 'starter',
-      error: null,
-    };
-  }
-
-  if (!Array.isArray(entries) || entries.length === 0) {
-    return {
-      status: 'invalid',
-      error: 'Manifest must contain a non-empty entries array',
-    };
-  }
-
-  return {
-    status: 'loaded',
-    error: null,
-  };
+  return inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath,
+    expectedPersonId,
+  });
 }
 
 function profileHasStarterIntakeManifest(rootDir, profile) {
@@ -763,6 +671,7 @@ function buildIntakeReadme({
       : `- Starter manifest: ${starterManifestPath}`,
     `- Sample text placeholder: ${sampleTextPath}`,
     `- Starter image folder: ${sampleImagesDirPath}`,
+    `- Inspect after editing: ${importAfterEditingWithoutRefreshCommand ?? importManifestWithoutRefreshCommand}`,
     `- Import after editing: ${importAfterEditingCommand ?? importManifestCommand}`,
     '',
     'Suggested flow:',
@@ -1039,6 +948,8 @@ export class MaterialIngestion {
         : null,
       importManifestWithoutRefreshCommand,
       importManifestCommand,
+      importAfterEditingWithoutRefreshCommand,
+      importAfterEditingCommand,
       importIntakeWithoutRefreshCommand,
       importIntakeCommand,
       updateIntakeCommand,
@@ -1050,7 +961,10 @@ export class MaterialIngestion {
         scaffold: updateIntakeCommand,
         importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
         importIntake: importIntakeCommand,
-        importManifest: importManifestCommand,
+        importManifest: importManifestWithoutRefreshCommand,
+        importManifestAndRefresh: importManifestCommand,
+        importAfterEditingWithoutRefresh: importAfterEditingWithoutRefreshCommand,
+        importAfterEditing: importAfterEditingCommand,
         updateProfile: updateProfileCommand,
         updateProfileAndRefresh: updateProfileAndRefreshCommand,
         refreshFoundation: `node src/index.js update foundation --person ${shellQuote(profileUpdate.personId)}`,

@@ -8,6 +8,9 @@ export interface WorkPriority {
   fallbackCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
+  inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths: string[];
 }
@@ -24,6 +27,7 @@ export interface WorkLoopSummary {
   currentPriority: WorkPriority | null;
   runnablePriority: WorkPriority | null;
   actionableReadyPriority: WorkPriority | null;
+  recommendedPriority: WorkPriority | null;
   priorities: WorkPriority[];
 }
 
@@ -33,13 +37,26 @@ export interface WorkLoopOptions {
   priorities?: WorkPriority[];
 }
 
+function hasActionablePrioritySurface(priority: WorkPriority): boolean {
+  return Boolean(
+    priority.nextAction
+      || priority.command
+      || priority.fallbackCommand
+      || priority.editPath
+      || priority.editPaths?.length
+      || priority.manifestInspectCommand
+      || priority.manifestImportCommand
+      || priority.inspectCommand
+      || priority.followUpCommand,
+  );
+}
+
 function isActionableReadyPriority(priority: WorkPriority): boolean {
-  return priority.status === 'ready'
-    && Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.followUpCommand);
+  return priority.status === 'ready' && hasActionablePrioritySurface(priority);
 }
 
 function isRunnablePriority(priority: WorkPriority): boolean {
-  return Boolean(priority.nextAction || priority.command || priority.fallbackCommand || priority.editPath || priority.editPaths?.length || priority.followUpCommand);
+  return Boolean(priority.command);
 }
 
 export class WorkLoop {
@@ -61,6 +78,8 @@ export class WorkLoop {
     const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
     const runnablePriority = this.priorities.find((priority) => isRunnablePriority(priority)) ?? null;
     const actionableReadyPriority = this.priorities.find((priority) => isActionableReadyPriority(priority)) ?? null;
+    const recommendedPriority = this.priorities.find((priority) => priority.status !== 'ready' || isActionableReadyPriority(priority))
+      ?? leadingPriority;
 
     return {
       intervalMinutes: this.intervalMinutes,
@@ -74,6 +93,7 @@ export class WorkLoop {
       currentPriority,
       runnablePriority,
       actionableReadyPriority,
+      recommendedPriority,
       priorities: this.priorities,
     };
   }
