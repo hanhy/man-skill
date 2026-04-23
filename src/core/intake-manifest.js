@@ -63,6 +63,21 @@ function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
     throw new Error(`Profile intake manifest targets a different profile: expected ${normalizedExpectedPersonId}`);
   }
 
+  const profiles = Array.isArray(manifest?.profiles) ? manifest.profiles : [];
+  profiles.forEach((profile, index) => {
+    if (!profile || typeof profile !== 'object') {
+      throw new Error(`Manifest profile ${index} must be an object`);
+    }
+
+    if (!isNonEmptyString(profile.personId)) {
+      throw new Error(`Profile intake manifest profile ${index} is missing personId for ${normalizedExpectedPersonId}`);
+    }
+
+    if (slugifyPersonId(profile.personId) !== normalizedExpectedPersonId) {
+      throw new Error(`Profile intake manifest profile ${index} targets a different profile: expected ${normalizedExpectedPersonId}`);
+    }
+  });
+
   const entries = Array.isArray(manifest?.entries) ? manifest.entries : [];
   entries.forEach((entry, index) => {
     if (!entry || typeof entry !== 'object') {
