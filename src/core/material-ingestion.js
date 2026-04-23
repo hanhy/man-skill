@@ -1122,14 +1122,16 @@ export class MaterialIngestion {
   }
 
   importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
-    const profiles = this.listProfilesWithReadyIntake();
+    const profiles = this.listProfilesWithReadyIntake()
+      .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
   }
 
   importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
-    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: false })
+      .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });

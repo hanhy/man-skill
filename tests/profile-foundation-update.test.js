@@ -634,6 +634,11 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
     summary: 'Another ready intake manifest.',
   });
   ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Still has the untouched starter manifest and should be skipped.',
+  });
+  ingestion.scaffoldProfileIntake({
     personId: 'Imported Already',
     displayName: 'Imported Already',
     summary: 'Ready intake manifest with existing materials.',
@@ -701,6 +706,7 @@ test('CLI import intake --all loads every ready profile-local starter manifest, 
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'alpha-ready', 'voice', 'README.md')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'beta-ready', 'voice', 'README.md')), true);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-already', 'voice', 'README.md')), true);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'starter-only', 'voice', 'README.md')), false);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'gamma-missing', 'voice', 'README.md')), false);
 });
 
@@ -767,6 +773,11 @@ function seedReadyStaleIntakeFixture(rootDir, ingestion) {
     personId: 'Beta Ready',
     displayName: 'Beta Ready',
     summary: 'Another ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Should be skipped because the local intake manifest still has no entries.',
   });
   ingestion.importMessage({
     personId: 'Imported Already',

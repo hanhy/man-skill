@@ -1201,6 +1201,11 @@ test('importAllProfileIntakeManifests aggregates profileSummaries and top-level 
     summary: 'Ready intake manifest.',
   });
   ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Still has the untouched starter manifest and should be skipped.',
+  });
+  ingestion.scaffoldProfileIntake({
     personId: 'Imported Already',
     displayName: 'Imported Already',
     summary: 'Ready intake manifest with existing materials.',
@@ -1277,6 +1282,40 @@ test('importImportedProfileIntakeManifests skips imported profiles whose local i
   assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
 });
 
+test('importStaleProfileIntakeManifests skips metadata-only profiles whose local intake manifest is still the starter scaffold', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'This metadata-only profile still has the untouched starter manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Loaded Intake',
+    displayName: 'Loaded Intake',
+    summary: 'This metadata-only profile customized its local intake manifest.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'sample.txt'), 'Loaded intake sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Loaded Intake',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importStaleProfileIntakeManifests({ refreshFoundation: true });
+
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['loaded-intake']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['loaded-intake']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
+});
+
 test('importProfileIntakeManifest rejects imported profiles whose local intake manifest still has no entries', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1304,6 +1343,40 @@ test('importImportedProfileIntakeManifests still surfaces invalid imported intak
 
   assert.throws(
     () => ingestion.importImportedProfileIntakeManifests({ refreshFoundation: true }),
+    /Unexpected token|Expected property name|JSON/i,
+  );
+});
+
+test('importStaleProfileIntakeManifests still surfaces invalid metadata-only intake manifests instead of silently skipping them', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Broken Intake',
+    displayName: 'Broken Intake',
+    summary: 'This metadata-only profile has a malformed local intake manifest.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'broken-intake', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  assert.throws(
+    () => ingestion.importStaleProfileIntakeManifests({ refreshFoundation: true }),
+    /Unexpected token|Expected property name|JSON/i,
+  );
+});
+
+test('importAllProfileIntakeManifests still surfaces invalid ready intake manifests instead of silently skipping them', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Broken Intake',
+    displayName: 'Broken Intake',
+    summary: 'This ready intake manifest is malformed and should still fail loudly.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'broken-intake', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  assert.throws(
+    () => ingestion.importAllProfileIntakeManifests({ refreshFoundation: true }),
     /Unexpected token|Expected property name|JSON/i,
   );
 });
