@@ -1192,6 +1192,10 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  refresh drafts: ${refreshInfo.refreshCommand}`);
   }
 
+  if (refreshInfo.refreshPaths.length > 0) {
+    lines.push(`  refresh paths: ${refreshInfo.refreshPaths.join(', ')}`);
+  }
+
   if (highlights.memory.length > 0) {
     lines.push(`  memory highlights: ${highlights.memory.join(' | ')}`);
   }
