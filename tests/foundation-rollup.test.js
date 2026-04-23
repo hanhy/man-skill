@@ -105,6 +105,59 @@ test('JS foundation rollup shim stays aligned with the TypeScript implementation
   assert.deepEqual(buildFoundationRollup(profiles), buildFoundationRollupTs(profiles));
 });
 
+test('buildFoundationRollup uses latest material ids to break stale-queue ties when timestamps match', () => {
+  const profiles = [
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      profile: { displayName: 'Beta Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ];
+
+  const rollup = buildFoundationRollupTs(profiles);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'beta-operator');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.id, 'beta-operator');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.id, 'alpha-operator');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialId, '2026-04-20T12-00-00-000Z-message');
+  assert.deepEqual(buildFoundationRollup(profiles), rollup);
+});
+
 test('buildFoundationRollup aggregates generated, stale, and candidate foundation signals across profiles', () => {
   const rollup = buildFoundationRollup([
     {

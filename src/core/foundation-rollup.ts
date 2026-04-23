@@ -286,6 +286,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       }
 
       return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')
+        || (right.latestMaterialId ?? '').localeCompare(left.latestMaterialId ?? '')
         || (left.label ?? '').localeCompare(right.label ?? '');
     });
   const recommendedProfile = queuedProfiles[0] ?? null;
