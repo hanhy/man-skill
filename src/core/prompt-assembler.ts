@@ -1154,7 +1154,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
   const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath) ?? null;
 
-  if (latestMaterialAt || latestMaterialId) {
+  if (latestMaterialAt || latestMaterialId || latestMaterialSourcePath) {
     lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`);
   }
 

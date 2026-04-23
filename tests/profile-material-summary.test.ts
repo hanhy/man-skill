@@ -206,6 +206,31 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
   assert.doesNotMatch(snapshot.snapshot, /memory\/voice\/memory/);
 });
 
+test('buildProfileSnapshotSummaries keeps latest material source paths visible even without timestamp metadata', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { screenshot: 1 },
+    latestMaterialSourcePath: 'profiles/jane-doe/imports/images/chat.png',
+    foundationDraftStatus: {
+      complete: false,
+      needsRefresh: true,
+      missingDrafts: ['memory'],
+    },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 1,
+        sampleSummaries: ['Capture the exact UI state before narrating it.'],
+      },
+    },
+  }]);
+
+  assert.equal(snapshot.latestMaterialAt, null);
+  assert.equal(snapshot.latestMaterialId, null);
+  assert.equal(snapshot.latestMaterialSourcePath, 'profiles/jane-doe/imports/images/chat.png');
+  assert.match(snapshot.snapshot, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/images\/chat\.png/);
+});
+
 test('buildProfileSnapshotSummaries falls back to readiness memory highlights when generated summaries normalize to empty strings', () => {
   const [snapshot] = buildProfileSnapshotSummaries([{
     id: 'jane-doe',
