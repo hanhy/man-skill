@@ -958,11 +958,13 @@ test('buildSummary work loop keeps foundation first when repo-core coverage is s
   assert.equal(summary.workLoop.currentPriority.editPath, 'memory/README.md');
   assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
   assert.equal(summary.workLoop.priorities[1].status, 'queued');
   assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.doesNotMatch(summary.promptPreview, /lead: Foundation \[queued\]/);
   assert.match(summary.promptPreview, /edit paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
+  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
 });
 
@@ -1028,11 +1030,13 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.equal(summary.workLoop.currentPriority.editPath, 'memory/README.md');
   assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['memory/README.md']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md']);
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
   assert.match(summary.workLoop.currentPriority.summary, /core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: add missing sections to memory\/README\.md: what-belongs-here, buckets/);
   assert.match(summary.promptPreview, /command: node -e 'const fs = require\('/);
   assert.match(summary.promptPreview, /edit: memory\/README\.md/);
+  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
@@ -4229,6 +4233,8 @@ test('buildSummary keeps bulk foundation refresh paths aligned for partially gen
     'profiles/harry-han/soul/README.md',
     'profiles/harry-han/voice/README.md',
   ]);
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
   assert.deepEqual(summary.workLoop.priorities[1].paths, summary.workLoop.currentPriority.paths);
+  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
   assert.match(summary.promptPreview, /paths: profiles\/partial-pal\/memory\/long-term\/foundation\.json, profiles\/partial-pal\/skills\/README\.md, profiles\/partial-pal\/soul\/README\.md, profiles\/partial-pal\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });

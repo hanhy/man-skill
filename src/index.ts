@@ -940,6 +940,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       })))
     : [];
 
+  const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
+
   return {
     id: 'foundation',
     label: 'Foundation',
@@ -949,6 +951,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
     editPath: hasQueuedCoreFoundation ? coreEditPath : null,
     editPaths: hasQueuedCoreFoundation ? coreEditPaths : [],
+    followUpCommand,
     paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
   };
 }
