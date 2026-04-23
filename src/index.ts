@@ -10,6 +10,7 @@ import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
+import { buildFoundationDraftPaths, collectFoundationDraftPaths } from './core/foundation-draft-paths.ts';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
@@ -753,44 +754,6 @@ function detectSampleTextRelativePath(rootDir: string, sampleManifest: SampleMan
   return fs.existsSync(canonicalPath) ? canonicalRelativePath : null;
 }
 
-function buildFoundationDraftPaths(profile: ProfileSummaryLike | null): string[] {
-  if (!profile?.id) {
-    return [];
-  }
-
-  const draftPathByKey: Record<string, string> = {
-    memory: `profiles/${profile.id}/memory/long-term/foundation.json`,
-    skills: `profiles/${profile.id}/skills/README.md`,
-    soul: `profiles/${profile.id}/soul/README.md`,
-    voice: `profiles/${profile.id}/voice/README.md`,
-  };
-  const missingDrafts = Array.isArray(profile.foundationDraftStatus?.missingDrafts)
-    ? [...profile.foundationDraftStatus.missingDrafts]
-      .filter((value): value is string => typeof value === 'string' && value in draftPathByKey)
-      .sort()
-    : [];
-
-  if (missingDrafts.length > 0) {
-    return missingDrafts.map((draftKey) => draftPathByKey[draftKey]);
-  }
-
-  const draftPaths = profile.foundationDrafts && typeof profile.foundationDrafts === 'object'
-    ? Object.entries(profile.foundationDrafts)
-      .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].length > 0)
-      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-      .map(([, value]) => value)
-    : [];
-
-  return draftPaths.length > 0
-    ? draftPaths
-    : Object.keys(draftPathByKey).sort().map((draftKey) => draftPathByKey[draftKey]);
-}
-
-function collectFoundationDraftPaths(profiles: ProfileSummaryLike[]): string[] {
-  return Array.from(new Set(
-    profiles.flatMap((profile) => buildFoundationDraftPaths(profile)),
-  ));
-}
 
 function buildFoundationRefreshLabel(
   reasonsSource: { refreshReasons?: string[] } | null,
@@ -876,7 +839,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       : [])
     : [];
   const bulkRefreshPaths = useBulkRefreshCommand
-    ? collectFoundationDraftPaths(queuedProfileSummaries)
+    ? collectFoundationDraftPaths(queuedProfileSummaries.map((profile) => ({
+      profileId: profile.id,
+      draftFiles: profile.foundationDrafts,
+      missingDrafts: profile.foundationDraftStatus?.missingDrafts ?? null,
+    })))
     : [];
   const bulkCoreScaffoldCommand = (() => {
     if (queuedAreas.length <= 1) {
@@ -964,7 +931,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const profilePaths = recommendedProfile?.refreshCommand
     ? (useBulkRefreshCommand
       ? bulkRefreshPaths
-      : (recommendedProfilePaths.length > 0 ? recommendedProfilePaths : buildFoundationDraftPaths(queuedProfileSummary)))
+      : (recommendedProfilePaths.length > 0 ? recommendedProfilePaths : buildFoundationDraftPaths({
+        profileId: queuedProfileSummary?.id ?? null,
+        draftFiles: queuedProfileSummary?.foundationDrafts,
+        missingDrafts: queuedProfileSummary?.foundationDraftStatus?.missingDrafts ?? null,
+      })))
     : [];
 
   return {

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
 import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value: string) {
@@ -713,19 +714,6 @@ function buildProfileCommands(profile, options: any = {}) {
   };
 }
 
-function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
-  if (typeof profileId !== 'string' || profileId.length === 0) {
-    return [];
-  }
-
-  return [
-    `profiles/${profileId}/memory/long-term/foundation.json`,
-    `profiles/${profileId}/skills/README.md`,
-    `profiles/${profileId}/soul/README.md`,
-    `profiles/${profileId}/voice/README.md`,
-  ];
-}
-
 function collectProfileIntakePaths(profile: any): string[] {
   const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
     ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
@@ -1068,7 +1056,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLabel = firstRefreshTarget.label ?? firstRefreshTarget.personId ?? null;
     recommendedAction = 'refresh stale or incomplete target profiles';
     recommendedCommand = helperCommands.refreshFoundationBundle ?? helperCommands.refreshStaleFoundation ?? firstRefreshTarget.refreshFoundationCommand ?? null;
-    recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths(profile.personId ?? null))));
+    recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths({ profileId: profile.personId ?? null }))));
   } else if (importedIntakeBackfillProfiles.length > 0) {
     const firstImportedBackfillProfile = importedIntakeBackfillProfiles[0] ?? null;
     recommendedProfileId = firstImportedBackfillProfile?.personId ?? null;

@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
@@ -1011,19 +1012,6 @@ function summarizeDraftSources(profile: ProfileSnapshot = {}) {
   return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
 }
 
-function buildMissingDraftPaths(profileId: string, missingDrafts: string[]) {
-  const draftPathByKey: Record<string, string> = {
-    memory: `profiles/${profileId}/memory/long-term/foundation.json`,
-    skills: `profiles/${profileId}/skills/README.md`,
-    soul: `profiles/${profileId}/soul/README.md`,
-    voice: `profiles/${profileId}/voice/README.md`,
-  };
-
-  return missingDrafts
-    .filter((draftKey): draftKey is keyof typeof draftPathByKey => draftKey in draftPathByKey)
-    .map((draftKey) => draftPathByKey[draftKey]);
-}
-
 function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
   if (profile.foundationDraftStatus?.needsRefresh !== true || !profileId) {
     return {
@@ -1033,17 +1021,15 @@ function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileI
   }
 
   const refreshCommand = `node src/index.js update foundation --person '${profileId.replace(/'/g, `'"'"'`)}'`;
-  const generatedDraftFiles = collectDraftFiles(profile);
-  const refreshPaths = [
-    ...(['memory', 'skills', 'soul', 'voice'] as const)
-      .map((key) => generatedDraftFiles[key] ?? null)
-      .filter((value): value is string => typeof value === 'string' && value.length > 0),
-    ...buildMissingDraftPaths(profileId, normalizeStringArray(profile.foundationDraftStatus?.missingDrafts)),
-  ];
+  const refreshPaths = buildFoundationDraftPaths({
+    profileId,
+    draftFiles: collectDraftFiles(profile),
+    missingDrafts: normalizeStringArray(profile.foundationDraftStatus?.missingDrafts),
+  });
 
   return {
     refreshCommand,
-    refreshPaths: Array.from(new Set(refreshPaths)),
+    refreshPaths,
   };
 }
 

@@ -4162,3 +4162,67 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/voice/README.md',
   ]);
 });
+
+test('buildSummary keeps bulk foundation refresh paths aligned for partially generated stale profiles', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'partial-post.txt'), 'Keep the operator loop honest.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'partial-pal',
+    file: path.join(rootDir, 'samples', 'partial-post.txt'),
+    'refresh-foundation': true,
+  });
+  fs.rmSync(path.join(rootDir, 'profiles', 'partial-pal', 'memory', 'long-term', 'foundation.json'));
+
+  runImportCommand(rootDir, 'text', {
+    person: 'harry-han',
+    file: path.join(rootDir, 'samples', 'harry-post.txt'),
+    'refresh-foundation': true,
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Metadata drift without refreshing drafts yet.',
+  });
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(
+    summary.foundation.maintenance.refreshBundleCommand,
+    "(node src/index.js update foundation --person 'partial-pal') && (node src/index.js update foundation --person 'harry-han')",
+  );
+  const partialQueuedProfile = summary.foundation.maintenance.queuedProfiles.find((profile) => profile.id === 'partial-pal');
+  assert.ok(partialQueuedProfile);
+  assert.equal(partialQueuedProfile.generatedDraftCount, 3);
+  assert.deepEqual(partialQueuedProfile.paths, [
+    'profiles/partial-pal/memory/long-term/foundation.json',
+    'profiles/partial-pal/skills/README.md',
+    'profiles/partial-pal/soul/README.md',
+    'profiles/partial-pal/voice/README.md',
+  ]);
+  const partialSnapshot = summary.profileSnapshots.find((profile) => profile.id === 'partial-pal');
+  assert.ok(partialSnapshot);
+  assert.deepEqual(partialSnapshot.refreshPaths, [
+    'profiles/partial-pal/memory/long-term/foundation.json',
+    'profiles/partial-pal/skills/README.md',
+    'profiles/partial-pal/soul/README.md',
+    'profiles/partial-pal/voice/README.md',
+  ]);
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.maintenance.refreshBundleCommand);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/partial-pal/memory/long-term/foundation.json',
+    'profiles/partial-pal/skills/README.md',
+    'profiles/partial-pal/soul/README.md',
+    'profiles/partial-pal/voice/README.md',
+    'profiles/harry-han/memory/long-term/foundation.json',
+    'profiles/harry-han/skills/README.md',
+    'profiles/harry-han/soul/README.md',
+    'profiles/harry-han/voice/README.md',
+  ]);
+  assert.deepEqual(summary.workLoop.priorities[1].paths, summary.workLoop.currentPriority.paths);
+  assert.match(summary.promptPreview, /paths: profiles\/partial-pal\/memory\/long-term\/foundation\.json, profiles\/partial-pal\/skills\/README\.md, profiles\/partial-pal\/soul\/README\.md, profiles\/partial-pal\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
+});

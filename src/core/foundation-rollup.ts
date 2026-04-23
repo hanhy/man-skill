@@ -1,3 +1,4 @@
+import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 function cleanHighlight(value: unknown): string | null {
@@ -172,19 +173,6 @@ function buildFoundationRefreshCommand(profileId: string | null | undefined): st
   return `node src/index.js update foundation --person ${shellQuote(profileId)}`;
 }
 
-function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
-  if (typeof profileId !== 'string' || profileId.length === 0) {
-    return [];
-  }
-
-  return [
-    `profiles/${profileId}/memory/long-term/foundation.json`,
-    `profiles/${profileId}/skills/README.md`,
-    `profiles/${profileId}/soul/README.md`,
-    `profiles/${profileId}/voice/README.md`,
-  ];
-}
-
 function normalizeOptionalString(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -256,7 +244,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     .filter((profile) => profile.foundationDraftStatus?.needsRefresh)
     .map((profile) => {
       const draftGapCounts = buildDraftGapCounts(profile);
-      const draftPaths = buildFoundationDraftPaths(profile.id ?? null);
+      const draftPaths = buildFoundationDraftPaths({ profileId: profile.id ?? null });
       return {
         id: profile.id ?? null,
         displayName: profile.profile?.displayName ?? null,
@@ -297,7 +285,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         || (left.label ?? '').localeCompare(right.label ?? '');
     });
   const recommendedProfile = queuedProfiles[0] ?? null;
-  const recommendedPaths = buildFoundationDraftPaths(recommendedProfile?.id ?? null);
+  const recommendedPaths = buildFoundationDraftPaths({ profileId: recommendedProfile?.id ?? null });
 
   return {
     profileCount: profiles.length,
