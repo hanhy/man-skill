@@ -746,19 +746,39 @@ test('CLI import intake --imported reruns only ready already-imported profile-lo
     }, null, 2),
   );
 
-  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported'], {
+  const firstOutput = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported'], {
     cwd: rootDir,
     encoding: 'utf8',
   });
-  const result = JSON.parse(output);
+  const firstResult = JSON.parse(firstOutput);
+  const secondOutput = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--imported'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const secondResult = JSON.parse(secondOutput);
 
-  assert.equal(result.ok, true);
-  assert.equal(result.profileCount, 1);
-  assert.equal(result.entryCount, 1);
-  assert.deepEqual(result.profileIds, ['imported-ready']);
-  assert.equal(result.foundationRefresh ?? null, null);
-  assert.equal(result.results.length, 1);
-  assert.equal(result.results[0].manifestFile, 'profiles/imported-ready/imports/materials.template.json');
+  assert.equal(firstResult.ok, true);
+  assert.equal(firstResult.profileCount, 1);
+  assert.equal(firstResult.entryCount, 1);
+  assert.deepEqual(firstResult.profileIds, ['imported-ready']);
+  assert.deepEqual(firstResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+  assert.equal(firstResult.foundationRefresh ?? null, null);
+  assert.equal(firstResult.results.length, 1);
+  assert.equal(firstResult.results[0].manifestFile, 'profiles/imported-ready/imports/materials.template.json');
+
+  assert.equal(secondResult.ok, true);
+  assert.equal(secondResult.profileCount, 1);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.profileIds, ['imported-ready']);
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+  assert.equal(secondResult.profileSummaries[0].materialCount, 0);
+  assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+  assert.equal(secondResult.foundationRefresh ?? null, null);
+  assert.equal(secondResult.results.length, 1);
+  assert.equal(secondResult.results[0].entryCount, 0);
+  assert.equal(secondResult.results[0].skippedEntryCount, 1);
+
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'imported-ready', 'voice', 'README.md')), false);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-ready', 'voice', 'README.md')), false);
 });

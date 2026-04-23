@@ -1088,6 +1088,7 @@ export class MaterialIngestion {
     return this.importManifest({
       manifestFile: profile.intake.starterManifestPath,
       refreshFoundation,
+      includeReplayedProfiles: true,
     });
   }
 
@@ -1327,7 +1328,7 @@ export class MaterialIngestion {
     return result;
   }
 
-  importManifest({ manifestFile, refreshFoundation = false }) {
+  importManifest({ manifestFile, refreshFoundation = false, includeReplayedProfiles = false }) {
     if (!manifestFile) {
       throw new Error('manifestFile is required for manifest import');
     }
@@ -1563,7 +1564,7 @@ export class MaterialIngestion {
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
     const replayedProfileIds = [...new Set(validatedEntries.map((entry) => entry.normalizedPersonId))].sort();
-    const profileIds = refreshFoundation
+    const profileIds = refreshFoundation || includeReplayedProfiles
       ? replayedProfileIds
       : [...new Set(results.map((entry) => entry.personId))].sort();
     const foundationRefresh = refreshFoundation

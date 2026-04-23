@@ -1316,6 +1316,43 @@ test('importStaleProfileIntakeManifests skips metadata-only profiles whose local
   assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
 });
 
+test('importProfileIntakeManifest preserves replayed profile summaries on skipped no-refresh reruns', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Ready',
+    displayName: 'Imported Ready',
+    summary: 'Already imported and ready for local manifest reruns.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Ready',
+    text: 'Existing imported material.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'sample.txt'), 'Imported rerun sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const firstResult = ingestion.importProfileIntakeManifest({ personId: 'imported-ready', refreshFoundation: false });
+  const secondResult = ingestion.importProfileIntakeManifest({ personId: 'imported-ready', refreshFoundation: false });
+
+  assert.equal(firstResult.entryCount, 1);
+  assert.deepEqual(firstResult.profileIds, ['imported-ready']);
+  assert.deepEqual(firstResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.profileIds, ['imported-ready']);
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+  assert.equal(secondResult.profileSummaries[0].materialCount, 0);
+  assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+});
+
 test('importProfileIntakeManifest rejects imported profiles whose local intake manifest still has no entries', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
