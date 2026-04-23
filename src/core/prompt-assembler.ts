@@ -118,6 +118,9 @@ export type ProfileSnapshotSummary = {
   latestMaterialId: string | null;
   latestMaterialSourcePath: string | null;
   profileSummary: string | null;
+  draftGapCount: number;
+  draftGapCounts: Record<string, number>;
+  draftGapSummary: string | null;
   refreshCommand: string | null;
   refreshPaths: string[];
   draftStatus: {
@@ -834,6 +837,55 @@ function cleanHighlight(value: string) {
   return normalizeOptionalString(value.replace(/^[-\s]*/, ''));
 }
 
+function countSectionDraftGaps(summary: HighlightDraftSummary | undefined): number {
+  const missingSections = normalizeStringArray(summary?.missingSections);
+  if (missingSections.length > 0) {
+    return missingSections.length;
+  }
+
+  const totalSectionCount = Number(summary?.totalSectionCount ?? 0);
+  const readySectionCount = Number(summary?.readySectionCount ?? totalSectionCount);
+  if (!Number.isFinite(totalSectionCount) || totalSectionCount <= 0) {
+    return 0;
+  }
+
+  if (!Number.isFinite(readySectionCount)) {
+    return totalSectionCount;
+  }
+
+  return Math.max(totalSectionCount - readySectionCount, 0);
+}
+
+function buildProfileSnapshotDraftGapCounts(profile: ProfileSnapshot = {}): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const missingDrafts = new Set(normalizeStringArray(profile.foundationDraftStatus?.missingDrafts));
+
+  if (missingDrafts.has('memory')) {
+    counts.memory = 1;
+  }
+
+  const skillsGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.skills);
+  if (skillsGapCount > 0 || missingDrafts.has('skills')) {
+    counts.skills = skillsGapCount > 0 ? skillsGapCount : 3;
+  }
+
+  const soulGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.soul);
+  if (soulGapCount > 0 || missingDrafts.has('soul')) {
+    counts.soul = soulGapCount > 0 ? soulGapCount : 4;
+  }
+
+  const voiceGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.voice);
+  if (voiceGapCount > 0 || missingDrafts.has('voice')) {
+    counts.voice = voiceGapCount > 0 ? voiceGapCount : 4;
+  }
+
+  return counts;
+}
+
+function countDraftGaps(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((total, value) => total + value, 0);
+}
+
 function collectDraftGaps(profile: ProfileSnapshot = {}) {
   const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts);
   const draftKinds = [
@@ -1163,6 +1215,9 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftSections = normalizeProfileSnapshotDraftSections(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
+  const draftGapCounts = buildProfileSnapshotDraftGapCounts(profile);
+  const draftGapCount = countDraftGaps(draftGapCounts);
+  const draftGapSummary = draftGaps.length > 0 ? draftGaps.join(' | ') : null;
   const refreshInfo = buildProfileSnapshotRefreshInfo(profile, profileId);
 
   const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
@@ -1241,6 +1296,9 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     latestMaterialId,
     latestMaterialSourcePath,
     profileSummary,
+    draftGapCount,
+    draftGapCounts,
+    draftGapSummary,
     refreshCommand: refreshInfo.refreshCommand,
     refreshPaths: refreshInfo.refreshPaths,
     draftStatus,

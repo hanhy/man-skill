@@ -3024,6 +3024,15 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       headingAliases: ['voice-should-capture->signature-moves'],
     },
   });
+  assert.equal(snapshot.draftGapCount, 2);
+  assert.deepEqual(snapshot.draftGapCounts, {
+    memory: 1,
+    soul: 1,
+  });
+  assert.equal(
+    snapshot.draftGapSummary,
+    'memory missing, 1 candidate (Push the work loop forward.) | soul 3/4 ready (core-truths, boundaries, vibe), missing continuity; aliases core-values->core-truths',
+  );
   assert.deepEqual(snapshot.draftGaps, [
     'memory missing, 1 candidate (Push the work loop forward.)',
     'soul 3/4 ready (core-truths, boundaries, vibe), missing continuity; aliases core-values->core-truths',
@@ -3168,6 +3177,17 @@ test('buildProfileSnapshotSummaries keeps stale draft source paths visible in th
       missingSections: ['signature-moves', 'avoid', 'language-hints'],
     },
   });
+  assert.equal(snapshot.draftGapCount, 9);
+  assert.deepEqual(snapshot.draftGapCounts, {
+    memory: 1,
+    skills: 2,
+    soul: 3,
+    voice: 3,
+  });
+  assert.equal(
+    snapshot.draftGapSummary,
+    'memory missing, 1 candidate (Keep the loop tight | but honest.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/4 ready (core-truths), missing boundaries/vibe/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
+  );
   assert.doesNotMatch(snapshot.snapshot, /draft files:/);
   assert.match(snapshot.snapshot, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \| skills @ profiles\/jane-doe\/skills\/README\.md \| soul @ profiles\/jane-doe\/soul\/README\.md \| voice @ profiles\/jane-doe\/voice\/README\.md/);
   assert.deepEqual(snapshot.draftGaps, [
