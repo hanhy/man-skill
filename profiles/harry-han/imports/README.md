@@ -11,7 +11,8 @@ Use this folder as the user-facing entrance for collecting target-person materia
 Suggested flow:
 1. Replace sample.txt with a real writing sample or point the manifest at real files.
 2. Copy the entryTemplates from materials.template.json into entries and fill in real content.
-3. Run the import command above to ingest materials and refresh foundation drafts.
+3. Run the inspect command above to confirm the edited materials and manifest look right.
+4. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts.
 
 Rerun safety:
 - re-running `node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'` preserves starter entries, entry templates, and the managed Custom notes block.

@@ -681,7 +681,8 @@ function buildIntakeReadme({
     hasReadyProfileLocalReplay
       ? '2. Update materials.template.json entries (and any local assets) when the intake fixture changes.'
       : '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
-    '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '3. Run the inspect command above to confirm the edited materials and manifest look right.',
+    '4. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts.',
     '',
     'Rerun safety:',
     `- re-running \`${updateIntakeCommand}\` preserves starter entries, entry templates, and the managed Custom notes block.`,
