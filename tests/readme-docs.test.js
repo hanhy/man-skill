@@ -118,6 +118,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /sample-message/i);
   assert.match(architectureDoc, /sample-talk/i);
   assert.match(architectureDoc, /sample-screenshot/i);
+  assert.match(architectureDoc, /inspect-starter-bundle/i);
+  assert.match(architectureDoc, /replay-starter-bundle/i);
+  assert.match(architectureDoc, /starter-import-bundle/i);
   assert.match(architectureDoc, /update-bundle/i);
   assert.match(architectureDoc, /sync-bundle/i);
   assert.match(architectureDoc, /updateProfileBundleCommand/i);
@@ -156,6 +159,9 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /sample-message/i);
   assert.match(ingestionDoc, /sample-talk/i);
   assert.match(ingestionDoc, /sample-screenshot/i);
+  assert.match(ingestionDoc, /inspect-starter-bundle/i);
+  assert.match(ingestionDoc, /replay-starter-bundle/i);
+  assert.match(ingestionDoc, /starter-import-bundle/i);
   assert.match(ingestionDoc, /update-bundle/i);
   assert.match(ingestionDoc, /sync-bundle/i);
   assert.match(ingestionDoc, /updateProfileBundleCommand/i);
@@ -185,6 +191,9 @@ test('README keeps the intake replay defaults aligned with the CLI entrance sema
   assert.match(readme, /re-run that imported backfill plus draft regeneration with `update intake --imported --refresh-foundation` when the touched profiles already have materials on disk/i);
   assert.match(readme, /bulk-import only first-run metadata-only intake manifests with `import intake --stale`/i);
   assert.match(readme, /re-run the same first-run batch with `import intake --stale --refresh-foundation` when you want the import pass to regenerate derived memory \/ voice \/ soul \/ skills drafts too/i);
+  assert.match(readme, /inspect-starter-bundle/i);
+  assert.match(readme, /replay-starter-bundle/i);
+  assert.match(readme, /starter-import-bundle/i);
   assert.match(readme, /bulk-import only already-imported profile-local intake manifests with `import intake --imported`/i);
   assert.match(readme, /re-run imported intake replay with `import intake --imported --refresh-foundation` when you want the same pass to regenerate derived memory \/ voice \/ soul \/ skills drafts/i);
   assert.match(readme, /re-run the broader `import intake --all` replay with `import intake --all --refresh-foundation` when you intentionally want every ready profile-local intake manifest/i);
