@@ -251,8 +251,8 @@ test('buildFoundationRollup normalizes stale maintenance queue metadata before e
     voice: 0,
   });
   assert.deepEqual(rollup.maintenance.refreshReasonCounts, {
-    'metadata-updated': 1,
     'missing drafts': 1,
+    'metadata-updated': 1,
   });
   assert.equal(rollup.maintenance.queuedProfiles[0]?.label, 'Jane Doe (jane-doe)');
   assert.equal(rollup.maintenance.queuedProfiles[0]?.displayName, 'Jane Doe');
@@ -261,7 +261,67 @@ test('buildFoundationRollup normalizes stale maintenance queue metadata before e
   assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['missing drafts', 'metadata-updated']);
 });
 
-test('buildFoundationRollup prioritizes metadata-drift refreshes ahead of pure new-material refreshes when stale profiles are otherwise equally complete', () => {
+test('buildFoundationRollup carries stale draft source provenance onto maintenance recommendations', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: 'jane-doe',
+      materialCount: 2,
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['new materials', 'draft metadata drift'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
+          entryCount: 1,
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
+        },
+        voice: {
+          generated: true,
+          path: 'profiles/jane-doe/voice/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 2, latestTypes: ['message', 'talk'], sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 2, sampleTypes: ['message', 'talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['feedback-loop heuristic'] },
+      },
+    },
+  ]);
+
+  const expectedDraftSourcesSummary = 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt';
+
+  assert.equal(rollup.maintenance.recommendedDraftSourcesSummary, expectedDraftSourcesSummary);
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.draftSourcesSummary, expectedDraftSourcesSummary);
+});
+
+test('buildFoundationRollup prioritizes metadata-drift foundation refreshes ahead of newer pure material refreshes when stale profiles are otherwise equally complete', () => {
   const rollup = buildFoundationRollupTs([
     {
       id: 'alpha-operator',
@@ -797,6 +857,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         recommendedLatestMaterialAt: '2026-04-20T12:00:00.000Z',
         recommendedLatestMaterialId: '2026-04-20T12-00-00-000Z-text',
         recommendedLatestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+        recommendedDraftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
         recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
         staleRefreshCommand: "node src/index.js update foundation --stale",
         helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
@@ -812,6 +873,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
             latestMaterialId: '2026-04-20T12-00-00-000Z-text',
             latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
             candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
+            draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
           },
         ],
       },
@@ -823,8 +885,8 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
   assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
-  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json/);
-  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\)/);
+  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
 });
 
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {

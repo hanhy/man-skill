@@ -58,6 +58,78 @@ function countStringValues(values: unknown[]): Record<string, number> {
   }, {});
 }
 
+function formatCountLabel(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function normalizeMaterialTypes(materialTypes: unknown): Record<string, number> | null {
+  if (!materialTypes || typeof materialTypes !== 'object') {
+    return null;
+  }
+
+  const entries = Object.entries(materialTypes)
+    .filter(([key, value]) => typeof key === 'string' && key.trim().length > 0 && Number.isFinite(value) && Number(value) > 0)
+    .map(([key, value]) => [key.trim(), Number(value)] as const);
+
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+function formatMaterialTypes(materialTypes: Record<string, number> | null): string | null {
+  if (!materialTypes) {
+    return null;
+  }
+
+  const parts = Object.entries(materialTypes)
+    .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .map(([type, count]) => `${type}:${count}`);
+
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+function summarizeDraftSources(profile: any): string | null {
+  const draftKinds = [
+    { key: 'memory', summary: profile?.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile?.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile?.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile?.foundationDraftSummaries?.voice },
+  ] as const;
+
+  const sourceSummaries = draftKinds
+    .map(({ key, summary }) => {
+      if (!summary) {
+        return null;
+      }
+
+      const path = normalizeOptionalString(summary.path);
+      const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
+      const sourceCount = Number(summary.sourceCount ?? 0);
+      const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
+      const materialTypes = formatMaterialTypes(normalizeMaterialTypes(summary.materialTypes));
+
+      if (!path && !latestMaterialSourcePath && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+        return null;
+      }
+
+      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
+      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
+      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
+      const parts = [
+        sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null,
+        entryLabel,
+        latestSourceLabel,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      if (parts.length === 0 && path) {
+        return latestSourceLabel ? `${key} @ ${path} (${latestSourceLabel})` : `${key} @ ${path}`;
+      }
+
+      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
+}
+
 function buildProfileLabel(profile: any): string {
   const profileId = profile?.id ?? 'unknown-profile';
   const displayName = profile?.profile?.displayName;
@@ -345,6 +417,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         missingDrafts: profile.foundationDraftStatus?.missingDrafts,
       });
       const candidateSignalSummary = buildCandidateSignalSummary(profile);
+      const draftSourcesSummary = summarizeDraftSources(profile);
       const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts).sort((left, right) => left.localeCompare(right));
       const refreshReasons = normalizeStringArray(profile.foundationDraftStatus?.refreshReasons);
       return {
@@ -369,6 +442,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
         candidateSignalSummary,
+        ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
@@ -430,6 +504,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
     recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
     recommendedLatestMaterialSourcePath: recommendedProfile?.latestMaterialSourcePath ?? null,
+    ...(recommendedProfile?.draftSourcesSummary ? { recommendedDraftSourcesSummary: recommendedProfile.draftSourcesSummary } : {}),
     recommendedCandidateSignalSummary: recommendedProfile?.candidateSignalSummary ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {

@@ -176,6 +176,7 @@ type MaintenanceQueueItem = {
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
   candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   draftGapCount?: number;
   draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
@@ -202,6 +203,7 @@ type FoundationMaintenance = {
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
   recommendedLatestMaterialSourcePath?: string | null;
+  recommendedDraftSourcesSummary?: string | null;
   recommendedCandidateSignalSummary?: string | null;
   recommendedDraftGapSummary?: string | null;
   helperCommands?: {
@@ -1473,11 +1475,12 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const recommendedLatestMaterialAt = normalizeOptionalString(maintenance.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(maintenance.recommendedLatestMaterialId);
   const recommendedLatestMaterialSourcePath = normalizeOptionalString(maintenance.recommendedLatestMaterialSourcePath);
+  const recommendedDraftSourcesSummary = normalizeOptionalString(maintenance.recommendedDraftSourcesSummary);
   const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
-    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftSourcesSummary ? `; draft sources ${recommendedDraftSourcesSummary}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
   const draftGapCountSummary = Number.isFinite(maintenance.draftGapCountTotal) && (maintenance.draftGapCountTotal ?? 0) > 0
     ? `${maintenance.draftGapCountTotal} total`
@@ -1505,10 +1508,13 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const candidateSignalSuffix = normalizeOptionalString(profile.candidateSignalSummary)
       ? `, evidence ${normalizeOptionalString(profile.candidateSignalSummary)}`
       : '';
+    const draftSourcesSuffix = normalizeOptionalString(profile.draftSourcesSummary)
+      ? `, draft sources ${normalizeOptionalString(profile.draftSourcesSummary)}`
+      : '';
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${candidateSignalSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${candidateSignalSuffix}${draftSourcesSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
