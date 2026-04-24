@@ -388,6 +388,9 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
   assert.ok(harryCommand);
   assert.equal(harryCommand.intakeReady, true);
+  assert.equal(harryCommand.latestMaterialAt, summary.profiles[0].latestMaterialAt);
+  assert.equal(harryCommand.latestMaterialId, summary.profiles[0].latestMaterialId);
+  assert.equal(harryCommand.latestMaterialSourcePath, summary.profiles[0].latestMaterialSourcePath);
   assert.equal(harryCommand.intakeManifestStatus, 'starter');
   assert.equal(harryCommand.intakeManifestPath, 'profiles/harry-han/imports/materials.template.json');
   assert.equal(harryCommand.importIntakeWithoutRefreshCommand, null);

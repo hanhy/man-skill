@@ -795,6 +795,8 @@ function buildProfileCommands(profile, options: any = {}) {
     materialCount,
     materialTypes: profile?.materialTypes && typeof profile.materialTypes === 'object' ? { ...profile.materialTypes } : {},
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
+    latestMaterialId: imported ? (profile.latestMaterialId ?? null) : null,
+    latestMaterialSourcePath: imported ? (profile.latestMaterialSourcePath ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,

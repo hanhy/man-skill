@@ -557,6 +557,8 @@ type IngestionProfileCommand = {
   materialCount?: number;
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
   needsRefresh?: boolean;
   missingDrafts?: string[];
   draftGapSummary?: string | null;
