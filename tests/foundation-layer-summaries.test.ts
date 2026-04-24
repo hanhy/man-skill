@@ -34,14 +34,18 @@ function seedMinimalRepo(rootDir: string) {
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
 }
 
-test('summarizeRootSectionSummary preserves count-only root progress without section names', () => {
+test('summarizeRootSectionSummary preserves count-only root progress without section names and surfaces heading aliases', () => {
   assert.equal(
     summarizeRootSectionSummary(undefined, ['layout'], 1, 2),
     ', root 1/2 sections ready, missing layout',
   );
   assert.equal(
-    summarizeRootSectionSummary(['what-belongs-here'], undefined, 1, 2),
-    ', root 1/2 sections ready (what-belongs-here)',
+    summarizeRootSectionSummary(['what-belongs-here'], undefined, 1, 2, ['what-lives-here->what-belongs-here']),
+    ', root 1/2 sections ready (what-belongs-here), aliases what-lives-here->what-belongs-here',
+  );
+  assert.equal(
+    summarizeRootSectionSummary(undefined, undefined, 0, 0, ['layout->buckets']),
+    ', aliases layout->buckets',
   );
   assert.equal(summarizeRootSectionSummary(undefined, undefined, 0, 0), '');
 });

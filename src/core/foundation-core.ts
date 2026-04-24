@@ -357,11 +357,21 @@ function collectLegacyShortTermPreviewSources(legacyShortTermSources: string[], 
   };
 }
 
+function summarizeHeadingAliases(headingAliases: string[] | undefined): string {
+  const normalizedHeadingAliases = Array.isArray(headingAliases)
+    ? Array.from(new Set(headingAliases.filter((value): value is string => typeof value === 'string' && value.length > 0)))
+    : [];
+  return normalizedHeadingAliases.length > 0
+    ? `, aliases ${normalizedHeadingAliases.join(', ')}`
+    : '';
+}
+
 export function summarizeRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
   readySectionCount?: number,
   totalSectionCount?: number,
+  headingAliases?: string[] | undefined,
 ): string {
   const normalizedReadySections = Array.isArray(readySections)
     ? readySections.filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -375,12 +385,13 @@ export function summarizeRootSectionSummary(
   const resolvedReadySectionCount = typeof readySectionCount === 'number'
     ? readySectionCount
     : normalizedReadySections.length;
+  const headingAliasSummary = summarizeHeadingAliases(headingAliases);
 
   if (resolvedTotalSectionCount === 0) {
-    return '';
+    return headingAliasSummary;
   }
 
-  return `, root ${resolvedReadySectionCount}/${resolvedTotalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}`;
+  return `, root ${resolvedReadySectionCount}/${resolvedTotalSectionCount} sections ready${normalizedReadySections.length > 0 ? ` (${normalizedReadySections.join(', ')})` : ''}${normalizedMissingSections.length > 0 ? `, missing ${normalizedMissingSections.join(', ')}` : ''}${headingAliasSummary}`;
 }
 
 function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string {
@@ -389,6 +400,7 @@ function summarizeMemoryFoundation(memory: CoreMemoryFoundationSummary): string 
     memory.rootMissingSections,
     memory.rootReadySectionCount,
     memory.rootTotalSectionCount,
+    memory.headingAliases,
   );
   return `README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memory.dailyCount}, long-term ${memory.longTermCount}, scratch ${memory.scratchCount}${rootSectionSummary}`;
 }
@@ -399,6 +411,7 @@ function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string 
     skills.rootMissingSections,
     skills.rootReadySectionCount,
     skills.rootTotalSectionCount,
+    skills.headingAliases,
   );
   const missingRootSummary = !skills.hasRootDocument && isNonEmptyString(skills.rootPath)
     ? `, root missing @ ${skills.rootPath}`
@@ -409,6 +422,7 @@ function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
   const missingSections = Array.isArray(document.missingSections) ? document.missingSections : [];
   const readySections = Array.isArray(document.readySections) ? document.readySections : [];
+  const headingAliasSummary = summarizeHeadingAliases(document.headingAliases);
   const sectionSummary = document.present && document.lineCount > 0
     && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
     ? `, sections ${document.readySectionCount}/${document.totalSectionCount} ready`
@@ -419,7 +433,7 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
   const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
     ? `, missing ${missingSections.join(', ')}`
     : '';
-  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}`;
+  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}${headingAliasSummary}`;
 }
 
 function buildDocumentMaintenanceAction(document: CoreDocumentFoundationSummary): string | null {

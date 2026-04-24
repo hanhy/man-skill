@@ -2205,7 +2205,7 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
     {
       area: 'memory',
       status: 'thin',
-      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets',
+      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets, aliases what-lives-here->what-belongs-here',
       action: 'add missing sections to memory/README.md: buckets',
       paths: ['memory/README.md'],
       thinPaths: ['memory/README.md'],
@@ -2224,7 +2224,7 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
     {
       area: 'skills',
       status: 'thin',
-      summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
+      summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout, aliases what-belongs-here->what-lives-here',
       action: 'add missing sections to skills/README.md: layout',
       paths: ['skills/README.md'],
       thinPaths: ['skills/README.md'],
@@ -2268,7 +2268,7 @@ test('buildSummary surfaces root heading alias context on thin soul and voice qu
     {
       area: 'soul',
       status: 'thin',
-      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity',
+      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity, aliases core-values->core-truths',
       action: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
       paths: ['SOUL.md'],
       rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
@@ -2285,7 +2285,7 @@ test('buildSummary surfaces root heading alias context on thin soul and voice qu
     {
       area: 'voice',
       status: 'thin',
-      summary: 'present, 1 lines, sections 2/4 ready (tone, signature-moves), missing avoid, language-hints',
+      summary: 'present, 1 lines, sections 2/4 ready (tone, signature-moves), missing avoid, language-hints, aliases voice-should-capture->signature-moves',
       action: 'add missing sections to voice/README.md: avoid, language-hints',
       paths: ['voice/README.md'],
       rootThinMissingSections: ['avoid', 'language-hints'],
