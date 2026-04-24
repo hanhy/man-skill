@@ -21,6 +21,23 @@ test('buildFoundationDraftPaths trims profile ids, draft file paths, and missing
   );
 });
 
+test('buildFoundationDraftPaths normalizes Windows-style draft paths and dedupes repeated explicit targets within one profile', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: ' profiles\\jane-doe\\memory\\long-term\\foundation.json ',
+        skills: 'profiles/jane-doe/soul/README.md',
+        soul: ' profiles\\jane-doe\\soul\\README.md ',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/soul/README.md',
+    ],
+  );
+});
+
 test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
   assert.deepEqual(
     collectFoundationDraftPaths([

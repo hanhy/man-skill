@@ -24,7 +24,7 @@ function normalizeDraftPath(value: string | null | undefined): string | null {
     return null;
   }
 
-  const trimmed = value.trim();
+  const trimmed = value.trim().replaceAll('\\', '/');
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -59,16 +59,18 @@ export function buildFoundationDraftPaths({
 
   const canonicalPaths = buildFoundationDraftPathMap(normalizedProfileId);
   const missingDraftSet = normalizeMissingDraftSet(missingDrafts);
-  const orderedPaths = FOUNDATION_DRAFT_KEYS
-    .map((draftKey) => {
-      const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
-      if (explicitPath) {
-        return explicitPath;
-      }
+  const orderedPaths = Array.from(new Set(
+    FOUNDATION_DRAFT_KEYS
+      .map((draftKey) => {
+        const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
+        if (explicitPath) {
+          return explicitPath;
+        }
 
-      return missingDraftSet.has(draftKey) ? canonicalPaths[draftKey] : null;
-    })
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+        return missingDraftSet.has(draftKey) ? canonicalPaths[draftKey] : null;
+      })
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
 
   return orderedPaths.length > 0
     ? orderedPaths
