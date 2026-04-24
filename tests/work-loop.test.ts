@@ -4376,6 +4376,76 @@ test('buildSummary keeps ingestion refresh ordering aligned with foundation main
   assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'beta-operator'\) && \(node src\/index\.js update foundation --person 'alpha-operator'\)/);
 });
 
+test('buildSummary prioritizes metadata-drift foundation refreshes ahead of newer pure material refreshes when stale profiles are otherwise equally complete', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'alpha.txt'), 'Alpha operator note.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'beta.txt'), 'Beta operator note.\n');
+  fs.writeFileSync(path.join(rootDir, 'samples', 'beta-follow-up.txt'), 'Beta follow-up note.\n');
+
+  runImportCommand(rootDir, 'text', {
+    person: 'alpha-operator',
+    file: path.join(rootDir, 'samples', 'alpha.txt'),
+    'refresh-foundation': true,
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'alpha-operator',
+    'display-name': 'Alpha Operator',
+    summary: 'Profile metadata drift should outrank plain freshness lag.',
+  });
+
+  runImportCommand(rootDir, 'text', {
+    person: 'beta-operator',
+    file: path.join(rootDir, 'samples', 'beta.txt'),
+    'refresh-foundation': true,
+  });
+  runImportCommand(rootDir, 'text', {
+    person: 'beta-operator',
+    file: path.join(rootDir, 'samples', 'beta-follow-up.txt'),
+  });
+
+  const rewriteLatestMaterial = (profileId: string, createdAt: string, idSuffix: string) => {
+    const materialsDir = path.join(rootDir, 'profiles', profileId, 'materials');
+    const materialFiles = fs.readdirSync(materialsDir).filter((file) => file.endsWith('.json')).sort();
+    assert.ok(materialFiles.length > 0);
+    materialFiles.forEach((materialFile, index) => {
+      const materialPath = path.join(materialsDir, materialFile);
+      const record = JSON.parse(fs.readFileSync(materialPath, 'utf8'));
+      fs.writeFileSync(
+        materialPath,
+        JSON.stringify({
+          ...record,
+          id: `${createdAt.replace(/[:.]/g, '-')}-${idSuffix}-${index}`,
+          createdAt,
+        }, null, 2),
+      );
+    });
+  };
+
+  rewriteLatestMaterial('beta-operator', '2026-04-21T12:00:00.000Z', 'beta');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.maintenance.recommendedProfileId, 'alpha-operator');
+  assert.equal(summary.ingestion.recommendedProfileId, 'alpha-operator');
+  assert.deepEqual(summary.foundation.maintenance.queuedProfiles.map((profile) => profile.id), ['alpha-operator', 'beta-operator']);
+  assert.deepEqual(summary.ingestion.profileCommands.slice(0, 2).map((profile) => profile.personId), ['alpha-operator', 'beta-operator']);
+  assert.deepEqual(summary.foundation.maintenance.queuedProfiles[0].refreshReasons, ['profile metadata drift', 'draft metadata drift']);
+  assert.deepEqual(summary.foundation.maintenance.queuedProfiles[1].refreshReasons, ['new materials', 'draft metadata drift']);
+  assert.equal(
+    summary.foundation.maintenance.refreshBundleCommand,
+    "(node src/index.js update foundation --person 'alpha-operator') && (node src/index.js update foundation --person 'beta-operator')",
+  );
+  assert.equal(summary.ingestion.refreshFoundationBundleCommand, summary.foundation.maintenance.refreshBundleCommand);
+  assert.equal(summary.workLoop.currentPriority.id, 'foundation');
+  assert.equal(summary.workLoop.currentPriority.command, summary.foundation.maintenance.refreshBundleCommand);
+  assert.match(summary.workLoop.currentPriority.nextAction ?? '', /^refresh stale or incomplete target profiles — starting with Alpha Operator \(alpha-operator\) \(profile metadata drift \+ draft metadata drift\); evidence /);
+  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command \(node src\/index\.js update foundation --person 'alpha-operator'\) && \(node src\/index\.js update foundation --person 'beta-operator'\)/);
+  assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'alpha-operator'\) && \(node src\/index\.js update foundation --person 'beta-operator'\)/);
+});
+
 test('buildSummary keeps bulk foundation refresh paths aligned for partially generated stale profiles', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -134,6 +134,25 @@ function countDraftGaps(counts: Record<string, number>): number {
   return Object.values(counts).reduce((total, value) => total + value, 0);
 }
 
+const FOUNDATION_REFRESH_REASON_SCORES: Record<string, number> = {
+  'profile metadata drift': 4,
+  'metadata-updated': 4,
+  'draft metadata drift': 2,
+  'new materials': 1,
+};
+
+function scoreRefreshReasons(refreshReasons: unknown): number {
+  return Array.isArray(refreshReasons)
+    ? refreshReasons.reduce((score, reason) => {
+      if (typeof reason !== 'string') {
+        return score;
+      }
+
+      return score + (FOUNDATION_REFRESH_REASON_SCORES[reason.trim()] ?? 0);
+    }, 0)
+    : 0;
+}
+
 function mergeCountMaps(countMaps: Array<Record<string, number> | null | undefined>): Record<string, number> {
   return countMaps.reduce<Record<string, number>>((mergedCounts, countMap) => {
     if (!countMap || typeof countMap !== 'object') {
@@ -371,6 +390,11 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       const generatedDraftDifference = (left.generatedDraftCount ?? 0) - (right.generatedDraftCount ?? 0);
       if (generatedDraftDifference !== 0) {
         return generatedDraftDifference;
+      }
+
+      const refreshReasonDifference = scoreRefreshReasons(right.refreshReasons) - scoreRefreshReasons(left.refreshReasons);
+      if (refreshReasonDifference !== 0) {
+        return refreshReasonDifference;
       }
 
       return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')

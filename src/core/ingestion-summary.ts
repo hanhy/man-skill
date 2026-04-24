@@ -142,6 +142,25 @@ function countGeneratedDrafts(profile) {
   return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
 }
 
+const FOUNDATION_REFRESH_REASON_SCORES = {
+  'profile metadata drift': 4,
+  'metadata-updated': 4,
+  'draft metadata drift': 2,
+  'new materials': 1,
+};
+
+function scoreRefreshReasons(refreshReasons) {
+  return Array.isArray(refreshReasons)
+    ? refreshReasons.reduce((score, reason) => {
+      if (typeof reason !== 'string') {
+        return score;
+      }
+
+      return score + (FOUNDATION_REFRESH_REASON_SCORES[reason.trim()] ?? 0);
+    }, 0)
+    : 0;
+}
+
 function compareFoundationRefreshPriority(left, right) {
   const missingDraftDifference = (right?.foundationDraftStatus?.missingDrafts?.length ?? 0) - (left?.foundationDraftStatus?.missingDrafts?.length ?? 0);
   if (missingDraftDifference !== 0) {
@@ -151,6 +170,11 @@ function compareFoundationRefreshPriority(left, right) {
   const generatedDraftDifference = countGeneratedDrafts(left) - countGeneratedDrafts(right);
   if (generatedDraftDifference !== 0) {
     return generatedDraftDifference;
+  }
+
+  const refreshReasonDifference = scoreRefreshReasons(right?.foundationDraftStatus?.refreshReasons) - scoreRefreshReasons(left?.foundationDraftStatus?.refreshReasons);
+  if (refreshReasonDifference !== 0) {
+    return refreshReasonDifference;
   }
 
   const latestMaterialAtDifference = (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '');
