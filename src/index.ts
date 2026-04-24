@@ -1422,6 +1422,7 @@ function buildDeliveryPriority({
     && typeof envConfigPopulateCommand === 'string'
     && envConfigPopulateCommand.length > 0
   ) {
+    nextAction = ['update .env with missing delivery credentials', ...followUpParts].filter(Boolean).join('; ');
     command = envConfigPopulateCommand;
   }
 
