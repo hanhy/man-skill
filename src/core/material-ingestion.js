@@ -1770,6 +1770,26 @@ export class MaterialIngestion {
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
     };
+    const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+    const latestMaterialId = latestMaterialRecord?.id ?? null;
+    const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
+    const sourceCount = materialRecords.length;
+    const makeDraftSource = ({ draftPath, entryCount = null } = {}) => ({
+      path: path.relative(this.rootDir, draftPath),
+      generatedAt,
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      sourceCount,
+      materialTypes: { ...materialTypes },
+      ...(Number.isFinite(entryCount) ? { entryCount } : {}),
+    });
+    const draftSources = {
+      memory: makeDraftSource({ draftPath: memoryDraftPath, entryCount: memoryEntries.length }),
+      voice: makeDraftSource({ draftPath: voiceDraftPath }),
+      soul: makeDraftSource({ draftPath: soulDraftPath }),
+      skills: makeDraftSource({ draftPath: skillsDraftPath }),
+    };
 
     return {
       personId: normalized.personId,
@@ -1778,6 +1798,12 @@ export class MaterialIngestion {
       soulDraftPath,
       skillsDraftPath,
       generatedAt,
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      materialTypes: { ...materialTypes },
+      entryCount: memoryEntries.length,
+      draftSources,
       refreshFoundationCommand,
       updateProfileCommand,
       updateProfileAndRefreshCommand,

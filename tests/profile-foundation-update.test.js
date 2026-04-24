@@ -73,6 +73,70 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(fs.existsSync(skillsDraftPath), true);
 
   const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(result.latestMaterialSourcePath, memoryDraft.latestMaterialSourcePath);
+  assert.equal(result.latestMaterialAt, memoryDraft.latestMaterialAt);
+  assert.equal(result.latestMaterialId, memoryDraft.latestMaterialId);
+  assert.deepEqual(result.materialTypes, {
+    message: 1,
+    talk: 1,
+    text: 1,
+  });
+  assert.equal(result.entryCount, 3);
+  assert.deepEqual(result.draftSources, {
+    memory: {
+      path: path.join('profiles', 'harry-han', 'memory', 'long-term', 'foundation.json'),
+      generatedAt: result.generatedAt,
+      latestMaterialAt: result.latestMaterialAt,
+      latestMaterialId: result.latestMaterialId,
+      latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
+      sourceCount: 3,
+      materialTypes: {
+        message: 1,
+        talk: 1,
+        text: 1,
+      },
+      entryCount: 3,
+    },
+    voice: {
+      path: path.join('profiles', 'harry-han', 'voice', 'README.md'),
+      generatedAt: result.generatedAt,
+      latestMaterialAt: result.latestMaterialAt,
+      latestMaterialId: result.latestMaterialId,
+      latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
+      sourceCount: 3,
+      materialTypes: {
+        message: 1,
+        talk: 1,
+        text: 1,
+      },
+    },
+    soul: {
+      path: path.join('profiles', 'harry-han', 'soul', 'README.md'),
+      generatedAt: result.generatedAt,
+      latestMaterialAt: result.latestMaterialAt,
+      latestMaterialId: result.latestMaterialId,
+      latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
+      sourceCount: 3,
+      materialTypes: {
+        message: 1,
+        talk: 1,
+        text: 1,
+      },
+    },
+    skills: {
+      path: path.join('profiles', 'harry-han', 'skills', 'README.md'),
+      generatedAt: result.generatedAt,
+      latestMaterialAt: result.latestMaterialAt,
+      latestMaterialId: result.latestMaterialId,
+      latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
+      sourceCount: 3,
+      materialTypes: {
+        message: 1,
+        talk: 1,
+        text: 1,
+      },
+    },
+  });
   assert.equal(memoryDraft.personId, 'harry-han');
   assert.equal(memoryDraft.displayName, 'Harry Han');
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for momentum.');
