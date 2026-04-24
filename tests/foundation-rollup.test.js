@@ -163,6 +163,58 @@ test('buildFoundationRollup uses latest material ids to break stale-queue ties w
   assert.deepEqual(buildFoundationRollup(profiles), rollup);
 });
 
+test('buildFoundationRollup uses latest material source paths to break stale-queue ties when timestamps and ids match', () => {
+  const profiles = [
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/alpha-operator/imports/a-first.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      profile: { displayName: 'Beta Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/beta-operator/imports/z-last.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ];
+
+  const rollup = buildFoundationRollupTs(profiles);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'beta-operator');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/beta-operator/imports/z-last.txt');
+  assert.deepEqual(rollup.maintenance.queuedProfiles.map((profile) => profile.id), ['beta-operator', 'alpha-operator']);
+  assert.deepEqual(buildFoundationRollup(profiles), rollup);
+});
+
 test('buildFoundationRollup normalizes stale maintenance queue metadata before exposing it', () => {
   const rollup = buildFoundationRollupTs([
     {

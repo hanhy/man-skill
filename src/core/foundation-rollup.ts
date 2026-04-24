@@ -399,6 +399,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
 
       return (right.latestMaterialAt ?? '').localeCompare(left.latestMaterialAt ?? '')
         || (right.latestMaterialId ?? '').localeCompare(left.latestMaterialId ?? '')
+        || (right.latestMaterialSourcePath ?? '').localeCompare(left.latestMaterialSourcePath ?? '')
         || (left.label ?? '').localeCompare(right.label ?? '');
     });
   const recommendedProfile = queuedProfiles[0] ?? null;

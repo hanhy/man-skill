@@ -628,6 +628,78 @@ test('buildIngestionSummary breaks stale imported-profile ties with latest mater
   );
 });
 
+test('buildIngestionSummary breaks stale imported-profile ties with latest material source paths before label ordering when timestamps and ids match', () => {
+  const profiles = [
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      materialTypes: { text: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/alpha-operator/imports/a-first.txt',
+      profile: {
+        displayName: 'Alpha Operator',
+      },
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true },
+        skills: { generated: true },
+        soul: { generated: true },
+        voice: { generated: true },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      materialTypes: { text: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/beta-operator/imports/z-last.txt',
+      profile: {
+        displayName: 'Beta Operator',
+      },
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true },
+        skills: { generated: true },
+        soul: { generated: true },
+        voice: { generated: true },
+      },
+    },
+  ];
+
+  const jsSummary = buildJsIngestionSummary(profiles, {});
+  const tsSummary = buildTsIngestionSummary(profiles, {});
+
+  assert.deepEqual(jsSummary, tsSummary);
+  assert.equal(tsSummary.recommendedProfileId, 'beta-operator');
+  assert.equal(tsSummary.recommendedLabel, 'Beta Operator (beta-operator)');
+  assert.equal(
+    tsSummary.recommendedCommand,
+    "(node src/index.js update foundation --person 'beta-operator') && (node src/index.js update foundation --person 'alpha-operator')",
+  );
+  assert.equal(
+    tsSummary.refreshFoundationBundleCommand,
+    "(node src/index.js update foundation --person 'beta-operator') && (node src/index.js update foundation --person 'alpha-operator')",
+  );
+  assert.deepEqual(
+    tsSummary.profileCommands.map((profile) => profile.personId),
+    ['beta-operator', 'alpha-operator'],
+  );
+  assert.deepEqual(
+    tsSummary.allProfileCommands.map((profile) => profile.personId),
+    ['beta-operator', 'alpha-operator'],
+  );
+});
+
 test('buildIngestionSummary keeps starter-only metadata intake templates off the ready-intake bundle path', () => {
   const summary = buildTsIngestionSummary([
     {

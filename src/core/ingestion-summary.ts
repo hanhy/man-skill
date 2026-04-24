@@ -187,6 +187,11 @@ function compareFoundationRefreshPriority(left, right) {
     return latestMaterialIdDifference;
   }
 
+  const latestMaterialSourcePathDifference = (right?.latestMaterialSourcePath ?? '').localeCompare(left?.latestMaterialSourcePath ?? '');
+  if (latestMaterialSourcePathDifference !== 0) {
+    return latestMaterialSourcePathDifference;
+  }
+
   return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
 }
 
