@@ -62,6 +62,20 @@ function normalizeEntryTemplateDetails(entryTemplates) {
   });
 }
 
+function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
+  return entryTemplateTypes
+    .filter((type) => type !== 'screenshot')
+    .map((type) => {
+      const template = manifest?.entryTemplates?.[type] ?? {};
+      return {
+        type,
+        ...(isNonEmptyString(template?.file) ? { file: template.file.trim() } : {}),
+        ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
+        ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
+      };
+    });
+}
+
 function normalizeManifest(parsedManifest) {
   if (!parsedManifest || typeof parsedManifest !== 'object') {
     return null;
@@ -256,6 +270,14 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
         starterManifestPath: manifestPath,
         manifest,
         entries,
+      });
+    }
+    if (hasStarterTemplates) {
+      validateProfileLocalManifestEntries({
+        rootDir,
+        starterManifestPath: manifestPath,
+        manifest,
+        entries: buildStarterTemplateEntries(manifest, entryTemplateTypes),
       });
     }
   } catch (error) {

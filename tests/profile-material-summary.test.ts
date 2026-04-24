@@ -4805,6 +4805,55 @@ test('buildSummary treats imported starter manifests with mismatched profile own
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(targets a different profile\)/);
 });
 
+test('buildSummary treats starter manifests with missing starter-template files as invalid before surfacing import helpers', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'missing-post.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnly = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
+
+  assert.equal(summary.ingestion.intakeStarterProfileCount, 0);
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
+  assert.match(metadataOnly?.intakeManifestError ?? '', /missing file: missing-post\.txt/);
+  assert.equal(metadataOnly?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
+  assert.equal(metadataOnly?.importManifestWithoutRefreshCommand, null);
+  assert.equal(metadataOnly?.importManifestCommand, null);
+  assert.equal(metadataOnly?.importMaterialCommand, null);
+  assert.equal(metadataOnly?.helperCommands.importManifestWithoutRefresh, null);
+  assert.equal(metadataOnly?.helperCommands.importManifest, null);
+  assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 starter templates, 0 partial, 0 missing/);
+  assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\)/);
+  assert.doesNotMatch(summary.promptPreview, /manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json'/);
+  assert.doesNotMatch(summary.promptPreview, /manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+});
+
 test('buildSummary keeps metadata-only profiles with invalid intake manifests visible in the ingestion entrance diagnostics', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

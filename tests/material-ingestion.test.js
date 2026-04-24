@@ -1638,6 +1638,36 @@ test('importProfileIntakeManifest rejects a starter profile-local manifest that 
   );
 });
 
+test('importProfileIntakeManifest rejects a starter profile-local manifest that references a missing starter file', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'missing-post.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /missing file: missing-post\.txt/i,
+  );
+});
+
 test('buildSummary prompt preview keeps starter-only metadata intake templates off the import-intake shortcut path', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
