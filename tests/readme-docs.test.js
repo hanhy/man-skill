@@ -491,6 +491,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /multi-area queues leave `recommendedArea` null and promote the same aggregate `scaffoldAll\|scaffoldMissing\|scaffoldThin` bundle plus the union of queued paths into the canonical `recommended\*` entrance/i);
   assert.match(readme, /foundation\.maintenance\.recommendedProfileId.*recommendedAction.*recommendedCommand.*recommendedPaths.*recommendedLatestMaterialAt.*recommendedLatestMaterialId.*recommendedLatestMaterialSourcePath.*queuedProfiles\[\*\]\.paths.*queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(readme, /next repair.*next refresh.*latest material <timestamp> \(<material-id>\)(?: @ <source-path>)?/i);
+  assert.match(readme, /when only a concrete source path survives, the same latest-material surface can still fall back to `unknown timestamp` while keeping `@ <source-path>` visible/i);
   assert.match(architectureDoc, /`daily\/` .*canonical short-term working-memory bucket/i);
   assert.match(architectureDoc, /legacy `memory\/short-term\/` files still fold into the canonical `daily` lane/i);
   assert.match(architectureDoc, /still exposing `shortTermEntries` and `shortTermPresent` as compatibility aliases for older summary consumers/i);
@@ -528,6 +529,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /shared `buildFoundationDraftPaths\(\.\.\.\)` \/ `collectFoundationDraftPaths\(\.\.\.\)` helper keeps `profileSnapshots\[\*\]\.refreshPaths`, `foundation\.maintenance\.queuedProfiles\[\*\]\.paths`, and work-loop refresh `paths` aligned in one canonical memory → skills → soul → voice order/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /canonical next-refresh target on `foundation\.maintenance`.*`recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedLatestMaterialSourcePath`, `recommendedDraftGapSummary`/i);
+  assert.match(architectureDoc, /when only `latestMaterialSourcePath` survives, the same prompt\/work-loop latest-material surfaces should still fall back to `unknown timestamp` while keeping the concrete `@ <source-path>` suffix/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `draftGapCount`, `draftGapCounts`, `draftGapSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
@@ -544,6 +546,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(ingestionDoc, /shared `buildFoundationDraftPaths\(\.\.\.\)` \/ `collectFoundationDraftPaths\(\.\.\.\)` helpers keep `profileSnapshots\[\*\]\.refreshPaths`, `foundation\.maintenance\.queuedProfiles\[\*\]\.paths`, and work-loop refresh `paths` aligned to the same canonical memory \/ skills \/ soul \/ voice order/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);
   assert.match(ingestionDoc, /recommendedProfileId`, `recommendedLabel`, `recommendedAction`, `recommendedCommand`, `recommendedPaths`, `recommendedLatestMaterialAt`, `recommendedLatestMaterialId`, `recommendedLatestMaterialSourcePath`, `recommendedDraftGapSummary`.*queuedProfiles\[0\]/i);
+  assert.match(ingestionDoc, /when a stale queue item or profile snapshot only has `latestMaterialSourcePath`, the human `latest material` fallback can still say `unknown timestamp @ <source-path>` instead of hiding provenance entirely/i);
   assert.match(ingestionDoc, /each queued profile now includes its own `refreshCommand`.*queuedProfiles\[\*\]\.paths.*`draftGapCount`, `draftGapCounts`/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(ingestionDoc, /foundation\.core\.memory\.rootReadySections.*rootMissingSections.*rootReadySectionCount.*rootTotalSectionCount.*headingAliases/i);
