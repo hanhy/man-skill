@@ -2076,7 +2076,7 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.match(summary.promptPreview, /advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /advisory starter templates: message, screenshot, talk, text \(4 total\)/);
-  assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /advisory manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(summary.promptPreview, /advisory manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /advisory inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
@@ -2131,7 +2131,11 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
   );
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
-  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/images/chat.png',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
   assert.equal(summary.workLoop.recommendedPriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.workLoop.recommendedPriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
@@ -2149,7 +2153,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.match(summary.promptPreview, /recommended: Ingestion \[queued\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /starter templates: message, screenshot, talk, text \(4 total\)/);
-  assert.match(summary.promptPreview, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(summary.promptPreview, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
@@ -2194,7 +2198,7 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   assert.match(summary.promptPreview, /advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /advisory starter templates: message, screenshot, talk, text \(4 total\)/);
-  assert.match(summary.promptPreview, /advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /advisory manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(summary.promptPreview, /advisory manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /advisory inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
@@ -2322,7 +2326,10 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   assert.equal(summary.workLoop.actionableReadyPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
     'profiles/jane-doe/imports/materials.template.json',
+    'profiles/jane-doe/imports/images/chat.png',
+    'profiles/jane-doe/imports/sample.txt',
   ]);
   assert.equal(summary.workLoop.actionableReadyPriority?.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
@@ -2341,7 +2348,10 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   ]);
   assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
     'profiles/jane-doe/imports/materials.template.json',
+    'profiles/jane-doe/imports/images/chat.png',
+    'profiles/jane-doe/imports/sample.txt',
   ]);
   assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.paths, [
@@ -2364,7 +2374,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   assert.match(summary.promptPreview, /advisory refresh intake: \(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)/);
   assert.match(summary.promptPreview, /advisory starter templates: message, screenshot, talk, text \(4 total\)/);
   assert.match(summary.promptPreview, /advisory starter details: message Keep the operating note concise\. \| screenshot images\/chat\.png \| talk Ship the correction while it is still fresh\. \| text sample\.txt/);
-  assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/images\/chat\.png, profiles\/jane-doe\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /advisory inspect after editing: \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
   assert.match(summary.promptPreview, /advisory then run: \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
 });
@@ -3186,7 +3196,7 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.match(workLoopBlock, /- advisory: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(workLoopBlock, /- advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(workLoopBlock, /- advisory refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
-  assert.match(workLoopBlock, /- advisory edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(workLoopBlock, /- advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(workLoopBlock, /- advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(workLoopBlock, /- advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });

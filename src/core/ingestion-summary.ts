@@ -862,6 +862,31 @@ function collectProfileIntakePaths(profile: any): string[] {
     : [];
 }
 
+function collectStarterTemplateEditPaths(profile: any): string[] {
+  const manifestPath = typeof profile?.intakeManifestPath === 'string' && profile.intakeManifestPath.length > 0
+    ? profile.intakeManifestPath
+    : null;
+  const manifestDir = manifestPath ? path.posix.dirname(manifestPath) : null;
+  const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
+    .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
+    .map((detail) => {
+      if (!manifestDir) {
+        return null;
+      }
+
+      const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, detail.path));
+      return resolvedPath.startsWith('../') || resolvedPath === '..'
+        ? null
+        : resolvedPath;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return Array.from(new Set([
+    manifestPath,
+    ...starterTemplateFilePaths,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
+}
+
 function collectLoadedManifestFilePaths(rootDir: string, relativeManifestPath: string): string[] {
   const absoluteManifestPath = path.join(rootDir, relativeManifestPath);
   const manifestDir = path.dirname(absoluteManifestPath);
@@ -1255,8 +1280,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : (firstImportedStarterIntakeProfile?.updateIntakeCommand ?? null);
     recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
-      ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : (recommendedEditPath ? [recommendedEditPath] : []);
+      ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
+      : collectStarterTemplateEditPaths(firstImportedStarterIntakeProfile);
     recommendedManifestInspectCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
