@@ -24,8 +24,12 @@ function normalizeDraftPath(value: string | null | undefined): string | null {
     return null;
   }
 
-  const trimmed = value.trim().replaceAll('\\', '/');
-  return trimmed.length > 0 ? trimmed : null;
+  const normalized = value
+    .trim()
+    .replaceAll('\\', '/')
+    .replace(/^(?:\.\/)+/, '')
+    .replace(/\/+/g, '/');
+  return normalized.length > 0 ? normalized : null;
 }
 
 function buildFoundationDraftPathMap(profileId: string): Record<FoundationDraftKey, string> {

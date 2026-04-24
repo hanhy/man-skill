@@ -38,6 +38,25 @@ test('buildFoundationDraftPaths normalizes Windows-style draft paths and dedupes
   );
 });
 
+test('buildFoundationDraftPaths collapses redundant relative separators before deduping refresh targets', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: ' ./profiles//jane-doe/memory//long-term///foundation.json ',
+        skills: '.\\profiles\\jane-doe\\skills\\README.md',
+        soul: 'profiles/jane-doe//skills/README.md',
+      },
+      missingDrafts: [' voice '],
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
 test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
   assert.deepEqual(
     collectFoundationDraftPaths([
