@@ -1142,6 +1142,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : 'import the checked-in sample target profile';
       recommendedCommand = exactSampleManifestCommand ?? sampleStarterCommand;
       recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
+      recommendedManifestImportCommand = exactSampleManifestCommand;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
       recommendedAction = sampleManifestInvalidReason

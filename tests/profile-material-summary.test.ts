@@ -5040,7 +5040,12 @@ test('buildSummary falls back to another valid sample manifest when the canonica
   assert.equal(summary.ingestion.sampleManifestError, null);
   assert.equal(summary.ingestion.sampleStarterCommand, 'node src/index.js import sample');
   assert.equal(summary.ingestion.sampleStarterLabel, 'Starter Person (starter-person)');
+  assert.equal(summary.ingestion.sampleManifestInspectCommand, "node src/index.js import manifest --file 'samples/starter-materials.json'");
   assert.equal(summary.ingestion.sampleManifestCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedAction, 'import the checked-in sample target profile for Starter Person (starter-person)');
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'samples/starter-materials.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'samples/starter-materials.json' --refresh-foundation");
   assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, { text: 1 });
   assert.equal(summary.ingestion.sampleTextPath, 'samples/starter-post.txt');
   assert.equal(summary.ingestion.sampleTextPresent, true);
@@ -5048,6 +5053,7 @@ test('buildSummary falls back to another valid sample manifest when the canonica
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[samples\/starter-materials\.json\] for Starter Person \(starter-person\)/);
   assert.match(summary.promptPreview, /sample manifest: 1 entry for Starter Person \(starter-person\) \(text:1\) -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /next intake: import the checked-in sample target profile for Starter Person \(starter-person\); command node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'samples\/starter-materials\.json' @ samples\/starter-materials\.json, samples\/starter-post\.txt/);
   assert.match(summary.promptPreview, /sample text: starter-person -> node src\/index\.js import text --person starter-person --file 'samples\/starter-post\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /sample manifest invalid: .*harry-materials\.json/);
 });

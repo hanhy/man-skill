@@ -1992,8 +1992,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
+  const recommendedCommand = typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0
+    ? ingestion.recommendedCommand
+    : null;
+  const recommendedManifestImportSegment = recommendedManifestImportCommand && recommendedManifestImportCommand !== recommendedCommand
+    ? `; manifest ${recommendedManifestImportCommand}`
+    : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
