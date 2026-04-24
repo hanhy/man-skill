@@ -3162,6 +3162,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           generatedAt: '2026-04-20T12:05:00.000Z',
           latestMaterialAt: '2026-04-20T12:00:00.000Z',
           latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
           sourceCount: 2,
           materialTypes: { message: 1, talk: 1 },
           highlights: ['- keep it tight'],
@@ -3177,6 +3178,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           generatedAt: '2026-04-20T12:05:00.000Z',
           latestMaterialAt: '2026-04-20T12:00:00.000Z',
           latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
           sourceCount: 1,
           materialTypes: { talk: 1 },
           highlights: ['- stay grounded'],
@@ -3192,6 +3194,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           generatedAt: '2026-04-20T12:05:00.000Z',
           latestMaterialAt: '2026-04-20T12:00:00.000Z',
           latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
           sourceCount: 1,
           materialTypes: { talk: 1 },
           highlights: ['- execution heuristic', '- sample: ignore me'],
@@ -3251,6 +3254,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
       sourceCount: 1,
       materialTypes: { talk: 1 },
     },
@@ -3260,6 +3264,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
       sourceCount: 1,
       materialTypes: { talk: 1 },
     },
@@ -3269,6 +3274,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
       sourceCount: 2,
       materialTypes: { message: 1, talk: 1 },
     },
@@ -3319,7 +3325,10 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
   });
   assert.match(snapshot.snapshot, /draft files: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json/);
   assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
-  assert.match(snapshot.snapshot, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry \| skills 1 source \(talk:1\) \| soul 1 source \(talk:1\) \| voice 2 sources \(message:1, talk:1\)/);
+  assert.match(
+    snapshot.snapshot,
+    /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 2 sources \(message:1, talk:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/,
+  );
   assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths/);
 });

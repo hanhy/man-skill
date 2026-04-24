@@ -1128,13 +1128,16 @@ function summarizeDraftSources(profile: ProfileSnapshot = {}) {
 
       const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
       const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
+      const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
+      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
       const parts = [
         sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null,
         entryLabel,
+        latestSourceLabel,
       ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
       if (parts.length === 0 && path) {
-        return `${key} @ ${path}`;
+        return latestSourceLabel ? `${key} @ ${path} (${latestSourceLabel})` : `${key} @ ${path}`;
       }
 
       return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
