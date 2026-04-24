@@ -1915,6 +1915,77 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft materi
   assert.doesNotMatch(refreshedVoiceDraft, /Source materials: 1 \(message:1\)/);
 });
 
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft latest material source provenance drifts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace(/Latest material source: .*$/m, 'Latest material source: stale-source.txt');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(refreshedVoiceDraft, /Latest material source: latest-source\.txt/);
+  assert.doesNotMatch(refreshedVoiceDraft, /Latest material source: stale-source\.txt/);
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when memory draft latest material source provenance drifts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Memory Drift',
+    text: 'Ship the first slice.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Memory Drift',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Memory Drift' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'memory-drift', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.latestMaterialSourcePath = 'stale-source.txt';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['memory-drift']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(repairedDraft.latestMaterialSourcePath, 'latest-source.txt');
+});
+
 test('CLI import manifest ingests entries and can refresh foundation drafts in one step', () => {
   const rootDir = makeTempRepo();
 

@@ -1837,6 +1837,7 @@ export class MaterialIngestion {
         const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
         const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
         const latestMaterialId = latestMaterialRecord?.id ?? null;
+        const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
         const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
         const materialTypes = materialRecords.reduce((summary, record) => {
           if (!isNonEmptyString(record?.type)) {
@@ -1851,6 +1852,7 @@ export class MaterialIngestion {
           profileId,
           latestMaterialAt,
           latestMaterialId,
+          latestMaterialSourcePath,
           profileDocument,
           materialRecords.length,
           materialTypes,
