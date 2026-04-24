@@ -3044,6 +3044,118 @@ test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   assert.match(prompt, /order: foundation:ready \| ingestion:queued \| channels:queued \| providers:queued/);
 });
 
+test('PromptAssembler keeps unknown-timestamp latest-material provenance visible across current, runnable, and advisory work-loop lanes', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      priorityCount: 4,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 2,
+      blockedPriorityCount: 1,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: null,
+        paths: ['profiles/jane-doe/voice/README.md'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: null,
+        latestMaterialSourcePath: 'profiles/jane-doe/imports/images/chat.png',
+        paths: ['profiles/jane-doe/voice/README.md'],
+      },
+      runnablePriority: {
+        id: 'channels',
+        label: 'Channels',
+        status: 'blocked',
+        summary: '4 pending, 0 configured, 4 auth-blocked',
+        nextAction: 'copy .env.example to .env before adding secrets',
+        command: 'cp .env.example .env',
+        latestMaterialSourcePath: '.env.example',
+        paths: ['.env.example', '.env'],
+      },
+      actionableReadyPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: 'starter scaffold available',
+        nextAction: 'populate the checked-in starter manifest',
+        command: null,
+        latestMaterialSourcePath: 'profiles/harry-han/imports/materials.template.json',
+        paths: ['profiles/harry-han/imports/materials.template.json'],
+      },
+      recommendedPriority: {
+        id: 'channels',
+        label: 'Channels',
+        status: 'blocked',
+        summary: '4 pending, 0 configured, 4 auth-blocked',
+        nextAction: 'copy .env.example to .env before adding secrets',
+        command: 'cp .env.example .env',
+        latestMaterialSourcePath: '.env.example',
+        paths: ['.env.example', '.env'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: null,
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/images/chat.png',
+          paths: ['profiles/jane-doe/voice/README.md'],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'ready',
+          summary: 'starter scaffold available',
+          nextAction: 'populate the checked-in starter manifest',
+          command: null,
+          latestMaterialSourcePath: 'profiles/harry-han/imports/materials.template.json',
+          paths: ['profiles/harry-han/imports/materials.template.json'],
+        },
+        {
+          id: 'channels',
+          label: 'Channels',
+          status: 'blocked',
+          summary: '4 pending, 0 configured, 4 auth-blocked',
+          nextAction: 'copy .env.example to .env before adding secrets',
+          command: 'cp .env.example .env',
+          latestMaterialSourcePath: '.env.example',
+          paths: ['.env.example', '.env'],
+        },
+        {
+          id: 'providers',
+          label: 'Providers',
+          status: 'queued',
+          summary: '6 pending, 0 configured, 6 auth-blocked',
+          nextAction: 'set OPENAI_API_KEY for gpt-5',
+          command: null,
+          paths: ['src/models/openai.js'],
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/images\/chat\.png/);
+  assert.match(prompt, /runnable latest material: unknown timestamp @ \.env\.example/);
+  assert.match(prompt, /advisory latest material: unknown timestamp @ profiles\/harry-han\/imports\/materials\.template\.json/);
+});
+
 test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
