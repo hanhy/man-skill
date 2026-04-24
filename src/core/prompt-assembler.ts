@@ -732,6 +732,7 @@ type WorkLoopPriority = {
   refreshReasons?: string[];
   missingDrafts?: string[];
   candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
@@ -2754,6 +2755,13 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
     return candidateSignalSummary ? `${prefix}${candidateSignalSummary}` : null;
   };
+  const formatPriorityDraftSources = (priority?: WorkLoopPriority | null, prefix = '- draft sources: '): string | null => {
+    const draftSourcesSummary = typeof priority?.draftSourcesSummary === 'string' && priority.draftSourcesSummary.length > 0
+      ? priority.draftSourcesSummary
+      : null;
+
+    return draftSourcesSummary ? `${prefix}${draftSourcesSummary}` : null;
+  };
   const formatPriorityDraftGaps = (priority?: WorkLoopPriority | null, prefix = '- draft gaps: '): string | null => {
     const draftGapSummary = typeof priority?.draftGapSummary === 'string' && priority.draftGapSummary.length > 0
       ? priority.draftGapSummary
@@ -2799,6 +2807,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     formatPriorityRefreshReasons(currentPriority),
     formatPriorityMissingDrafts(currentPriority),
     formatPriorityEvidence(currentPriority),
+    formatPriorityDraftSources(currentPriority),
     formatPriorityDraftGaps(currentPriority),
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
@@ -2845,6 +2854,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority ? formatPriorityRefreshReasons(runnablePriority, '- runnable refresh reasons: ') : null,
     showRunnablePriority ? formatPriorityMissingDrafts(runnablePriority, '- runnable missing drafts: ') : null,
     showRunnablePriority ? formatPriorityEvidence(runnablePriority, '- runnable evidence: ') : null,
+    showRunnablePriority ? formatPriorityDraftSources(runnablePriority, '- runnable draft sources: ') : null,
     showRunnablePriority ? formatPriorityDraftGaps(runnablePriority, '- runnable draft gaps: ') : null,
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
@@ -2891,6 +2901,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority ? formatPriorityRefreshReasons(actionableReadyPriority, '- advisory refresh reasons: ') : null,
     showActionableReadyPriority ? formatPriorityMissingDrafts(actionableReadyPriority, '- advisory missing drafts: ') : null,
     showActionableReadyPriority ? formatPriorityEvidence(actionableReadyPriority, '- advisory evidence: ') : null,
+    showActionableReadyPriority ? formatPriorityDraftSources(actionableReadyPriority, '- advisory draft sources: ') : null,
     showActionableReadyPriority ? formatPriorityDraftGaps(actionableReadyPriority, '- advisory draft gaps: ') : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`

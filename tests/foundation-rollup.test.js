@@ -798,6 +798,103 @@ test('buildFoundationRollup prioritizes stale profiles with more structured draf
   assert.equal(rollup.maintenance.queuedProfiles[1]?.draftGapCount, 4);
 });
 
+test('PromptAssembler work loop surfaces draft-source follow-up lines for current and advisory priorities', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 1,
+      objectives: ['strengthen foundation'],
+      priorityCount: 2,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      runnablePriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      actionableReadyPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: '1 imported starter template still needs edits',
+        nextAction: 'finish the starter manifest edits',
+        command: null,
+        draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        editPath: 'profiles/jane-doe/imports/materials.template.json',
+        paths: ['profiles/jane-doe/imports/materials.template.json'],
+      },
+      recommendedPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: "node src/index.js update foundation --person 'jane-doe'",
+          draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+          paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'ready',
+          summary: '1 imported starter template still needs edits',
+          nextAction: 'finish the starter manifest edits',
+          command: null,
+          draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+          editPath: 'profiles/jane-doe/imports/materials.template.json',
+          paths: ['profiles/jane-doe/imports/materials.template.json'],
+        },
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(preview, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.doesNotMatch(preview, /runnable draft sources:/);
+  assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+});
+
 test('PromptAssembler foundation rollup keeps repo-stale counts visible across voice, soul, and skills', () => {
   const preview = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'A configurable personality core.' },

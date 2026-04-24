@@ -985,6 +985,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const profileCandidateSignalSummary = typeof recommendedProfile?.candidateSignalSummary === 'string' && recommendedProfile.candidateSignalSummary.length > 0
     ? recommendedProfile.candidateSignalSummary
     : null;
+  const profileDraftSourcesSummary = typeof recommendedProfile?.draftSourcesSummary === 'string' && recommendedProfile.draftSourcesSummary.length > 0
+    ? recommendedProfile.draftSourcesSummary
+    : null;
   const profileDraftGapSummary = typeof recommendedProfile?.draftGapSummary === 'string' && recommendedProfile.draftGapSummary.length > 0
     ? recommendedProfile.draftGapSummary
     : null;
@@ -1004,6 +1007,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     refreshReasons: hasQueuedCoreFoundation ? [] : profileRefreshReasons,
     missingDrafts: hasQueuedCoreFoundation ? [] : profileMissingDrafts,
     candidateSignalSummary: hasQueuedCoreFoundation ? null : profileCandidateSignalSummary,
+    draftSourcesSummary: hasQueuedCoreFoundation ? null : profileDraftSourcesSummary,
     draftGapSummary: hasQueuedCoreFoundation ? null : profileDraftGapSummary,
     editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
     editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,

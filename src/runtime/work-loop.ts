@@ -11,6 +11,7 @@ export type WorkPriority = {
   refreshReasons?: string[];
   missingDrafts?: string[];
   candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;

@@ -1012,7 +1012,9 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
   assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.foundation.maintenance.recommendedLatestMaterialId);
   assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, 'samples/jane-post.txt');
   assert.equal(summary.workLoop.currentPriority.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 1 (text) | skills 0');
+  assert.equal(summary.workLoop.currentPriority.draftSourcesSummary, summary.foundation.maintenance.recommendedDraftSourcesSummary ?? null);
   assert.equal(summary.workLoop.currentPriority.draftGapSummary, summary.foundation.maintenance.recommendedDraftGapSummary);
+  assert.equal(summary.workLoop.recommendedPriority?.draftSourcesSummary, summary.foundation.maintenance.recommendedDraftSourcesSummary ?? null);
   assert.deepEqual(summary.workLoop.currentPriority.refreshReasons, ['missing drafts', 'new materials']);
   assert.deepEqual(summary.workLoop.currentPriority.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
   assert.match(summary.workLoop.currentPriority.summary, /core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
