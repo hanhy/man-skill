@@ -19,6 +19,7 @@ export type WorkPriority = {
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
   intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
   intakeManifestEntryTemplateCount?: number;
   inspectCommand?: string | null;
   followUpCommand?: string | null;

@@ -543,6 +543,13 @@ type DeliverySummary = {
   providerQueue?: DeliveryQueueItem[];
 } | null;
 
+type StarterTemplateDetail = {
+  type?: string | null;
+  source?: 'file' | 'text' | string;
+  path?: string | null;
+  preview?: string | null;
+};
+
 type IngestionProfileCommand = {
   personId?: string | null;
   displayName?: string | null;
@@ -568,6 +575,9 @@ type IngestionProfileCommand = {
   intakeStatusSummary?: string | null;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  intakeManifestEntryTemplateCount?: number;
   refreshFoundationCommand?: string | null;
   importManifestWithoutRefreshCommand?: string | null;
   importManifestCommand?: string | null;
@@ -694,6 +704,7 @@ type IngestionSummary = {
   recommendedManifestInspectCommand?: string | null;
   recommendedManifestImportCommand?: string | null;
   recommendedIntakeManifestEntryTemplateTypes?: string[];
+  recommendedIntakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   recommendedIntakeManifestEntryTemplateCount?: number;
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
@@ -725,6 +736,7 @@ type WorkLoopPriority = {
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
   intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   intakeManifestEntryTemplateCount?: number;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
@@ -777,6 +789,39 @@ function formatMaterialTypes(materialTypes: MaterialTypes = {}) {
   }
 
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
+}
+
+function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> {
+  const normalizedDetails = Array.isArray(details)
+    ? details
+      .filter((detail): detail is StarterTemplateDetail => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = typeof detail.type === 'string' ? detail.type.trim() : '';
+        const source = detail.source === 'file' ? 'file' : 'text';
+        const path = typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null;
+        const preview = typeof detail.preview === 'string' && detail.preview.trim().length > 0 ? detail.preview.trim() : null;
+        return type.length > 0
+          ? { type, source, path, preview }
+          : null;
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+    : [];
+
+  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
+    || left.source.localeCompare(right.source)
+    || (left.path ?? '').localeCompare(right.path ?? '')
+    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+}
+
+function formatStarterTemplateDetailSummary(details: unknown): string | null {
+  const normalizedDetails = normalizeStarterTemplateDetails(details);
+  if (normalizedDetails.length === 0) {
+    return null;
+  }
+
+  return normalizedDetails
+    .map((detail) => `${detail.type} ${detail.source === 'file' ? detail.path ?? 'file' : detail.preview ?? 'text'}`)
+    .join(' | ');
 }
 
 function normalizeMaterialTypes(materialTypes: unknown): MaterialTypes | undefined {
@@ -1943,11 +1988,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedTemplateSummary = recommendedIntakeManifestEntryTemplateTypes.length > 0
     ? `${recommendedIntakeManifestEntryTemplateTypes.join(', ')}${recommendedIntakeManifestEntryTemplateCount > 0 ? ` (${recommendedIntakeManifestEntryTemplateCount} total)` : ''}`
     : null;
+  const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2646,9 +2692,13 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
     return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
   };
+  const formatPriorityTemplateDetails = (priority?: WorkLoopPriority | null): string | null => formatStarterTemplateDetailSummary(priority?.intakeManifestEntryTemplateDetails);
   const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
+  const currentPriorityTemplateDetailSummary = formatPriorityTemplateDetails(currentPriority);
   const runnablePriorityTemplateSummary = formatPriorityTemplateSummary(runnablePriority);
+  const runnablePriorityTemplateDetailSummary = formatPriorityTemplateDetails(runnablePriority);
   const actionableReadyPriorityTemplateSummary = formatPriorityTemplateSummary(actionableReadyPriority);
+  const actionableReadyPriorityTemplateDetailSummary = formatPriorityTemplateDetails(actionableReadyPriority);
   const formatPriorityLatestMaterial = (priority?: WorkLoopPriority | null, prefix = '- latest material: '): string | null => {
     const latestMaterialAt = typeof priority?.latestMaterialAt === 'string' && priority.latestMaterialAt.length > 0
       ? priority.latestMaterialAt
@@ -2736,6 +2786,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriorityTemplateSummary
       ? `- starter templates: ${currentPriorityTemplateSummary}`
       : null,
+    currentPriorityTemplateDetailSummary
+      ? `- starter details: ${currentPriorityTemplateDetailSummary}`
+      : null,
     currentPriorityEditPaths.length > 1
       ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
       : (currentPriority?.editPath
@@ -2779,6 +2832,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriorityTemplateSummary
       ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
       : null,
+    showRunnablePriority && runnablePriorityTemplateDetailSummary
+      ? `- runnable starter details: ${runnablePriorityTemplateDetailSummary}`
+      : null,
     showRunnablePriority && runnablePriorityEditPaths.length > 1
       ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
       : (showRunnablePriority && runnablePriority?.editPath
@@ -2821,6 +2877,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     showActionableReadyPriority && actionableReadyPriorityTemplateSummary
       ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriorityTemplateDetailSummary
+      ? `- advisory starter details: ${actionableReadyPriorityTemplateDetailSummary}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
       ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`

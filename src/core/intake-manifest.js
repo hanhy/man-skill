@@ -33,6 +33,35 @@ function normalizeEntryTemplateTypes(entryTemplates) {
     .sort((left, right) => left.localeCompare(right));
 }
 
+function truncateTemplatePreview(value, maxLength = 80) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
+}
+
+function normalizeEntryTemplateDetails(entryTemplates) {
+  const entryTemplateTypes = normalizeEntryTemplateTypes(entryTemplates);
+  return entryTemplateTypes.map((type) => {
+    const template = entryTemplates?.[type];
+    const filePath = isNonEmptyString(template?.file) ? template.file.trim() : null;
+    const textPreview = truncateTemplatePreview(template?.text);
+
+    return {
+      type,
+      source: filePath ? 'file' : 'text',
+      path: filePath,
+      preview: filePath ? null : textPreview,
+    };
+  });
+}
+
 function normalizeManifest(parsedManifest) {
   if (!parsedManifest || typeof parsedManifest !== 'object') {
     return null;
@@ -149,6 +178,7 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
  */
 export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, expectedPersonId = null } = {}) {
   const manifestPath = isNonEmptyString(starterManifestPath) ? starterManifestPath : null;
+  const emptyEntryTemplateDetails = [];
   if (!isNonEmptyString(rootDir) || !manifestPath) {
     return {
       status: 'missing',
@@ -156,6 +186,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: null,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -167,6 +198,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: 'Starter intake manifest is missing',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -180,6 +212,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: error instanceof Error ? error.message : 'Unable to parse intake manifest',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -191,6 +224,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: 'Manifest must be an array or object',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -210,6 +244,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: 'Manifest must contain a non-empty entries array',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -230,16 +265,19 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: error instanceof Error ? error.message : 'Invalid intake manifest',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
   if (hasStarterTemplates) {
+    const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
     return {
       status: 'starter',
       path: manifestPath,
       error: null,
       entryTemplateTypes,
       entryTemplateCount: entryTemplateTypes.length,
+      entryTemplateDetails,
     };
   }
 
@@ -250,6 +288,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       error: 'Manifest must contain a non-empty entries array',
       entryTemplateTypes: [],
       entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
     };
   }
 
@@ -259,5 +298,6 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
     error: null,
     entryTemplateTypes: [],
     entryTemplateCount: 0,
+    entryTemplateDetails: emptyEntryTemplateDetails,
   };
 }

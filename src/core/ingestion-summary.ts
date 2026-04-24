@@ -73,17 +73,52 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
-function collectRecommendedStarterTemplateSummary(profiles: Array<any>): { types: string[]; count: number } {
+function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> {
+  const normalizedDetails = Array.isArray(details)
+    ? details
+      .filter((detail): detail is Record<string, unknown> => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = typeof detail.type === 'string' ? detail.type.trim() : '';
+        const source = detail.source === 'file' ? 'file' : 'text';
+        const path = typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null;
+        const preview = typeof detail.preview === 'string' && detail.preview.trim().length > 0 ? detail.preview.trim() : null;
+        return type.length > 0
+          ? { type, source, path, preview }
+          : null;
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+    : [];
+
+  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
+    || left.source.localeCompare(right.source)
+    || (left.path ?? '').localeCompare(right.path ?? '')
+    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+}
+
+function collectRecommendedStarterTemplateSummary(
+  profiles: Array<any>,
+): {
+  types: string[];
+  count: number;
+  details: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+} {
   const types = Array.from(new Set(
     profiles.flatMap((profile) => Array.isArray(profile?.intakeManifestEntryTemplateTypes)
       ? profile.intakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
       : []),
   )).sort((left, right) => left.localeCompare(right));
 
+  const details = normalizeStarterTemplateDetails(profiles.flatMap((profile) => profile?.intakeManifestEntryTemplateDetails ?? []));
+  const dedupedDetails = Array.from(new Map(details.map((detail) => [
+    `${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`,
+    detail,
+  ])).values());
+
   if (types.length > 0) {
     return {
       types,
       count: types.length,
+      details: dedupedDetails,
     };
   }
 
@@ -97,6 +132,7 @@ function collectRecommendedStarterTemplateSummary(profiles: Array<any>): { types
   return {
     types: [],
     count: fallbackCount,
+    details: dedupedDetails,
   };
 }
 
@@ -680,6 +716,7 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestEntryTemplateTypes = Array.isArray((intakeManifest as any)?.entryTemplateTypes)
     ? [...(intakeManifest as any).entryTemplateTypes]
     : [];
+  const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails((intakeManifest as any)?.entryTemplateDetails);
   const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
     ? (intakeManifest as any).entryTemplateCount
     : 0;
@@ -740,6 +777,7 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestPath: intakeManifest.path,
     intakeManifestError: intakeManifest.error,
     intakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount,
     intakePaths: intake ? [
       intake.importsDir,
@@ -1079,6 +1117,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedManifestInspectCommand: string | null = null;
   let recommendedManifestImportCommand: string | null = null;
   let recommendedIntakeManifestEntryTemplateTypes: string[] = [];
+  let recommendedIntakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> = [];
   let recommendedIntakeManifestEntryTemplateCount = 0;
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
@@ -1178,6 +1217,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestCommand ?? null);
     recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+    recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
     recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
@@ -1418,6 +1458,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedManifestInspectCommand,
     recommendedManifestImportCommand,
     recommendedIntakeManifestEntryTemplateTypes,
+    recommendedIntakeManifestEntryTemplateDetails,
     recommendedIntakeManifestEntryTemplateCount,
     recommendedInspectCommand,
     recommendedFollowUpCommand,

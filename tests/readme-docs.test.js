@@ -394,6 +394,12 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(summary.ingestion.recommendedIntakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
+  assert.deepEqual(summary.ingestion.recommendedIntakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: '<paste a representative short message>' },
+    { type: 'screenshot', source: 'file', path: 'images/chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
   assert.equal(summary.ingestion.recommendedIntakeManifestEntryTemplateCount, 4);
   assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(
@@ -409,6 +415,12 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(summary.workLoop.recommendedPriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.workLoop.recommendedPriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
+  assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: '<paste a representative short message>' },
+    { type: 'screenshot', source: 'file', path: 'images/chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
   assert.equal(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(
@@ -417,7 +429,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   );
   assert.match(
     summary.promptPreview,
-    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; starter templates message, screenshot, talk, text \(4 total\); manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; starter templates message, screenshot, talk, text \(4 total\); starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);

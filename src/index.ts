@@ -1189,6 +1189,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedIntakeManifestEntryTemplateTypes = Array.isArray(ingestionSummary?.recommendedIntakeManifestEntryTemplateTypes)
     ? ingestionSummary.recommendedIntakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const recommendedIntakeManifestEntryTemplateDetails = Array.isArray(ingestionSummary?.recommendedIntakeManifestEntryTemplateDetails)
+    ? ingestionSummary.recommendedIntakeManifestEntryTemplateDetails.filter((value: unknown): value is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(value) && typeof value === 'object' && !Array.isArray(value))
+    : [];
   const recommendedIntakeManifestEntryTemplateCount = Number.isFinite(ingestionSummary?.recommendedIntakeManifestEntryTemplateCount)
     ? ingestionSummary.recommendedIntakeManifestEntryTemplateCount
     : recommendedIntakeManifestEntryTemplateTypes.length;
@@ -1229,6 +1232,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     manifestInspectCommand: recommendedManifestInspectCommand,
     manifestImportCommand: recommendedManifestImportCommand,
     intakeManifestEntryTemplateTypes: recommendedIntakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateDetails: recommendedIntakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount: recommendedIntakeManifestEntryTemplateCount,
     inspectCommand: recommendedInspectCommand,
     followUpCommand: recommendedFollowUpCommand,

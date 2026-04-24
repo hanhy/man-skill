@@ -2331,6 +2331,12 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
     /^\(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)$/,
   );
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: 'Keep the operating note concise.' },
+    { type: 'screenshot', source: 'file', path: 'images/chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: 'Ship the correction while it is still fresh.' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
   assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
@@ -2355,6 +2361,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   assert.match(summary.promptPreview, /advisory next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /advisory refresh intake: \(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)/);
   assert.match(summary.promptPreview, /advisory starter templates: message, screenshot, talk, text \(4 total\)/);
+  assert.match(summary.promptPreview, /advisory starter details: message Keep the operating note concise\. \| screenshot images\/chat\.png \| talk Ship the correction while it is still fresh\. \| text sample\.txt/);
   assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /advisory inspect after editing: \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
   assert.match(summary.promptPreview, /advisory then run: \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
