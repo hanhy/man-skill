@@ -967,6 +967,21 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     : [];
   const profileEditPaths: string[] = Array.from(new Set(profilePaths));
   const profileEditPath: string | null = profileEditPaths[0] ?? null;
+  const profileLatestMaterialAt = typeof recommendedProfile?.latestMaterialAt === 'string' && recommendedProfile.latestMaterialAt.length > 0
+    ? recommendedProfile.latestMaterialAt
+    : null;
+  const profileLatestMaterialId = typeof recommendedProfile?.latestMaterialId === 'string' && recommendedProfile.latestMaterialId.length > 0
+    ? recommendedProfile.latestMaterialId
+    : null;
+  const profileLatestMaterialSourcePath = typeof recommendedProfile?.latestMaterialSourcePath === 'string' && recommendedProfile.latestMaterialSourcePath.length > 0
+    ? recommendedProfile.latestMaterialSourcePath
+    : null;
+  const profileCandidateSignalSummary = typeof recommendedProfile?.candidateSignalSummary === 'string' && recommendedProfile.candidateSignalSummary.length > 0
+    ? recommendedProfile.candidateSignalSummary
+    : null;
+  const profileDraftGapSummary = typeof recommendedProfile?.draftGapSummary === 'string' && recommendedProfile.draftGapSummary.length > 0
+    ? recommendedProfile.draftGapSummary
+    : null;
 
   const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
 
@@ -977,6 +992,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
     command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
+    latestMaterialAt: hasQueuedCoreFoundation ? null : profileLatestMaterialAt,
+    latestMaterialId: hasQueuedCoreFoundation ? null : profileLatestMaterialId,
+    latestMaterialSourcePath: hasQueuedCoreFoundation ? null : profileLatestMaterialSourcePath,
+    candidateSignalSummary: hasQueuedCoreFoundation ? null : profileCandidateSignalSummary,
+    draftGapSummary: hasQueuedCoreFoundation ? null : profileDraftGapSummary,
     editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
     editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,
     followUpCommand,

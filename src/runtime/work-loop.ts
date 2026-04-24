@@ -5,6 +5,11 @@ export type WorkPriority = {
   summary: string;
   nextAction: string | null;
   command: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
   editPath?: string | null;

@@ -711,6 +711,11 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
   editPath?: string | null;
@@ -2642,6 +2647,37 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
   const runnablePriorityTemplateSummary = formatPriorityTemplateSummary(runnablePriority);
   const actionableReadyPriorityTemplateSummary = formatPriorityTemplateSummary(actionableReadyPriority);
+  const formatPriorityLatestMaterial = (priority?: WorkLoopPriority | null, prefix = '- latest material: '): string | null => {
+    const latestMaterialAt = typeof priority?.latestMaterialAt === 'string' && priority.latestMaterialAt.length > 0
+      ? priority.latestMaterialAt
+      : null;
+    const latestMaterialId = typeof priority?.latestMaterialId === 'string' && priority.latestMaterialId.length > 0
+      ? priority.latestMaterialId
+      : null;
+    const latestMaterialSourcePath = typeof priority?.latestMaterialSourcePath === 'string' && priority.latestMaterialSourcePath.length > 0
+      ? priority.latestMaterialSourcePath
+      : null;
+
+    if (!latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath) {
+      return null;
+    }
+
+    return `${prefix}${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`;
+  };
+  const formatPriorityEvidence = (priority?: WorkLoopPriority | null, prefix = '- evidence: '): string | null => {
+    const candidateSignalSummary = typeof priority?.candidateSignalSummary === 'string' && priority.candidateSignalSummary.length > 0
+      ? priority.candidateSignalSummary
+      : null;
+
+    return candidateSignalSummary ? `${prefix}${candidateSignalSummary}` : null;
+  };
+  const formatPriorityDraftGaps = (priority?: WorkLoopPriority | null, prefix = '- draft gaps: '): string | null => {
+    const draftGapSummary = typeof priority?.draftGapSummary === 'string' && priority.draftGapSummary.length > 0
+      ? priority.draftGapSummary
+      : null;
+
+    return draftGapSummary ? `${prefix}${draftGapSummary}` : null;
+  };
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2676,6 +2712,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
       : null,
+    formatPriorityLatestMaterial(currentPriority),
+    formatPriorityEvidence(currentPriority),
+    formatPriorityDraftGaps(currentPriority),
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
@@ -2714,6 +2753,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.command
       ? `- runnable command: ${runnablePriority.command}`
       : null,
+    showRunnablePriority ? formatPriorityLatestMaterial(runnablePriority, '- runnable latest material: ') : null,
+    showRunnablePriority ? formatPriorityEvidence(runnablePriority, '- runnable evidence: ') : null,
+    showRunnablePriority ? formatPriorityDraftGaps(runnablePriority, '- runnable draft gaps: ') : null,
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
@@ -2752,6 +2794,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriority?.command
       ? `- advisory command: ${actionableReadyPriority.command}`
       : null,
+    showActionableReadyPriority ? formatPriorityLatestMaterial(actionableReadyPriority, '- advisory latest material: ') : null,
+    showActionableReadyPriority ? formatPriorityEvidence(actionableReadyPriority, '- advisory evidence: ') : null,
+    showActionableReadyPriority ? formatPriorityDraftGaps(actionableReadyPriority, '- advisory draft gaps: ') : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,

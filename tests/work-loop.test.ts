@@ -1008,9 +1008,17 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
     'profiles/jane-doe/voice/README.md',
   ]);
   assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.equal(summary.workLoop.currentPriority.latestMaterialAt, summary.foundation.maintenance.recommendedLatestMaterialAt);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.foundation.maintenance.recommendedLatestMaterialId);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, 'samples/jane-post.txt');
+  assert.equal(summary.workLoop.currentPriority.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 1 (text) | skills 0');
+  assert.equal(summary.workLoop.currentPriority.draftGapSummary, summary.foundation.maintenance.recommendedDraftGapSummary);
   assert.match(summary.workLoop.currentPriority.summary, /core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /next action: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ new materials/);
+  assert.ok(summary.promptPreview.includes(`latest material: ${summary.workLoop.currentPriority.latestMaterialAt} (${summary.workLoop.currentPriority.latestMaterialId}) @ samples/jane-post.txt`));
+  assert.match(summary.promptPreview, /evidence: memory 1 \(text\) \| voice 1 \(text\) \| soul 1 \(text\) \| skills 0/);
+  assert.match(summary.promptPreview, /draft gaps: memory missing, 1 candidate \(Turn sharp notes into an actual next step\.\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.promptPreview, /edit paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(summary.promptPreview, /then run: node src\/index\.js/);
