@@ -153,8 +153,17 @@ function compareFoundationRefreshPriority(left, right) {
     return generatedDraftDifference;
   }
 
-  return (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '')
-    || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
+  const latestMaterialAtDifference = (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '');
+  if (latestMaterialAtDifference !== 0) {
+    return latestMaterialAtDifference;
+  }
+
+  const latestMaterialIdDifference = (right?.latestMaterialId ?? '').localeCompare(left?.latestMaterialId ?? '');
+  if (latestMaterialIdDifference !== 0) {
+    return latestMaterialIdDifference;
+  }
+
+  return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
 }
 
 function formatHeadingAliasSummary(headingAliases: unknown): string | null {
