@@ -1068,18 +1068,24 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded')
         .map((profile) => profile?.importIntakeCommand),
     ),
-    inspectImportedStarterBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
-    ),
-    replayImportedStarterBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.followUpImportIntakeCommand),
-    ),
-    starterImportBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.starterImportCommand),
-    ),
+    inspectImportedStarterBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
+      )
+      : null,
+    replayImportedStarterBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand),
+      )
+      : null,
+    starterImportBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.starterImportCommand),
+      )
+      : null,
     updateProfileBundle: buildCommandBundle(
       orderedProfileCommands
         .map((profile) => profile?.updateProfileCommand),
