@@ -118,6 +118,47 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
 });
 
+test('refreshFoundationDrafts persists latest material source provenance into generated draft artifacts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Source Provenance',
+    text: 'Start with the quick signal.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Source Provenance',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+
+  ingestion.refreshFoundationDrafts({ personId: 'Source Provenance' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'source-provenance', 'memory', 'long-term', 'foundation.json');
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'source-provenance', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'source-provenance', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'source-provenance', 'skills', 'README.md');
+
+  const expectedSourcePath = 'latest-source.txt';
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(memoryDraft.latestMaterialSourcePath, expectedSourcePath);
+
+  const sourcePathPattern = new RegExp(`Latest material source: ${expectedSourcePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+  assert.match(fs.readFileSync(voiceDraftPath, 'utf8'), sourcePathPattern);
+  assert.match(fs.readFileSync(soulDraftPath, 'utf8'), sourcePathPattern);
+  assert.match(fs.readFileSync(skillsDraftPath, 'utf8'), sourcePathPattern);
+
+  const [profile] = loader.loadProfilesIndex();
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, expectedSourcePath);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, expectedSourcePath);
+  assert.equal(profile.foundationDraftSummaries.soul.latestMaterialSourcePath, expectedSourcePath);
+  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialSourcePath, expectedSourcePath);
+});
+
 test('refreshFoundationDrafts rewrites a memory foundation draft when its stored personId drifts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

@@ -710,6 +710,7 @@ export function parseDraftMetadata(filePath) {
   const summaryMatch = content.match(/^Summary:\s+(.+)$/m);
   const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
+  const latestMaterialSourceMatch = content.match(/^Latest material source:\s+(.+)$/m);
   const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
   const profileId = profileMatch?.[1] ?? null;
   const displayName = displayNameMatch?.[1] ?? null;
@@ -717,6 +718,9 @@ export function parseDraftMetadata(filePath) {
   const generatedAt = generatedAtMatch?.[1] ?? null;
   const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
   const latestMaterialId = latestMaterialMatch?.[2] ?? null;
+  const latestMaterialSourcePath = latestMaterialSourceMatch?.[1] && latestMaterialSourceMatch[1] !== 'Not set.'
+    ? latestMaterialSourceMatch[1]
+    : null;
   const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
   const materialTypes = parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null);
 
@@ -727,6 +731,7 @@ export function parseDraftMetadata(filePath) {
     generatedAt,
     latestMaterialAt,
     latestMaterialId,
+    latestMaterialSourcePath,
     sourceCount,
     materialTypes,
     valid: Boolean(
@@ -1024,6 +1029,7 @@ function summarizeLegacyMemoryDraft(memoryDraft) {
     generatedAt: memoryDraft?.generatedAt ?? null,
     latestMaterialAt: memoryDraft?.latestMaterialAt ?? null,
     latestMaterialId: memoryDraft?.latestMaterialId ?? null,
+    latestMaterialSourcePath: memoryDraft?.latestMaterialSourcePath ?? null,
     sourceCount,
     materialTypes,
   };
@@ -1052,6 +1058,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: memoryMetadata.generatedAt,
           latestMaterialAt: memoryMetadata.latestMaterialAt,
           latestMaterialId: memoryMetadata.latestMaterialId,
+          latestMaterialSourcePath: memoryMetadata.latestMaterialSourcePath,
           sourceCount: memoryMetadata.sourceCount,
           materialTypes: memoryMetadata.materialTypes,
           entryCount: memoryDraft.entryCount ?? 0,
@@ -1067,6 +1074,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
+          latestMaterialSourcePath: null,
           sourceCount: 0,
           materialTypes: {},
           entryCount: 0,
@@ -1079,6 +1087,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: voiceMetadata.generatedAt,
           latestMaterialAt: voiceMetadata.latestMaterialAt,
           latestMaterialId: voiceMetadata.latestMaterialId,
+          latestMaterialSourcePath: voiceMetadata.latestMaterialSourcePath,
           sourceCount: voiceMetadata.sourceCount,
           materialTypes: voiceMetadata.materialTypes,
           highlights: readMarkdownHighlights(voiceDraftPath),
@@ -1090,6 +1099,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
+          latestMaterialSourcePath: null,
           sourceCount: 0,
           materialTypes: {},
           highlights: [],
@@ -1102,6 +1112,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: soulMetadata.generatedAt,
           latestMaterialAt: soulMetadata.latestMaterialAt,
           latestMaterialId: soulMetadata.latestMaterialId,
+          latestMaterialSourcePath: soulMetadata.latestMaterialSourcePath,
           sourceCount: soulMetadata.sourceCount,
           materialTypes: soulMetadata.materialTypes,
           highlights: readMarkdownHighlights(soulDraftPath),
@@ -1113,6 +1124,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
+          latestMaterialSourcePath: null,
           sourceCount: 0,
           materialTypes: {},
           highlights: [],
@@ -1125,6 +1137,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: skillsMetadata.generatedAt,
           latestMaterialAt: skillsMetadata.latestMaterialAt,
           latestMaterialId: skillsMetadata.latestMaterialId,
+          latestMaterialSourcePath: skillsMetadata.latestMaterialSourcePath,
           sourceCount: skillsMetadata.sourceCount,
           materialTypes: skillsMetadata.materialTypes,
           highlights: readMarkdownHighlights(skillsDraftPath),
@@ -1136,6 +1149,7 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
           generatedAt: null,
           latestMaterialAt: null,
           latestMaterialId: null,
+          latestMaterialSourcePath: null,
           sourceCount: 0,
           materialTypes: {},
           highlights: [],

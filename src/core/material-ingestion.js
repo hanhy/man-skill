@@ -234,6 +234,7 @@ function deriveMaterialFingerprint(record, rootDir = null) {
 }
 
 function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
+  const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
   return [
     `# ${title}`,
     '',
@@ -242,6 +243,7 @@ function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, gen
     `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
     `Generated at: ${generatedAt}`,
     `Latest material: ${latestMaterialRecord?.createdAt ?? 'Not set.'} (${latestMaterialRecord?.id ?? 'none'})`,
+    `Latest material source: ${latestMaterialSourcePath ?? 'Not set.'}`,
     `Source materials: ${materialCount} (${formatMaterialTypes(materialTypes)})`,
     '',
   ];
@@ -1693,6 +1695,7 @@ export class MaterialIngestion {
           generatedAt,
           latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
           latestMaterialId: latestMaterialRecord?.id ?? null,
+          latestMaterialSourcePath: latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null,
           materialTypes,
           entryCount: memoryEntries.length,
           entries: memoryEntries,

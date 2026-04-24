@@ -978,6 +978,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.memory.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialAt, profile.latestMaterialAt);
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialId, profile.latestMaterialId);
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, 'chat.png');
   assert.equal(profile.foundationDraftSummaries.memory.sourceCount, 3);
   assert.deepEqual(profile.foundationDraftSummaries.memory.materialTypes, {
     message: 1,
@@ -997,6 +998,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
   assert.equal(profile.foundationDraftSummaries.voice.latestMaterialAt, profile.latestMaterialAt);
   assert.equal(profile.foundationDraftSummaries.voice.latestMaterialId, profile.latestMaterialId);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, 'chat.png');
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
     '- [message] Ship the first slice.',
     '- [text] Direct writing sample.',
@@ -1011,6 +1013,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
+    latestMaterialSourcePath: 'chat.png',
     sourceCount: 3,
     materialTypes: {
       message: 1,
@@ -1029,6 +1032,7 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
+    latestMaterialSourcePath: 'chat.png',
     sourceCount: 3,
     materialTypes: {
       message: 1,
@@ -1119,6 +1123,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1133,6 +1138,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1147,6 +1153,7 @@ test('loadProfilesIndex marks legacy markdown foundation drafts without structur
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1222,6 +1229,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1236,6 +1244,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1251,6 +1260,7 @@ test('loadProfilesIndex reports ready sections for partially structured stale pr
     generatedAt: null,
     latestMaterialAt: null,
     latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -2998,6 +3008,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
           generatedAt: '2026-04-20T12:05:00.000Z',
           latestMaterialAt: '2026-04-20T12:00:00.000Z',
           latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
           sourceCount: 2,
           materialTypes: { message: 1, talk: 1 },
           entryCount: 1,
@@ -3087,6 +3098,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
       generatedAt: '2026-04-20T12:05:00.000Z',
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
       sourceCount: 2,
       materialTypes: { message: 1, talk: 1 },
       entryCount: 1,

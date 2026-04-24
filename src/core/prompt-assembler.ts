@@ -31,6 +31,7 @@ type MemoryDraftSummary = {
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string | null;
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   entryCount?: number;
@@ -44,6 +45,7 @@ type HighlightDraftSummary = {
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string | null;
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   highlights?: string[];
@@ -93,6 +95,7 @@ type ProfileSnapshotDraftSourceSummary = {
   generatedAt?: string | null;
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   entryCount?: number;
@@ -1030,11 +1033,12 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
     const generatedAt = normalizeOptionalString(summary.generatedAt);
     const latestMaterialAt = normalizeOptionalString(summary.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(summary.latestMaterialId);
+    const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
     const sourceCount = Number(summary.sourceCount ?? 0);
     const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
     const materialTypes = normalizeMaterialTypes(summary.materialTypes);
 
-    if (!path && !generatedAt && !latestMaterialAt && !latestMaterialId && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+    if (!path && !generatedAt && !latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
       return accumulator;
     }
 
@@ -1044,6 +1048,7 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
       ...(generatedAt ? { generatedAt } : {}),
       ...(latestMaterialAt ? { latestMaterialAt } : {}),
       ...(latestMaterialId ? { latestMaterialId } : {}),
+      ...(latestMaterialSourcePath ? { latestMaterialSourcePath } : {}),
       ...(sourceCount > 0 ? { sourceCount } : {}),
       ...(materialTypes ? { materialTypes } : {}),
       ...(key === 'memory' && entryCount > 0 ? { entryCount } : {}),
