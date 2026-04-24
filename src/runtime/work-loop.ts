@@ -8,6 +8,8 @@ export type WorkPriority = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  refreshReasons?: string[];
+  missingDrafts?: string[];
   candidateSignalSummary?: string | null;
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;

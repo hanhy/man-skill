@@ -1013,10 +1013,14 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
   assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, 'samples/jane-post.txt');
   assert.equal(summary.workLoop.currentPriority.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 1 (text) | skills 0');
   assert.equal(summary.workLoop.currentPriority.draftGapSummary, summary.foundation.maintenance.recommendedDraftGapSummary);
+  assert.deepEqual(summary.workLoop.currentPriority.refreshReasons, ['missing drafts', 'new materials']);
+  assert.deepEqual(summary.workLoop.currentPriority.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
   assert.match(summary.workLoop.currentPriority.summary, /core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 4\/4 ready; profiles 1 queued for refresh, 1 incomplete/);
   assert.match(summary.promptPreview, /next action: refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ new materials/);
   assert.ok(summary.promptPreview.includes(`latest material: ${summary.workLoop.currentPriority.latestMaterialAt} (${summary.workLoop.currentPriority.latestMaterialId}) @ samples/jane-post.txt`));
+  assert.match(summary.promptPreview, /refresh reasons: missing drafts \+ new materials/);
+  assert.match(summary.promptPreview, /missing drafts: memory, skills, soul, voice/);
   assert.match(summary.promptPreview, /evidence: memory 1 \(text\) \| voice 1 \(text\) \| soul 1 \(text\) \| skills 0/);
   assert.match(summary.promptPreview, /draft gaps: memory missing, 1 candidate \(Turn sharp notes into an actual next step\.\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'jane-doe'/);
@@ -4257,6 +4261,8 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     "(node src/index.js update foundation --person 'jane-doe') && (node src/index.js update foundation --person 'harry-han')",
   );
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with Jane Doe (jane-doe) (missing drafts + new materials); evidence memory 1 (message) | voice 1 (message) | soul 0 | skills 0');
+  assert.deepEqual(summary.workLoop.currentPriority.refreshReasons, ['missing drafts', 'new materials']);
+  assert.deepEqual(summary.workLoop.currentPriority.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
@@ -4268,6 +4274,8 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
     'profiles/harry-han/voice/README.md',
   ]);
   assert.match(summary.promptPreview, /next action: refresh stale or incomplete target profiles — starting with Jane Doe \(jane-doe\) \(missing drafts \+ new materials\); evidence memory 1 \(message\) \| voice 1 \(message\) \| soul 0 \| skills 0/);
+  assert.match(summary.promptPreview, /refresh reasons: missing drafts \+ new materials/);
+  assert.match(summary.promptPreview, /missing drafts: memory, skills, soul, voice/);
   assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'jane-doe'\) && \(node src\/index\.js update foundation --person 'harry-han'\)/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);

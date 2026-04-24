@@ -976,6 +976,12 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const profileLatestMaterialSourcePath = typeof recommendedProfile?.latestMaterialSourcePath === 'string' && recommendedProfile.latestMaterialSourcePath.length > 0
     ? recommendedProfile.latestMaterialSourcePath
     : null;
+  const profileRefreshReasons = Array.isArray(recommendedProfile?.refreshReasons)
+    ? recommendedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const profileMissingDrafts = Array.isArray(recommendedProfile?.missingDrafts)
+    ? recommendedProfile.missingDrafts.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
   const profileCandidateSignalSummary = typeof recommendedProfile?.candidateSignalSummary === 'string' && recommendedProfile.candidateSignalSummary.length > 0
     ? recommendedProfile.candidateSignalSummary
     : null;
@@ -995,6 +1001,8 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     latestMaterialAt: hasQueuedCoreFoundation ? null : profileLatestMaterialAt,
     latestMaterialId: hasQueuedCoreFoundation ? null : profileLatestMaterialId,
     latestMaterialSourcePath: hasQueuedCoreFoundation ? null : profileLatestMaterialSourcePath,
+    refreshReasons: hasQueuedCoreFoundation ? [] : profileRefreshReasons,
+    missingDrafts: hasQueuedCoreFoundation ? [] : profileMissingDrafts,
     candidateSignalSummary: hasQueuedCoreFoundation ? null : profileCandidateSignalSummary,
     draftGapSummary: hasQueuedCoreFoundation ? null : profileDraftGapSummary,
     editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
