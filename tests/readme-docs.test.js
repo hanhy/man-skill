@@ -280,6 +280,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.deepEqual(summary.profileSnapshots[0].materialTypes, { message: 1, screenshot: 1, talk: 1, text: 1 });
   assert.equal(summary.profileSnapshots[0].latestMaterialId, summary.profiles[0].latestMaterialId);
   assert.equal(summary.profileSnapshots[0].latestMaterialSourcePath, summary.profiles[0].latestMaterialSourcePath);
+  assert.deepEqual(summary.profileSnapshots[0].readiness.memory.sampleTypes, ['text', 'talk', 'screenshot', 'message']);
+  assert.match(summary.profileSnapshots[0].snapshot, /memory candidates: 4 \(message, screenshot, talk, text\) \| voice: 3 \(message, talk, text\) \| soul: 2 \(talk, text\) \| skills: 1 \(talk\)/);
   assert.equal(summary.profileSnapshots[0].refreshCommand, null);
   assert.deepEqual(summary.profileSnapshots[0].refreshPaths, []);
   assert.deepEqual(summary.profileSnapshots[0].draftStatus, {

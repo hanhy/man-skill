@@ -535,6 +535,7 @@ function summarizeFoundationReadiness(materialRecords) {
     memory: {
       candidateCount: memoryRecords.length,
       latestTypes: memoryRecords.slice(0, 3).map((record) => record.type),
+      sampleTypes: Array.from(new Set(memoryRecords.map((record) => record.type))),
       sampleSummaries: memoryRecords
         .filter((record) => record.type !== 'screenshot')
         .map((record) => buildExcerpt(record.content ?? record.notes ?? record.sourceFile))
