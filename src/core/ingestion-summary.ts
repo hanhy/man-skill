@@ -1007,12 +1007,21 @@ function collectLoadedManifestFilePaths(rootDir: string, relativeManifestPath: s
   return Array.from(new Set(entries
     .filter((entry) => entry && typeof entry === 'object' && typeof entry.file === 'string' && entry.file.trim().length > 0)
     .map((entry) => {
-      const resolvedFilePath = path.resolve(manifestDir, entry.file);
-      const realFilePath = fs.realpathSync(resolvedFilePath);
-      const relativeFilePath = path.relative(realRootDir, realFilePath);
-      return path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')
-        ? null
-        : relativeFilePath.split(path.sep).join('/');
+      const normalizedEntryFile = normalizeRelativePath(entry.file);
+      if (!normalizedEntryFile) {
+        return null;
+      }
+
+      try {
+        const resolvedFilePath = path.resolve(manifestDir, normalizedEntryFile);
+        const realFilePath = fs.realpathSync(resolvedFilePath);
+        const relativeFilePath = path.relative(realRootDir, realFilePath);
+        return path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')
+          ? null
+          : relativeFilePath.split(path.sep).join('/');
+      } catch {
+        return null;
+      }
     })
     .filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
