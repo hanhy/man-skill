@@ -6011,11 +6011,14 @@ test('buildSummary treats sample manifests with missing referenced files as inva
 
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleManifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
   assert.equal(summary.ingestion.sampleManifestCommand, null);
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
   assert.equal(summary.ingestion.sampleTextPersonId, null);
   assert.equal(summary.ingestion.sampleTextCommand, null);
   assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 references a missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 references a missing file: missing-post\.txt @ samples\/harry-materials\.json/);
+  assert.match(summary.promptPreview, /next intake: fix the checked-in sample manifest for first imports — missing file: missing-post\.txt; manifest inspect node src\/index\.js import manifest --file 'samples\/harry-materials\.json' @ samples\/harry-materials\.json/);
   assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
 });
 
