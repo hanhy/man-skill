@@ -93,7 +93,8 @@ test('README documents the default delivery foundation targets and repo manifest
   assert.match(readme, /separate `lead:`, `recommended:`, `current:`, `runnable:`, and `advisory:` lines/i);
   assert.match(readme, /`recommended fallback:`, `recommended refresh intake:`, `recommended edit:`, `recommended edit paths:`, `recommended manifest inspect:`, `recommended manifest:`, `recommended inspect after editing:`, and `recommended then run:` lines/i);
   assert.match(readme, /`readyPriorityCount`, `queuedPriorityCount`, and `blockedPriorityCount`/i);
-  assert.match(readme, /separate `lead:`, `recommended:`, `current:`, `runnable:`, and `advisory:` lines/i);
+  assert.match(readme, /prompt preview also mirrors the delivery readiness lines `runtime implementations: \.\.\.`, `auth readiness: \.\.\.`, `channel env backlog: \.\.\.`, and `provider env backlog: \.\.\.`/i);
+  assert.match(readme, /helper palette keeps `env`, `delivery env`, `channel env`, and `provider env` labels copy-pasteable for the shared bootstrap and narrowed repo-local populate helpers/i);
   assert.match(readme, /manifests\/channels\.json/);
   assert.match(readme, /manifests\/providers\.json/);
 });
@@ -115,6 +116,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /during bootstrap that means `paths` includes both `\.env\.example` and `\.env` so the active step names the full copy surface rather than only the shared template/i);
   assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
   assert.match(architectureDoc, /delivery priorities as `blocked`.*rollout leader is auth-blocked and otherwise runtime-ready.*later channels\/providers still have missing implementation files/i);
+  assert.match(architectureDoc, /prompt preview also keeps compact delivery readiness lines like `runtime implementations: \.\.\.`, `auth readiness: \.\.\.`, `channel env backlog: \.\.\.`, and `provider env backlog: \.\.\.` so operators can see what is blocked before opening the raw delivery queue/i);
+  assert.match(architectureDoc, /helper labels `env`, `delivery env`, `channel env`, and `provider env` stay stable between JSON helper bundles and the rendered prompt palette/i);
   assert.match(architectureDoc, /sampleStarterSource/);
   assert.match(architectureDoc, /exact helper-command bundles for scaffold\/import\/refresh work/);
   assert.match(architectureDoc, /count-aware candidate coverage across memory, voice, soul, and skills/i);
@@ -155,6 +158,8 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /blocked delivery priorities keep their exact env\/bootstrap command and `\.env\.example, \.env` bootstrap paths intact/i);
   assert.match(ingestionDoc, /once `\.env` already exists, the blocked delivery step narrows to the repo-local `touch '\.env' && \.{3}` populate helper so `paths` drops back to `\.env`/i);
   assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
+  assert.match(ingestionDoc, /compact delivery readiness lines like `runtime implementations: \.\.\.`, `auth readiness: \.\.\.`, `channel env backlog: \.\.\.`, and `provider env backlog: \.\.\.` stay mirrored in the prompt preview so blocked rollout state is visible without reopening raw queue JSON/i);
+  assert.match(ingestionDoc, /helper labels `env`, `delivery env`, `channel env`, and `provider env` keep the shared bootstrap and narrowed populate commands copy-pasteable across both JSON and prompt-preview surfaces/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest inspect command via `sampleManifestInspectCommand`/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
   assert.match(ingestionDoc, /generic inspect-first manifest helper via `importManifestInspectCommand`/);
