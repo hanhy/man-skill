@@ -49,6 +49,7 @@ When an already-imported profile still only has the untouched `profiles/<person-
 The per-profile command palette still stays actionable in that starter-template state. Prompt rows and JSON bundles keep all of these visible from one place:
 - a concrete `starter details ...` summary derived from `intakeManifestEntryTemplateDetails`, so the operator can see placeholder text/file expectations without reopening `materials.template.json`
 - `refresh-intake` via `node src/index.js update intake --person <id> ...`
+- plain `update` via `node src/index.js update profile --person <id> ...` so operators can fix target metadata without immediately regenerating drafts
 - `after-editing import` via `node src/index.js import intake --person <id>` when you want to inspect the replay without regenerating drafts yet
 - `after-editing import+refresh` via `node src/index.js import intake --person <id> --refresh-foundation` when the same replay should regenerate memory / voice / soul / skills drafts
 - `importManifestWithoutRefreshCommand` plus `helperCommands.importManifest` for `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'`

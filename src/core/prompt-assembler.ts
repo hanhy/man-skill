@@ -2324,11 +2324,13 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       })();
       const starterImportSegment = starterImportCommand ? ` | import ${starterImportCommand}` : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
-      const syncCommand = profile.updateProfileAndRefreshCommand ?? null;
-      const updateSegment = syncCommand
-        ? ` | sync ${syncCommand}`
-        : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${starterTemplateRootSegment}${starterTemplateDetailSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      const updateProfileSegment = profile.updateProfileCommand
+        ? ` | update ${profile.updateProfileCommand}`
+        : '';
+      const syncSegment = profile.updateProfileAndRefreshCommand
+        ? ` | sync ${profile.updateProfileAndRefreshCommand}`
+        : '';
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${starterTemplateRootSegment}${starterTemplateDetailSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateProfileSegment}${syncSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
