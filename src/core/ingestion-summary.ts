@@ -1575,6 +1575,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedRefreshIntakeCommand = invalidReadyIntakeProfiles.length > 1
         ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
         : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null);
+      recommendedUpdateProfileCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.updateProfileCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.updateProfileCommand ?? null);
+      recommendedUpdateProfileAndRefreshCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.updateProfileAndRefreshCommand ?? null);
       recommendedEditPath = normalizeDraftPath(firstInvalidReadyIntakeProfile?.intakeManifestPath ?? null) ?? null;
       recommendedEditPaths = invalidReadyIntakeProfiles.length > 1
         ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
