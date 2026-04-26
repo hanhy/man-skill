@@ -76,6 +76,38 @@ function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
     });
 }
 
+function toRepoRelativePath(realRootDir, absolutePath) {
+  if (!isNonEmptyString(realRootDir) || !isNonEmptyString(absolutePath)) {
+    return null;
+  }
+
+  const relativePath = path.relative(realRootDir, absolutePath);
+  if (path.isAbsolute(relativePath) || relativePath === '..' || relativePath.startsWith(`..${path.sep}`)) {
+    return null;
+  }
+
+  return relativePath.split(path.sep).join('/');
+}
+
+function attachRepairPaths(error, repairPaths = []) {
+  if (!(error instanceof Error)) {
+    return error;
+  }
+
+  const normalizedRepairPaths = Array.from(new Set(repairPaths.filter((value) => isNonEmptyString(value)).map((value) => value.trim())));
+  if (normalizedRepairPaths.length > 0) {
+    error.repairPaths = normalizedRepairPaths;
+  }
+
+  return error;
+}
+
+function extractRepairPaths(error) {
+  return Array.isArray(error?.repairPaths)
+    ? Array.from(new Set(error.repairPaths.filter((value) => isNonEmptyString(value)).map((value) => value.trim())))
+    : [];
+}
+
 function normalizeManifest(parsedManifest) {
   if (!parsedManifest || typeof parsedManifest !== 'object') {
     return null;
@@ -141,6 +173,7 @@ function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
 function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, manifest, entries }) {
   const absoluteManifestPath = path.join(rootDir, starterManifestPath);
   const manifestDir = path.dirname(absoluteManifestPath);
+  const realManifestDir = fs.realpathSync(manifestDir);
   const realRootDir = fs.realpathSync(rootDir);
   const supportedTypes = new Set(['text', 'message', 'talk', 'screenshot']);
   const manifestPersonId = isNonEmptyString(manifest?.personId) ? manifest.personId : null;
@@ -169,18 +202,25 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
         throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
       }
 
-      const resolvedFilePath = path.resolve(manifestDir, entry.file);
+      const resolvedFilePath = path.resolve(realManifestDir, entry.file);
+      const relativeResolvedFilePath = toRepoRelativePath(realRootDir, resolvedFilePath);
       if (!fs.existsSync(resolvedFilePath)) {
-        throw new Error(`Manifest entry ${index} references a missing file: ${entry.file}`);
+        throw attachRepairPaths(
+          new Error(`Manifest entry ${index} references a missing file: ${entry.file}`),
+          relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
+        );
       }
 
       const realFilePath = fs.realpathSync(resolvedFilePath);
       if (!fs.statSync(realFilePath).isFile()) {
-        throw new Error(`Manifest entry ${index} references a non-file path: ${entry.file}`);
+        throw attachRepairPaths(
+          new Error(`Manifest entry ${index} references a non-file path: ${entry.file}`),
+          relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
+        );
       }
 
-      const relativeFilePath = path.relative(realRootDir, realFilePath);
-      if (path.isAbsolute(relativeFilePath) || relativeFilePath === '..' || relativeFilePath.startsWith(`..${path.sep}`)) {
+      const relativeFilePath = toRepoRelativePath(realRootDir, realFilePath);
+      if (!relativeFilePath) {
         throw new Error(`Manifest entry ${index} references a file outside the repo: ${entry.file}`);
       }
     }
@@ -193,11 +233,13 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
 export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, expectedPersonId = null } = {}) {
   const manifestPath = isNonEmptyString(starterManifestPath) ? starterManifestPath : null;
   const emptyEntryTemplateDetails = [];
+  const emptyRepairPaths = [];
   if (!isNonEmptyString(rootDir) || !manifestPath) {
     return {
       status: 'missing',
       path: manifestPath,
       error: null,
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -210,6 +252,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'missing',
       path: manifestPath,
       error: 'Starter intake manifest is missing',
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -224,6 +267,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: error instanceof Error ? error.message : 'Unable to parse intake manifest',
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -236,6 +280,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must be an array or object',
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -256,6 +301,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must contain a non-empty entries array',
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -285,6 +331,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: error instanceof Error ? error.message : 'Invalid intake manifest',
+      repairPaths: extractRepairPaths(error),
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -297,6 +344,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'starter',
       path: manifestPath,
       error: null,
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes,
       entryTemplateCount: entryTemplateTypes.length,
       entryTemplateDetails,
@@ -308,6 +356,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       status: 'invalid',
       path: manifestPath,
       error: 'Manifest must contain a non-empty entries array',
+      repairPaths: emptyRepairPaths,
       entryTemplateTypes: [],
       entryTemplateCount: 0,
       entryTemplateDetails: emptyEntryTemplateDetails,
@@ -318,6 +367,7 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
     status: 'loaded',
     path: manifestPath,
     error: null,
+    repairPaths: emptyRepairPaths,
     entryTemplateTypes: [],
     entryTemplateCount: 0,
     entryTemplateDetails: emptyEntryTemplateDetails,

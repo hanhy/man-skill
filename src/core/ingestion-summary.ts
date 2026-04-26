@@ -572,6 +572,7 @@ function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null
       status: 'missing',
       path: starterManifestPath,
       error: null,
+      repairPaths: [],
     };
   }
 
@@ -754,6 +755,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestEntryTemplateTypes = Array.isArray((intakeManifest as any)?.entryTemplateTypes)
     ? [...(intakeManifest as any).entryTemplateTypes]
     : [];
+  const intakeManifestRepairPaths = Array.isArray((intakeManifest as any)?.repairPaths)
+    ? Array.from(new Set((intakeManifest as any).repairPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)))
+    : [];
   const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails((intakeManifest as any)?.entryTemplateDetails);
   const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
     ? (intakeManifest as any).entryTemplateCount
@@ -819,13 +823,18 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount,
-    intakePaths: intake ? [
-      intake.importsDir,
-      intake.sampleImagesDirPath,
-      intake.intakeReadmePath,
-      intake.starterManifestPath,
-      intake.sampleTextPath,
-    ].filter(Boolean) : [],
+    intakePaths: intakeManifest.status === 'invalid'
+      ? Array.from(new Set([
+        intakeManifest.path,
+        ...intakeManifestRepairPaths,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0)))
+      : intake ? [
+        intake.importsDir,
+        intake.sampleImagesDirPath,
+        intake.intakeReadmePath,
+        intake.starterManifestPath,
+        intake.sampleTextPath,
+      ].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestWithoutRefreshCommand: intakeImportManifestWithoutRefreshCommand,
     importManifestCommand: intakeImportManifestCommand,
@@ -1259,8 +1268,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
-      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : (firstInvalidImportedIntakeProfile?.intakeManifestPath ? [firstInvalidImportedIntakeProfile.intakeManifestPath] : []);
+      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
+      : collectProfileIntakePaths(firstInvalidImportedIntakeProfile);
   } else if (importedStarterIntakeProfiles.length > 0) {
     const firstImportedStarterIntakeProfile = importedStarterIntakeProfiles[0] ?? null;
     const starterTemplateSummary = collectRecommendedStarterTemplateSummary(importedStarterIntakeProfiles);
@@ -1366,8 +1375,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)
         : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? helperCommands.repairInvalidBundle ?? null);
       recommendedPaths = invalidReadyIntakeProfiles.length > 1
-        ? Array.from(new Set(invalidReadyIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-        : (firstInvalidReadyIntakeProfile?.intakeManifestPath ? [firstInvalidReadyIntakeProfile.intakeManifestPath] : []);
+        ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
+        : collectProfileIntakePaths(firstInvalidReadyIntakeProfile);
     } else if (readyIntakeProfiles.length > 0) {
       const firstReadyIntakeProfile = readyIntakeProfiles[0] ?? null;
       recommendedProfileId = firstReadyIntakeProfile?.personId ?? null;

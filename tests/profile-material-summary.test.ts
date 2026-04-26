@@ -5170,6 +5170,10 @@ test('buildSummary suppresses broken intake import shortcuts when a profile-loca
   assert.equal(metadataOnlyCommand.intakeManifestStatus, 'invalid');
   assert.match(metadataOnlyCommand.intakeManifestError, /missing file/);
   assert.equal(metadataOnlyCommand.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
+  assert.deepEqual(metadataOnlyCommand.intakePaths, [
+    'profiles/metadata-only/imports/materials.template.json',
+    'profiles/metadata-only/imports/missing-post.txt',
+  ]);
   assert.equal(metadataOnlyCommand.importIntakeCommand, null);
   assert.equal(metadataOnlyCommand.importManifestCommand, null);
   assert.equal(metadataOnlyCommand.importMaterialCommand, null);
