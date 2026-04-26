@@ -5,6 +5,7 @@ import {
   FileSystemLoader,
   loadFoundationDraftStatus,
 } from './fs-loader.js';
+import { buildFoundationRollup } from './foundation-rollup.ts';
 import { inspectProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value) {
@@ -1915,40 +1916,10 @@ export class MaterialIngestion {
   }
 
   refreshStaleFoundationDrafts() {
-    const profilesDir = this.resolve('profiles');
-    const profileIds = listDirectoriesIfExists(profilesDir)
-      .filter((profileId) => {
-        const materialRecords = this.loadMaterialRecords(profileId);
-        if (materialRecords.length === 0) {
-          return false;
-        }
-
-        const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
-        const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
-        const latestMaterialId = latestMaterialRecord?.id ?? null;
-        const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
-        const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
-        const materialTypes = materialRecords.reduce((summary, record) => {
-          if (!isNonEmptyString(record?.type)) {
-            return summary;
-          }
-
-          summary[record.type] = (summary[record.type] ?? 0) + 1;
-          return summary;
-        }, {});
-        const foundationDraftStatus = loadFoundationDraftStatus(
-          this.rootDir,
-          profileId,
-          latestMaterialAt,
-          latestMaterialId,
-          latestMaterialSourcePath,
-          profileDocument,
-          materialRecords.length,
-          materialTypes,
-        );
-
-        return foundationDraftStatus.needsRefresh;
-      });
+    const loader = new FileSystemLoader(this.rootDir);
+    const profileIds = buildFoundationRollup(loader.loadProfilesIndex()).maintenance.queuedProfiles
+      .map((profile) => profile.id)
+      .filter((profileId) => isNonEmptyString(profileId));
 
     return {
       profileCount: profileIds.length,

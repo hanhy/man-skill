@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { FileSystemLoader } from '../src/core/fs-loader.js';
+import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 
 function makeTempRepo() {
@@ -1706,6 +1707,48 @@ test('refreshStaleFoundationDrafts follows the same stale-foundation status as l
       refreshReasons: ['new materials', 'draft metadata drift'],
     },
   ]);
+});
+
+test('refreshStaleFoundationDrafts orders stale refreshes the same way as the foundation rollup queue', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Z Meta',
+    displayName: 'Z Meta',
+    summary: 'First summary.',
+  });
+  ingestion.importMessage({
+    personId: 'Z Meta',
+    text: 'Keep metadata drift visible.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Z Meta' });
+  ingestion.updateProfile({
+    personId: 'Z Meta',
+    displayName: 'Z Meta',
+    summary: 'Updated summary after draft generation.',
+  });
+
+  ingestion.importMessage({
+    personId: 'A Material',
+    text: 'Ship the first slice.',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'A Material' });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  ingestion.importTalkSnippet({
+    personId: 'A Material',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+
+  const queuedProfileOrder = buildFoundationRollup(loader.loadProfilesIndex()).maintenance.queuedProfiles
+    .map((profile) => profile.id);
+  const refreshOrder = ingestion.refreshStaleFoundationDrafts().results
+    .map((entry) => entry.personId);
+
+  assert.deepEqual(queuedProfileOrder, ['z-meta', 'a-material']);
+  assert.deepEqual(refreshOrder, queuedProfileOrder);
 });
 
 test('refreshStaleFoundationDrafts refreshes profiles when memory draft personId metadata drifts', () => {
