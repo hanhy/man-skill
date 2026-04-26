@@ -2695,6 +2695,16 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
       && (!showRunnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority?.id ?? runnablePriority?.label)),
   );
+  const showRecommendedPriorityDetails = Boolean(
+    recommendedPriority
+      && (!currentPriority || (recommendedPriority.id ?? recommendedPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
+  const recommendedPriorityEditPaths = Array.isArray(recommendedPriority?.editPaths)
+    ? recommendedPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (recommendedPriority?.editPath ? [recommendedPriority.editPath] : []);
+  const recommendedPriorityInspectCommand = typeof recommendedPriority?.inspectCommand === 'string' && recommendedPriority.inspectCommand.length > 0
+    ? recommendedPriority.inspectCommand
+    : null;
   const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
     ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (currentPriority?.editPath ? [currentPriority.editPath] : []);
@@ -2728,6 +2738,8 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
   };
   const formatPriorityTemplateDetails = (priority?: WorkLoopPriority | null): string | null => formatStarterTemplateDetailSummary(priority?.intakeManifestEntryTemplateDetails);
+  const recommendedPriorityTemplateSummary = formatPriorityTemplateSummary(recommendedPriority);
+  const recommendedPriorityTemplateDetailSummary = formatPriorityTemplateDetails(recommendedPriority);
   const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
   const currentPriorityTemplateDetailSummary = formatPriorityTemplateDetails(currentPriority);
   const runnablePriorityTemplateSummary = formatPriorityTemplateSummary(runnablePriority);
@@ -2812,6 +2824,49 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     recommendedPriority
       ? `- recommended: ${recommendedPriority.label ?? recommendedPriority.id ?? 'Recommended priority'} [${recommendedPriority.status ?? 'unknown'}] — ${recommendedPriority.nextAction ?? recommendedPriority.summary ?? 'needs review'}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.command
+      ? `- recommended command: ${recommendedPriority.command}`
+      : null,
+    showRecommendedPriorityDetails ? formatPriorityLatestMaterial(recommendedPriority, '- recommended latest material: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRefreshReasons(recommendedPriority, '- recommended refresh reasons: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityMissingDrafts(recommendedPriority, '- recommended missing drafts: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityEvidence(recommendedPriority, '- recommended evidence: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityDraftSources(recommendedPriority, '- recommended draft sources: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityDraftGaps(recommendedPriority, '- recommended draft gaps: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRootSections(recommendedPriority, '- recommended root sections: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRootHeadingAliases(recommendedPriority, '- recommended root heading aliases: ') : null,
+    showRecommendedPriorityDetails && recommendedPriority?.fallbackCommand
+      ? `- recommended fallback: ${recommendedPriority.fallbackCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.refreshIntakeCommand
+      ? `- recommended refresh intake: ${recommendedPriority.refreshIntakeCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityTemplateSummary
+      ? `- recommended starter templates: ${recommendedPriorityTemplateSummary}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityTemplateDetailSummary
+      ? `- recommended starter details: ${recommendedPriorityTemplateDetailSummary}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityEditPaths.length > 1
+      ? `- recommended edit paths: ${recommendedPriorityEditPaths.join(', ')}`
+      : (showRecommendedPriorityDetails && recommendedPriority?.editPath
+        ? `- recommended edit: ${recommendedPriority.editPath}`
+        : null),
+    showRecommendedPriorityDetails && recommendedPriority?.manifestInspectCommand
+      ? `- recommended manifest inspect: ${recommendedPriority.manifestInspectCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.manifestImportCommand
+      ? `- recommended manifest: ${recommendedPriority.manifestImportCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityInspectCommand
+      ? `- recommended inspect after editing: ${recommendedPriorityInspectCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.followUpCommand
+      ? `- recommended then run: ${recommendedPriority.followUpCommand}`
+      : null,
+    showRecommendedPriorityDetails && (recommendedPriority?.paths ?? []).length > 0
+      ? `- recommended paths: ${(recommendedPriority?.paths ?? []).join(', ')}`
       : null,
     currentPriority
       ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`

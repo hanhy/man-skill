@@ -143,6 +143,10 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.equal(summary.recommendedPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.recommendedPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  const prompt = buildSummary(process.cwd()).promptPreview;
+  assert.match(prompt, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(prompt, /recommended then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(prompt, /recommended fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {
