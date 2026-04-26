@@ -253,6 +253,46 @@ test('default registries merge delivery overrides without mutating canonical sca
   assert.deepEqual(openaiRecord.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-4.1-mini']);
 });
 
+test('default registries preserve canonical scaffold metadata for shorthand string ids', () => {
+  const channelRegistry = new JsChannelRegistry(['slack', 'custom-channel']);
+  const providerRegistry = new JsModelRegistry(['openai', 'custom-provider']);
+
+  const slackRecord = channelRegistry.summary().channels.find((channel) => channel.id === 'slack');
+  const customChannelRecord = channelRegistry.summary().channels.find((channel) => channel.id === 'custom-channel');
+  const openaiRecord = providerRegistry.summary().providers.find((provider) => provider.id === 'openai');
+  const customProviderRecord = providerRegistry.summary().providers.find((provider) => provider.id === 'custom-provider');
+
+  assert.deepEqual(slackRecord, slackChannelScaffold);
+  assert.deepEqual(openaiRecord, openaiProviderScaffold);
+
+  assert.deepEqual(customChannelRecord, {
+    id: 'custom-channel',
+    name: 'custom-channel',
+    transport: 'chat',
+    direction: ['inbound'],
+    status: 'unknown',
+    capabilities: [],
+    auth: null,
+    deliveryModes: [],
+    inboundPath: null,
+    outboundMode: null,
+    implementationPath: null,
+    nextStep: null,
+  });
+  assert.deepEqual(customProviderRecord, {
+    id: 'custom-provider',
+    name: 'custom-provider',
+    models: [],
+    status: 'unknown',
+    features: [],
+    defaultModel: null,
+    authEnvVar: null,
+    modalities: [],
+    implementationPath: null,
+    nextStep: null,
+  });
+});
+
 test('buildSummary keeps delivery queues aligned with the canonical rollout order', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);

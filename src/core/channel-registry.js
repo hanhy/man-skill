@@ -34,6 +34,22 @@ export class ChannelRegistry extends BaseRegistry {
 
   normalize(channel) {
     if (typeof channel === 'string') {
+      const defaultChannel = DEFAULT_CHANNELS_BY_ID.get(channel);
+      if (defaultChannel) {
+        return {
+          ...defaultChannel,
+          direction: [...defaultChannel.direction],
+          capabilities: [...defaultChannel.capabilities],
+          auth: defaultChannel.auth
+            ? {
+                ...defaultChannel.auth,
+                envVars: [...defaultChannel.auth.envVars],
+              }
+            : null,
+          deliveryModes: [...defaultChannel.deliveryModes],
+        };
+      }
+
       return {
         id: channel,
         name: channel,
