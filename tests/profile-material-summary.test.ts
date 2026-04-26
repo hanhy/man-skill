@@ -4930,7 +4930,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   const expectedLatestMaterialSummary = `latest material ${harry.latestMaterialAt} (${harry.latestMaterialId}) @ ${harry.latestMaterialSourcePath}`;
   assert.ok(
     summary.promptPreview.includes(
-      `next intake: populate the imported intake starter manifest for Harry Han (harry-han); ${expectedLatestMaterialSummary}; edit paths profiles/harry-han/imports/materials.template.json, profiles/harry-han/imports/images/chat.png, profiles/harry-han/imports/sample.txt;`,
+      `next intake: populate the imported intake starter manifest for Harry Han (harry-han); ${expectedLatestMaterialSummary}; edit profiles/harry-han/imports/materials.template.json; edit paths profiles/harry-han/imports/materials.template.json, profiles/harry-han/imports/images/chat.png, profiles/harry-han/imports/sample.txt;`,
     ),
   );
   assert.match(

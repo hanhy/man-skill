@@ -2077,7 +2077,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
   const recommendedTemplateRoot = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedIntakeManifestEntryTemplateRoot));
   const recommendedEditSegment = recommendedEditPaths.length > 1
-    ? `; edit paths ${recommendedEditPaths.join(', ')}`
+    ? `${recommendedEditPath ? `; edit ${recommendedEditPath}` : ''}; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
   const recommendedCommand = typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0
     ? ingestion.recommendedCommand
@@ -2943,11 +2943,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRecommendedPriorityDetails && recommendedPriorityTemplateDetailSummary
       ? `- recommended starter details: ${recommendedPriorityTemplateDetailSummary}`
       : null,
+    showRecommendedPriorityDetails && recommendedPriority?.editPath
+      ? `- recommended edit: ${recommendedPriority.editPath}`
+      : null,
     showRecommendedPriorityDetails && recommendedPriorityEditPaths.length > 1
       ? `- recommended edit paths: ${recommendedPriorityEditPaths.join(', ')}`
-      : (showRecommendedPriorityDetails && recommendedPriority?.editPath
-        ? `- recommended edit: ${recommendedPriority.editPath}`
-        : null),
+      : null,
     showRecommendedPriorityDetails && recommendedPriority?.manifestInspectCommand
       ? `- recommended manifest inspect: ${recommendedPriority.manifestInspectCommand}`
       : null,
@@ -2994,11 +2995,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriorityTemplateDetailSummary
       ? `- starter details: ${currentPriorityTemplateDetailSummary}`
       : null,
+    currentPriority?.editPath
+      ? `- edit: ${currentPriority.editPath}`
+      : null,
     currentPriorityEditPaths.length > 1
       ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
-      : (currentPriority?.editPath
-        ? `- edit: ${currentPriority.editPath}`
-        : null),
+      : null,
     currentPriority?.manifestInspectCommand
       ? `- manifest inspect: ${currentPriority.manifestInspectCommand}`
       : null,
@@ -3045,11 +3047,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriorityTemplateDetailSummary
       ? `- runnable starter details: ${runnablePriorityTemplateDetailSummary}`
       : null,
+    showRunnablePriority && runnablePriority?.editPath
+      ? `- runnable edit: ${runnablePriority.editPath}`
+      : null,
     showRunnablePriority && runnablePriorityEditPaths.length > 1
       ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
-      : (showRunnablePriority && runnablePriority?.editPath
-        ? `- runnable edit: ${runnablePriority.editPath}`
-        : null),
+      : null,
     showRunnablePriority && runnablePriority?.manifestInspectCommand
       ? `- runnable manifest inspect: ${runnablePriority.manifestInspectCommand}`
       : null,
@@ -3096,11 +3099,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriorityTemplateDetailSummary
       ? `- advisory starter details: ${actionableReadyPriorityTemplateDetailSummary}`
       : null,
+    showActionableReadyPriority && actionableReadyPriority?.editPath
+      ? `- advisory edit: ${actionableReadyPriority.editPath}`
+      : null,
     showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
       ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`
-      : (showActionableReadyPriority && actionableReadyPriority?.editPath
-        ? `- advisory edit: ${actionableReadyPriority.editPath}`
-        : null),
+      : null,
     showActionableReadyPriority && actionableReadyPriority?.manifestInspectCommand
       ? `- advisory manifest inspect: ${actionableReadyPriority.manifestInspectCommand}`
       : null,
