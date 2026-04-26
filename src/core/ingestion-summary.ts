@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
+import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
 import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value: string) {
@@ -188,7 +188,7 @@ function compareFoundationRefreshPriority(left, right) {
     return latestMaterialIdDifference;
   }
 
-  const latestMaterialSourcePathDifference = (right?.latestMaterialSourcePath ?? '').localeCompare(left?.latestMaterialSourcePath ?? '');
+  const latestMaterialSourcePathDifference = (normalizeDraftPath(right?.latestMaterialSourcePath ?? null) ?? '').localeCompare(normalizeDraftPath(left?.latestMaterialSourcePath ?? null) ?? '');
   if (latestMaterialSourcePathDifference !== 0) {
     return latestMaterialSourcePathDifference;
   }
@@ -828,7 +828,7 @@ function buildProfileCommands(profile, options: any = {}) {
     materialTypes: profile?.materialTypes && typeof profile.materialTypes === 'object' ? { ...profile.materialTypes } : {},
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
     latestMaterialId: imported ? (profile.latestMaterialId ?? null) : null,
-    latestMaterialSourcePath: imported ? (profile.latestMaterialSourcePath ?? null) : null,
+    latestMaterialSourcePath: imported ? (normalizeDraftPath(profile.latestMaterialSourcePath ?? null) ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
@@ -1237,7 +1237,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const setRecommendedLatestMaterial = (profile: any) => {
     recommendedLatestMaterialAt = profile?.latestMaterialAt ?? null;
     recommendedLatestMaterialId = profile?.latestMaterialId ?? null;
-    recommendedLatestMaterialSourcePath = profile?.latestMaterialSourcePath ?? null;
+    recommendedLatestMaterialSourcePath = normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null;
   };
 
   if (safeProfiles.length === 0) {

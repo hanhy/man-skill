@@ -700,6 +700,39 @@ test('buildIngestionSummary breaks stale imported-profile ties with latest mater
   );
 });
 
+test('buildIngestionSummary slash-normalizes latest material source paths on recommended and per-profile surfaces', () => {
+  const profiles = [{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    latestMaterialAt: '2026-04-20T12:00:00.000Z',
+    latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+    latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\sample.txt ',
+    profile: {
+      displayName: 'Jane Doe',
+    },
+    foundationDraftStatus: {
+      complete: true,
+      needsRefresh: true,
+      missingDrafts: [],
+    },
+    foundationDraftSummaries: {
+      memory: { generated: true },
+      skills: { generated: true },
+      soul: { generated: true },
+      voice: { generated: true },
+    },
+  }];
+
+  const jsSummary = buildJsIngestionSummary(profiles, {});
+  const tsSummary = buildTsIngestionSummary(profiles, {});
+
+  assert.deepEqual(jsSummary, tsSummary);
+  assert.equal(tsSummary.recommendedLatestMaterialSourcePath, 'profiles/jane-doe/imports/sample.txt');
+  assert.equal(tsSummary.profileCommands[0]?.latestMaterialSourcePath, 'profiles/jane-doe/imports/sample.txt');
+  assert.equal(tsSummary.allProfileCommands[0]?.latestMaterialSourcePath, 'profiles/jane-doe/imports/sample.txt');
+});
+
 test('buildIngestionSummary keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
   const profiles = [
     {

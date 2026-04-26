@@ -10,7 +10,7 @@ import { ChannelRegistry } from './core/channel-registry.ts';
 import { ModelRegistry } from './core/model-registry.ts';
 import { FileSystemLoader } from './core/fs-loader.js';
 import { buildFoundationRollup } from './core/foundation-rollup.js';
-import { buildFoundationDraftPaths, collectFoundationDraftPaths } from './core/foundation-draft-paths.ts';
+import { buildFoundationDraftPaths, collectFoundationDraftPaths, normalizeDraftPath } from './core/foundation-draft-paths.ts';
 import { buildCoreFoundationSummary } from './core/foundation-core.ts';
 import { buildCoreFoundationCommand } from './core/foundation-core-commands.ts';
 import { buildIngestionSummary } from './core/ingestion-summary.js';
@@ -974,7 +974,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ? recommendedProfile.latestMaterialId
     : null;
   const profileLatestMaterialSourcePath = typeof recommendedProfile?.latestMaterialSourcePath === 'string' && recommendedProfile.latestMaterialSourcePath.length > 0
-    ? recommendedProfile.latestMaterialSourcePath
+    ? (normalizeDraftPath(recommendedProfile.latestMaterialSourcePath) ?? null)
     : null;
   const profileRefreshReasons = Array.isArray(recommendedProfile?.refreshReasons)
     ? recommendedProfile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
@@ -1195,7 +1195,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     ? ingestionSummary.recommendedLatestMaterialId
     : null;
   const recommendedLatestMaterialSourcePath = typeof ingestionSummary?.recommendedLatestMaterialSourcePath === 'string' && ingestionSummary.recommendedLatestMaterialSourcePath.length > 0
-    ? ingestionSummary.recommendedLatestMaterialSourcePath
+    ? (normalizeDraftPath(ingestionSummary.recommendedLatestMaterialSourcePath) ?? null)
     : null;
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand

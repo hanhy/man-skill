@@ -2763,7 +2763,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const formatPriorityLatestMaterial = (priority?: WorkLoopPriority | null, prefix = '- latest material: '): string | null => {
     const latestMaterialAt = normalizeOptionalString(priority?.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(priority?.latestMaterialId);
-    const latestMaterialSourcePath = normalizeOptionalString(priority?.latestMaterialSourcePath);
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(priority?.latestMaterialSourcePath));
 
     if (!latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath) {
       return null;

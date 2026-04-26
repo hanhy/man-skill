@@ -1006,7 +1006,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
   assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
 });
 
-test('PromptAssembler work loop trims latest-material fields before rendering current and advisory follow-ups', () => {
+test('PromptAssembler work loop trims and slash-normalizes latest-material fields before rendering current and advisory follow-ups', () => {
   const preview = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
     soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
@@ -1030,7 +1030,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
         command: "node src/index.js update foundation --person 'jane-doe'",
         latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
         latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
-        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       currentPriority: {
@@ -1042,7 +1042,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
         command: "node src/index.js update foundation --person 'jane-doe'",
         latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
         latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
-        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       actionableReadyPriority: {
@@ -1054,7 +1054,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
         command: null,
         latestMaterialAt: '   ',
         latestMaterialId: '   ',
-        latestMaterialSourcePath: ' profiles/jane-doe/imports/voice-note.txt ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\voice-note.txt ',
         editPath: 'profiles/jane-doe/imports/materials.template.json',
         paths: ['profiles/jane-doe/imports/materials.template.json'],
       },
@@ -1067,7 +1067,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
         command: "node src/index.js update foundation --person 'jane-doe'",
         latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
         latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
-        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       priorities: [
@@ -1080,7 +1080,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
           command: "node src/index.js update foundation --person 'jane-doe'",
           latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
           latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
-          latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+          latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
           paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
         },
         {
@@ -1092,7 +1092,7 @@ test('PromptAssembler work loop trims latest-material fields before rendering cu
           command: null,
           latestMaterialAt: '   ',
           latestMaterialId: '   ',
-          latestMaterialSourcePath: ' profiles/jane-doe/imports/voice-note.txt ',
+          latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\voice-note.txt ',
           editPath: 'profiles/jane-doe/imports/materials.template.json',
           paths: ['profiles/jane-doe/imports/materials.template.json'],
         },
