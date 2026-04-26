@@ -597,6 +597,7 @@ type IngestionProfileCommand = {
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
+  intakeManifestStatus?: 'missing' | 'invalid' | 'starter' | 'loaded' | string;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   intakeManifestEntryTemplateTypes?: string[];
@@ -2223,7 +2224,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const isStarterTemplateProfile = profile.intakeReady === true
         && typeof profile.intakeStatusSummary === 'string'
         && profile.intakeStatusSummary.includes('starter template');
-      const starterTemplateDetailSummary = isStarterTemplateProfile
+      const keepStarterTemplateDetailsVisible = profile.intakeReady === true
+        && (isStarterTemplateProfile || profile.intakeManifestStatus === 'invalid')
+        && Array.isArray(profile.intakeManifestEntryTemplateDetails)
+        && profile.intakeManifestEntryTemplateDetails.length > 0;
+      const starterTemplateDetailSummary = keepStarterTemplateDetailsVisible
         ? formatStarterTemplateDetailSummary(profile.intakeManifestEntryTemplateDetails)
         : null;
       const starterTemplateDetailSegment = starterTemplateDetailSummary

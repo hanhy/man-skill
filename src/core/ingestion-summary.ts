@@ -1359,9 +1359,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : `repair the invalid intake manifest for imported profile ${recommendedLabel}${firstInvalidImportedReason ? ` — ${firstInvalidImportedReason}` : ''}`)
       : 'repair invalid intake manifests for imported profiles';
     setRecommendedLatestMaterial(firstInvalidImportedIntakeProfile);
+    const starterTemplateSummary = collectRecommendedStarterTemplateSummary(importedInvalidIntakeManifestProfiles);
     recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
+    recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+    recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
+    recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
       ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstInvalidImportedIntakeProfile);
@@ -1471,9 +1475,13 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           ? `repair invalid profile-local intake manifests — starting with ${recommendedLabel}`
           : `repair the invalid intake manifest for ${recommendedLabel}${firstInvalidReadyReason ? ` — ${firstInvalidReadyReason}` : ''}`)
         : 'repair invalid profile-local intake manifests';
+      const starterTemplateSummary = collectRecommendedStarterTemplateSummary(invalidReadyIntakeProfiles);
       recommendedCommand = invalidReadyIntakeProfiles.length > 1
         ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)
         : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? helperCommands.repairInvalidBundle ?? null);
+      recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+      recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
+      recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
       recommendedPaths = invalidReadyIntakeProfiles.length > 1
         ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
         : collectProfileIntakePaths(firstInvalidReadyIntakeProfile);

@@ -5498,6 +5498,14 @@ test('buildSummary treats starter manifests with missing screenshot template fil
   assert.equal(metadataOnlyCommand.intakeManifestStatus, 'invalid');
   assert.match(metadataOnlyCommand.intakeManifestError, /missing file/i);
   assert.equal(metadataOnlyCommand.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: images/missing-chat.png)');
+  assert.deepEqual(metadataOnlyCommand.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
+  assert.equal(metadataOnlyCommand.intakeManifestEntryTemplateCount, 4);
+  assert.deepEqual(metadataOnlyCommand.intakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: '<paste a representative short message>' },
+    { type: 'screenshot', source: 'file', path: 'images/missing-chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
   assert.deepEqual(metadataOnlyCommand.intakePaths, [
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/images/missing-chat.png',
@@ -5510,7 +5518,7 @@ test('buildSummary treats starter manifests with missing screenshot template fil
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.match(
     summary.promptPreview,
-    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: images\/missing-chat\.png\) \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: images\/missing-chat\.png\); starter details message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
   );
   assert.doesNotMatch(summary.promptPreview, /starter template — add entries before import/);
   assert.doesNotMatch(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation/);

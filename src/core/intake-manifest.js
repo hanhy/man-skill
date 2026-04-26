@@ -287,6 +287,8 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
 
   const entries = manifest.entries;
   const entryTemplateTypes = normalizeEntryTemplateTypes(manifest.entryTemplates);
+  const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
+  const entryTemplateCount = entryTemplateTypes.length;
   const hasStarterTemplates = Array.isArray(entries)
     && entries.length === 0
     && manifest.entryTemplates
@@ -330,9 +332,9 @@ export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, exp
       path: manifestPath,
       error: error instanceof Error ? error.message : 'Invalid intake manifest',
       repairPaths: extractRepairPaths(error),
-      entryTemplateTypes: [],
-      entryTemplateCount: 0,
-      entryTemplateDetails: emptyEntryTemplateDetails,
+      entryTemplateTypes,
+      entryTemplateCount,
+      entryTemplateDetails,
     };
   }
 
