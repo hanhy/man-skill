@@ -330,6 +330,30 @@ test('buildCoreFoundationCommand repairs thin memory README sections when only c
   );
 });
 
+test('buildCoreFoundationCommand keeps memory README frontmatter at the top while repairing thin root sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-memory-readme-frontmatter-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '---\ndescription: Durable memory guide\nslug: memory\n---\n# Memory\n\n## What belongs here\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '---\ndescription: Durable memory guide\nslug: memory\n---\n# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
+  );
+});
+
 test('buildCoreFoundationCommand ignores memory root section headings that only appear inside fenced code blocks', () => {
   const command = buildCoreFoundationCommand({
     area: 'memory',
@@ -522,6 +546,30 @@ test('buildCoreFoundationCommand repairs thin skills root sections when only com
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
     '# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n<!-- explain the purpose here -->\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps skills root README frontmatter at the top while repairing thin root sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-readme-frontmatter-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '---\ndescription: Shared skill registry guide\nslug: skills\n...\n# Skills\n\n## What lives here\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '---\ndescription: Shared skill registry guide\nslug: skills\n...\n# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
   );
 });
 
