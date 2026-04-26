@@ -2179,6 +2179,54 @@ test('buildSummary marks profile-local intake manifests invalid when they target
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(targets a different profile\)/);
 });
 
+test('buildSummary marks metadata-only intake manifests invalid when starter files escape the local imports root', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-only', 'outside.txt'), 'outside imports\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: { file: '../outside.txt' },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+  const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile: { personId: string }) => profile.personId === 'metadata-only');
+
+  assert.equal(metadataOnlyCommand?.intakeReady, true);
+  assert.equal(metadataOnlyCommand?.intakeManifestStatus, 'invalid');
+  assert.match(metadataOnlyCommand?.intakeManifestError ?? '', /outside the profile imports directory/i);
+  assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (outside the profile imports directory)');
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only) — outside the profile imports directory');
+  assert.deepEqual(summary.workLoop.currentPriority.paths, [
+    'profiles/metadata-only/imports/materials.template.json',
+  ]);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(outside the profile imports directory\)/);
+});
+
 test('buildSummary work loop repairs invalid intake manifests for imported profiles before moving on to delivery work', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

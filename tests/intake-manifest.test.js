@@ -104,6 +104,37 @@ test('inspectProfileIntakeManifest keeps backslash-normalized relative entry fil
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest rejects starter templates whose file paths escape the profile imports directory', () => {
+  const rootDir = makeTempRepo();
+  const profileDir = path.join(rootDir, 'profiles', 'metadata-only');
+  const importsDir = path.join(profileDir, 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'outside.txt'), 'should stay outside imports\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: { file: '../outside.txt' },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /outside the profile imports directory/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'text', source: 'file', path: '../outside.txt', preview: null },
+  ]);
+});
+
 test('inspectProfileIntakeManifest rejects starter templates that target a different expected profile when manifest personId is omitted', () => {
   const rootDir = makeTempRepo();
   const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');

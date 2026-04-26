@@ -657,6 +657,10 @@ function summarizeIntakeManifestError(error: unknown): string | null {
     return 'file outside repo';
   }
 
+  if (/outside the profile imports directory/i.test(trimmed)) {
+    return 'outside the profile imports directory';
+  }
+
   if (/non-file path/i.test(trimmed)) {
     return 'path is not a file';
   }

@@ -261,6 +261,14 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
       if (!relativeFilePath) {
         throw new Error(`Manifest entry ${index} references a file outside the repo: ${displayEntryFile}`);
       }
+
+      const relativeImportsPath = path.relative(realManifestDir, realFilePath);
+      if (path.isAbsolute(relativeImportsPath) || relativeImportsPath === '..' || relativeImportsPath.startsWith(`..${path.sep}`)) {
+        throw attachRepairPaths(
+          new Error(`Manifest entry ${index} references a file outside the profile imports directory: ${displayEntryFile}`),
+          [starterManifestPath],
+        );
+      }
     }
   });
 }
