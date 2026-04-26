@@ -1759,6 +1759,49 @@ test('default provider factories expose runtime helpers for Minimax, GLM, and Qw
   }
 });
 
+test('provider factories treat whitespace-only auth and summary mutations as non-configured local state', () => {
+  const originalEnv = {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  };
+
+  process.env.OPENAI_API_KEY = '   ';
+
+  try {
+    const openai = createDefaultProviders().find((provider) => provider.id === 'openai');
+    assert.ok(openai);
+
+    assert.deepEqual(openai.requiredEnvVars(), ['OPENAI_API_KEY']);
+    assert.deepEqual(openai.missingEnvVars(), ['OPENAI_API_KEY']);
+    assert.equal(openai.isConfigured(), false);
+
+    openai.models.push('gpt-test');
+    openai.features.push('audio');
+    openai.modalities.push('audio');
+
+    assert.deepEqual(openaiProviderScaffold.models, ['gpt-4.1', 'gpt-4o', 'gpt-5']);
+    assert.deepEqual(openaiProviderScaffold.features, ['chat', 'tools', 'reasoning']);
+    assert.deepEqual(openaiProviderScaffold.modalities, ['chat', 'reasoning', 'vision']);
+
+    const providerSummary = openai.summary();
+    providerSummary.models.push('gpt-summary-only');
+    providerSummary.features.push('summary-feature');
+    providerSummary.modalities.push('summary-modality');
+
+    assert.deepEqual(openai.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-test']);
+    assert.deepEqual(openai.features, ['chat', 'tools', 'reasoning', 'audio']);
+    assert.deepEqual(openai.modalities, ['chat', 'reasoning', 'vision', 'audio']);
+    assert.deepEqual(openaiProviderScaffold.models, ['gpt-4.1', 'gpt-4o', 'gpt-5']);
+    assert.deepEqual(openaiProviderScaffold.features, ['chat', 'tools', 'reasoning']);
+    assert.deepEqual(openaiProviderScaffold.modalities, ['chat', 'reasoning', 'vision']);
+  } finally {
+    if (originalEnv.OPENAI_API_KEY === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY;
+    }
+  }
+});
+
 test('buildSummary counts the checked-in channel delivery modules and all provider helpers as runtime-ready', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
