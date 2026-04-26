@@ -1,3 +1,11 @@
+function normalizeLegacyShortTermSourcePath(value) {
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\/+/g, '/');
+}
+
 function normalizeLegacyShortTermSources(legacyShortTerm) {
   if (!Array.isArray(legacyShortTerm)) {
     return [];
@@ -11,13 +19,13 @@ function normalizeLegacyShortTermSources(legacyShortTerm) {
       return;
     }
 
-    const trimmedValue = value.trim();
-    if (trimmedValue.length === 0 || seenSources.has(trimmedValue)) {
+    const normalizedValue = normalizeLegacyShortTermSourcePath(value);
+    if (normalizedValue.length === 0 || seenSources.has(normalizedValue)) {
       return;
     }
 
-    seenSources.add(trimmedValue);
-    normalizedSources.push(trimmedValue);
+    seenSources.add(normalizedValue);
+    normalizedSources.push(normalizedValue);
   });
 
   return normalizedSources;

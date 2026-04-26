@@ -521,17 +521,34 @@ test('canonical daily counts keep same-basename legacy short-term files instead 
 
 test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
   const scriptPath = path.join(makeTempRepo(), 'memory-store-check.mjs');
+  const legacyShortTerm = [
+    ' memory\\short-term\\today.md ',
+    './memory/short-term/today.md',
+    'memory//short-term//older.md',
+    'memory/short-term/older.md',
+    '',
+    null,
+  ];
   fs.writeFileSync(
     scriptPath,
     `import { MemoryStore } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/memory-store.js'))};
-const memory = new MemoryStore({ daily: [{ id: 'daily-1' }] });
+const memory = new MemoryStore({
+  daily: [{ id: 'daily-1' }],
+  legacyShortTerm: ${JSON.stringify(legacyShortTerm)},
+});
 console.log(JSON.stringify(memory.summary()));
 `,
   );
 
   const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
 
-  assert.deepEqual(rawSummary, new MemoryStore({ daily: [{ id: 'daily-1' }] }).summary());
+  assert.deepEqual(
+    rawSummary,
+    new MemoryStore({
+      daily: [{ id: 'daily-1' }],
+      legacyShortTerm: legacyShortTerm as unknown as string[],
+    }).summary(),
+  );
 });
 
 test('soul profile raw JS entrypoint stays aligned for blockquoted structured docs', () => {
