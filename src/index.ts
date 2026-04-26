@@ -1239,6 +1239,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
       latestMaterialAt: string | null;
       latestMaterialId: string | null;
       latestMaterialSourcePath: string | null;
+      refreshReasons?: string[];
+      missingDrafts?: string[];
+      draftGapSummary?: string | null;
       fallbackCommand: string | null;
       refreshIntakeCommand: string | null;
       editPath: string | null;

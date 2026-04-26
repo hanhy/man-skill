@@ -158,6 +158,15 @@ function buildRecommendedStarterProfileSlice(profile: any) {
     latestMaterialAt: typeof profile?.latestMaterialAt === 'string' && profile.latestMaterialAt.length > 0 ? profile.latestMaterialAt : null,
     latestMaterialId: typeof profile?.latestMaterialId === 'string' && profile.latestMaterialId.length > 0 ? profile.latestMaterialId : null,
     latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
+    refreshReasons: Array.isArray(profile?.refreshReasons)
+      ? profile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : [],
+    missingDrafts: Array.isArray(profile?.missingDrafts)
+      ? profile.missingDrafts.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : [],
+    draftGapSummary: typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+      ? profile.draftGapSummary
+      : null,
     fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
     refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
     editPath: intakeManifestPath,
@@ -870,6 +879,13 @@ function buildProfileCommands(profile, options: any = {}) {
     latestMaterialId: imported ? (profile.latestMaterialId ?? null) : null,
     latestMaterialSourcePath: imported ? (normalizeDraftPath(profile.latestMaterialSourcePath ?? null) ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
+    refreshReasons: imported
+      ? Array.from(new Set(
+        Array.isArray(profile.foundationDraftStatus?.refreshReasons)
+          ? profile.foundationDraftStatus.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+          : [],
+      ))
+      : [],
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
     updateProfileCommand,
