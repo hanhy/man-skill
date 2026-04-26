@@ -546,6 +546,53 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
   });
 }
 
+function manifestOwnerMatchesExpectedPersonId(ownerValue, expectedPersonId) {
+  if (!isNonEmptyString(ownerValue)) {
+    return true;
+  }
+
+  return slugifyPersonId(ownerValue) === expectedPersonId;
+}
+
+function existingStarterManifestTargetsExpectedPersonId(parsedTemplate, expectedPersonId) {
+  if (!parsedTemplate || typeof parsedTemplate !== 'object' || !isNonEmptyString(expectedPersonId)) {
+    return false;
+  }
+
+  const normalizedExpectedPersonId = slugifyPersonId(expectedPersonId);
+  if (!normalizedExpectedPersonId) {
+    return false;
+  }
+
+  const normalizedTemplate = normalizeExistingStarterManifest(parsedTemplate);
+  if (!normalizedTemplate) {
+    return false;
+  }
+
+  if (!manifestOwnerMatchesExpectedPersonId(normalizedTemplate.personId, normalizedExpectedPersonId)) {
+    return false;
+  }
+
+  const manifestProfiles = Array.isArray(normalizedTemplate.profiles) ? normalizedTemplate.profiles : [];
+  if (manifestProfiles.some((profile) => !profile || typeof profile !== 'object' || !manifestOwnerMatchesExpectedPersonId(profile.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  const manifestEntries = Array.isArray(normalizedTemplate.entries) ? normalizedTemplate.entries : [];
+  if (manifestEntries.some((entry) => !entry || typeof entry !== 'object' || !manifestOwnerMatchesExpectedPersonId(entry.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  const manifestEntryTemplates = normalizedTemplate.entryTemplates && typeof normalizedTemplate.entryTemplates === 'object' && !Array.isArray(normalizedTemplate.entryTemplates)
+    ? Object.values(normalizedTemplate.entryTemplates)
+    : [];
+  if (manifestEntryTemplates.some((template) => !template || typeof template !== 'object' || !manifestOwnerMatchesExpectedPersonId(template.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  return true;
+}
+
 function profileHasStarterIntakeManifest(rootDir, profile) {
   if (!profile?.intake?.ready || !isNonEmptyString(profile?.intake?.starterManifestPath)) {
     return false;
@@ -869,6 +916,10 @@ export class MaterialIngestion {
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
     const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
     const existingTemplate = normalizeExistingStarterManifest(existingTemplateState.parsed);
+    const preserveExistingStarterContent = existingStarterManifestTargetsExpectedPersonId(
+      existingTemplateState.parsed,
+      profileUpdate.personId,
+    );
     const invalidStarterManifestBackupPath = existingTemplateState.parseError
       ? backupInvalidJsonFile(starterManifestAbsolutePath)
       : null;
@@ -876,8 +927,8 @@ export class MaterialIngestion {
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
-      existingEntries: existingTemplate?.entries,
-      existingEntryTemplates: existingTemplate?.entryTemplates,
+      existingEntries: preserveExistingStarterContent ? existingTemplate?.entries : undefined,
+      existingEntryTemplates: preserveExistingStarterContent ? existingTemplate?.entryTemplates : undefined,
       sampleTextPath: path.basename(relativeSampleTextPath),
       sampleScreenshotPath: 'images/chat.png',
     });
