@@ -34,7 +34,47 @@ test('safe tmp runner falls back to a writable repo-local temp directory when TM
   assert.ok(fs.existsSync(path.dirname(tmpPath)), `expected parent directory for ${tmpPath} to exist`);
 });
 
+test('test runner drops unsupported jest-only flags before delegating to node --test', () => {
+  const result = spawnSync(
+    'node',
+    ['scripts/run-node-tests.mjs', '--runInBand', 'tests/fixtures/passing-node-test.js'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+  assert.doesNotMatch([result.stdout, result.stderr].filter(Boolean).join('\n'), /bad option: --runInBand/);
+});
+
+test('test runner strips jest-only flags even when node --test uses a value-taking option first', () => {
+  const result = spawnSync(
+    'node',
+    ['scripts/run-node-tests.mjs', '--test-name-pattern', 'fixture passes', '--runInBand', 'tests/fixtures/passing-node-test.js'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+});
+
+test('test runner keeps args after -- when delegating to node --test', () => {
+  const result = spawnSync(
+    'node',
+    ['scripts/run-node-tests.mjs', 'tests/fixtures/assert-node-test-argv.js', '--', '--runInBand'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+});
+
 test('npm check and test scripts route through the safe tmp runner', () => {
   assert.equal(packageJson.scripts.check, 'node scripts/run-with-safe-tmp.mjs tsx src/index.ts');
-  assert.equal(packageJson.scripts.test, 'node scripts/run-with-safe-tmp.mjs node --import tsx --test');
+  assert.equal(packageJson.scripts.test, 'node scripts/run-with-safe-tmp.mjs node scripts/run-node-tests.mjs');
 });
