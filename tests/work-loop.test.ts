@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildSummary, runImportCommand, runUpdateCommand } from '../src/index.js';
+import { PromptAssembler } from '../src/core/prompt-assembler.js';
 import { WorkLoop } from '../src/runtime/work-loop.js';
 import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
@@ -143,10 +144,22 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.equal(summary.recommendedPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.recommendedPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
-  const prompt = buildSummary(process.cwd()).promptPreview;
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: summary as any,
+  }).buildPreview(4000);
+
+  assert.match(prompt, /recommended: Ingestion \[ready\] — populate starter manifest/);
+  assert.match(prompt, /recommended fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(prompt, /recommended refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(prompt, /recommended manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(prompt, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(prompt, /recommended then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(prompt, /recommended fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {
