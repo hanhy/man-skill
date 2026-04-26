@@ -22,6 +22,8 @@ import { ManifestLoader } from './core/manifest-loader.ts';
 import { buildProfileLabel as formatProfileLabel } from './core/profile-label.js';
 import { WorkLoop, type WorkPriority } from './runtime/work-loop.ts';
 
+export { WorkLoop };
+
 type OptionValue = string | boolean | undefined;
 type ParsedOptions = Record<string, OptionValue>;
 

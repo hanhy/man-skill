@@ -4,9 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import * as indexExports from '../src/index.js';
 import { buildSummary, runImportCommand, runUpdateCommand } from '../src/index.js';
 import { PromptAssembler } from '../src/core/prompt-assembler.js';
 import { WorkLoop } from '../src/runtime/work-loop.js';
+import { WorkLoop as TypeScriptWorkLoop, type WorkPriority } from '../src/runtime/work-loop.ts';
 import { DEFAULT_CHANNEL_SCAFFOLDS } from '../src/channels/scaffolds.js';
 import { DEFAULT_PROVIDER_SCAFFOLDS } from '../src/models/scaffolds.js';
 
@@ -160,6 +162,37 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.match(prompt, /recommended manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(prompt, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(prompt, /recommended then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+});
+
+test('top-level index export keeps WorkLoop aligned with the runtime shim summary contract', () => {
+  const priorities: WorkPriority[] = [
+    { id: 'foundation', label: 'Foundation', status: 'ready', summary: 'done', nextAction: null, command: null, paths: [] },
+    {
+      id: 'ingestion',
+      label: 'Ingestion',
+      status: 'ready',
+      summary: 'starter scaffold available',
+      nextAction: 'populate starter manifest',
+      command: null,
+      fallbackCommand: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
+      editPath: 'profiles/harry-han/imports/materials.template.json',
+      editPaths: ['profiles/harry-han/imports/materials.template.json'],
+      manifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      manifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+      intakeManifestEntryTemplateTypes: ['message', 'screenshot', 'talk', 'text'],
+      intakeManifestEntryTemplateCount: 4,
+      inspectCommand: "node src/index.js import intake --person 'harry-han'",
+      followUpCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+      paths: ['profiles/harry-han/imports/materials.template.json'],
+    },
+    { id: 'channels', label: 'Channels', status: 'blocked', summary: 'blocked on env', nextAction: 'set FEISHU_APP_ID', command: 'cp .env.example .env', paths: ['.env.example', '.env'] },
+  ];
+
+  const runtimeSummary = new TypeScriptWorkLoop({ priorities: [...priorities] }).summary();
+  const topLevelSummary = new indexExports.WorkLoop({ priorities: [...priorities] }).summary();
+
+  assert.deepEqual(topLevelSummary, runtimeSummary);
 });
 
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {

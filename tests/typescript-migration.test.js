@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -13,4 +13,21 @@ test('typecheck script passes for the initial TypeScript migration slice', () =>
   });
 
   assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+});
+
+test('raw JS index entrypoint exports WorkLoop alongside the TypeScript runtime surface', () => {
+  const exportKeys = execFileSync(
+    'node',
+    [
+      '--input-type=module',
+      '-e',
+      "import('./src/index.js').then((module) => console.log(Object.keys(module).sort().join(',')))",
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  ).trim();
+
+  assert.match(exportKeys, /(?:^|,)WorkLoop(?:,|$)/);
 });
