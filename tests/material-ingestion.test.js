@@ -1058,6 +1058,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
+  assert.match(intakeReadme, /outside paths or symlinks that escape the repo root are rejected during import/i);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);

@@ -22,6 +22,7 @@ Path rule:
 - `materials.template.json` resolves every `file` relative to `profiles/harry-han/imports/`.
 - Keep local screenshots or attachments next to `sample.txt` or inside a small subdirectory like `profiles/harry-han/imports/images/`.
 - Example: if you save a screenshot at `profiles/harry-han/imports/images/chat.png`, use `images/chat.png` inside the manifest.
+- Every referenced file must stay inside this repo; outside paths or symlinks that escape the repo root are rejected during import.
 
 Starter entry examples:
 ```json

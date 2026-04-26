@@ -762,6 +762,7 @@ function buildIntakeReadme({
     `- \`materials.template.json\` resolves every \`file\` relative to \`${path.posix.dirname(starterManifestPath)}/\`.`,
     `- Keep local screenshots or attachments next to \`${path.posix.basename(sampleTextPath)}\` or inside a small subdirectory like \`${sampleImagesDirPath}/\`.`,
     `- Example: if you save a screenshot at \`${sampleImagesDirPath}/chat.png\`, use \`images/chat.png\` inside the manifest.`,
+    '- Every referenced file must stay inside this repo; outside paths or symlinks that escape the repo root are rejected during import.',
     '',
     'Starter entry examples:',
     '```json',
