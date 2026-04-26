@@ -63,17 +63,15 @@ function normalizeEntryTemplateDetails(entryTemplates) {
 }
 
 function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
-  return entryTemplateTypes
-    .filter((type) => type !== 'screenshot')
-    .map((type) => {
-      const template = manifest?.entryTemplates?.[type] ?? {};
-      return {
-        type,
-        ...(isNonEmptyString(template?.file) ? { file: template.file.trim() } : {}),
-        ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
-        ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
-      };
-    });
+  return entryTemplateTypes.map((type) => {
+    const template = manifest?.entryTemplates?.[type] ?? {};
+    return {
+      type,
+      ...(isNonEmptyString(template?.file) ? { file: template.file.trim() } : {}),
+      ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
+      ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
+    };
+  });
 }
 
 function toRepoRelativePath(realRootDir, absolutePath) {
