@@ -284,8 +284,14 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
   const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
     ? options.sampleTextPath
     : null;
+  const sampleScreenshotPath = typeof options.sampleScreenshotPath === 'string' && options.sampleScreenshotPath.trim().length > 0
+    ? options.sampleScreenshotPath
+    : null;
   const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
     ? options.sampleTextPersonId
+    : null;
+  const sampleScreenshotPersonId = typeof options.sampleScreenshotPersonId === 'string' && options.sampleScreenshotPersonId.trim().length > 0
+    ? options.sampleScreenshotPersonId
     : null;
   const sampleFileCommands = Array.isArray(options.sampleFileCommands)
     ? options.sampleFileCommands.filter((entry) => entry && typeof entry === 'object')
@@ -294,6 +300,7 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
     ? options.sampleInlineCommands.filter((entry) => entry && typeof entry === 'object')
     : [];
   const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
+  const runnableScreenshotPath = sampleScreenshotPath && sampleScreenshotPersonId === normalizedProfileId ? sampleScreenshotPath : null;
   const matchingSampleFileCommands = sampleFileCommands.filter((entry) =>
     entry.personId === normalizedProfileId
     && typeof entry.type === 'string'
@@ -329,7 +336,9 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
     talk: runnableSampleCommandByType.talk
       ?? `node src/index.js import talk --person ${quotedProfileId} --text <snippet> --refresh-foundation`,
     screenshot: runnableSampleCommandByType.screenshot
-      ?? `node src/index.js import screenshot --person ${quotedProfileId} --file <image.png> --refresh-foundation`,
+      ?? (runnableScreenshotPath
+        ? `node src/index.js import screenshot --person ${quotedProfileId} --file ${shellQuote(runnableScreenshotPath)} --refresh-foundation`
+        : `node src/index.js import screenshot --person ${quotedProfileId} --file <image.png> --refresh-foundation`),
   };
 }
 
@@ -701,10 +710,21 @@ function buildProfileCommands(profile, options: any = {}) {
   const materialCount = profile.materialCount ?? 0;
   const imported = materialCount > 0;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
+  const profileSampleScreenshotPath = intake?.ready && typeof intake?.sampleImagesDirPath === 'string' && intake.sampleImagesDirPath.trim().length > 0
+    ? `${intake.sampleImagesDirPath.replace(/\/$/, '')}/chat.png`
+    : null;
   const profileSampleTextPath = intake?.ready && typeof intake?.sampleTextPath === 'string' && intake.sampleTextPath.trim().length > 0
     ? intake.sampleTextPath
     : null;
-  const importCommands = buildProfileImportCommands(profile.id, options);
+  const importCommands = buildProfileImportCommands(profile.id, {
+    ...options,
+    ...(profileSampleScreenshotPath
+      ? {
+        sampleScreenshotPath: profileSampleScreenshotPath,
+        sampleScreenshotPersonId: profile.id,
+      }
+      : {}),
+  });
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
@@ -732,19 +752,26 @@ function buildProfileCommands(profile, options: any = {}) {
   const preferredIntakeManifestCommand = intakeManifest.status === 'loaded'
     ? intakeImportManifestCommand
     : null;
+  const profileStarterScreenshotImportCommand = profileSampleScreenshotPath
+    ? `node src/index.js import screenshot --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleScreenshotPath)} --refresh-foundation`
+    : null;
   const profileStarterTextImportCommand = profileSampleTextPath
     ? `node src/index.js import text --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
+  const sampleDrivenScreenshotImportCommand = runnableScreenshotImportCommand && runnableScreenshotImportCommand !== profileStarterScreenshotImportCommand
+    ? runnableScreenshotImportCommand
+    : null;
   const defaultImportCommand = imported
     ? null
-    : intakeManifest.status === 'invalid'
+      : intakeManifest.status === 'invalid'
       ? null
       : (preferredIntakeManifestCommand
         ?? runnableTextImportCommand
-        ?? runnableScreenshotImportCommand
+        ?? sampleDrivenScreenshotImportCommand
         ?? runnableMessageImportCommand
         ?? runnableTalkImportCommand
         ?? profileStarterTextImportCommand
+        ?? runnableScreenshotImportCommand
         ?? importCommands.message
         ?? importCommands.talk
         ?? importCommands.text);

@@ -2758,7 +2758,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
             text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
             message: 'node src/index.js import message --person jane-doe --text <message> --refresh-foundation',
             talk: 'node src/index.js import talk --person jane-doe --text <snippet> --refresh-foundation',
-            screenshot: 'node src/index.js import screenshot --person jane-doe --file <image.png> --refresh-foundation',
+            screenshot: "node src/index.js import screenshot --person jane-doe --file 'profiles/jane-doe/imports/images/chat.png' --refresh-foundation",
           },
           importMaterialCommand: null,
         },
@@ -2810,7 +2810,7 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
             text: 'node src/index.js import text --person harry-han --file <sample.txt> --refresh-foundation',
             message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
             talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-            screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+            screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
           },
           importMaterialCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
         },
@@ -4250,7 +4250,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
     message: 'node src/index.js import message --person jane-doe --text <message> --refresh-foundation',
     talk: 'node src/index.js import talk --person jane-doe --text <snippet> --refresh-foundation',
-    screenshot: 'node src/index.js import screenshot --person jane-doe --file <image.png> --refresh-foundation',
+    screenshot: "node src/index.js import screenshot --person jane-doe --file 'profiles/jane-doe/imports/images/chat.png' --refresh-foundation",
   });
   assert.deepEqual(janeCommand.helperCommands, {
     scaffold: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
@@ -4268,7 +4268,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
       text: 'node src/index.js import text --person jane-doe --file <sample.txt> --refresh-foundation',
       message: 'node src/index.js import message --person jane-doe --text <message> --refresh-foundation',
       talk: 'node src/index.js import talk --person jane-doe --text <snippet> --refresh-foundation',
-      screenshot: 'node src/index.js import screenshot --person jane-doe --file <image.png> --refresh-foundation',
+      screenshot: "node src/index.js import screenshot --person jane-doe --file 'profiles/jane-doe/imports/images/chat.png' --refresh-foundation",
     },
   });
 

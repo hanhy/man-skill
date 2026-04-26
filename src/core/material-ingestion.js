@@ -453,12 +453,14 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function buildDirectImportCommands({ personId, sampleTextPath }) {
+const DEFAULT_STARTER_SCREENSHOT_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==';
+
+function buildDirectImportCommands({ personId, sampleTextPath, sampleScreenshotPath }) {
   return {
     text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
     message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
     talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${personId} --file <image.png> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${personId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
   };
 }
 
@@ -508,6 +510,7 @@ function buildIntakePaths(personId) {
   return {
     importsDir: basePath,
     sampleImagesDirPath: path.join(basePath, 'images'),
+    sampleScreenshotPath: path.join(basePath, 'images', 'chat.png'),
     intakeReadmePath: path.join(basePath, 'README.md'),
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
@@ -928,9 +931,11 @@ export class MaterialIngestion {
     ensureDir(this.resolve(intakePaths.importsDir));
     ensureDir(this.resolve(intakePaths.sampleImagesDirPath));
     const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
+    const relativeSampleScreenshotPath = intakePaths.sampleScreenshotPath.split(path.sep).join('/');
     const importCommands = buildDirectImportCommands({
       personId: profileUpdate.personId,
       sampleTextPath: relativeSampleTextPath,
+      sampleScreenshotPath: relativeSampleScreenshotPath,
     });
 
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
@@ -950,7 +955,7 @@ export class MaterialIngestion {
       existingEntries: preserveExistingStarterContent ? existingTemplate?.entries : undefined,
       existingEntryTemplates: preserveExistingStarterContent ? existingTemplate?.entryTemplates : undefined,
       sampleTextPath: path.basename(relativeSampleTextPath),
-      sampleScreenshotPath: 'images/chat.png',
+      sampleScreenshotPath: path.relative(intakePaths.importsDir, intakePaths.sampleScreenshotPath).split(path.sep).join('/'),
     });
     fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
@@ -958,6 +963,13 @@ export class MaterialIngestion {
       fs.writeFileSync(
         this.resolve(intakePaths.sampleTextPath),
         `Replace this file with a real writing sample for ${profileUpdate.profile?.displayName ?? profileUpdate.personId}.\n`,
+      );
+    }
+
+    if (!fs.existsSync(this.resolve(intakePaths.sampleScreenshotPath))) {
+      fs.writeFileSync(
+        this.resolve(intakePaths.sampleScreenshotPath),
+        Buffer.from(DEFAULT_STARTER_SCREENSHOT_PNG_BASE64, 'base64'),
       );
     }
 

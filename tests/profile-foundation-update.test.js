@@ -2304,14 +2304,14 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
       text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
       message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
       talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
   assert.deepEqual(result.importCommands, {
     text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
     message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
     talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
   assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);

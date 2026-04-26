@@ -999,7 +999,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
     message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
     talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.equal(result.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
@@ -1018,7 +1018,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
       text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
       message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
       talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
 
@@ -1057,10 +1057,13 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);
+  const sampleScreenshotPath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images', 'chat.png');
+  assert.equal(fs.existsSync(sampleScreenshotPath), true);
+  assert.equal(fs.readFileSync(sampleScreenshotPath).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images')), true);
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');

@@ -62,7 +62,7 @@ Direct import commands:
 - text: node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation
 - message: node src/index.js import message --person harry-han --text <message> --refresh-foundation
 - talk: node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation
-- screenshot: node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation
+- screenshot: node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation
 - manifest inspect: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'
 - manifest: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation
 

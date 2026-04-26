@@ -20,6 +20,7 @@ const profilesDoc = fs.readFileSync(path.join(repoRoot, 'profiles', 'README.md')
 const harryIntakeReadme = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'README.md'), 'utf8');
 const harryIntakeManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'materials.template.json'), 'utf8'));
 const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'sample.txt'), 'utf8');
+const harryIntakeScreenshot = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'images', 'chat.png'));
 
 function formatMaterialTypes(materialTypes = {}) {
   return Object.entries(materialTypes)
@@ -278,7 +279,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
   assert.match(harryIntakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
-  assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
   assert.match(harryIntakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 
   assert.equal(harryIntakeManifest.personId, 'harry-han');
@@ -291,6 +292,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.equal(harryIntakeManifest.entryTemplates.talk.text, '<paste a transcript snippet>');
   assert.equal(harryIntakeManifest.entryTemplates.screenshot.file, 'images/chat.png');
   assert.match(harryIntakeSample, /Replace this file with a real writing sample for Harry Han\./);
+  assert.equal(harryIntakeScreenshot.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
 
   const summary = buildSummary(repoRoot);
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
