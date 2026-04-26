@@ -1261,6 +1261,31 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
   });
 });
 
+test('CLI import intake --person explains how to promote starter templates into entries before rerunning the profile-local intake manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Starter Only',
+    text: 'This imported profile still has the untouched starter manifest.',
+  });
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'starter-only'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Error: Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/);
+      assert.match(error.stderr, /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/);
+      assert.doesNotMatch(error.stderr, /at runImportCommand/);
+      return true;
+    },
+  );
+});
+
 test('CLI import intake --person surfaces the owning profile and manifest path when the local intake manifest references a missing file', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

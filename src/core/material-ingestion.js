@@ -546,6 +546,25 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
   });
 }
 
+function formatStarterTemplateTypes(entryTemplateTypes = []) {
+  return entryTemplateTypes
+    .filter((value) => isNonEmptyString(value))
+    .sort((left, right) => left.localeCompare(right))
+    .join(', ');
+}
+
+function buildStarterTemplatePromotionError({
+  label,
+  location = null,
+  entryTemplateTypes = [],
+  inspectCommand,
+  importCommand,
+}) {
+  const templateSummary = formatStarterTemplateTypes(entryTemplateTypes) || 'none';
+  const locationSegment = isNonEmptyString(location) ? `: ${location}` : '';
+  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (templates: ${templateSummary}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
+}
+
 function manifestOwnerMatchesExpectedPersonId(ownerValue, expectedPersonId) {
   if (!isNonEmptyString(ownerValue)) {
     return true;
@@ -1133,7 +1152,12 @@ export class MaterialIngestion {
 
     const intakeManifestState = inspectIntakeManifestState(this.rootDir, profile.intake.starterManifestPath, normalizedPersonId);
     if (intakeManifestState.status === 'starter') {
-      throw new Error(`Profile intake manifest has no entries yet: ${normalizedPersonId}`);
+      throw new Error(buildStarterTemplatePromotionError({
+        label: `Profile intake manifest still contains only starter templates: ${normalizedPersonId} @ ${profile.intake.starterManifestPath}`,
+        entryTemplateTypes: intakeManifestState.entryTemplateTypes,
+        inspectCommand: buildImportIntakeCommand(normalizedPersonId),
+        importCommand: buildImportIntakeCommand(normalizedPersonId, { refreshFoundation: true }),
+      }));
     }
     if (intakeManifestState.status !== 'loaded') {
       const intakeManifestPath = profile.intake.starterManifestPath;
@@ -1431,7 +1455,18 @@ export class MaterialIngestion {
       .map((profile) => slugifyPersonId(profile.personId))
       .filter((personId) => personId.length > 0));
 
+    const manifestRelativePath = path.relative(fs.realpathSync(this.rootDir), validatedManifestPath).split(path.sep).join('/');
+    const starterManifestState = inspectIntakeManifestState(this.rootDir, manifestRelativePath);
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;
+    if (starterManifestState.status === 'starter') {
+      throw new Error(buildStarterTemplatePromotionError({
+        label: 'Manifest still contains only starter templates',
+        location: manifestRelativePath,
+        entryTemplateTypes: starterManifestState.entryTemplateTypes,
+        inspectCommand: buildManifestImportCommand(manifestRelativePath),
+        importCommand: buildManifestImportCommand(manifestRelativePath, { refreshFoundation: true }),
+      }));
+    }
     if (!Array.isArray(entries) || entries.length === 0) {
       throw new Error('Manifest must contain a non-empty entries array');
     }

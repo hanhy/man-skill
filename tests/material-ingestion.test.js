@@ -1474,7 +1474,7 @@ test('importProfileIntakeManifest preserves replayed profile summaries on skippe
   assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
 });
 
-test('importProfileIntakeManifest rejects imported profiles whose local intake manifest still has no entries', () => {
+test('importProfileIntakeManifest explains how to promote starter templates into entries before rerunning imported profile intake', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1485,7 +1485,25 @@ test('importProfileIntakeManifest rejects imported profiles whose local intake m
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'starter-only', refreshFoundation: true }),
-    /Profile intake manifest has no entries yet: starter-only/,
+    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
+  );
+});
+
+test('importManifest explains how to promote starter templates into entries before rerunning a starter manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Starter-template manifest should fail with actionable guidance.',
+  });
+
+  const starterManifestPath = path.join(rootDir, 'profiles', 'starter-only', 'imports', 'materials.template.json');
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: starterManifestPath, refreshFoundation: true }),
+    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
   );
 });
 
