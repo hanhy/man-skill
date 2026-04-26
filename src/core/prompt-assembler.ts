@@ -700,6 +700,9 @@ type IngestionSummary = {
   recommendedProfileId?: string | null;
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
+  recommendedLatestMaterialAt?: string | null;
+  recommendedLatestMaterialId?: string | null;
+  recommendedLatestMaterialSourcePath?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedRefreshIntakeCommand?: string | null;
@@ -1987,6 +1990,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
     ? ingestion.recommendedInspectCommand
     : null;
+  const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
+  const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
+  const recommendedLatestMaterialSourcePath = normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath);
+  const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
+    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
+    : '';
   const recommendedManifestInspectCommand = typeof ingestion?.recommendedManifestInspectCommand === 'string' && ingestion.recommendedManifestInspectCommand.length > 0
     ? ingestion.recommendedManifestInspectCommand
     : null;
@@ -2022,7 +2031,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; manifest ${recommendedManifestImportCommand}`
     : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [

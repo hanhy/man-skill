@@ -2136,12 +2136,17 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   });
 
   const summary = buildSummary(rootDir);
+  const currentLatestMaterial = `${summary.workLoop.currentPriority.latestMaterialAt} (${summary.workLoop.currentPriority.latestMaterialId}) @ ${summary.workLoop.currentPriority.latestMaterialSourcePath}`;
+  const recommendedLatestMaterial = `${summary.workLoop.recommendedPriority?.latestMaterialAt} (${summary.workLoop.recommendedPriority?.latestMaterialId}) @ ${summary.workLoop.recommendedPriority?.latestMaterialSourcePath}`;
 
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'populate the imported intake starter manifest for Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.command, null);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialAt, summary.ingestion.recommendedLatestMaterialAt);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.ingestion.recommendedLatestMaterialId);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, summary.ingestion.recommendedLatestMaterialSourcePath);
   assert.equal(summary.workLoop.currentPriority.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.match(
     summary.workLoop.currentPriority?.refreshIntakeCommand ?? '',
@@ -2160,6 +2165,9 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
   );
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.equal(summary.workLoop.recommendedPriority?.latestMaterialAt, summary.ingestion.recommendedLatestMaterialAt);
+  assert.equal(summary.workLoop.recommendedPriority?.latestMaterialId, summary.ingestion.recommendedLatestMaterialId);
+  assert.equal(summary.workLoop.recommendedPriority?.latestMaterialSourcePath, summary.ingestion.recommendedLatestMaterialSourcePath);
   assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/images/chat.png',
@@ -2181,6 +2189,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 1 imported, 1 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /recommended: Ingestion \[queued\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
+  assert.ok(summary.promptPreview.includes(`latest material: ${currentLatestMaterial}`));
   assert.match(summary.promptPreview, /starter templates: message, screenshot, talk, text \(4 total\)/);
   assert.match(summary.promptPreview, /edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
@@ -2204,6 +2213,8 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   });
 
   const summary = buildSummary(rootDir);
+  const advisoryLatestMaterial = `${summary.workLoop.actionableReadyPriority?.latestMaterialAt} (${summary.workLoop.actionableReadyPriority?.latestMaterialId}) @ ${summary.workLoop.actionableReadyPriority?.latestMaterialSourcePath}`;
+  const recommendedLatestMaterial = `${summary.workLoop.recommendedPriority?.latestMaterialAt} (${summary.workLoop.recommendedPriority?.latestMaterialId}) @ ${summary.workLoop.recommendedPriority?.latestMaterialSourcePath}`;
 
   assert.equal(summary.workLoop.currentPriority.id, 'channels');
   assert.equal(summary.workLoop.currentPriority.status, 'blocked');
@@ -2212,6 +2223,9 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   assert.equal(summary.workLoop.actionableReadyPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.actionableReadyPriority?.status, 'ready');
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
+  assert.equal(summary.workLoop.actionableReadyPriority?.latestMaterialAt, summary.ingestion.recommendedLatestMaterialAt);
+  assert.equal(summary.workLoop.actionableReadyPriority?.latestMaterialId, summary.ingestion.recommendedLatestMaterialId);
+  assert.equal(summary.workLoop.actionableReadyPriority?.latestMaterialSourcePath, summary.ingestion.recommendedLatestMaterialSourcePath);
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.workLoop.actionableReadyPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
@@ -2225,6 +2239,7 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   assert.doesNotMatch(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /advisory: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /advisory next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
+  assert.ok(summary.promptPreview.includes(`advisory latest material: ${advisoryLatestMaterial}`));
   assert.match(summary.promptPreview, /advisory refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /advisory starter templates: message, screenshot, talk, text \(4 total\)/);
   assert.match(summary.promptPreview, /advisory edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);

@@ -1216,6 +1216,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedProfileId: string | null = null;
   let recommendedLabel: string | null = null;
   let recommendedAction: string | null = null;
+  let recommendedLatestMaterialAt: string | null = null;
+  let recommendedLatestMaterialId: string | null = null;
+  let recommendedLatestMaterialSourcePath: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
@@ -1229,6 +1232,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
+
+  const setRecommendedLatestMaterial = (profile: any) => {
+    recommendedLatestMaterialAt = profile?.latestMaterialAt ?? null;
+    recommendedLatestMaterialId = profile?.latestMaterialId ?? null;
+    recommendedLatestMaterialSourcePath = profile?.latestMaterialSourcePath ?? null;
+  };
 
   if (safeProfiles.length === 0) {
     const sampleStarterCommand = sampleManifestPresent && sampleManifest.status === 'loaded'
@@ -1266,6 +1275,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedProfileId = firstRefreshTarget.personId ?? null;
     recommendedLabel = firstRefreshTarget.label ?? firstRefreshTarget.personId ?? null;
     recommendedAction = 'refresh stale or incomplete target profiles';
+    setRecommendedLatestMaterial(firstRefreshTarget);
     recommendedCommand = helperCommands.refreshFoundationBundle ?? helperCommands.refreshStaleFoundation ?? firstRefreshTarget.refreshFoundationCommand ?? null;
     recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths({ profileId: profile.personId ?? null }))));
   } else if (importedIntakeBackfillProfiles.length > 0) {
@@ -1275,6 +1285,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedAction = recommendedLabel
       ? `backfill the intake landing zone for imported profiles — starting with ${recommendedLabel}`
       : 'backfill intake landing zones for imported profiles';
+    setRecommendedLatestMaterial(firstImportedBackfillProfile);
     recommendedCommand = importedIntakeBackfillProfiles.length > 1
       ? (helperCommands.scaffoldImportedBundle ?? firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImported ?? null)
       : (firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImportedBundle ?? helperCommands.scaffoldImported ?? null);
@@ -1291,6 +1302,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? `repair invalid intake manifests for imported profiles — starting with ${recommendedLabel}`
         : `repair the invalid intake manifest for imported profile ${recommendedLabel}${firstInvalidImportedReason ? ` — ${firstInvalidImportedReason}` : ''}`)
       : 'repair invalid intake manifests for imported profiles';
+    setRecommendedLatestMaterial(firstInvalidImportedIntakeProfile);
     recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
@@ -1307,6 +1319,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? `populate imported intake starter manifests — starting with ${recommendedLabel}`
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
+    setRecommendedLatestMaterial(firstImportedStarterIntakeProfile);
     recommendedCommand = null;
     recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
@@ -1355,6 +1368,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : (recommendedLabel
         ? `import source materials for ${recommendedLabel}`
         : 'import source materials for imported intake replays');
+    setRecommendedLatestMaterial(firstImportedReadyIntakeProfile);
     recommendedCommand = importedProfilesWithReadyIntake.length > 1
       ? (helperCommands.importIntakeImportedAndRefresh
         ?? helperCommands.importIntakeBundle
@@ -1558,6 +1572,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedProfileId,
     recommendedLabel,
     recommendedAction,
+    recommendedLatestMaterialAt,
+    recommendedLatestMaterialId,
+    recommendedLatestMaterialSourcePath,
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,

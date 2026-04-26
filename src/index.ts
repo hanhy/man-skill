@@ -1188,6 +1188,15 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedAction = typeof ingestionSummary?.recommendedAction === 'string' && ingestionSummary.recommendedAction.length > 0
     ? ingestionSummary.recommendedAction
     : null;
+  const recommendedLatestMaterialAt = typeof ingestionSummary?.recommendedLatestMaterialAt === 'string' && ingestionSummary.recommendedLatestMaterialAt.length > 0
+    ? ingestionSummary.recommendedLatestMaterialAt
+    : null;
+  const recommendedLatestMaterialId = typeof ingestionSummary?.recommendedLatestMaterialId === 'string' && ingestionSummary.recommendedLatestMaterialId.length > 0
+    ? ingestionSummary.recommendedLatestMaterialId
+    : null;
+  const recommendedLatestMaterialSourcePath = typeof ingestionSummary?.recommendedLatestMaterialSourcePath === 'string' && ingestionSummary.recommendedLatestMaterialSourcePath.length > 0
+    ? ingestionSummary.recommendedLatestMaterialSourcePath
+    : null;
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
@@ -1251,6 +1260,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     summary: `${importedProfileCount} imported, ${metadataOnlyProfileCount} metadata-only, drafts ${ingestionSummary?.readyProfileCount ?? 0} ready, ${refreshProfileCount} queued for refresh${importedStarterIntakeSummary}${importedReadyIntakeSummary}${intakeBackfillSummary}${invalidMetadataOnlyIntakeSummary}${invalidImportedIntakeSummary}`,
     nextAction: recommendedAction,
     command: recommendedCommand,
+    latestMaterialAt: recommendedLatestMaterialAt,
+    latestMaterialId: recommendedLatestMaterialId,
+    latestMaterialSourcePath: recommendedLatestMaterialSourcePath,
     fallbackCommand: recommendedFallbackCommand,
     refreshIntakeCommand: recommendedRefreshIntakeCommand,
     editPath: recommendedEditPath,
