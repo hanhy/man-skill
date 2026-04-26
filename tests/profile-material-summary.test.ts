@@ -4827,6 +4827,67 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
   );
   assert.equal(summary.ingestion.recommendedManifestInspectCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
   assert.equal(summary.ingestion.recommendedManifestImportCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation) && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation)");
+  const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+  const janeCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'jane-doe');
+  assert.deepEqual(summary.ingestion.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: harryCommand?.latestMaterialAt ?? null,
+      latestMaterialId: harryCommand?.latestMaterialId ?? null,
+      latestMaterialSourcePath: harryCommand?.latestMaterialSourcePath ?? null,
+      fallbackCommand: harryCommand?.starterImportCommand ?? null,
+      refreshIntakeCommand: harryCommand?.updateIntakeCommand ?? null,
+      editPath: harryCommand?.intakeManifestPath ?? null,
+      editPaths: [
+        'profiles/harry-han/imports/materials.template.json',
+        'profiles/harry-han/imports/sample.txt',
+      ],
+      manifestInspectCommand: harryCommand?.importManifestWithoutRefreshCommand ?? null,
+      manifestImportCommand: harryCommand?.importManifestCommand ?? null,
+      intakeManifestEntryTemplateTypes: harryCommand?.intakeManifestEntryTemplateTypes ?? [],
+      intakeManifestEntryTemplateDetails: harryCommand?.intakeManifestEntryTemplateDetails ?? [],
+      intakeManifestEntryTemplateCount: harryCommand?.intakeManifestEntryTemplateCount ?? 0,
+      inspectCommand: harryCommand?.followUpImportIntakeWithoutRefreshCommand ?? null,
+      followUpCommand: harryCommand?.followUpImportIntakeCommand ?? null,
+      paths: [
+        'profiles/harry-han/imports',
+        'profiles/harry-han/imports/images',
+        'profiles/harry-han/imports/README.md',
+        'profiles/harry-han/imports/materials.template.json',
+        'profiles/harry-han/imports/sample.txt',
+      ],
+    },
+    {
+      personId: 'jane-doe',
+      label: 'Jane Doe (jane-doe)',
+      latestMaterialAt: janeCommand?.latestMaterialAt ?? null,
+      latestMaterialId: janeCommand?.latestMaterialId ?? null,
+      latestMaterialSourcePath: janeCommand?.latestMaterialSourcePath ?? null,
+      fallbackCommand: janeCommand?.starterImportCommand ?? null,
+      refreshIntakeCommand: janeCommand?.updateIntakeCommand ?? null,
+      editPath: janeCommand?.intakeManifestPath ?? null,
+      editPaths: [
+        'profiles/jane-doe/imports/materials.template.json',
+        'profiles/jane-doe/imports/images/chat.png',
+        'profiles/jane-doe/imports/sample.txt',
+      ],
+      manifestInspectCommand: janeCommand?.importManifestWithoutRefreshCommand ?? null,
+      manifestImportCommand: janeCommand?.importManifestCommand ?? null,
+      intakeManifestEntryTemplateTypes: janeCommand?.intakeManifestEntryTemplateTypes ?? [],
+      intakeManifestEntryTemplateDetails: janeCommand?.intakeManifestEntryTemplateDetails ?? [],
+      intakeManifestEntryTemplateCount: janeCommand?.intakeManifestEntryTemplateCount ?? 0,
+      inspectCommand: janeCommand?.followUpImportIntakeWithoutRefreshCommand ?? null,
+      followUpCommand: janeCommand?.followUpImportIntakeCommand ?? null,
+      paths: [
+        'profiles/jane-doe/imports',
+        'profiles/jane-doe/imports/images',
+        'profiles/jane-doe/imports/README.md',
+        'profiles/jane-doe/imports/materials.template.json',
+        'profiles/jane-doe/imports/sample.txt',
+      ],
+    },
+  ]);
   assert.deepEqual(summary.ingestion.recommendedIntakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.deepEqual(summary.ingestion.recommendedIntakeManifestEntryTemplateDetails, [
     { type: 'message', source: 'text', path: null, preview: 'Keep the operating note concise.' },
@@ -5538,6 +5599,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedIntakeManifestEntryTemplateTypes: [],
     recommendedIntakeManifestEntryTemplateDetails: [],
     recommendedIntakeManifestEntryTemplateCount: 0,
+    recommendedProfileSlices: [],
     recommendedInspectCommand: null,
     recommendedFollowUpCommand: null,
     recommendedPaths: [],

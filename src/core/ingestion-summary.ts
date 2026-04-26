@@ -136,6 +136,41 @@ function collectRecommendedStarterTemplateSummary(
   };
 }
 
+function buildRecommendedStarterProfileSlice(profile: any) {
+  if (!profile || typeof profile !== 'object') {
+    return null;
+  }
+
+  const intakeManifestEntryTemplateTypes = Array.isArray(profile?.intakeManifestEntryTemplateTypes)
+    ? profile.intakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails);
+  const fallbackTemplateCount = Math.max(intakeManifestEntryTemplateTypes.length, intakeManifestEntryTemplateDetails.length);
+  const intakeManifestEntryTemplateCount = Number.isFinite(profile?.intakeManifestEntryTemplateCount)
+    ? Number(profile.intakeManifestEntryTemplateCount)
+    : fallbackTemplateCount;
+
+  return {
+    personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
+    label: typeof profile?.label === 'string' && profile.label.length > 0 ? profile.label : null,
+    latestMaterialAt: typeof profile?.latestMaterialAt === 'string' && profile.latestMaterialAt.length > 0 ? profile.latestMaterialAt : null,
+    latestMaterialId: typeof profile?.latestMaterialId === 'string' && profile.latestMaterialId.length > 0 ? profile.latestMaterialId : null,
+    latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
+    fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
+    refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
+    editPath: typeof profile?.intakeManifestPath === 'string' && profile.intakeManifestPath.length > 0 ? profile.intakeManifestPath : null,
+    editPaths: collectStarterTemplateEditPaths(profile),
+    manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
+    manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
+    intakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateDetails,
+    intakeManifestEntryTemplateCount,
+    inspectCommand: typeof profile?.followUpImportIntakeWithoutRefreshCommand === 'string' && profile.followUpImportIntakeWithoutRefreshCommand.length > 0 ? profile.followUpImportIntakeWithoutRefreshCommand : null,
+    followUpCommand: typeof profile?.followUpImportIntakeCommand === 'string' && profile.followUpImportIntakeCommand.length > 0 ? profile.followUpImportIntakeCommand : null,
+    paths: collectProfileIntakePaths(profile),
+  };
+}
+
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
 
 function countGeneratedDrafts(profile) {
@@ -1230,6 +1265,25 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedIntakeManifestEntryTemplateTypes: string[] = [];
   let recommendedIntakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> = [];
   let recommendedIntakeManifestEntryTemplateCount = 0;
+  let recommendedProfileSlices: Array<{
+    personId: string | null;
+    label: string | null;
+    latestMaterialAt: string | null;
+    latestMaterialId: string | null;
+    latestMaterialSourcePath: string | null;
+    fallbackCommand: string | null;
+    refreshIntakeCommand: string | null;
+    editPath: string | null;
+    editPaths: string[];
+    manifestInspectCommand: string | null;
+    manifestImportCommand: string | null;
+    intakeManifestEntryTemplateTypes: string[];
+    intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+    intakeManifestEntryTemplateCount: number;
+    inspectCommand: string | null;
+    followUpCommand: string | null;
+    paths: string[];
+  }> = [];
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
@@ -1341,6 +1395,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
     recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
     recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
+    recommendedProfileSlices = importedStarterIntakeProfiles
+      .map((profile) => buildRecommendedStarterProfileSlice(profile))
+      .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedStarterProfileSlice>> => Boolean(profile));
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
@@ -1586,6 +1643,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedIntakeManifestEntryTemplateTypes,
     recommendedIntakeManifestEntryTemplateDetails,
     recommendedIntakeManifestEntryTemplateCount,
+    recommendedProfileSlices,
     recommendedInspectCommand,
     recommendedFollowUpCommand,
     recommendedPaths,

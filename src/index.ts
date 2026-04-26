@@ -1230,6 +1230,27 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedIntakeManifestEntryTemplateCount = Number.isFinite(ingestionSummary?.recommendedIntakeManifestEntryTemplateCount)
     ? ingestionSummary.recommendedIntakeManifestEntryTemplateCount
     : recommendedIntakeManifestEntryTemplateTypes.length;
+  const recommendedProfileSlices = Array.isArray(ingestionSummary?.recommendedProfileSlices)
+    ? ingestionSummary.recommendedProfileSlices.filter((value: unknown): value is {
+      personId: string | null;
+      label: string | null;
+      latestMaterialAt: string | null;
+      latestMaterialId: string | null;
+      latestMaterialSourcePath: string | null;
+      fallbackCommand: string | null;
+      refreshIntakeCommand: string | null;
+      editPath: string | null;
+      editPaths: string[];
+      manifestInspectCommand: string | null;
+      manifestImportCommand: string | null;
+      intakeManifestEntryTemplateTypes: string[];
+      intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+      intakeManifestEntryTemplateCount: number;
+      inspectCommand: string | null;
+      followUpCommand: string | null;
+      paths: string[];
+    } => Boolean(value) && typeof value === 'object' && !Array.isArray(value))
+    : [];
   const recommendedFollowUpCommand = typeof ingestionSummary?.recommendedFollowUpCommand === 'string' && ingestionSummary.recommendedFollowUpCommand.length > 0
     ? ingestionSummary.recommendedFollowUpCommand
     : null;
@@ -1272,6 +1293,7 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     intakeManifestEntryTemplateTypes: recommendedIntakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails: recommendedIntakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount: recommendedIntakeManifestEntryTemplateCount,
+    recommendedProfileSlices,
     inspectCommand: recommendedInspectCommand,
     followUpCommand: recommendedFollowUpCommand,
     paths: recommendedPaths,

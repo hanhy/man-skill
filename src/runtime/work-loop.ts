@@ -27,6 +27,25 @@ export type WorkPriority = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
   intakeManifestEntryTemplateCount?: number;
+  recommendedProfileSlices?: Array<{
+    personId: string | null;
+    label: string | null;
+    latestMaterialAt: string | null;
+    latestMaterialId: string | null;
+    latestMaterialSourcePath: string | null;
+    fallbackCommand: string | null;
+    refreshIntakeCommand: string | null;
+    editPath: string | null;
+    editPaths: string[];
+    manifestInspectCommand: string | null;
+    manifestImportCommand: string | null;
+    intakeManifestEntryTemplateTypes: string[];
+    intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+    intakeManifestEntryTemplateCount: number;
+    inspectCommand: string | null;
+    followUpCommand: string | null;
+    paths: string[];
+  }>;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths: string[];

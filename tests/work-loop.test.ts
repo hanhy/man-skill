@@ -2433,6 +2433,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
     /^\(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)$/,
   );
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.recommendedProfileSlices, summary.ingestion.recommendedProfileSlices);
   assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateDetails, [
     { type: 'message', source: 'text', path: null, preview: 'Keep the operating note concise.' },
     { type: 'screenshot', source: 'file', path: 'images/chat.png', preview: null },
