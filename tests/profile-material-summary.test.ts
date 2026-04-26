@@ -3226,6 +3226,104 @@ test('PromptAssembler keeps the ingestion entrance visible when only the manifes
   assert.match(prompt, /commands: node src\/index\.js import manifest --file <manifest\.json> \| node src\/index\.js import manifest --file <manifest\.json> --refresh-foundation/);
 });
 
+test('PromptAssembler keeps count-only starter template summaries visible across ingestion and work-loop views', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    ingestion: {
+      profileCount: 1,
+      importedProfileCount: 1,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 1,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      recommendedAction: 'populate the imported intake starter manifest for Harry Han (harry-han)',
+      recommendedLatestMaterialAt: '2026-04-24T12:00:00.000Z',
+      recommendedLatestMaterialId: '2026-04-24T12-00-00-000Z-message',
+      recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      recommendedRefreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+      recommendedIntakeManifestEntryTemplateTypes: [],
+      recommendedIntakeManifestEntryTemplateCount: 2,
+      recommendedIntakeManifestEntryTemplateDetails: [
+        { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+        { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+      ],
+      sampleFileCommands: [],
+      sampleInlineCommands: [],
+    },
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      priorityCount: 4,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'ready',
+        summary: 'core 4/4 ready; profiles 0 queued for refresh, 0 incomplete',
+        nextAction: null,
+        command: null,
+        paths: [],
+      },
+      recommendedPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'queued',
+        summary: '1 imported starter manifest needs edits',
+        nextAction: 'populate the imported intake starter manifest for Harry Han (harry-han)',
+        command: null,
+        refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+        intakeManifestEntryTemplateTypes: [],
+        intakeManifestEntryTemplateCount: 2,
+        intakeManifestEntryTemplateDetails: [
+          { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+          { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+        ],
+        paths: ['profiles/harry-han/imports/materials.template.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'ready',
+          summary: 'core 4/4 ready; profiles 0 queued for refresh, 0 incomplete',
+          nextAction: null,
+          command: null,
+          paths: [],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'queued',
+          summary: '1 imported starter manifest needs edits',
+          nextAction: 'populate the imported intake starter manifest for Harry Han (harry-han)',
+          command: null,
+          refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+          intakeManifestEntryTemplateTypes: [],
+          intakeManifestEntryTemplateCount: 2,
+          intakeManifestEntryTemplateDetails: [
+            { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+            { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+          ],
+          paths: ['profiles/harry-han/imports/materials.template.json'],
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.match(prompt, /- recommended starter templates: 2 total/);
+  assert.match(prompt, /- recommended starter details: message Keep the note tight\. \| text sample\.txt/);
+});
+
 test('PromptAssembler includes work-loop guidance in the system prompt', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

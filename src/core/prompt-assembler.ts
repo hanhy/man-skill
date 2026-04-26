@@ -2065,7 +2065,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     : 0;
   const recommendedTemplateSummary = recommendedIntakeManifestEntryTemplateTypes.length > 0
     ? `${recommendedIntakeManifestEntryTemplateTypes.join(', ')}${recommendedIntakeManifestEntryTemplateCount > 0 ? ` (${recommendedIntakeManifestEntryTemplateCount} total)` : ''}`
-    : null;
+    : (recommendedIntakeManifestEntryTemplateCount > 0 ? `${recommendedIntakeManifestEntryTemplateCount} total` : null);
   const recommendedProfileSliceSummary = formatRecommendedStarterProfileSlices(ingestion?.recommendedProfileSlices);
   const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
   const recommendedEditSegment = recommendedEditPaths.length > 1
@@ -2803,7 +2803,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : 0;
 
     if (templateTypes.length === 0) {
-      return null;
+      return templateCount > 0 ? `${templateCount} total` : null;
     }
 
     return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
