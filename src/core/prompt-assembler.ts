@@ -552,6 +552,26 @@ type StarterTemplateDetail = {
   preview?: string | null;
 };
 
+type RecommendedStarterProfileSlice = {
+  personId?: string | null;
+  label?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
+  editPath?: string | null;
+  editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  intakeManifestEntryTemplateCount?: number;
+  inspectCommand?: string | null;
+  followUpCommand?: string | null;
+  paths?: string[];
+};
+
 type IngestionProfileCommand = {
   personId?: string | null;
   displayName?: string | null;
@@ -716,6 +736,7 @@ type IngestionSummary = {
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
+  recommendedProfileSlices?: RecommendedStarterProfileSlice[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -751,6 +772,7 @@ type WorkLoopPriority = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   intakeManifestEntryTemplateCount?: number;
+  recommendedProfileSlices?: RecommendedStarterProfileSlice[];
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
@@ -835,6 +857,27 @@ function formatStarterTemplateDetailSummary(details: unknown): string | null {
   return normalizedDetails
     .map((detail) => `${detail.type} ${detail.source === 'file' ? detail.path ?? 'file' : detail.preview ?? 'text'}`)
     .join(' | ');
+}
+
+function formatRecommendedStarterProfileSlices(slices: unknown): string | null {
+  const normalizedSlices = Array.isArray(slices)
+    ? slices
+      .filter((slice): slice is RecommendedStarterProfileSlice => Boolean(slice) && typeof slice === 'object' && !Array.isArray(slice))
+      .map((slice) => {
+        const label = normalizeOptionalString(slice.label) ?? normalizeOptionalString(slice.personId) ?? 'unknown-profile';
+        const editPath = normalizeOptionalString(slice.editPath)
+          ?? normalizeStringArray(slice.editPaths)[0]
+          ?? normalizeStringArray(slice.paths).find((value) => value.endsWith('materials.template.json'))
+          ?? null;
+
+        return editPath ? `${label} -> ${editPath}` : null;
+      })
+      .filter((slice): slice is string => Boolean(slice))
+    : [];
+
+  return normalizedSlices.length > 1
+    ? normalizedSlices.join(' | ')
+    : null;
 }
 
 function normalizeMaterialTypes(materialTypes: unknown): MaterialTypes | undefined {
@@ -2020,6 +2063,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedTemplateSummary = recommendedIntakeManifestEntryTemplateTypes.length > 0
     ? `${recommendedIntakeManifestEntryTemplateTypes.join(', ')}${recommendedIntakeManifestEntryTemplateCount > 0 ? ` (${recommendedIntakeManifestEntryTemplateCount} total)` : ''}`
     : null;
+  const recommendedProfileSliceSummary = formatRecommendedStarterProfileSlices(ingestion?.recommendedProfileSlices);
   const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
@@ -2054,6 +2098,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
     nextIntakeLine,
+    recommendedProfileSliceSummary
+      ? `- starter profiles: ${recommendedProfileSliceSummary}`
+      : null,
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
@@ -2816,6 +2863,10 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     const summary = formatHeadingAliasSummary(Array.isArray(priority?.rootHeadingAliases) ? priority.rootHeadingAliases : undefined);
     return summary ? summary.replace(/^; aliases /, prefix) : null;
   };
+  const formatPriorityStarterProfiles = (priority?: WorkLoopPriority | null, prefix = '- starter profiles: '): string | null => {
+    const summary = formatRecommendedStarterProfileSlices(priority?.recommendedProfileSlices);
+    return summary ? `${prefix}${summary}` : null;
+  };
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2861,6 +2912,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRecommendedPriorityDetails && recommendedPriorityTemplateSummary
       ? `- recommended starter templates: ${recommendedPriorityTemplateSummary}`
       : null,
+    showRecommendedPriorityDetails ? formatPriorityStarterProfiles(recommendedPriority, '- recommended starter profiles: ') : null,
     showRecommendedPriorityDetails && recommendedPriorityTemplateDetailSummary
       ? `- recommended starter details: ${recommendedPriorityTemplateDetailSummary}`
       : null,
@@ -2910,6 +2962,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriorityTemplateSummary
       ? `- starter templates: ${currentPriorityTemplateSummary}`
       : null,
+    formatPriorityStarterProfiles(currentPriority),
     currentPriorityTemplateDetailSummary
       ? `- starter details: ${currentPriorityTemplateDetailSummary}`
       : null,
@@ -2959,6 +3012,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriorityTemplateSummary
       ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
       : null,
+    showRunnablePriority ? formatPriorityStarterProfiles(runnablePriority, '- runnable starter profiles: ') : null,
     showRunnablePriority && runnablePriorityTemplateDetailSummary
       ? `- runnable starter details: ${runnablePriorityTemplateDetailSummary}`
       : null,
@@ -3008,6 +3062,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriorityTemplateSummary
       ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`
       : null,
+    showActionableReadyPriority ? formatPriorityStarterProfiles(actionableReadyPriority, '- advisory starter profiles: ') : null,
     showActionableReadyPriority && actionableReadyPriorityTemplateDetailSummary
       ? `- advisory starter details: ${actionableReadyPriorityTemplateDetailSummary}`
       : null,

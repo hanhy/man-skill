@@ -4913,6 +4913,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/jane-doe/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); latest material \d{4}-\d{2}-\d{2}T[^ ]+ \([^)]*\) @ samples\/harry-post\.txt/);
+  assert.match(summary.promptPreview, /starter profiles: Harry Han \(harry-han\) -> profiles\/harry-han\/imports\/materials\.template\.json \| Jane Doe \(jane-doe\) -> profiles\/jane-doe\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/images\/chat\.png, profiles\/jane-doe\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /starter details message Keep the operating note concise\. \| screenshot images\/chat\.png \| talk Ship the correction while it is still fresh\. \| text sample\.txt/);
   assert.match(summary.promptPreview, /helpers: .*inspect-starter-bundle \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
