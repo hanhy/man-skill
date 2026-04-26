@@ -2287,12 +2287,14 @@ function formatMemoryAliasSummary(
         ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermEntries') ? ['shortTermEntries'] : []),
         ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermPresent') ? ['shortTermPresent'] : []),
       ];
-  const legacySources = Array.isArray(memory?.legacyShortTermSources)
-    ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
-  const legacySampleSources = Array.isArray(memory?.legacyShortTermSampleSources)
-    ? memory.legacyShortTermSampleSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
+  const legacySources = normalizeStringArray(
+    memory?.legacyShortTermSources,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
+  const legacySampleSources = normalizeStringArray(
+    memory?.legacyShortTermSampleSources,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
   const legacySourceCount = typeof memory?.legacyShortTermSourceCount === 'number'
     ? memory.legacyShortTermSourceCount
     : legacySources.length;

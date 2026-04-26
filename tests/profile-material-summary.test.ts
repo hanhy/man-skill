@@ -2067,6 +2067,104 @@ test('PromptAssembler infers canonical daily alias wording from legacy short-ter
   assert.match(prompt, /memory: README yes, daily 2, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more; samples: daily\/2026-04-20\.md, long-term\/operator\.json; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\)/);
 });
 
+test('PromptAssembler normalizes legacy short-term source provenance before rendering alias summaries', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: {
+      dailyEntries: 2,
+      shortTermEntries: 2,
+      longTermEntries: 0,
+      scratchEntries: 0,
+      totalEntries: 2,
+      dailyPresent: true,
+      shortTermPresent: true,
+      longTermPresent: false,
+      scratchPresent: false,
+      legacyShortTermSourceCount: 3,
+      legacyShortTermSampleSources: [
+        ' .\\memory\\short-term\\2026-04-01.md ',
+        './memory/short-term//2026-04-02.md',
+        '.\\memory/short-term\\2026-04-03.md',
+      ],
+    },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        shortTermEntries: 2,
+        shortTermPresent: true,
+        readyBucketCount: 1,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily'],
+        emptyBuckets: ['long-term', 'scratch'],
+        sampleEntries: ['daily/2026-04-20.md'],
+        legacyShortTermSourceCount: 3,
+        legacyShortTermSampleSources: [
+          ' .\\memory\\short-term\\2026-04-01.md ',
+          './memory/short-term//2026-04-02.md',
+          '.\\memory/short-term\\2026-04-03.md',
+        ],
+      },
+      skills: {
+        hasRootDocument: false,
+        rootPath: 'skills/README.md',
+        rootExcerpt: null,
+        count: 0,
+        documentedCount: 0,
+        sample: [],
+        samplePaths: [],
+      },
+      soul: {
+        present: false,
+        path: 'SOUL.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      voice: {
+        present: false,
+        path: 'voice/README.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      overview: {
+        readyAreaCount: 1,
+        totalAreaCount: 4,
+        missingAreas: ['skills', 'soul', 'voice'],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 1,
+        missingAreaCount: 3,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md; samples: daily\/2026-04-20\.md/);
+});
+
 test('PromptAssembler prefers explicit daily counts over legacy short-term aliases in core foundation memory snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
