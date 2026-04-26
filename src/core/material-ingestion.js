@@ -1085,7 +1085,9 @@ export class MaterialIngestion {
       throw new Error(`Profile intake manifest has no entries yet: ${normalizedPersonId}`);
     }
     if (intakeManifestState.status !== 'loaded') {
-      throw new Error(intakeManifestState.error || `Profile intake manifest is not ready for import: ${normalizedPersonId}`);
+      const intakeManifestPath = profile.intake.starterManifestPath;
+      const intakeManifestError = intakeManifestState.error || 'manifest validation failed';
+      throw new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
     }
 
     return this.importManifest({

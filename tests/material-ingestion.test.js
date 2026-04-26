@@ -1601,7 +1601,7 @@ test('importProfileIntakeManifest rejects a profile-local manifest entry that re
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
-    /Manifest entry 0 references a missing file: missing-post\.txt/,
+    /Profile intake manifest is not ready for import: harry-han @ profiles\/harry-han\/imports\/materials\.template\.json — Manifest entry 0 references a missing file: missing-post\.txt/,
   );
   const materialFiles = fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
     ? fs.readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials')).filter((name) => name.endsWith('.json'))

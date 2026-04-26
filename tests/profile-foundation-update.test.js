@@ -1261,6 +1261,44 @@ test('CLI import intake and update foundation errors advertise the full batch-ca
   });
 });
 
+test('CLI import intake --person surfaces the owning profile and manifest path when the local intake manifest references a missing file', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'text',
+          file: 'missing-post.txt',
+        },
+      ],
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'harry-han'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    }),
+    (error) => {
+      assert.equal(error.status, 1);
+      assert.match(error.stderr, /Error: Profile intake manifest is not ready for import: harry-han @ profiles\/harry-han\/imports\/materials\.template\.json — Manifest entry 0 references a missing file: missing-post\.txt/);
+      assert.match(error.stderr, /Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/);
+      assert.doesNotMatch(error.stderr, /at runImportCommand/);
+      return true;
+    },
+  );
+});
+
 test('CLI batch-capable intake and foundation commands reject ambiguous mode selectors with the same usage hints', () => {
   const rootDir = makeTempRepo();
 
