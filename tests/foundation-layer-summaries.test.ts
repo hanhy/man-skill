@@ -519,6 +519,34 @@ test('canonical daily counts keep same-basename legacy short-term files instead 
   assert.match(summary.promptPreview, /legacy short-term sources memory\/short-term\/today\.md/);
 });
 
+test('soul profile JS shim exposes the raw Node export surface', () => {
+  const exportKeys = execFileSync(
+    'node',
+    [
+      '--input-type=module',
+      '-e',
+      "import('./src/core/soul-profile.js').then((module) => console.log(Object.keys(module).sort().join(',')))",
+    ],
+    { encoding: 'utf8' },
+  ).trim();
+
+  assert.equal(exportKeys, 'SoulProfile');
+});
+
+test('voice profile JS shim exposes the raw Node export surface', () => {
+  const exportKeys = execFileSync(
+    'node',
+    [
+      '--input-type=module',
+      '-e',
+      "import('./src/core/voice-profile.js').then((module) => console.log(Object.keys(module).sort().join(',')))",
+    ],
+    { encoding: 'utf8' },
+  ).trim();
+
+  assert.equal(exportKeys, 'VoiceProfile');
+});
+
 test('memory store raw JS entrypoint stays aligned with the TypeScript summary contract', () => {
   const scriptPath = path.join(makeTempRepo(), 'memory-store-check.mjs');
   const legacyShortTerm = [
@@ -576,6 +604,41 @@ console.log(JSON.stringify(soul.summary()));
   const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
 
   assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
+});
+
+test('voice profile raw JS entrypoint stays aligned for multiline structured sections', () => {
+  const document = [
+    '# Voice',
+    '',
+    '## Tone',
+    'Warm and grounded,',
+    'with enough urgency to keep momentum.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples that land quickly',
+    '  and end with the next concrete step.',
+    '',
+    '## Avoid',
+    '- Padding the answer',
+    '  with empty throat-clearing.',
+    '',
+    '## Language hints',
+    '- Preserve bilingual phrasing',
+    '  when the source switches languages.',
+    '',
+  ].join('\n');
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-multiline-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
 });
 
 test('voice profile raw JS entrypoint stays aligned for blockquoted legacy structured docs', () => {
