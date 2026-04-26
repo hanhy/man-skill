@@ -210,6 +210,10 @@ function normalizeAdmonitionLine(line) {
   return trailingContent.length > 0 ? trailingContent : '';
 }
 
+function isFrontmatterBoundaryLine(line) {
+  return /^(?:---|\.\.\.)\s*$/.test(line.trim());
+}
+
 function extractFrontmatterDescription(document) {
   const normalizedDocument = normalizeDocument(document);
   if (!normalizedDocument.startsWith('---')) {
@@ -217,7 +221,7 @@ function extractFrontmatterDescription(document) {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
   if (closingIndex < 0) {
     return null;
   }

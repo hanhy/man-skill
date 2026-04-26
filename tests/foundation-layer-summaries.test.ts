@@ -887,6 +887,71 @@ Description: Preserve terse bilingual delivery.
   });
 });
 
+test('voice profile accepts YAML document-end frontmatter closures', () => {
+  const voice = VoiceProfile.fromDocument(`---
+name: ManSkill voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+...
+
+# Voice
+
+## Current default for ManSkill
+- concise by default
+- preserve 中文 and English switching when the source does
+`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile raw JS entrypoint stays aligned for YAML document-end frontmatter descriptions', () => {
+  const document = `---
+name: Harry Han voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+...
+
+# Voice
+
+## Current default for Harry Han
+- concise by default
+- preserve 中文 and English switching when the source does
+`;
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-frontmatter-document-end-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
 test('voice profile raw JS entrypoint stays aligned for frontmatter description and target-specific current-default aliases', () => {
   const document = `---
 name: Harry Han voice
@@ -1377,6 +1442,77 @@ Description: Keep the operating posture grounded.
 `);
 
   assert.deepEqual(soul.summary(), {
+    excerpt: 'Keep the operating posture grounded.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 2,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile accepts YAML document-end frontmatter closures', () => {
+  const soul = SoulProfile.fromDocument(`---
+name: ManSkill soul
+Description: Keep the operating posture grounded.
+...
+
+# Soul
+
+## Core values
+- Stay faithful to the source material.
+
+## Boundaries
+- Do not bluff certainty.
+`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Keep the operating posture grounded.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 2,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile raw JS entrypoint stays aligned for YAML document-end frontmatter descriptions', () => {
+  const document = `---
+name: Harry Han soul
+Description: Keep the operating posture grounded.
+...
+
+# Soul
+
+## Core values
+- Stay faithful to the source material.
+
+## Boundaries
+- Do not bluff certainty.
+`;
+  const scriptPath = path.join(makeTempRepo(), 'soul-profile-frontmatter-document-end-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { SoulProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/soul-profile.js'))};
+const soul = SoulProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(soul.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
     excerpt: 'Keep the operating posture grounded.',
     coreTruths: ['Stay faithful to the source material.'],
     boundaries: ['Do not bluff certainty.'],

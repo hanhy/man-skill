@@ -11,6 +11,14 @@ function stripWrappingQuotes(value: string): string {
   return trimmed;
 }
 
+function isFrontmatterBoundaryLine(line: string): boolean {
+  return /^(?:---|\.\.\.)\s*$/.test(line.trim());
+}
+
+function findFrontmatterClosingIndex(lines: string[]): number {
+  return lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
+}
+
 export function normalizeDocument(document: unknown): string {
   if (typeof document !== 'string') {
     return '';
@@ -26,7 +34,7 @@ export function extractFrontmatterDescription(document: unknown): string | null 
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  const closingIndex = findFrontmatterClosingIndex(lines);
   if (closingIndex < 0) {
     return null;
   }
@@ -233,7 +241,7 @@ export function findDocumentExcerpt(document: unknown): string | null {
   const lines = normalizedDocument.split(/\r?\n/);
   const body = normalizedDocument.startsWith('---')
     ? (() => {
-        const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+        const closingIndex = findFrontmatterClosingIndex(lines);
         return closingIndex >= 0 ? lines.slice(closingIndex + 2).join('\n') : normalizedDocument;
       })()
     : normalizedDocument;

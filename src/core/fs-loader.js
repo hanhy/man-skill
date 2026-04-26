@@ -94,6 +94,10 @@ function stripWrappingQuotes(value) {
   return trimmed;
 }
 
+function isFrontmatterBoundaryLine(line) {
+  return /^(?:---|\.\.\.)\s*$/.test(line.trim());
+}
+
 function extractFrontmatterDescription(document) {
   const normalizedDocument = normalizeDocument(document);
   if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
@@ -101,7 +105,7 @@ function extractFrontmatterDescription(document) {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
   if (closingIndex < 0) {
     return null;
   }
@@ -265,7 +269,7 @@ function extractDocumentBodyLines(document) {
     return lines;
   }
 
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
   return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
 }
 

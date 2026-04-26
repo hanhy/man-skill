@@ -834,6 +834,10 @@ function normalizeSetextHeadingLines(lines: string[]): string[] {
   return normalizedLines;
 }
 
+function isFrontmatterBoundaryLine(line: string): boolean {
+  return /^(?:---|\.\.\.)\s*$/.test(line.trim());
+}
+
 function stripFrontmatter(document: string | null | undefined): string {
   const normalizedDocument = normalizeDocument(document);
   if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
@@ -841,7 +845,7 @@ function stripFrontmatter(document: string | null | undefined): string {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => line.trim() === '---');
+  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
   if (closingIndex < 0) {
     return normalizedDocument;
   }
