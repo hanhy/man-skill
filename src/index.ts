@@ -1427,6 +1427,7 @@ function buildDeliveryPriority({
 
   let nextAction = firstQueued ? followUpParts.join('; ') : null;
   let command = needsCredentialBootstrap && envTemplateCommand ? envTemplateCommand : null;
+  let followUpCommand: string | null = null;
 
   if (command === envTemplateCommand && needsCredentialBootstrap) {
     const envTarget = typeof envConfigPath === 'string' && envConfigPath.length > 0 ? envConfigPath : '.env';
@@ -1437,6 +1438,9 @@ function buildDeliveryPriority({
   if (!command && needsEnvTemplateRepair) {
     nextAction = [`update .env.example with missing delivery credentials`, ...followUpParts].filter(Boolean).join('; ');
     command = envTemplatePopulateCommand;
+    followUpCommand = typeof envTemplateCommand === 'string' && envTemplateCommand.length > 0
+      ? envTemplateCommand
+      : null;
   } else if (!command && manifestMissing) {
     const manifestPath = typeof firstQueued?.manifestScaffoldPath === 'string' ? firstQueued.manifestScaffoldPath : null;
     nextAction = [`create ${manifestPath}`, ...followUpParts].filter(Boolean).join('; ');
@@ -1486,7 +1490,9 @@ function buildDeliveryPriority({
     ? envConfigPaths
     : paths;
   const editPaths = Array.from(new Set(resolvedPaths));
-  const editPath = editPaths[0] ?? null;
+  const editPath = command === envTemplateCommand && needsCredentialBootstrap && typeof envConfigPath === 'string' && envConfigPath.length > 0
+    ? envConfigPath
+    : (editPaths[0] ?? null);
 
   return {
     id,
@@ -1500,6 +1506,7 @@ function buildDeliveryPriority({
     paths: resolvedPaths,
     editPath,
     editPaths,
+    followUpCommand,
   };
 }
 
