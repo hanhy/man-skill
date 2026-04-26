@@ -28,7 +28,10 @@ export function normalizeDraftPath(value: string | null | undefined): string | n
     .trim()
     .replaceAll('\\', '/')
     .replace(/^(?:\.\/)+/, '')
-    .replace(/\/+/g, '/');
+    .replace(/\/+/g, '/')
+    .split('/')
+    .filter((segment) => segment.length > 0 && segment !== '.')
+    .join('/');
   return normalized.length > 0 ? normalized : null;
 }
 
