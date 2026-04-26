@@ -1359,7 +1359,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : 'fix the checked-in sample manifest for first imports';
       recommendedCommand = null;
       recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
-      recommendedPaths = [sampleManifestPath];
+      recommendedPaths = sampleManifestPaths.length > 0 ? sampleManifestPaths : [sampleManifestPath];
     } else {
       recommendedAction = 'bootstrap a target profile';
       recommendedCommand = bootstrapProfileCommand;

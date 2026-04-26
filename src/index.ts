@@ -62,6 +62,8 @@ type SampleManifestSummary = {
   error: string | null;
 }
 
+type SampleManifestValidationError = Error & { repairPaths?: string[] };
+
 interface SampleTextSummary {
   path: string | null;
   present: boolean;
@@ -466,6 +468,24 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     };
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
+    const toRepoRelativeRepairPath = (absoluteRepairPath: string): string | null => {
+      const relativeRepairPath = path.relative(realRootDir, absoluteRepairPath);
+      if (!relativeRepairPath || path.isAbsolute(relativeRepairPath) || relativeRepairPath.startsWith('..')) {
+        return null;
+      }
+
+      return relativeRepairPath.split(path.sep).join('/');
+    };
+    const buildValidationError = (message: string, repairPaths: Array<string | null> = []): SampleManifestValidationError => {
+      const error = new Error(message) as SampleManifestValidationError;
+      const normalizedRepairPaths = Array.from(new Set(
+        repairPaths.filter((value): value is string => typeof value === 'string' && value.length > 0),
+      ));
+      if (normalizedRepairPaths.length > 0) {
+        error.repairPaths = normalizedRepairPaths;
+      }
+      return error;
+    };
 
     const registerPersonId = (value: unknown, displayName?: unknown) => {
       if (typeof value !== 'string' || value.trim().length === 0) {
@@ -510,6 +530,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
         : undefined,
     );
     const manifestDir = path.dirname(absolutePath);
+    const realManifestDir = fs.realpathSync(manifestDir);
 
     if (Array.isArray(manifest.profiles)) {
       manifest.profiles.forEach((profileEntry, index) => {
@@ -577,20 +598,27 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
           throw new Error(`Manifest entry ${index} is missing file for ${entryRecord.type} import`);
         }
 
-        const resolvedFilePath = path.resolve(manifestDir, entryRecord.file);
+        const resolvedFilePath = path.resolve(realManifestDir, entryRecord.file);
+        const repairPath = toRepoRelativeRepairPath(resolvedFilePath);
         if (!fs.existsSync(resolvedFilePath)) {
-          throw new Error(`Manifest entry ${index} references a missing file: ${entryRecord.file}`);
+          throw buildValidationError(
+            `Manifest entry ${index} references a missing file: ${entryRecord.file}`,
+            [repairPath],
+          );
         }
 
         const realFilePath = fs.realpathSync(resolvedFilePath);
         const fileStats = fs.statSync(realFilePath);
         if (!fileStats.isFile()) {
-          throw new Error(`Manifest entry ${index} references a non-file path: ${entryRecord.file}`);
+          throw buildValidationError(
+            `Manifest entry ${index} references a non-file path: ${entryRecord.file}`,
+            [repairPath],
+          );
         }
 
         const relativeFilePath = path.relative(realRootDir, realFilePath);
         if (path.isAbsolute(relativeFilePath) || relativeFilePath.startsWith('..')) {
-          throw new Error(`Manifest entry ${index} references a file outside the repo: ${entryRecord.file}`);
+          throw buildValidationError(`Manifest entry ${index} references a file outside the repo: ${entryRecord.file}`);
         }
 
         const normalizedRelativeFilePath = relativeFilePath.split(path.sep).join('/');
@@ -651,6 +679,9 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       error: null,
     };
   } catch (error) {
+    const repairPaths = Array.isArray((error as SampleManifestValidationError)?.repairPaths)
+      ? (error as SampleManifestValidationError).repairPaths?.filter((value): value is string => typeof value === 'string' && value.length > 0) ?? []
+      : [];
     return {
       status: 'invalid',
       entryCount: 0,
@@ -660,7 +691,7 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
       textFilePersonIds: {},
       inlineEntries: [],
       fileEntries: [],
-      filePaths: [],
+      filePaths: repairPaths,
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }
