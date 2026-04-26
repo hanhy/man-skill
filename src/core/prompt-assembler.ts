@@ -2155,7 +2155,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
-      const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
+      const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
+      const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
+      const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath);
+      const latestMaterial = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
+        ? `, latest ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
+        : '';
       const intakeStatusSegment = typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
         ? `, intake ${profile.intakeStatusSummary}`
         : '';
