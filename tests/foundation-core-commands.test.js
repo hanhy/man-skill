@@ -158,6 +158,17 @@ test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () 
   );
 });
 
+test('buildCoreFoundationCommand canonicalizes backslash memory scaffolds', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'memory',
+      status: 'thin',
+      paths: ['memory\\scratch\\draft.md', 'memory\\README.md', 'memory\\long-term\\notes.md', 'memory\\scratch\\draft.md'],
+    }),
+    "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+  );
+});
+
 test('buildCoreFoundationCommand daily memory scaffold expands the date at execution time', () => {
   const command = buildCoreFoundationCommand({
     area: 'memory',
@@ -1153,6 +1164,17 @@ test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', ()
       area: 'skills',
       status: 'thin',
       paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+    }),
+    "mkdir -p 'skills/slack' 'skills/telegram' && for file in 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
+  );
+});
+
+test('buildCoreFoundationCommand canonicalizes backslash skill documentation scaffolds', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'skills',
+      status: 'thin',
+      paths: ['skills\\slack\\SKILL.md', 'skills\\telegram\\SKILL.md'],
     }),
     "mkdir -p 'skills/slack' 'skills/telegram' && for file in 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
   );

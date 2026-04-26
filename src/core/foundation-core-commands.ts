@@ -4,12 +4,18 @@ function shellSingleQuote(value: string): string {
   return `'${value.replace(/'/g, `'"'"'`)}'`;
 }
 
+function normalizeRelativePathSeparators(value: string): string {
+  return value.replace(/\\+/g, '/').replace(/\/+/g, '/');
+}
+
 function normalizeRelativePaths(paths: unknown): string[] {
   if (!Array.isArray(paths)) {
     return [];
   }
 
-  return paths.filter((value): value is string => typeof value === 'string' && value.length > 0);
+  return paths
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .map((value) => normalizeRelativePathSeparators(value));
 }
 
 function quotePaths(paths: string[]): string {
