@@ -712,7 +712,9 @@ test('voice profile falls back to voice capture/default sections when explicit s
 });
 
 test('voice profile treats target-specific current default headings as legacy language hint aliases too', () => {
-  const voice = VoiceProfile.fromDocument(`# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for Harry Han\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n`);
+  const voiceDocument = `# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for Harry Han\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
 
   assert.deepEqual(voice.summary(), {
     tone: 'Voice files define how the agent sounds once the deeper identity is already set.',
@@ -725,6 +727,13 @@ test('voice profile treats target-specific current default headings as legacy la
     languageHintCount: 1,
     hasGuidance: true,
   });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, []);
+  assert.deepEqual(coreFoundation.voice.headingAliases, [
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
 });
 
 test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
@@ -1379,7 +1388,9 @@ test('soul profile ignores multiline html comments when parsing structured secti
 });
 
 test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
-  const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
+  const soulDocument = `# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`;
+  const soul = SoulProfile.fromDocument(soulDocument);
+  const coreFoundation = buildCoreFoundationSummary({ soulDocument });
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Soul docs define the durable operating posture.',
@@ -1394,6 +1405,12 @@ test('soul profile falls back to foundation starter headings when core truths an
     sectionCount: 3,
     hasGuidance: true,
   });
+  assert.deepEqual(coreFoundation.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(coreFoundation.soul.missingSections, ['vibe']);
+  assert.deepEqual(coreFoundation.soul.headingAliases, [
+    'core-values->core-truths',
+    'decision-rules->continuity',
+  ]);
 });
 
 test('soul profile uses frontmatter description as the excerpt instead of YAML metadata lines', () => {
