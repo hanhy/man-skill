@@ -110,7 +110,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
     materialTypes: { text: 1 },
     latestMaterialAt: '2026-04-16T15:00:00.000Z',
     latestMaterialId: ' 2026-04-16T15-00-00-000Z-text ',
-    latestMaterialSourcePath: ' profiles/jane-doe/imports/sample.txt ',
+    latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\sample.txt ',
     profile: {
       displayName: 'Jane Doe',
       summary: '  Tight loops beat big plans.  ',
@@ -147,12 +147,12 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
     foundationDraftSummaries: {
       memory: {
         generated: true,
-        path: ' profiles/jane-doe/memory/long-term/foundation.json ',
+        path: ' .\\profiles\\jane-doe//memory\\long-term\\foundation.json ',
         latestSummaries: ['  Tight loops beat big plans.  ', 'Tight loops beat big plans.', ''],
       },
       voice: {
         generated: true,
-        path: ' profiles/jane-doe/voice/README.md ',
+        path: ' .\\profiles\\jane-doe//voice\\README.md ',
         highlights: [' - [message] Keep it tight. ', '[message] Keep it tight.', ''],
         readySectionCount: 1,
         totalSectionCount: 4,
@@ -161,7 +161,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
       },
       soul: {
         generated: true,
-        path: ' profiles/jane-doe/soul/README.md ',
+        path: ' .\\profiles\\jane-doe//soul\\README.md ',
         highlights: [' - [talk] Protect the operator loop. ', '[talk] Protect the operator loop.', ''],
         readySectionCount: 1,
         totalSectionCount: 4,
@@ -170,7 +170,7 @@ test('buildProfileSnapshotSummaries trims and dedupes snapshot string metadata b
       },
       skills: {
         generated: true,
-        path: ' profiles/jane-doe/skills/README.md ',
+        path: ' .\\profiles\\jane-doe//skills\\README.md ',
         highlights: ['  feedback-loop heuristic  ', 'feedback-loop heuristic', ''],
         readySectionCount: 1,
         totalSectionCount: 3,

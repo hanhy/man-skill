@@ -1,4 +1,4 @@
-import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
+import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 function cleanHighlight(value: unknown): string | null {
@@ -100,8 +100,8 @@ function summarizeDraftSources(profile: any): string | null {
         return null;
       }
 
-      const path = normalizeOptionalString(summary.path);
-      const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
+      const path = normalizeDraftPath(normalizeOptionalString(summary.path));
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
       const sourceCount = Number(summary.sourceCount ?? 0);
       const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
       const materialTypes = formatMaterialTypes(normalizeMaterialTypes(summary.materialTypes));
@@ -401,7 +401,7 @@ function summarizeProfileDraftGaps(profile: any): string | null {
 
 function collectProfileDraftFiles(profile: any): Partial<Record<(typeof FOUNDATION_DRAFT_KEYS)[number], string>> {
   return FOUNDATION_DRAFT_KEYS.reduce<Partial<Record<(typeof FOUNDATION_DRAFT_KEYS)[number], string>>>((draftFiles, draftKey) => {
-    const draftPath = normalizeOptionalString(profile?.foundationDraftSummaries?.[draftKey]?.path);
+    const draftPath = normalizeDraftPath(normalizeOptionalString(profile?.foundationDraftSummaries?.[draftKey]?.path));
     if (!draftPath) {
       return draftFiles;
     }
@@ -426,6 +426,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
       const draftSourcesSummary = summarizeDraftSources(profile);
       const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts).sort((left, right) => left.localeCompare(right));
       const refreshReasons = normalizeStringArray(profile.foundationDraftStatus?.refreshReasons);
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath));
       return {
         id: profileId,
         displayName: normalizeOptionalString(profile.profile?.displayName),
@@ -446,7 +447,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         refreshReasons,
         latestMaterialAt: normalizeOptionalString(profile.latestMaterialAt),
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
-        latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
+        latestMaterialSourcePath,
         candidateSignalSummary,
         draftSourcesSummary,
         draftGapCount: countDraftGaps(draftGapCounts),

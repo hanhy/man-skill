@@ -19,7 +19,7 @@ function normalizeProfileId(profileId: string | null | undefined): string | null
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeDraftPath(value: string | null | undefined): string | null {
+export function normalizeDraftPath(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }

@@ -1,5 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
-import { buildFoundationDraftPaths } from './foundation-draft-paths.ts';
+import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
@@ -1058,7 +1058,7 @@ function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOn
   ] as const;
 
   return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
-    const normalizedPath = normalizeOptionalString(summary?.path);
+    const normalizedPath = normalizeDraftPath(normalizeOptionalString(summary?.path));
     if (!summary || !normalizedPath) {
       return accumulator;
     }
@@ -1094,11 +1094,11 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
       return accumulator;
     }
 
-    const path = normalizeOptionalString(summary.path);
+    const path = normalizeDraftPath(normalizeOptionalString(summary.path));
     const generatedAt = normalizeOptionalString(summary.generatedAt);
     const latestMaterialAt = normalizeOptionalString(summary.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(summary.latestMaterialId);
-    const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
     const sourceCount = Number(summary.sourceCount ?? 0);
     const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
     const materialTypes = normalizeMaterialTypes(summary.materialTypes);
@@ -1134,14 +1134,14 @@ function summarizeDraftSources(profile: ProfileSnapshot = {}) {
       const sourceCount = Number(summary.sourceCount ?? 0);
       const entryCount = Number(summary.entryCount ?? 0);
       const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
-      const path = normalizeOptionalString(summary.path);
+      const path = normalizeDraftPath(normalizeOptionalString(summary.path));
       if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !path) {
         return null;
       }
 
       const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
       const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
-      const latestMaterialSourcePath = normalizeOptionalString(summary.latestMaterialSourcePath);
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
       const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
       const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
       const fallbackDetails = [
@@ -1319,7 +1319,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
 
   const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
   const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
-  const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath) ?? null;
+  const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath)) ?? null;
 
   if (latestMaterialAt || latestMaterialId || latestMaterialSourcePath) {
     lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`);
@@ -1489,7 +1489,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     : null;
   const recommendedLatestMaterialAt = normalizeOptionalString(maintenance.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(maintenance.recommendedLatestMaterialId);
-  const recommendedLatestMaterialSourcePath = normalizeOptionalString(maintenance.recommendedLatestMaterialSourcePath);
+  const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(maintenance.recommendedLatestMaterialSourcePath));
   const recommendedDraftSourcesSummary = normalizeOptionalString(maintenance.recommendedDraftSourcesSummary);
   const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
@@ -1506,7 +1506,7 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
     const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
-    const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath);
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath));
     const latestMaterialSuffix = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
       ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
       : '';
@@ -1992,7 +1992,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     : null;
   const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
-  const recommendedLatestMaterialSourcePath = normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath);
+  const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath));
   const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
@@ -2166,7 +2166,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
       const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
       const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
-      const latestMaterialSourcePath = normalizeOptionalString(profile.latestMaterialSourcePath);
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath));
       const latestMaterial = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
         ? `, latest ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
         : '';

@@ -329,7 +329,7 @@ test('buildFoundationRollup keeps draft-path provenance when draft source counts
       profile: { displayName: 'Jane Doe' },
       latestMaterialAt: '2026-04-20T12:00:00.000Z',
       latestMaterialId: '2026-04-20T12-00-00-000Z-text',
-      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+      latestMaterialSourcePath: '.\\profiles\\jane-doe//materials\\2026-04-20T12-00-00-000Z-text.json',
       foundationDraftStatus: {
         needsRefresh: true,
         complete: true,
@@ -339,19 +339,19 @@ test('buildFoundationRollup keeps draft-path provenance when draft source counts
       foundationDraftSummaries: {
         memory: {
           generated: true,
-          path: 'profiles/jane-doe/memory/long-term/foundation.json',
-          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          path: '.\\profiles\\jane-doe//memory\\long-term\\foundation.json',
+          latestMaterialSourcePath: '.\\profiles\\jane-doe//imports\\call-notes.txt',
           entryCount: 1,
         },
         skills: {
           generated: true,
-          path: 'profiles/jane-doe/skills/README.md',
+          path: '.\\profiles\\jane-doe//skills\\README.md',
         },
         soul: null,
         voice: {
           generated: true,
-          path: 'profiles/jane-doe/voice/README.md',
-          latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+          path: '.\\profiles\\jane-doe//voice\\README.md',
+          latestMaterialSourcePath: '.\\profiles\\jane-doe//imports\\voice-note.txt',
           materialTypes: { message: 1 },
         },
       },
