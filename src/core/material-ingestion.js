@@ -390,6 +390,10 @@ function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = fi
   return realFilePath;
 }
 
+function buildRepoRelativeSourcePath(rootDir, filePath) {
+  return path.relative(fs.realpathSync(rootDir), filePath).split(path.sep).join('/');
+}
+
 function buildFallbackDisplayName(value) {
   if (!value || typeof value !== 'string') {
     return null;
@@ -1359,9 +1363,15 @@ export class MaterialIngestion {
       throw new Error('sourceFile is required for text import');
     }
 
+    const validatedSourceFile = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolveImportFile(this.rootDir, sourceFile),
+      errorLabel: 'Text import',
+      originalPath: sourceFile,
+    });
     const normalized = this.ensureProfile(personId);
-    const content = fs.readFileSync(sourceFile, 'utf8');
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const content = fs.readFileSync(validatedSourceFile, 'utf8');
+    const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
       personId: normalized.personId,
       notes,
@@ -1443,9 +1453,15 @@ export class MaterialIngestion {
       throw new Error('sourceFile is required for screenshot import');
     }
 
+    const validatedSourceFile = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolveImportFile(this.rootDir, sourceFile),
+      errorLabel: 'Screenshot import',
+      originalPath: sourceFile,
+    });
     const normalized = this.ensureProfile(personId);
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
-    const fileBuffer = fs.readFileSync(sourceFile);
+    const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
+    const fileBuffer = fs.readFileSync(validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildScreenshotMaterialFingerprint({
       personId: normalized.personId,
       notes,
@@ -1456,9 +1472,9 @@ export class MaterialIngestion {
       this.scaffoldProfileIntake({ personId: normalized.personId });
       return this.buildSkippedMaterialResult(materialFingerprint);
     }
-    const assetFileName = `${timestampId()}-${path.basename(sourceFile)}`;
+    const assetFileName = `${timestampId()}-${path.basename(validatedSourceFile)}`;
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
-    fs.copyFileSync(sourceFile, targetPath);
+    fs.copyFileSync(validatedSourceFile, targetPath);
 
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
@@ -1573,7 +1589,7 @@ export class MaterialIngestion {
           errorLabel: `Manifest entry ${index}`,
           originalPath: entry.file,
         });
-        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+        const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
         const content = fs.readFileSync(sourceFile, 'utf8');
 
         return {
@@ -1638,7 +1654,7 @@ export class MaterialIngestion {
           errorLabel: `Manifest entry ${index}`,
           originalPath: entry.file,
         });
-        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+        const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
 
         return {
           personId: resolvedPersonId,

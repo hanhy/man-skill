@@ -163,6 +163,53 @@ test('direct message and talk imports reject whitespace-only text without writin
   assert.equal(fs.existsSync(materialsDir), false);
 });
 
+test('direct text imports reject files outside the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable directly either.');
+
+  assert.throws(
+    () => ingestion.importTextDocument({
+      personId: 'harry-han',
+      sourceFile: outsideFilePath,
+    }),
+    /outside the repo root/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('direct screenshot imports reject files outside the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-outside-${Date.now()}.png`);
+  fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
+
+  assert.throws(
+    () => ingestion.importScreenshotSource({
+      personId: 'harry-han',
+      sourceFile: outsideFilePath,
+    }),
+    /outside the repo root/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
