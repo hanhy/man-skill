@@ -11,12 +11,18 @@ Use this folder as the user-facing entrance for collecting target-person materia
 Suggested flow:
 1. Replace sample.txt with a real writing sample or point the manifest at real files.
 2. Copy the entryTemplates from materials.template.json into entries and fill in real content.
-3. Run the import command above to ingest materials and refresh foundation drafts.
+3. Run the inspect command above to confirm the edited materials and manifest look right.
+4. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts.
+
+Rerun safety:
+- re-running `node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'` preserves starter entries, entry templates, and the managed Custom notes block.
+- if `materials.template.json` becomes invalid JSON, the same rerun snapshots it to `profiles/harry-han/imports/materials.template.json.invalid-<timestamp>.bak` before rebuilding the starter scaffold.
 
 Path rule:
 - `materials.template.json` resolves every `file` relative to `profiles/harry-han/imports/`.
 - Keep local screenshots or attachments next to `sample.txt` or inside a small subdirectory like `profiles/harry-han/imports/images/`.
 - Example: if you save a screenshot at `profiles/harry-han/imports/images/chat.png`, use `images/chat.png` inside the manifest.
+- Every referenced file must stay inside this repo; outside paths or symlinks that escape the repo root are rejected during import.
 
 Starter entry examples:
 ```json
@@ -57,7 +63,7 @@ Direct import commands:
 - text: node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation
 - message: node src/index.js import message --person harry-han --text <message> --refresh-foundation
 - talk: node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation
-- screenshot: node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation
+- screenshot: node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation
 - manifest inspect: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'
 - manifest: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation
 

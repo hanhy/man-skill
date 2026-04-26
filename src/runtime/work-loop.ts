@@ -1,15 +1,51 @@
-export interface WorkPriority {
+export type WorkPriority = {
   id: string;
   label: string;
-  status: 'ready' | 'queued' | 'blocked';
+  status: 'queued' | 'blocked' | 'ready';
   summary: string;
   nextAction: string | null;
   command: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  refreshReasons?: string[];
+  missingDrafts?: string[];
+  rootThinReadySections?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
+  draftGapSummary?: string | null;
   fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+  intakeManifestEntryTemplateCount?: number;
+  recommendedProfileSlices?: Array<{
+    personId: string | null;
+    label: string | null;
+    latestMaterialAt: string | null;
+    latestMaterialId: string | null;
+    latestMaterialSourcePath: string | null;
+    fallbackCommand: string | null;
+    refreshIntakeCommand: string | null;
+    editPath: string | null;
+    editPaths: string[];
+    manifestInspectCommand: string | null;
+    manifestImportCommand: string | null;
+    intakeManifestEntryTemplateTypes: string[];
+    intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+    intakeManifestEntryTemplateCount: number;
+    inspectCommand: string | null;
+    followUpCommand: string | null;
+    paths: string[];
+  }>;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths: string[];
@@ -42,6 +78,7 @@ function hasActionablePrioritySurface(priority: WorkPriority): boolean {
     priority.nextAction
       || priority.command
       || priority.fallbackCommand
+      || priority.refreshIntakeCommand
       || priority.editPath
       || priority.editPaths?.length
       || priority.manifestInspectCommand

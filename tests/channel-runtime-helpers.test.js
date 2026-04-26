@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSlackChannel } from '../src/channels/slack.js';
+import { createSlackChannel, slackChannelScaffold } from '../src/channels/slack.js';
 import { createTelegramChannel } from '../src/channels/telegram.js';
 import { createWhatsAppChannel } from '../src/channels/whatsapp.js';
 import { createFeishuChannel } from '../src/channels/feishu.js';
@@ -680,4 +680,33 @@ test('Feishu channel runtime helpers cover readiness, rich-post text normalizati
       thread_id: 'omt-thread-1',
     },
   );
+});
+
+test('channel factories keep runtime helper mutations isolated from the canonical channel scaffolds', () => {
+  const channel = createSlackChannel();
+
+  channel.direction.push('sideways');
+  channel.capabilities.push('ephemeral-posts');
+  channel.deliveryModes.push('broadcast');
+  channel.auth.envVars.push('SLACK_EXTRA_TOKEN');
+
+  assert.deepEqual(slackChannelScaffold.direction, ['inbound', 'outbound']);
+  assert.deepEqual(slackChannelScaffold.capabilities, ['threads', 'mentions', 'bot-token']);
+  assert.deepEqual(slackChannelScaffold.deliveryModes, ['events-api', 'web-api']);
+  assert.deepEqual(slackChannelScaffold.auth?.envVars, ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET']);
+
+  const summary = channel.summary();
+  summary.direction.push('audit-only');
+  summary.capabilities.push('modal-dialogs');
+  summary.deliveryModes.push('fallback-dm');
+  summary.auth.envVars.push('SLACK_SUMMARY_TOKEN');
+
+  assert.deepEqual(channel.direction, ['inbound', 'outbound', 'sideways']);
+  assert.deepEqual(channel.capabilities, ['threads', 'mentions', 'bot-token', 'ephemeral-posts']);
+  assert.deepEqual(channel.deliveryModes, ['events-api', 'web-api', 'broadcast']);
+  assert.deepEqual(channel.auth?.envVars, ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'SLACK_EXTRA_TOKEN']);
+  assert.deepEqual(slackChannelScaffold.direction, ['inbound', 'outbound']);
+  assert.deepEqual(slackChannelScaffold.capabilities, ['threads', 'mentions', 'bot-token']);
+  assert.deepEqual(slackChannelScaffold.deliveryModes, ['events-api', 'web-api']);
+  assert.deepEqual(slackChannelScaffold.auth?.envVars, ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET']);
 });

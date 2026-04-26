@@ -34,14 +34,18 @@ function seedMinimalRepo(rootDir: string) {
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n');
 }
 
-test('summarizeRootSectionSummary preserves count-only root progress without section names', () => {
+test('summarizeRootSectionSummary preserves count-only root progress without section names and surfaces heading aliases', () => {
   assert.equal(
     summarizeRootSectionSummary(undefined, ['layout'], 1, 2),
     ', root 1/2 sections ready, missing layout',
   );
   assert.equal(
-    summarizeRootSectionSummary(['what-belongs-here'], undefined, 1, 2),
-    ', root 1/2 sections ready (what-belongs-here)',
+    summarizeRootSectionSummary(['what-belongs-here'], undefined, 1, 2, ['what-lives-here->what-belongs-here']),
+    ', root 1/2 sections ready (what-belongs-here), aliases what-lives-here->what-belongs-here',
+  );
+  assert.equal(
+    summarizeRootSectionSummary(undefined, undefined, 0, 0, ['layout->buckets']),
+    ', aliases layout->buckets',
   );
   assert.equal(summarizeRootSectionSummary(undefined, undefined, 0, 0), '');
 });
@@ -708,7 +712,9 @@ test('voice profile falls back to voice capture/default sections when explicit s
 });
 
 test('voice profile treats target-specific current default headings as legacy language hint aliases too', () => {
-  const voice = VoiceProfile.fromDocument(`# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for Harry Han\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n`);
+  const voiceDocument = `# Voice\n\nVoice files define how the agent sounds once the deeper identity is already set.\n\n## Voice should capture\n- sentence length preferences\n- directness vs softness\n\n## Voice should not capture\n- temporary tasks\n- private user facts that belong in memory\n\n## Current default for Harry Han\n- concise by default\n- willing to preserve bilingual or mixed-language habits\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
 
   assert.deepEqual(voice.summary(), {
     tone: 'Voice files define how the agent sounds once the deeper identity is already set.',
@@ -721,6 +727,13 @@ test('voice profile treats target-specific current default headings as legacy la
     languageHintCount: 1,
     hasGuidance: true,
   });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, []);
+  assert.deepEqual(coreFoundation.voice.headingAliases, [
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
 });
 
 test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
@@ -871,6 +884,71 @@ Description: Preserve terse bilingual delivery.
 `);
 
   assert.deepEqual(voice.summary(), {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile accepts YAML document-end frontmatter closures', () => {
+  const voice = VoiceProfile.fromDocument(`---
+name: ManSkill voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+...
+
+# Voice
+
+## Current default for ManSkill
+- concise by default
+- preserve 中文 and English switching when the source does
+`);
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Preserve terse bilingual delivery.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['concise by default'],
+    languageHints: ['preserve 中文 and English switching when the source does'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+});
+
+test('voice profile raw JS entrypoint stays aligned for YAML document-end frontmatter descriptions', () => {
+  const document = `---
+name: Harry Han voice
+summary: ignored field
+Description: Preserve terse bilingual delivery.
+...
+
+# Voice
+
+## Current default for Harry Han
+- concise by default
+- preserve 中文 and English switching when the source does
+`;
+  const scriptPath = path.join(makeTempRepo(), 'voice-profile-frontmatter-document-end-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { VoiceProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/voice-profile.js'))};
+const voice = VoiceProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(voice.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, VoiceProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
     tone: 'Preserve terse bilingual delivery.',
     style: 'documented',
     constraints: [],
@@ -1310,7 +1388,9 @@ test('soul profile ignores multiline html comments when parsing structured secti
 });
 
 test('soul profile falls back to foundation starter headings when core truths and continuity headings are missing', () => {
-  const soul = SoulProfile.fromDocument(`# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`);
+  const soulDocument = `# Soul\n\nSoul docs define the durable operating posture.\n\n## Core values\n- Stay faithful to the source material.\n- Prefer verified slices over ambitious rewrites.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Decision rules\n- Choose the smallest next step that preserves trust.\n- Keep durable lessons visible for later runs.\n`;
+  const soul = SoulProfile.fromDocument(soulDocument);
+  const coreFoundation = buildCoreFoundationSummary({ soulDocument });
 
   assert.deepEqual(soul.summary(), {
     excerpt: 'Soul docs define the durable operating posture.',
@@ -1325,6 +1405,12 @@ test('soul profile falls back to foundation starter headings when core truths an
     sectionCount: 3,
     hasGuidance: true,
   });
+  assert.deepEqual(coreFoundation.soul.readySections, ['core-truths', 'boundaries', 'continuity']);
+  assert.deepEqual(coreFoundation.soul.missingSections, ['vibe']);
+  assert.deepEqual(coreFoundation.soul.headingAliases, [
+    'core-values->core-truths',
+    'decision-rules->continuity',
+  ]);
 });
 
 test('soul profile uses frontmatter description as the excerpt instead of YAML metadata lines', () => {
@@ -1387,6 +1473,77 @@ Description: Keep the operating posture grounded.
   });
 });
 
+test('soul profile accepts YAML document-end frontmatter closures', () => {
+  const soul = SoulProfile.fromDocument(`---
+name: ManSkill soul
+Description: Keep the operating posture grounded.
+...
+
+# Soul
+
+## Core values
+- Stay faithful to the source material.
+
+## Boundaries
+- Do not bluff certainty.
+`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Keep the operating posture grounded.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 2,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile raw JS entrypoint stays aligned for YAML document-end frontmatter descriptions', () => {
+  const document = `---
+name: Harry Han soul
+Description: Keep the operating posture grounded.
+...
+
+# Soul
+
+## Core values
+- Stay faithful to the source material.
+
+## Boundaries
+- Do not bluff certainty.
+`;
+  const scriptPath = path.join(makeTempRepo(), 'soul-profile-frontmatter-document-end-check.mjs');
+  fs.writeFileSync(
+    scriptPath,
+    `import { SoulProfile } from ${JSON.stringify(path.resolve(process.cwd(), 'src/core/soul-profile.js'))};
+const soul = SoulProfile.fromDocument(${JSON.stringify(document)});
+console.log(JSON.stringify(soul.summary()));
+`,
+  );
+
+  const rawSummary = JSON.parse(execFileSync('node', [scriptPath], { encoding: 'utf8' }));
+
+  assert.deepEqual(rawSummary, SoulProfile.fromDocument(document).summary());
+  assert.deepEqual(rawSummary, {
+    excerpt: 'Keep the operating posture grounded.',
+    coreTruths: ['Stay faithful to the source material.'],
+    boundaries: ['Do not bluff certainty.'],
+    vibe: [],
+    continuity: [],
+    coreTruthCount: 1,
+    boundaryCount: 1,
+    vibeLineCount: 0,
+    continuityCount: 0,
+    sectionCount: 2,
+    hasGuidance: true,
+  });
+});
+
 test('soul profile strips numbered list markers inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\n1. Stay faithful to the source material.\n2) Prefer verified slices over big rewrites.\n\n## Boundaries\n1) Do not bluff certainty.\n\n## Vibe\n1) Grounded and direct.\n\n## Continuity\n1) Carry durable lessons forward.\n`);
 
@@ -1397,6 +1554,24 @@ test('soul profile strips numbered list markers inside structured sections', () 
     vibe: ['Grounded and direct.'],
     continuity: ['Carry durable lessons forward.'],
     coreTruthCount: 2,
+    boundaryCount: 1,
+    vibeLineCount: 1,
+    continuityCount: 1,
+    sectionCount: 4,
+    hasGuidance: true,
+  });
+});
+
+test('soul profile preserves multiline prose and indented list continuations inside structured sections', () => {
+  const soul = SoulProfile.fromDocument(`# Soul\n\nDurable posture.\n\n## Core truths\nStay faithful to the source material\n  and prefer verified slices over big rewrites.\n\n## Boundaries\n- Do not bluff certainty\n  when the materials stay ambiguous.\n\n## Vibe\nGrounded and direct\n  with enough urgency to keep momentum.\n\n## Continuity\n- Carry durable lessons forward\n  even when the next task changes shape.\n`);
+
+  assert.deepEqual(soul.summary(), {
+    excerpt: 'Durable posture.',
+    coreTruths: ['Stay faithful to the source material and prefer verified slices over big rewrites.'],
+    boundaries: ['Do not bluff certainty when the materials stay ambiguous.'],
+    vibe: ['Grounded and direct with enough urgency to keep momentum.'],
+    continuity: ['Carry durable lessons forward even when the next task changes shape.'],
+    coreTruthCount: 1,
     boundaryCount: 1,
     vibeLineCount: 1,
     continuityCount: 1,

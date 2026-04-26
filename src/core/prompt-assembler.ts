@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
@@ -30,6 +31,7 @@ type MemoryDraftSummary = {
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string | null;
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   entryCount?: number;
@@ -43,6 +45,7 @@ type HighlightDraftSummary = {
   generatedAt?: string | null;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string | null;
   sourceCount?: number;
   materialTypes?: MaterialTypes;
   highlights?: string[];
@@ -50,6 +53,7 @@ type HighlightDraftSummary = {
   totalSectionCount?: number;
   readySections?: string[];
   missingSections?: string[];
+  headingAliases?: string[];
   [key: string]: unknown;
 };
 
@@ -74,6 +78,7 @@ type ProfileSnapshot = {
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string;
   latestMaterialId?: string;
+  latestMaterialSourcePath?: string;
   foundationDraftStatus?: FoundationDraftStatus;
   foundationDraftSummaries?: FoundationDraftSummaries;
   foundationReadiness?: FoundationReadiness;
@@ -84,12 +89,25 @@ type ProfileSnapshotRefreshInfo = {
   refreshPaths: string[];
 };
 
+type ProfileSnapshotDraftSourceSummary = {
+  path?: string | null;
+  generated: boolean;
+  generatedAt?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  sourceCount?: number;
+  materialTypes?: MaterialTypes;
+  entryCount?: number;
+};
+
 type ProfileSnapshotDraftSections = Partial<Record<'skills' | 'soul' | 'voice', {
   generated: boolean;
   readySectionCount: number;
   totalSectionCount: number;
   readySections: string[];
   missingSections: string[];
+  headingAliases?: string[];
 }>>;
 
 export type ProfileSnapshotSummary = {
@@ -101,7 +119,11 @@ export type ProfileSnapshotSummary = {
   materialTypes: Record<string, number>;
   latestMaterialAt: string | null;
   latestMaterialId: string | null;
+  latestMaterialSourcePath: string | null;
   profileSummary: string | null;
+  draftGapCount: number;
+  draftGapCounts: Record<string, number>;
+  draftGapSummary: string | null;
   refreshCommand: string | null;
   refreshPaths: string[];
   draftStatus: {
@@ -118,6 +140,7 @@ export type ProfileSnapshotSummary = {
     skills: ReadinessSignal;
   };
   draftFiles: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>;
+  draftSources: Partial<Record<'memory' | 'skills' | 'soul' | 'voice', ProfileSnapshotDraftSourceSummary>>;
   draftSections: ProfileSnapshotDraftSections;
   draftGaps: string[];
   highlights: {
@@ -151,6 +174,9 @@ type MaintenanceQueueItem = {
   refreshReasons?: string[];
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   draftGapCount?: number;
   draftGapCounts?: Record<string, number>;
   draftGapSummary?: string | null;
@@ -176,6 +202,9 @@ type FoundationMaintenance = {
   recommendedPaths?: string[];
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
+  recommendedLatestMaterialSourcePath?: string | null;
+  recommendedDraftSourcesSummary?: string | null;
+  recommendedCandidateSignalSummary?: string | null;
   recommendedDraftGapSummary?: string | null;
   helperCommands?: {
     refreshAll?: string | null;
@@ -516,6 +545,33 @@ type DeliverySummary = {
   providerQueue?: DeliveryQueueItem[];
 } | null;
 
+type StarterTemplateDetail = {
+  type?: string | null;
+  source?: 'file' | 'text' | string;
+  path?: string | null;
+  preview?: string | null;
+};
+
+type RecommendedStarterProfileSlice = {
+  personId?: string | null;
+  label?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
+  editPath?: string | null;
+  editPaths?: string[];
+  manifestInspectCommand?: string | null;
+  manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  intakeManifestEntryTemplateCount?: number;
+  inspectCommand?: string | null;
+  followUpCommand?: string | null;
+  paths?: string[];
+};
+
 type IngestionProfileCommand = {
   personId?: string | null;
   displayName?: string | null;
@@ -523,6 +579,8 @@ type IngestionProfileCommand = {
   materialCount?: number;
   materialTypes?: MaterialTypes;
   latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
   needsRefresh?: boolean;
   missingDrafts?: string[];
   draftGapSummary?: string | null;
@@ -539,8 +597,12 @@ type IngestionProfileCommand = {
   intakeReady?: boolean;
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
+  intakeManifestStatus?: 'missing' | 'invalid' | 'starter' | 'loaded' | string;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  intakeManifestEntryTemplateCount?: number;
   refreshFoundationCommand?: string | null;
   importManifestWithoutRefreshCommand?: string | null;
   importManifestCommand?: string | null;
@@ -562,6 +624,7 @@ type IngestionHelperCommands = {
   scaffoldImportedBundle?: string | null;
   repairInvalidBundle?: string | null;
   repairImportedInvalidBundle?: string | null;
+  importManifestInspect?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
@@ -580,6 +643,7 @@ type IngestionHelperCommands = {
   refreshStaleFoundation?: string | null;
   refreshFoundationBundle?: string | null;
   sampleStarter?: string | null;
+  sampleManifestInspect?: string | null;
   sampleManifest?: string | null;
   sampleText?: string | null;
   sampleMessage?: string | null;
@@ -614,6 +678,7 @@ type IngestionSummary = {
   intakeImportImportedAndRefreshCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  importManifestInspectCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
   refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
@@ -628,6 +693,7 @@ type IngestionSummary = {
   sampleStarterCommand?: string | null;
   sampleStarterSource?: string | null;
   sampleStarterLabel?: string | null;
+  sampleManifestInspectCommand?: string | null;
   sampleManifestCommand?: string | null;
   sampleTextPath?: string | null;
   sampleTextPresent?: boolean;
@@ -657,15 +723,23 @@ type IngestionSummary = {
   recommendedProfileId?: string | null;
   recommendedLabel?: string | null;
   recommendedAction?: string | null;
+  recommendedLatestMaterialAt?: string | null;
+  recommendedLatestMaterialId?: string | null;
+  recommendedLatestMaterialSourcePath?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
+  recommendedRefreshIntakeCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
   recommendedManifestInspectCommand?: string | null;
   recommendedManifestImportCommand?: string | null;
+  recommendedIntakeManifestEntryTemplateTypes?: string[];
+  recommendedIntakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  recommendedIntakeManifestEntryTemplateCount?: number;
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
+  recommendedProfileSlices?: RecommendedStarterProfileSlice[];
   helperCommands?: IngestionHelperCommands;
   profileCommands?: IngestionProfileCommand[];
   allProfileCommands?: IngestionProfileCommand[];
@@ -679,11 +753,29 @@ type WorkLoopPriority = {
   summary?: string;
   nextAction?: string | null;
   command?: string | null;
+  latestMaterialAt?: string | null;
+  latestMaterialId?: string | null;
+  latestMaterialSourcePath?: string | null;
+  refreshReasons?: string[];
+  missingDrafts?: string[];
+  rootThinReadySections?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
+  draftGapSummary?: string | null;
   fallbackCommand?: string | null;
+  refreshIntakeCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
   manifestImportCommand?: string | null;
+  intakeManifestEntryTemplateTypes?: string[];
+  intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
+  intakeManifestEntryTemplateCount?: number;
+  recommendedProfileSlices?: RecommendedStarterProfileSlice[];
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
@@ -737,6 +829,82 @@ function formatMaterialTypes(materialTypes: MaterialTypes = {}) {
   return entries.map(([type, count]) => `${type}:${count}`).join(', ');
 }
 
+function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> {
+  const normalizedDetails = Array.isArray(details)
+    ? details
+      .filter((detail): detail is StarterTemplateDetail => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = typeof detail.type === 'string' ? detail.type.trim() : '';
+        const source = detail.source === 'file' ? 'file' : 'text';
+        const path = typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null;
+        const preview = typeof detail.preview === 'string' && detail.preview.trim().length > 0 ? detail.preview.trim() : null;
+        return type.length > 0
+          ? { type, source, path, preview }
+          : null;
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+    : [];
+
+  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
+    || left.source.localeCompare(right.source)
+    || (left.path ?? '').localeCompare(right.path ?? '')
+    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+}
+
+function formatStarterTemplateDetailSummary(details: unknown): string | null {
+  const normalizedDetails = normalizeStarterTemplateDetails(details);
+  if (normalizedDetails.length === 0) {
+    return null;
+  }
+
+  return normalizedDetails
+    .map((detail) => `${detail.type} ${detail.source === 'file' ? detail.path ?? 'file' : detail.preview ?? 'text'}`)
+    .join(' | ');
+}
+
+function formatRecommendedStarterProfileSlices(slices: unknown): string | null {
+  const normalizedSlices = Array.isArray(slices)
+    ? slices
+      .filter((slice): slice is RecommendedStarterProfileSlice => Boolean(slice) && typeof slice === 'object' && !Array.isArray(slice))
+      .map((slice) => {
+        const label = normalizeOptionalString(slice.label) ?? normalizeOptionalString(slice.personId) ?? 'unknown-profile';
+        const editPath = normalizeOptionalString(slice.editPath)
+          ?? normalizeStringArray(slice.editPaths)[0]
+          ?? normalizeStringArray(slice.paths).find((value) => value.endsWith('materials.template.json'))
+          ?? null;
+
+        return editPath ? `${label} -> ${editPath}` : null;
+      })
+      .filter((slice): slice is string => Boolean(slice))
+    : [];
+
+  return normalizedSlices.length > 1
+    ? normalizedSlices.join(' | ')
+    : null;
+}
+
+function normalizeMaterialTypes(materialTypes: unknown): MaterialTypes | undefined {
+  if (!materialTypes || typeof materialTypes !== 'object' || Array.isArray(materialTypes)) {
+    return undefined;
+  }
+
+  const normalizedEntries = Object.entries(materialTypes as Record<string, unknown>)
+    .filter(([key, value]) => normalizeOptionalString(key) && Number.isFinite(value) && Number(value) > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => [key, Number(value)] as const);
+
+  if (normalizedEntries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(normalizedEntries);
+}
+
+function formatCountLabel(count: number, singular: string, plural?: string) {
+  const normalizedPlural = plural ?? `${singular}s`;
+  return `${count} ${count === 1 ? singular : normalizedPlural}`;
+}
+
 function normalizeOptionalString(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -785,6 +953,55 @@ function cleanHighlight(value: string) {
   return normalizeOptionalString(value.replace(/^[-\s]*/, ''));
 }
 
+function countSectionDraftGaps(summary: HighlightDraftSummary | undefined): number {
+  const missingSections = normalizeStringArray(summary?.missingSections);
+  if (missingSections.length > 0) {
+    return missingSections.length;
+  }
+
+  const totalSectionCount = Number(summary?.totalSectionCount ?? 0);
+  const readySectionCount = Number(summary?.readySectionCount ?? totalSectionCount);
+  if (!Number.isFinite(totalSectionCount) || totalSectionCount <= 0) {
+    return 0;
+  }
+
+  if (!Number.isFinite(readySectionCount)) {
+    return totalSectionCount;
+  }
+
+  return Math.max(totalSectionCount - readySectionCount, 0);
+}
+
+function buildProfileSnapshotDraftGapCounts(profile: ProfileSnapshot = {}): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const missingDrafts = new Set(normalizeStringArray(profile.foundationDraftStatus?.missingDrafts));
+
+  if (missingDrafts.has('memory')) {
+    counts.memory = 1;
+  }
+
+  const skillsGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.skills);
+  if (skillsGapCount > 0 || missingDrafts.has('skills')) {
+    counts.skills = skillsGapCount > 0 ? skillsGapCount : 3;
+  }
+
+  const soulGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.soul);
+  if (soulGapCount > 0 || missingDrafts.has('soul')) {
+    counts.soul = soulGapCount > 0 ? soulGapCount : 4;
+  }
+
+  const voiceGapCount = countSectionDraftGaps(profile.foundationDraftSummaries?.voice);
+  if (voiceGapCount > 0 || missingDrafts.has('voice')) {
+    counts.voice = voiceGapCount > 0 ? voiceGapCount : 4;
+  }
+
+  return counts;
+}
+
+function countDraftGaps(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((total, value) => total + value, 0);
+}
+
 function collectDraftGaps(profile: ProfileSnapshot = {}) {
   const missingDrafts = normalizeStringArray(profile.foundationDraftStatus?.missingDrafts);
   const draftKinds = [
@@ -819,13 +1036,13 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
     ...draftKinds
       .map(({ key, summary }) => {
         if (!summary) {
-          return null;
+          return missingDrafts.includes(key) ? `${key} missing` : null;
         }
 
         const readySectionCount = Number(summary.readySectionCount ?? 0);
         const totalSectionCount = Number(summary.totalSectionCount ?? 0);
         if (totalSectionCount <= 0) {
-          return null;
+          return missingDrafts.includes(key) ? `${key} missing` : null;
         }
 
         const missingSections = normalizeStringArray(summary.missingSections);
@@ -834,8 +1051,9 @@ function collectDraftGaps(profile: ProfileSnapshot = {}) {
         }
 
         const readySections = normalizeStringArray(summary.readySections);
+        const headingAliases = normalizeStringArray(summary.headingAliases);
 
-        return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
+        return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
       })
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
@@ -855,7 +1073,7 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
 
   const sectionSummaries = draftKinds
     .map(({ key, summary }) => {
-      if (!summary || summary.generated !== true) {
+      if (!summary) {
         return null;
       }
 
@@ -867,11 +1085,9 @@ function summarizeDraftSections(profile: ProfileSnapshot = {}) {
 
       const readySections = normalizeStringArray(summary.readySections);
       const missingSections = normalizeStringArray(summary.missingSections);
-      if (missingSections.length > 0) {
-        return null;
-      }
+      const headingAliases = normalizeStringArray(summary.headingAliases);
 
-      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}`;
+      return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${formatHeadingAliasSummary(headingAliases) ?? ''}`;
     })
     .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
@@ -888,7 +1104,7 @@ function collectDraftFiles(profile: ProfileSnapshot = {}, options: { generatedOn
   ] as const;
 
   return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', string>>>((accumulator, { key, summary }) => {
-    const normalizedPath = normalizeOptionalString(summary?.path);
+    const normalizedPath = normalizeDraftPath(normalizeOptionalString(summary?.path));
     if (!summary || !normalizedPath) {
       return accumulator;
     }
@@ -911,17 +1127,89 @@ function summarizeDraftFiles(profile: ProfileSnapshot = {}) {
   return fileSummaries.length > 0 ? fileSummaries.join(' | ') : null;
 }
 
-function buildMissingDraftPaths(profileId: string, missingDrafts: string[]) {
-  const draftPathByKey: Record<string, string> = {
-    memory: `profiles/${profileId}/memory/long-term/foundation.json`,
-    skills: `profiles/${profileId}/skills/README.md`,
-    soul: `profiles/${profileId}/soul/README.md`,
-    voice: `profiles/${profileId}/voice/README.md`,
-  };
+function collectDraftSources(profile: ProfileSnapshot = {}) {
+  const draftKinds = [
+    { key: 'memory', summary: profile.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile.foundationDraftSummaries?.voice },
+  ] as const;
 
-  return missingDrafts
-    .filter((draftKey): draftKey is keyof typeof draftPathByKey => draftKey in draftPathByKey)
-    .map((draftKey) => draftPathByKey[draftKey]);
+  return draftKinds.reduce<Partial<Record<'memory' | 'skills' | 'soul' | 'voice', ProfileSnapshotDraftSourceSummary>>>((accumulator, { key, summary }) => {
+    if (!summary) {
+      return accumulator;
+    }
+
+    const path = normalizeDraftPath(normalizeOptionalString(summary.path));
+    const generatedAt = normalizeOptionalString(summary.generatedAt);
+    const latestMaterialAt = normalizeOptionalString(summary.latestMaterialAt);
+    const latestMaterialId = normalizeOptionalString(summary.latestMaterialId);
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
+    const sourceCount = Number(summary.sourceCount ?? 0);
+    const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
+    const materialTypes = normalizeMaterialTypes(summary.materialTypes);
+
+    if (!path && !generatedAt && !latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+      return accumulator;
+    }
+
+    accumulator[key] = {
+      ...(path ? { path } : {}),
+      generated: summary.generated === true,
+      ...(generatedAt ? { generatedAt } : {}),
+      ...(latestMaterialAt ? { latestMaterialAt } : {}),
+      ...(latestMaterialId ? { latestMaterialId } : {}),
+      ...(latestMaterialSourcePath ? { latestMaterialSourcePath } : {}),
+      ...(sourceCount > 0 ? { sourceCount } : {}),
+      ...(materialTypes ? { materialTypes } : {}),
+      ...(key === 'memory' && entryCount > 0 ? { entryCount } : {}),
+    };
+    return accumulator;
+  }, {});
+}
+
+function summarizeDraftSources(profile: ProfileSnapshot = {}) {
+  const draftSources = collectDraftSources(profile);
+  const sourceSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
+    .map((key) => {
+      const summary = draftSources[key];
+      if (!summary) {
+        return null;
+      }
+
+      const sourceCount = Number(summary.sourceCount ?? 0);
+      const entryCount = Number(summary.entryCount ?? 0);
+      const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
+      const path = normalizeDraftPath(normalizeOptionalString(summary.path));
+      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !path) {
+        return null;
+      }
+
+      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
+      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
+      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
+      const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
+      const fallbackDetails = [
+        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
+        entryLabel,
+        latestSourceLabel,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+      const parts = [
+        sourceDetailLabel,
+        entryLabel,
+        latestSourceLabel,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+      if (!sourceLabel && path) {
+        return fallbackDetails.length > 0 ? `${key} @ ${path} (${fallbackDetails.join(', ')})` : `${key} @ ${path}`;
+      }
+
+      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
 }
 
 function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
@@ -933,17 +1221,15 @@ function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileI
   }
 
   const refreshCommand = `node src/index.js update foundation --person '${profileId.replace(/'/g, `'"'"'`)}'`;
-  const generatedDraftFiles = collectDraftFiles(profile);
-  const refreshPaths = [
-    ...(['memory', 'skills', 'soul', 'voice'] as const)
-      .map((key) => generatedDraftFiles[key] ?? null)
-      .filter((value): value is string => typeof value === 'string' && value.length > 0),
-    ...buildMissingDraftPaths(profileId, normalizeStringArray(profile.foundationDraftStatus?.missingDrafts)),
-  ];
+  const refreshPaths = buildFoundationDraftPaths({
+    profileId,
+    draftFiles: collectDraftFiles(profile),
+    missingDrafts: normalizeStringArray(profile.foundationDraftStatus?.missingDrafts),
+  });
 
   return {
     refreshCommand,
-    refreshPaths: Array.from(new Set(refreshPaths)),
+    refreshPaths,
   };
 }
 
@@ -1026,9 +1312,35 @@ function normalizeProfileSnapshotDraftSections(profile: ProfileSnapshot = {}): P
       totalSectionCount,
       readySections: normalizeStringArray(summary.readySections),
       missingSections: normalizeStringArray(summary.missingSections),
+      ...(normalizeStringArray(summary.headingAliases).length > 0
+        ? { headingAliases: normalizeStringArray(summary.headingAliases) }
+        : {}),
     };
     return accumulator;
   }, {});
+}
+
+function normalizeProfileSnapshotDraftSources(profile: ProfileSnapshot = {}) {
+  return collectDraftSources(profile);
+}
+
+function formatProfileSnapshotCandidateSignal(label: string, candidateCount: number, types: string[] = []) {
+  const normalizedTypes = normalizeStringArray(types).sort((left, right) => left.localeCompare(right));
+  const typeSuffix = candidateCount > 0 && normalizedTypes.length > 0
+    ? ` (${normalizedTypes.join(', ')})`
+    : '';
+  return `${label}: ${candidateCount}${typeSuffix}`;
+}
+
+function collectProfileSnapshotCandidateTypes(signal: ReadinessSignal | undefined, primarySource: 'latest' | 'sample' = 'sample') {
+  const primaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.latestTypes
+    : signal?.sampleTypes);
+  const secondaryTypes = normalizeStringArray(primarySource === 'latest'
+    ? signal?.sampleTypes
+    : signal?.latestTypes);
+
+  return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
 }
 
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
@@ -1042,16 +1354,21 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
   const draftStatus = normalizeProfileSnapshotDraftStatus(profile);
   const readiness = normalizeProfileSnapshotReadiness(profile);
   const draftFiles = collectDraftFiles(profile);
+  const draftSources = normalizeProfileSnapshotDraftSources(profile);
   const draftSections = normalizeProfileSnapshotDraftSections(profile);
   const highlights = collectProfileSnapshotHighlights(profile);
   const draftGaps = collectDraftGapList(profile);
+  const draftGapCounts = buildProfileSnapshotDraftGapCounts(profile);
+  const draftGapCount = countDraftGaps(draftGapCounts);
+  const draftGapSummary = draftGaps.length > 0 ? draftGaps.join(' | ') : null;
   const refreshInfo = buildProfileSnapshotRefreshInfo(profile, profileId);
 
   const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt) ?? null;
   const latestMaterialId = normalizeOptionalString(profile.latestMaterialId) ?? null;
+  const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath)) ?? null;
 
-  if (latestMaterialAt || latestMaterialId) {
-    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`);
+  if (latestMaterialAt || latestMaterialId || latestMaterialSourcePath) {
+    lines.push(`  latest material: ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`);
   }
 
   if (profileSummary) {
@@ -1064,7 +1381,7 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
 
   if (profile.foundationReadiness) {
     lines.push(
-      `  memory candidates: ${profile.foundationReadiness.memory?.candidateCount ?? 0} | voice: ${profile.foundationReadiness.voice?.candidateCount ?? 0} | soul: ${profile.foundationReadiness.soul?.candidateCount ?? 0} | skills: ${profile.foundationReadiness.skills?.candidateCount ?? 0}`,
+      `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.memory, 'latest'))} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.voice, 'sample'))} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.soul, 'sample'))} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.skills, 'sample'))}`,
     );
   }
 
@@ -1078,8 +1395,17 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  draft files: ${draftFilesSummary}`);
   }
 
+  const draftSourcesSummary = summarizeDraftSources(profile);
+  if (draftSourcesSummary) {
+    lines.push(`  draft sources: ${draftSourcesSummary}`);
+  }
+
   if (refreshInfo.refreshCommand) {
     lines.push(`  refresh drafts: ${refreshInfo.refreshCommand}`);
+  }
+
+  if (refreshInfo.refreshPaths.length > 0) {
+    lines.push(`  refresh paths: ${refreshInfo.refreshPaths.join(', ')}`);
   }
 
   if (highlights.memory.length > 0) {
@@ -1111,12 +1437,17 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     materialTypes: { ...(profile.materialTypes ?? {}) },
     latestMaterialAt,
     latestMaterialId,
+    latestMaterialSourcePath,
     profileSummary,
+    draftGapCount,
+    draftGapCounts,
+    draftGapSummary,
     refreshCommand: refreshInfo.refreshCommand,
     refreshPaths: refreshInfo.refreshPaths,
     draftStatus,
     readiness,
     draftFiles,
+    draftSources,
     draftSections,
     draftGaps,
     highlights,
@@ -1204,11 +1535,13 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     : null;
   const recommendedLatestMaterialAt = normalizeOptionalString(maintenance.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(maintenance.recommendedLatestMaterialId);
-  const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId
-    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}`
+  const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(maintenance.recommendedLatestMaterialSourcePath));
+  const recommendedDraftSourcesSummary = normalizeOptionalString(maintenance.recommendedDraftSourcesSummary);
+  const recommendedLatestMaterialSuffix = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
+    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
   const nextRefreshLine = typeof maintenance.recommendedAction === 'string' && maintenance.recommendedAction.length > 0
-    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
+    ? `- next refresh: ${maintenance.recommendedAction}${typeof maintenance.recommendedCommand === 'string' && maintenance.recommendedCommand.length > 0 ? `; command ${maintenance.recommendedCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}${recommendedLatestMaterialSuffix}${recommendedDraftSourcesSummary ? `; draft sources ${recommendedDraftSourcesSummary}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}`
     : null;
   const draftGapCountSummary = Number.isFinite(maintenance.draftGapCountTotal) && (maintenance.draftGapCountTotal ?? 0) > 0
     ? `${maintenance.draftGapCountTotal} total`
@@ -1219,8 +1552,9 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
   const formatQueuedProfileLine = (profile: MaintenanceQueueItem) => {
     const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
     const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
-    const latestMaterialSuffix = latestMaterialAt || latestMaterialId
-      ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}`
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath));
+    const latestMaterialSuffix = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
+      ? `, latest material ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
       : '';
     const reasonSuffix = (profile.refreshReasons ?? []).length > 0
       ? `, reasons ${(profile.refreshReasons ?? []).join(' + ')}`
@@ -1232,10 +1566,16 @@ function buildFoundationMaintenanceBlock(foundationRollup: FoundationRollup = nu
     const draftGapCountSuffix = Number.isFinite(profile.draftGapCount) && (profile.draftGapCount ?? 0) > 0
       ? `, ${profile.draftGapCount} draft gap${profile.draftGapCount === 1 ? '' : 's'}${draftGapBreakdownSuffix ? ` (${draftGapBreakdownSuffix})` : ''}`
       : '';
+    const candidateSignalSuffix = normalizeOptionalString(profile.candidateSignalSummary)
+      ? `, evidence ${normalizeOptionalString(profile.candidateSignalSummary)}`
+      : '';
+    const draftSourcesSuffix = normalizeOptionalString(profile.draftSourcesSummary)
+      ? `, draft sources ${normalizeOptionalString(profile.draftSourcesSummary)}`
+      : '';
     const draftGapSuffix = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? `, gaps ${profile.draftGapSummary}`
       : '';
-    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
+    return `${profile.status}${coverageSuffix}${(profile.missingDrafts ?? []).length > 0 ? `, missing ${profile.missingDrafts?.join('/')}` : ''}${latestMaterialSuffix}${reasonSuffix}${candidateSignalSuffix}${draftSourcesSuffix}${draftGapCountSuffix}${draftGapSuffix}`;
   };
   const formatCompactQueuedProfileLabel = (profile: MaintenanceQueueItem) => `${profile.label ?? profile.id} [${profile.status ?? 'stale'}]`;
   const remainingQueuedProfilePreview = remainingQueuedProfiles
@@ -1282,28 +1622,27 @@ function buildFoundationRollupBlock(foundationRollup: FoundationRollup = null) {
     return null;
   }
 
+  const memoryCandidateLabel = formatCountLabel(memory?.candidateCount ?? 0, 'candidate');
+  const voiceCandidateLabel = formatCountLabel(voice?.candidateCount ?? 0, 'candidate');
+  const soulCandidateLabel = formatCountLabel(soul?.candidateCount ?? 0, 'candidate');
   const skillsCandidateCount = skills?.candidateCount ?? 0;
   const skillsCandidateLabel = `${skillsCandidateCount} candidate${skillsCandidateCount === 1 ? '' : 's'}`;
   const skillsCandidateProfileLabel = formatCountLabel(skills?.candidateProfileCount ?? 0, 'candidate profile');
 
   return [
     memory
-      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
+      ? `- memory: ${memory.generatedProfileCount}/${memory.profileCount} generated, ${formatCountLabel(memory.candidateProfileCount ?? 0, 'candidate profile')}, ${memoryCandidateLabel}, ${formatCountLabel(memory.repoStaleProfileCount, 'repo-stale profile')}, ${memory.totalEntries} entries, highlights: ${formatFoundationHighlights(memory.highlights)}`
       : null,
     voice
-      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(voice.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
+      ? `- voice: ${voice.generatedProfileCount}/${voice.profileCount} generated, ${formatCountLabel(voice.candidateProfileCount, 'candidate profile')}, ${voiceCandidateLabel}, ${formatCountLabel(voice.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(voice.highlights)}`
       : null,
     soul
-      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, ${formatCountLabel(soul.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
+      ? `- soul: ${soul.generatedProfileCount}/${soul.profileCount} generated, ${formatCountLabel(soul.candidateProfileCount, 'candidate profile')}, ${soulCandidateLabel}, ${formatCountLabel(soul.repoStaleProfileCount ?? 0, 'repo-stale profile')}, highlights: ${formatFoundationHighlights(soul.highlights)}`
       : null,
     skills
       ? `- skills: ${skills.generatedProfileCount}/${skills.profileCount} generated, ${skillsCandidateProfileLabel}, ${formatCountLabel(skills.repoStaleProfileCount ?? 0, 'repo-stale profile')}, ${skillsCandidateLabel}, highlights: ${formatFoundationHighlights(skills.highlights)}`
       : null,
   ].filter(Boolean).join('\n');
-}
-
-function formatCountLabel(count: number, singularLabel: string) {
-  return `${count} ${singularLabel}${count === 1 ? '' : 's'}`;
 }
 
 function formatChannelAuth(auth: ChannelAuth | null | undefined) {
@@ -1654,6 +1993,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || ingestion?.importManifestAndRefreshCommand
       || helperCommands.importManifest
       || helperCommands.importManifestAndRefresh
+      || ingestion?.sampleManifestInspectCommand
       || ingestion?.sampleManifestCommand
       || ingestion?.sampleTextCommand
       || ingestion?.refreshAllFoundationCommand
@@ -1696,6 +2036,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
     ? ingestion.recommendedInspectCommand
     : null;
+  const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
+  const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
+  const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath));
+  const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
+    ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
+    : '';
   const recommendedManifestInspectCommand = typeof ingestion?.recommendedManifestInspectCommand === 'string' && ingestion.recommendedManifestInspectCommand.length > 0
     ? ingestion.recommendedManifestInspectCommand
     : null;
@@ -1708,11 +2054,31 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedFallbackCommand = typeof ingestion?.recommendedFallbackCommand === 'string' && ingestion.recommendedFallbackCommand.length > 0
     ? ingestion.recommendedFallbackCommand
     : null;
+  const recommendedRefreshIntakeCommand = typeof ingestion?.recommendedRefreshIntakeCommand === 'string' && ingestion.recommendedRefreshIntakeCommand.length > 0
+    ? ingestion.recommendedRefreshIntakeCommand
+    : null;
+  const recommendedIntakeManifestEntryTemplateTypes = Array.isArray(ingestion?.recommendedIntakeManifestEntryTemplateTypes)
+    ? ingestion.recommendedIntakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const recommendedIntakeManifestEntryTemplateCount = typeof ingestion?.recommendedIntakeManifestEntryTemplateCount === 'number'
+    ? ingestion.recommendedIntakeManifestEntryTemplateCount
+    : 0;
+  const recommendedTemplateSummary = recommendedIntakeManifestEntryTemplateTypes.length > 0
+    ? `${recommendedIntakeManifestEntryTemplateTypes.join(', ')}${recommendedIntakeManifestEntryTemplateCount > 0 ? ` (${recommendedIntakeManifestEntryTemplateCount} total)` : ''}`
+    : null;
+  const recommendedProfileSliceSummary = formatRecommendedStarterProfileSlices(ingestion?.recommendedProfileSlices);
+  const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
+  const recommendedCommand = typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0
+    ? ingestion.recommendedCommand
+    : null;
+  const recommendedManifestImportSegment = recommendedManifestImportCommand && recommendedManifestImportCommand !== recommendedCommand
+    ? `; manifest ${recommendedManifestImportCommand}`
+    : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${typeof ingestion?.recommendedCommand === 'string' && ingestion.recommendedCommand.length > 0 ? `; command ${ingestion.recommendedCommand}` : ''}${recommendedEditSegment}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportCommand ? `; manifest ${recommendedManifestImportCommand}` : ''}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -1735,6 +2101,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       ? `- imports: ${(ingestion.supportedImportTypes ?? []).join(', ')}`
       : null,
     nextIntakeLine,
+    recommendedProfileSliceSummary
+      ? `- starter profiles: ${recommendedProfileSliceSummary}`
+      : null,
     ingestion.bootstrapProfileCommand
       ? `- bootstrap: ${ingestion.bootstrapProfileCommand}`
       : null,
@@ -1753,8 +2122,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
       pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
-      pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
-      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
+      pushHelperEntry(helperCommands.importManifestInspect ? `manifest-inspect ${helperCommands.importManifestInspect}` : null);
+      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeAllAndRefresh ? `import-all+refresh ${helperCommands.importIntakeAllAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
@@ -1771,6 +2140,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
       pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
       pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
+      pushHelperEntry(helperCommands.sampleManifestInspect ? `sample-manifest-inspect ${helperCommands.sampleManifestInspect}` : null);
       pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
       pushHelperEntry(helperCommands.sampleText ? `sample-text ${helperCommands.sampleText}` : null);
       pushHelperEntry(helperCommands.sampleMessage ? `sample-message ${helperCommands.sampleMessage}` : null);
@@ -1798,19 +2168,23 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[
+    (ingestion.importManifestInspectCommand || ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${Array.from(new Set([
+        ingestion.importManifestInspectCommand,
         ingestion.importManifestCommand,
         ingestion.importManifestAndRefreshCommand,
         ingestion.refreshAllFoundationCommand,
         ingestion.staleRefreshCommand,
-      ].filter(Boolean).join(' | ')}`
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0))).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
       : null,
     ingestion.sampleStarterCommand
       ? `- starter: ${ingestion.sampleStarterCommand}${ingestion.sampleStarterSource ? ` [${ingestion.sampleStarterSource}]` : ''}${ingestion.sampleStarterLabel ? ` for ${ingestion.sampleStarterLabel}` : ''}`
+      : null,
+    ingestion.sampleManifestPresent && ingestion.sampleManifestInspectCommand
+      ? `- sample manifest inspect: ${ingestion.sampleManifestInspectCommand}`
       : null,
     ingestion.sampleManifestPresent && ingestion.sampleManifestCommand
       ? `- sample manifest: ${(ingestion.sampleManifestEntryCount ?? 0)} entr${(ingestion.sampleManifestEntryCount ?? 0) === 1 ? 'y' : 'ies'}${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).length > 0 ? ` for ${((ingestion.sampleManifestProfileLabels ?? []).length > 0 ? ingestion.sampleManifestProfileLabels : (ingestion.sampleManifestProfileIds ?? [])).join(', ')}` : ''}${Object.keys(ingestion.sampleManifestMaterialTypes ?? {}).length > 0 ? ` (${formatMaterialTypes(ingestion.sampleManifestMaterialTypes)})` : ''} -> ${ingestion.sampleManifestCommand}`
@@ -1841,16 +2215,31 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const actionCommand = profile.importMaterialCommand ?? profile.refreshFoundationCommand;
       const actionLabel = profile.importMaterialCommand ? 'import' : 'refresh';
       const materialSummary = `${formatMaterialCount(profile.materialCount ?? 0)} (${formatMaterialTypes(profile.materialTypes)})`;
-      const latestMaterial = profile.latestMaterialAt ? `, latest ${profile.latestMaterialAt}` : '';
+      const latestMaterialAt = normalizeOptionalString(profile.latestMaterialAt);
+      const latestMaterialId = normalizeOptionalString(profile.latestMaterialId);
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(profile.latestMaterialSourcePath));
+      const latestMaterial = latestMaterialAt || latestMaterialId || latestMaterialSourcePath
+        ? `, latest ${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`
+        : '';
       const intakeStatusSegment = typeof profile.intakeStatusSummary === 'string' && profile.intakeStatusSummary.length > 0 && profile.intakeStatusSummary !== 'ready'
         ? `, intake ${profile.intakeStatusSummary}`
-        : '';
-      const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
-        ? `; gaps ${profile.draftGapSummary}`
         : '';
       const isStarterTemplateProfile = profile.intakeReady === true
         && typeof profile.intakeStatusSummary === 'string'
         && profile.intakeStatusSummary.includes('starter template');
+      const keepStarterTemplateDetailsVisible = profile.intakeReady === true
+        && (isStarterTemplateProfile || profile.intakeManifestStatus === 'invalid')
+        && Array.isArray(profile.intakeManifestEntryTemplateDetails)
+        && profile.intakeManifestEntryTemplateDetails.length > 0;
+      const starterTemplateDetailSummary = keepStarterTemplateDetailsVisible
+        ? formatStarterTemplateDetailSummary(profile.intakeManifestEntryTemplateDetails)
+        : null;
+      const starterTemplateDetailSegment = starterTemplateDetailSummary
+        ? `; starter details ${starterTemplateDetailSummary}`
+        : '';
+      const draftGapSegment = typeof profile.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+        ? `; gaps ${profile.draftGapSummary}`
+        : '';
       const scaffoldSegment = profile.intakeReady === false && profile.updateIntakeCommand
         ? `; scaffold ${profile.updateIntakeCommand}`
         : '';
@@ -1913,7 +2302,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${starterTemplateDetailSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -1953,12 +2342,14 @@ function formatMemoryAliasSummary(
         ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermEntries') ? ['shortTermEntries'] : []),
         ...(Object.prototype.hasOwnProperty.call(memory ?? {}, 'shortTermPresent') ? ['shortTermPresent'] : []),
       ];
-  const legacySources = Array.isArray(memory?.legacyShortTermSources)
-    ? memory.legacyShortTermSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
-  const legacySampleSources = Array.isArray(memory?.legacyShortTermSampleSources)
-    ? memory.legacyShortTermSampleSources.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    : [];
+  const legacySources = normalizeStringArray(
+    memory?.legacyShortTermSources,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
+  const legacySampleSources = normalizeStringArray(
+    memory?.legacyShortTermSampleSources,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
   const legacySourceCount = typeof memory?.legacyShortTermSourceCount === 'number'
     ? memory.legacyShortTermSourceCount
     : legacySources.length;
@@ -2375,6 +2766,16 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       && (!currentPriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (currentPriority.id ?? currentPriority.label))
       && (!showRunnablePriority || (actionableReadyPriority.id ?? actionableReadyPriority.label) !== (runnablePriority?.id ?? runnablePriority?.label)),
   );
+  const showRecommendedPriorityDetails = Boolean(
+    recommendedPriority
+      && (!currentPriority || (recommendedPriority.id ?? recommendedPriority.label) !== (currentPriority.id ?? currentPriority.label)),
+  );
+  const recommendedPriorityEditPaths = Array.isArray(recommendedPriority?.editPaths)
+    ? recommendedPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : (recommendedPriority?.editPath ? [recommendedPriority.editPath] : []);
+  const recommendedPriorityInspectCommand = typeof recommendedPriority?.inspectCommand === 'string' && recommendedPriority.inspectCommand.length > 0
+    ? recommendedPriority.inspectCommand
+    : null;
   const currentPriorityEditPaths = Array.isArray(currentPriority?.editPaths)
     ? currentPriority.editPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : (currentPriority?.editPath ? [currentPriority.editPath] : []);
@@ -2393,6 +2794,87 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const actionableReadyPriorityInspectCommand = typeof actionableReadyPriority?.inspectCommand === 'string' && actionableReadyPriority.inspectCommand.length > 0
     ? actionableReadyPriority.inspectCommand
     : null;
+  const formatPriorityTemplateSummary = (priority?: WorkLoopPriority | null): string | null => {
+    const templateTypes = Array.isArray(priority?.intakeManifestEntryTemplateTypes)
+      ? priority.intakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    const templateCount = typeof priority?.intakeManifestEntryTemplateCount === 'number'
+      ? priority.intakeManifestEntryTemplateCount
+      : 0;
+
+    if (templateTypes.length === 0) {
+      return null;
+    }
+
+    return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
+  };
+  const formatPriorityTemplateDetails = (priority?: WorkLoopPriority | null): string | null => formatStarterTemplateDetailSummary(priority?.intakeManifestEntryTemplateDetails);
+  const recommendedPriorityTemplateSummary = formatPriorityTemplateSummary(recommendedPriority);
+  const recommendedPriorityTemplateDetailSummary = formatPriorityTemplateDetails(recommendedPriority);
+  const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
+  const currentPriorityTemplateDetailSummary = formatPriorityTemplateDetails(currentPriority);
+  const runnablePriorityTemplateSummary = formatPriorityTemplateSummary(runnablePriority);
+  const runnablePriorityTemplateDetailSummary = formatPriorityTemplateDetails(runnablePriority);
+  const actionableReadyPriorityTemplateSummary = formatPriorityTemplateSummary(actionableReadyPriority);
+  const actionableReadyPriorityTemplateDetailSummary = formatPriorityTemplateDetails(actionableReadyPriority);
+  const formatPriorityLatestMaterial = (priority?: WorkLoopPriority | null, prefix = '- latest material: '): string | null => {
+    const latestMaterialAt = normalizeOptionalString(priority?.latestMaterialAt);
+    const latestMaterialId = normalizeOptionalString(priority?.latestMaterialId);
+    const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(priority?.latestMaterialSourcePath));
+
+    if (!latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath) {
+      return null;
+    }
+
+    return `${prefix}${latestMaterialAt ?? 'unknown timestamp'}${latestMaterialId ? ` (${latestMaterialId})` : ''}${latestMaterialSourcePath ? ` @ ${latestMaterialSourcePath}` : ''}`;
+  };
+  const formatPriorityRefreshReasons = (priority?: WorkLoopPriority | null, prefix = '- refresh reasons: '): string | null => {
+    const refreshReasons = normalizeStringArray(priority?.refreshReasons);
+    return refreshReasons.length > 0 ? `${prefix}${refreshReasons.join(' + ')}` : null;
+  };
+  const formatPriorityMissingDrafts = (priority?: WorkLoopPriority | null, prefix = '- missing drafts: '): string | null => {
+    const missingDrafts = normalizeStringArray(priority?.missingDrafts);
+    return missingDrafts.length > 0 ? `${prefix}${missingDrafts.join(', ')}` : null;
+  };
+  const formatPriorityEvidence = (priority?: WorkLoopPriority | null, prefix = '- evidence: '): string | null => {
+    const candidateSignalSummary = typeof priority?.candidateSignalSummary === 'string' && priority.candidateSignalSummary.length > 0
+      ? priority.candidateSignalSummary
+      : null;
+
+    return candidateSignalSummary ? `${prefix}${candidateSignalSummary}` : null;
+  };
+  const formatPriorityDraftSources = (priority?: WorkLoopPriority | null, prefix = '- draft sources: '): string | null => {
+    const draftSourcesSummary = typeof priority?.draftSourcesSummary === 'string' && priority.draftSourcesSummary.length > 0
+      ? priority.draftSourcesSummary
+      : null;
+
+    return draftSourcesSummary ? `${prefix}${draftSourcesSummary}` : null;
+  };
+  const formatPriorityDraftGaps = (priority?: WorkLoopPriority | null, prefix = '- draft gaps: '): string | null => {
+    const draftGapSummary = typeof priority?.draftGapSummary === 'string' && priority.draftGapSummary.length > 0
+      ? priority.draftGapSummary
+      : null;
+
+    return draftGapSummary ? `${prefix}${draftGapSummary}` : null;
+  };
+  const formatPriorityRootSections = (priority?: WorkLoopPriority | null, prefix = '- root sections: '): string | null => {
+    const summary = formatRootSectionSummary(
+      Array.isArray(priority?.rootThinReadySections) ? priority.rootThinReadySections : undefined,
+      Array.isArray(priority?.rootThinMissingSections) ? priority.rootThinMissingSections : undefined,
+      typeof priority?.rootThinReadySectionCount === 'number' ? priority.rootThinReadySectionCount : undefined,
+      typeof priority?.rootThinTotalSectionCount === 'number' ? priority.rootThinTotalSectionCount : undefined,
+    );
+
+    return summary ? summary.replace(/^; root sections /, prefix) : null;
+  };
+  const formatPriorityRootHeadingAliases = (priority?: WorkLoopPriority | null, prefix = '- root heading aliases: '): string | null => {
+    const summary = formatHeadingAliasSummary(Array.isArray(priority?.rootHeadingAliases) ? priority.rootHeadingAliases : undefined);
+    return summary ? summary.replace(/^; aliases /, prefix) : null;
+  };
+  const formatPriorityStarterProfiles = (priority?: WorkLoopPriority | null, prefix = '- starter profiles: '): string | null => {
+    const summary = formatRecommendedStarterProfileSlices(priority?.recommendedProfileSlices);
+    return summary ? `${prefix}${summary}` : null;
+  };
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2418,6 +2900,50 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     recommendedPriority
       ? `- recommended: ${recommendedPriority.label ?? recommendedPriority.id ?? 'Recommended priority'} [${recommendedPriority.status ?? 'unknown'}] — ${recommendedPriority.nextAction ?? recommendedPriority.summary ?? 'needs review'}`
       : null,
+    showRecommendedPriorityDetails && recommendedPriority?.command
+      ? `- recommended command: ${recommendedPriority.command}`
+      : null,
+    showRecommendedPriorityDetails ? formatPriorityLatestMaterial(recommendedPriority, '- recommended latest material: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRefreshReasons(recommendedPriority, '- recommended refresh reasons: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityMissingDrafts(recommendedPriority, '- recommended missing drafts: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityEvidence(recommendedPriority, '- recommended evidence: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityDraftSources(recommendedPriority, '- recommended draft sources: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityDraftGaps(recommendedPriority, '- recommended draft gaps: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRootSections(recommendedPriority, '- recommended root sections: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityRootHeadingAliases(recommendedPriority, '- recommended root heading aliases: ') : null,
+    showRecommendedPriorityDetails && recommendedPriority?.fallbackCommand
+      ? `- recommended fallback: ${recommendedPriority.fallbackCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.refreshIntakeCommand
+      ? `- recommended refresh intake: ${recommendedPriority.refreshIntakeCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityTemplateSummary
+      ? `- recommended starter templates: ${recommendedPriorityTemplateSummary}`
+      : null,
+    showRecommendedPriorityDetails ? formatPriorityStarterProfiles(recommendedPriority, '- recommended starter profiles: ') : null,
+    showRecommendedPriorityDetails && recommendedPriorityTemplateDetailSummary
+      ? `- recommended starter details: ${recommendedPriorityTemplateDetailSummary}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityEditPaths.length > 1
+      ? `- recommended edit paths: ${recommendedPriorityEditPaths.join(', ')}`
+      : (showRecommendedPriorityDetails && recommendedPriority?.editPath
+        ? `- recommended edit: ${recommendedPriority.editPath}`
+        : null),
+    showRecommendedPriorityDetails && recommendedPriority?.manifestInspectCommand
+      ? `- recommended manifest inspect: ${recommendedPriority.manifestInspectCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.manifestImportCommand
+      ? `- recommended manifest: ${recommendedPriority.manifestImportCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriorityInspectCommand
+      ? `- recommended inspect after editing: ${recommendedPriorityInspectCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.followUpCommand
+      ? `- recommended then run: ${recommendedPriority.followUpCommand}`
+      : null,
+    showRecommendedPriorityDetails && (recommendedPriority?.paths ?? []).length > 0
+      ? `- recommended paths: ${(recommendedPriority?.paths ?? []).join(', ')}`
+      : null,
     currentPriority
       ? `- current: ${currentPriority.label ?? currentPriority.id ?? 'Current priority'} [${currentPriority.status ?? 'unknown'}] — ${currentPriority.summary ?? 'needs review'}`
       : null,
@@ -2427,8 +2953,26 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     currentPriority?.command
       ? `- command: ${currentPriority.command}`
       : null,
+    formatPriorityLatestMaterial(currentPriority),
+    formatPriorityRefreshReasons(currentPriority),
+    formatPriorityMissingDrafts(currentPriority),
+    formatPriorityEvidence(currentPriority),
+    formatPriorityDraftSources(currentPriority),
+    formatPriorityDraftGaps(currentPriority),
+    formatPriorityRootSections(currentPriority),
+    formatPriorityRootHeadingAliases(currentPriority),
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
+      : null,
+    currentPriority?.refreshIntakeCommand
+      ? `- refresh intake: ${currentPriority.refreshIntakeCommand}`
+      : null,
+    currentPriorityTemplateSummary
+      ? `- starter templates: ${currentPriorityTemplateSummary}`
+      : null,
+    formatPriorityStarterProfiles(currentPriority),
+    currentPriorityTemplateDetailSummary
+      ? `- starter details: ${currentPriorityTemplateDetailSummary}`
       : null,
     currentPriorityEditPaths.length > 1
       ? `- edit paths: ${currentPriorityEditPaths.join(', ')}`
@@ -2459,8 +3003,26 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.command
       ? `- runnable command: ${runnablePriority.command}`
       : null,
+    showRunnablePriority ? formatPriorityLatestMaterial(runnablePriority, '- runnable latest material: ') : null,
+    showRunnablePriority ? formatPriorityRefreshReasons(runnablePriority, '- runnable refresh reasons: ') : null,
+    showRunnablePriority ? formatPriorityMissingDrafts(runnablePriority, '- runnable missing drafts: ') : null,
+    showRunnablePriority ? formatPriorityEvidence(runnablePriority, '- runnable evidence: ') : null,
+    showRunnablePriority ? formatPriorityDraftSources(runnablePriority, '- runnable draft sources: ') : null,
+    showRunnablePriority ? formatPriorityDraftGaps(runnablePriority, '- runnable draft gaps: ') : null,
+    showRunnablePriority ? formatPriorityRootSections(runnablePriority, '- runnable root sections: ') : null,
+    showRunnablePriority ? formatPriorityRootHeadingAliases(runnablePriority, '- runnable root heading aliases: ') : null,
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
+      : null,
+    showRunnablePriority && runnablePriority?.refreshIntakeCommand
+      ? `- runnable refresh intake: ${runnablePriority.refreshIntakeCommand}`
+      : null,
+    showRunnablePriority && runnablePriorityTemplateSummary
+      ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
+      : null,
+    showRunnablePriority ? formatPriorityStarterProfiles(runnablePriority, '- runnable starter profiles: ') : null,
+    showRunnablePriority && runnablePriorityTemplateDetailSummary
+      ? `- runnable starter details: ${runnablePriorityTemplateDetailSummary}`
       : null,
     showRunnablePriority && runnablePriorityEditPaths.length > 1
       ? `- runnable edit paths: ${runnablePriorityEditPaths.join(', ')}`
@@ -2491,8 +3053,26 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority && actionableReadyPriority?.command
       ? `- advisory command: ${actionableReadyPriority.command}`
       : null,
+    showActionableReadyPriority ? formatPriorityLatestMaterial(actionableReadyPriority, '- advisory latest material: ') : null,
+    showActionableReadyPriority ? formatPriorityRefreshReasons(actionableReadyPriority, '- advisory refresh reasons: ') : null,
+    showActionableReadyPriority ? formatPriorityMissingDrafts(actionableReadyPriority, '- advisory missing drafts: ') : null,
+    showActionableReadyPriority ? formatPriorityEvidence(actionableReadyPriority, '- advisory evidence: ') : null,
+    showActionableReadyPriority ? formatPriorityDraftSources(actionableReadyPriority, '- advisory draft sources: ') : null,
+    showActionableReadyPriority ? formatPriorityDraftGaps(actionableReadyPriority, '- advisory draft gaps: ') : null,
+    showActionableReadyPriority ? formatPriorityRootSections(actionableReadyPriority, '- advisory root sections: ') : null,
+    showActionableReadyPriority ? formatPriorityRootHeadingAliases(actionableReadyPriority, '- advisory root heading aliases: ') : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.refreshIntakeCommand
+      ? `- advisory refresh intake: ${actionableReadyPriority.refreshIntakeCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriorityTemplateSummary
+      ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`
+      : null,
+    showActionableReadyPriority ? formatPriorityStarterProfiles(actionableReadyPriority, '- advisory starter profiles: ') : null,
+    showActionableReadyPriority && actionableReadyPriorityTemplateDetailSummary
+      ? `- advisory starter details: ${actionableReadyPriorityTemplateDetailSummary}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityEditPaths.length > 1
       ? `- advisory edit paths: ${actionableReadyPriorityEditPaths.join(', ')}`

@@ -5,6 +5,7 @@ import {
   FileSystemLoader,
   loadFoundationDraftStatus,
 } from './fs-loader.js';
+import { buildFoundationRollup } from './foundation-rollup.ts';
 import { inspectProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value) {
@@ -234,6 +235,7 @@ function deriveMaterialFingerprint(record, rootDir = null) {
 }
 
 function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
+  const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
   return [
     `# ${title}`,
     '',
@@ -242,6 +244,7 @@ function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, gen
     `Summary: ${profileDocument?.summary ?? 'Not set.'}`,
     `Generated at: ${generatedAt}`,
     `Latest material: ${latestMaterialRecord?.createdAt ?? 'Not set.'} (${latestMaterialRecord?.id ?? 'none'})`,
+    `Latest material source: ${latestMaterialSourcePath ?? 'Not set.'}`,
     `Source materials: ${materialCount} (${formatMaterialTypes(materialTypes)})`,
     '',
   ];
@@ -450,12 +453,14 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function buildDirectImportCommands({ personId, sampleTextPath }) {
+const DEFAULT_STARTER_SCREENSHOT_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==';
+
+function buildDirectImportCommands({ personId, sampleTextPath, sampleScreenshotPath }) {
   return {
     text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
     message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
     talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${personId} --file <image.png> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${personId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
   };
 }
 
@@ -505,6 +510,7 @@ function buildIntakePaths(personId) {
   return {
     importsDir: basePath,
     sampleImagesDirPath: path.join(basePath, 'images'),
+    sampleScreenshotPath: path.join(basePath, 'images', 'chat.png'),
     intakeReadmePath: path.join(basePath, 'README.md'),
     starterManifestPath: path.join(basePath, 'materials.template.json'),
     sampleTextPath: path.join(basePath, 'sample.txt'),
@@ -542,6 +548,72 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
     starterManifestPath,
     expectedPersonId,
   });
+}
+
+function formatStarterTemplateTypes(entryTemplateTypes = []) {
+  return entryTemplateTypes
+    .filter((value) => isNonEmptyString(value))
+    .sort((left, right) => left.localeCompare(right))
+    .join(', ');
+}
+
+function buildStarterTemplatePromotionError({
+  label,
+  location = null,
+  entryTemplateTypes = [],
+  inspectCommand,
+  importCommand,
+}) {
+  const templateSummary = formatStarterTemplateTypes(entryTemplateTypes) || 'none';
+  const locationSegment = isNonEmptyString(location) ? `: ${location}` : '';
+  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (templates: ${templateSummary}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
+}
+
+function manifestOwnerMatchesExpectedPersonId(ownerValue, expectedPersonId) {
+  if (!isNonEmptyString(ownerValue)) {
+    return true;
+  }
+
+  return slugifyPersonId(ownerValue) === expectedPersonId;
+}
+
+function existingStarterManifestTargetsExpectedPersonId(parsedTemplate, expectedPersonId) {
+  if (!parsedTemplate || typeof parsedTemplate !== 'object' || !isNonEmptyString(expectedPersonId)) {
+    return false;
+  }
+
+  const normalizedExpectedPersonId = slugifyPersonId(expectedPersonId);
+  if (!normalizedExpectedPersonId) {
+    return false;
+  }
+
+  const normalizedTemplate = normalizeExistingStarterManifest(parsedTemplate);
+  if (!normalizedTemplate) {
+    return false;
+  }
+
+  if (!manifestOwnerMatchesExpectedPersonId(normalizedTemplate.personId, normalizedExpectedPersonId)) {
+    return false;
+  }
+
+  const manifestProfiles = Array.isArray(normalizedTemplate.profiles) ? normalizedTemplate.profiles : [];
+  if (manifestProfiles.some((profile) => !profile || typeof profile !== 'object' || !manifestOwnerMatchesExpectedPersonId(profile.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  const manifestEntries = Array.isArray(normalizedTemplate.entries) ? normalizedTemplate.entries : [];
+  if (manifestEntries.some((entry) => !entry || typeof entry !== 'object' || !manifestOwnerMatchesExpectedPersonId(entry.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  const manifestEntryTemplates = normalizedTemplate.entryTemplates && typeof normalizedTemplate.entryTemplates === 'object' && !Array.isArray(normalizedTemplate.entryTemplates)
+    ? Object.values(normalizedTemplate.entryTemplates)
+    : [];
+  if (manifestEntryTemplates.some((template) => !template || typeof template !== 'object' || !manifestOwnerMatchesExpectedPersonId(template.personId, normalizedExpectedPersonId))) {
+    return false;
+  }
+
+  return true;
 }
 
 function profileHasStarterIntakeManifest(rootDir, profile) {
@@ -679,12 +751,18 @@ function buildIntakeReadme({
     hasReadyProfileLocalReplay
       ? '2. Update materials.template.json entries (and any local assets) when the intake fixture changes.'
       : '2. Copy the entryTemplates from materials.template.json into entries and fill in real content.',
-    '3. Run the import command above to ingest materials and refresh foundation drafts.',
+    '3. Run the inspect command above to confirm the edited materials and manifest look right.',
+    '4. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts.',
+    '',
+    'Rerun safety:',
+    `- re-running \`${updateIntakeCommand}\` preserves starter entries, entry templates, and the managed Custom notes block.`,
+    `- if \`materials.template.json\` becomes invalid JSON, the same rerun snapshots it to \`${starterManifestPath}.invalid-<timestamp>.bak\` before rebuilding the starter scaffold.`,
     '',
     'Path rule:',
     `- \`materials.template.json\` resolves every \`file\` relative to \`${path.posix.dirname(starterManifestPath)}/\`.`,
     `- Keep local screenshots or attachments next to \`${path.posix.basename(sampleTextPath)}\` or inside a small subdirectory like \`${sampleImagesDirPath}/\`.`,
     `- Example: if you save a screenshot at \`${sampleImagesDirPath}/chat.png\`, use \`images/chat.png\` inside the manifest.`,
+    '- Every referenced file must stay inside this repo; outside paths or symlinks that escape the repo root are rejected during import.',
     '',
     'Starter entry examples:',
     '```json',
@@ -854,14 +932,20 @@ export class MaterialIngestion {
     ensureDir(this.resolve(intakePaths.importsDir));
     ensureDir(this.resolve(intakePaths.sampleImagesDirPath));
     const relativeSampleTextPath = intakePaths.sampleTextPath.split(path.sep).join('/');
+    const relativeSampleScreenshotPath = intakePaths.sampleScreenshotPath.split(path.sep).join('/');
     const importCommands = buildDirectImportCommands({
       personId: profileUpdate.personId,
       sampleTextPath: relativeSampleTextPath,
+      sampleScreenshotPath: relativeSampleScreenshotPath,
     });
 
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
     const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
     const existingTemplate = normalizeExistingStarterManifest(existingTemplateState.parsed);
+    const preserveExistingStarterContent = existingStarterManifestTargetsExpectedPersonId(
+      existingTemplateState.parsed,
+      profileUpdate.personId,
+    );
     const invalidStarterManifestBackupPath = existingTemplateState.parseError
       ? backupInvalidJsonFile(starterManifestAbsolutePath)
       : null;
@@ -869,10 +953,10 @@ export class MaterialIngestion {
       personId: profileUpdate.personId,
       displayName: profileUpdate.profile?.displayName,
       summary: profileUpdate.profile?.summary,
-      existingEntries: existingTemplate?.entries,
-      existingEntryTemplates: existingTemplate?.entryTemplates,
+      existingEntries: preserveExistingStarterContent ? existingTemplate?.entries : undefined,
+      existingEntryTemplates: preserveExistingStarterContent ? existingTemplate?.entryTemplates : undefined,
       sampleTextPath: path.basename(relativeSampleTextPath),
-      sampleScreenshotPath: 'images/chat.png',
+      sampleScreenshotPath: path.relative(intakePaths.importsDir, intakePaths.sampleScreenshotPath).split(path.sep).join('/'),
     });
     fs.writeFileSync(starterManifestAbsolutePath, JSON.stringify(starterManifest, null, 2));
 
@@ -880,6 +964,13 @@ export class MaterialIngestion {
       fs.writeFileSync(
         this.resolve(intakePaths.sampleTextPath),
         `Replace this file with a real writing sample for ${profileUpdate.profile?.displayName ?? profileUpdate.personId}.\n`,
+      );
+    }
+
+    if (!fs.existsSync(this.resolve(intakePaths.sampleScreenshotPath))) {
+      fs.writeFileSync(
+        this.resolve(intakePaths.sampleScreenshotPath),
+        Buffer.from(DEFAULT_STARTER_SCREENSHOT_PNG_BASE64, 'base64'),
       );
     }
 
@@ -1075,15 +1166,23 @@ export class MaterialIngestion {
 
     const intakeManifestState = inspectIntakeManifestState(this.rootDir, profile.intake.starterManifestPath, normalizedPersonId);
     if (intakeManifestState.status === 'starter') {
-      throw new Error(`Profile intake manifest has no entries yet: ${normalizedPersonId}`);
+      throw new Error(buildStarterTemplatePromotionError({
+        label: `Profile intake manifest still contains only starter templates: ${normalizedPersonId} @ ${profile.intake.starterManifestPath}`,
+        entryTemplateTypes: intakeManifestState.entryTemplateTypes,
+        inspectCommand: buildImportIntakeCommand(normalizedPersonId),
+        importCommand: buildImportIntakeCommand(normalizedPersonId, { refreshFoundation: true }),
+      }));
     }
     if (intakeManifestState.status !== 'loaded') {
-      throw new Error(intakeManifestState.error || `Profile intake manifest is not ready for import: ${normalizedPersonId}`);
+      const intakeManifestPath = profile.intake.starterManifestPath;
+      const intakeManifestError = intakeManifestState.error || 'manifest validation failed';
+      throw new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
     }
 
     return this.importManifest({
       manifestFile: profile.intake.starterManifestPath,
       refreshFoundation,
+      includeReplayedProfiles: true,
     });
   }
 
@@ -1118,14 +1217,16 @@ export class MaterialIngestion {
   }
 
   importAllProfileIntakeManifests({ refreshFoundation = false } = {}) {
-    const profiles = this.listProfilesWithReadyIntake();
+    const profiles = this.listProfilesWithReadyIntake()
+      .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
   }
 
   importStaleProfileIntakeManifests({ refreshFoundation = false } = {}) {
-    const profiles = this.listProfilesWithReadyIntake({ includeImported: false });
+    const profiles = this.listProfilesWithReadyIntake({ includeImported: false })
+      .filter((profile) => !profileHasStarterIntakeManifest(this.rootDir, profile));
     const results = profiles.map((profile) => this.importProfileIntakeManifest({ personId: profile.id, refreshFoundation }));
 
     return this.buildBatchManifestImportResult(profiles, results, { refreshFoundation });
@@ -1233,7 +1334,7 @@ export class MaterialIngestion {
   }
 
   importMessage({ personId, text, notes = null, fingerprint = null }) {
-    if (!text) {
+    if (!isNonEmptyString(text)) {
       throw new Error('text is required for message import');
     }
 
@@ -1260,7 +1361,7 @@ export class MaterialIngestion {
   }
 
   importTalkSnippet({ personId, text, notes = null, fingerprint = null }) {
-    if (!text) {
+    if (!isNonEmptyString(text)) {
       throw new Error('text is required for talk import');
     }
 
@@ -1321,7 +1422,7 @@ export class MaterialIngestion {
     return result;
   }
 
-  importManifest({ manifestFile, refreshFoundation = false }) {
+  importManifest({ manifestFile, refreshFoundation = false, includeReplayedProfiles = false }) {
     if (!manifestFile) {
       throw new Error('manifestFile is required for manifest import');
     }
@@ -1364,20 +1465,36 @@ export class MaterialIngestion {
         summary: profile.summary,
       };
     });
+    const declaredProfileIds = new Set(validatedProfiles
+      .map((profile) => slugifyPersonId(profile.personId))
+      .filter((personId) => personId.length > 0));
 
+    const manifestRelativePath = path.relative(fs.realpathSync(this.rootDir), validatedManifestPath).split(path.sep).join('/');
+    const starterManifestState = inspectIntakeManifestState(this.rootDir, manifestRelativePath);
     const entries = Array.isArray(manifest) ? manifest : manifest.entries;
+    if (starterManifestState.status === 'starter') {
+      throw new Error(buildStarterTemplatePromotionError({
+        label: 'Manifest still contains only starter templates',
+        location: manifestRelativePath,
+        entryTemplateTypes: starterManifestState.entryTemplateTypes,
+        inspectCommand: buildManifestImportCommand(manifestRelativePath),
+        importCommand: buildManifestImportCommand(manifestRelativePath, { refreshFoundation: true }),
+      }));
+    }
     if (!Array.isArray(entries) || entries.length === 0) {
       throw new Error('Manifest must contain a non-empty entries array');
     }
 
     const defaultPersonId = shorthandProfile?.personId ?? null;
+    const normalizedDefaultPersonId = isNonEmptyString(defaultPersonId) ? slugifyPersonId(defaultPersonId) : null;
     const manifestDir = path.dirname(validatedManifestPath);
     const validatedEntries = entries.map((entry, index) => {
       if (!entry || typeof entry !== 'object') {
         throw new Error(`Manifest entry ${index} must be an object`);
       }
 
-      const resolvedPersonId = entry.personId ?? defaultPersonId;
+      const explicitPersonId = entry.personId;
+      const resolvedPersonId = explicitPersonId ?? defaultPersonId;
       if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
@@ -1385,6 +1502,15 @@ export class MaterialIngestion {
       const normalizedPersonId = slugifyPersonId(resolvedPersonId);
       if (!normalizedPersonId) {
         throw new Error(`Manifest entry ${index} is missing personId`);
+      }
+
+      const normalizedExplicitPersonId = isNonEmptyString(explicitPersonId) ? slugifyPersonId(explicitPersonId) : null;
+      if (normalizedDefaultPersonId && normalizedExplicitPersonId && normalizedExplicitPersonId !== normalizedDefaultPersonId) {
+        throw new Error(`Manifest entry ${index} targets a different profile than manifest.personId: expected ${normalizedDefaultPersonId}`);
+      }
+
+      if (declaredProfileIds.size > 0 && !declaredProfileIds.has(normalizedPersonId)) {
+        throw new Error(`Manifest entry ${index} targets undeclared profile: ${normalizedPersonId}`);
       }
 
       if (entry.type === 'text') {
@@ -1557,7 +1683,7 @@ export class MaterialIngestion {
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
     const replayedProfileIds = [...new Set(validatedEntries.map((entry) => entry.normalizedPersonId))].sort();
-    const profileIds = refreshFoundation
+    const profileIds = refreshFoundation || includeReplayedProfiles
       ? replayedProfileIds
       : [...new Set(results.map((entry) => entry.personId))].sort();
     const foundationRefresh = refreshFoundation
@@ -1672,6 +1798,7 @@ export class MaterialIngestion {
           generatedAt,
           latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
           latestMaterialId: latestMaterialRecord?.id ?? null,
+          latestMaterialSourcePath: latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null,
           materialTypes,
           entryCount: memoryEntries.length,
           entries: memoryEntries,
@@ -1746,6 +1873,26 @@ export class MaterialIngestion {
       importIntakeWithoutRefresh: importIntakeWithoutRefreshCommand,
       importIntake: importIntakeCommand,
     };
+    const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
+    const latestMaterialId = latestMaterialRecord?.id ?? null;
+    const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
+    const sourceCount = materialRecords.length;
+    const makeDraftSource = ({ draftPath, entryCount = null } = {}) => ({
+      path: path.relative(this.rootDir, draftPath),
+      generatedAt,
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      sourceCount,
+      materialTypes: { ...materialTypes },
+      ...(Number.isFinite(entryCount) ? { entryCount } : {}),
+    });
+    const draftSources = {
+      memory: makeDraftSource({ draftPath: memoryDraftPath, entryCount: memoryEntries.length }),
+      voice: makeDraftSource({ draftPath: voiceDraftPath }),
+      soul: makeDraftSource({ draftPath: soulDraftPath }),
+      skills: makeDraftSource({ draftPath: skillsDraftPath }),
+    };
 
     return {
       personId: normalized.personId,
@@ -1754,6 +1901,12 @@ export class MaterialIngestion {
       soulDraftPath,
       skillsDraftPath,
       generatedAt,
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      materialTypes: { ...materialTypes },
+      entryCount: memoryEntries.length,
+      draftSources,
       refreshFoundationCommand,
       updateProfileCommand,
       updateProfileAndRefreshCommand,
@@ -1776,28 +1929,10 @@ export class MaterialIngestion {
   }
 
   refreshStaleFoundationDrafts() {
-    const profilesDir = this.resolve('profiles');
-    const profileIds = listDirectoriesIfExists(profilesDir)
-      .filter((profileId) => {
-        const materialRecords = this.loadMaterialRecords(profileId);
-        if (materialRecords.length === 0) {
-          return false;
-        }
-
-        const latestMaterialRecord = sortByNewest(materialRecords)[0] ?? null;
-        const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
-        const latestMaterialId = latestMaterialRecord?.id ?? null;
-        const profileDocument = readJsonIfExists(this.resolve('profiles', profileId, 'profile.json'));
-        const foundationDraftStatus = loadFoundationDraftStatus(
-          this.rootDir,
-          profileId,
-          latestMaterialAt,
-          latestMaterialId,
-          profileDocument,
-        );
-
-        return foundationDraftStatus.needsRefresh;
-      });
+    const loader = new FileSystemLoader(this.rootDir);
+    const profileIds = buildFoundationRollup(loader.loadProfilesIndex()).maintenance.queuedProfiles
+      .map((profile) => profile.id)
+      .filter((profileId) => isNonEmptyString(profileId));
 
     return {
       profileCount: profileIds.length,

@@ -139,6 +139,30 @@ test('direct screenshot imports skip unchanged reruns before copying duplicate a
   assert.equal(materialRecords.length, 1);
 });
 
+test('direct message and talk imports reject whitespace-only text without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  assert.throws(
+    () => ingestion.importMessage({
+      personId: 'harry-han',
+      text: '   ',
+    }),
+    /text is required for message import/,
+  );
+
+  assert.throws(
+    () => ingestion.importTalkSnippet({
+      personId: 'harry-han',
+      text: '   ',
+    }),
+    /text is required for talk import/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  assert.equal(fs.existsSync(materialsDir), false);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -572,6 +596,57 @@ test('importManifest supports a single-target shorthand profile and inherits per
   assert.equal(materials.length, 2);
 });
 
+test('importManifest rejects entries that target profiles not declared in a multi-profile manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        profiles: [{ personId: 'Harry Han', displayName: 'Harry Han' }],
+        entries: [{ personId: 'Jane Doe', type: 'message', text: 'This should not import.' }],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /Manifest entry 0 targets undeclared profile: jane-doe/,
+  );
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe', 'profile.json')), false);
+});
+
+test('importManifest rejects shorthand manifests whose entries target a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        entries: [{ personId: 'Jane Doe', type: 'message', text: 'This should not import.' }],
+      },
+      null,
+      2,
+    ),
+  );
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: manifestPath }),
+    /Manifest entry 0 targets a different profile than manifest\.personId: expected harry-han/,
+  );
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe', 'profile.json')), false);
+});
+
 test('importManifest shell-quotes manifest helper commands when the manifest path contains spaces', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -924,7 +999,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
     message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
     talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.equal(result.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
@@ -943,7 +1018,7 @@ test('scaffoldProfileIntake creates starter intake files without importing place
       text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
       message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
       talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: 'node src/index.js import screenshot --person harry-han --file <image.png> --refresh-foundation',
+      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
 
@@ -982,10 +1057,14 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
   assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file <image\.png> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
+  assert.match(intakeReadme, /outside paths or symlinks that escape the repo root are rejected during import/i);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');
   assert.match(sampleText, /Replace this file with a real writing sample for Harry Han/i);
+  const sampleScreenshotPath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images', 'chat.png');
+  assert.equal(fs.existsSync(sampleScreenshotPath), true);
+  assert.equal(fs.readFileSync(sampleScreenshotPath).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'images')), true);
 
   const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
@@ -1136,6 +1215,76 @@ test('scaffoldProfileIntake preserves legacy array-form starter manifests on rer
   });
 });
 
+test('scaffoldProfileIntake rebuilds parseable starter manifests that target a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const initial = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const templatePath = path.join(rootDir, initial.starterManifestPath);
+  fs.writeFileSync(
+    templatePath,
+    JSON.stringify({
+      personId: 'jane-doe',
+      displayName: 'Jane Doe',
+      summary: 'Wrong profile payload.',
+      entries: [
+        {
+          personId: 'jane-doe',
+          type: 'message',
+          text: 'This should not survive the repair pass.',
+          notes: 'wrong owner entry',
+        },
+      ],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'other-sample.txt',
+          personId: 'jane-doe',
+          notes: 'wrong owner template',
+        },
+      },
+    }, null, 2),
+  );
+
+  const rerun = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Forward',
+    summary: 'Direct operator with faster loops.',
+  });
+  const template = JSON.parse(fs.readFileSync(path.join(rootDir, rerun.starterManifestPath), 'utf8'));
+
+  assert.equal(template.personId, 'harry-han');
+  assert.equal(template.displayName, 'Harry Forward');
+  assert.equal(template.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(template.entries, []);
+  assert.deepEqual(template.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: 'images/chat.png',
+      notes: 'chat screenshot',
+    },
+  });
+});
+
 test('scaffoldStaleProfileIntakes refreshes only metadata-only profiles with missing or partial intake scaffolds', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1199,6 +1348,11 @@ test('importAllProfileIntakeManifests aggregates profileSummaries and top-level 
     personId: 'Alpha Ready',
     displayName: 'Alpha Ready',
     summary: 'Ready intake manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Still has the untouched starter manifest and should be skipped.',
   });
   ingestion.scaffoldProfileIntake({
     personId: 'Imported Already',
@@ -1277,7 +1431,78 @@ test('importImportedProfileIntakeManifests skips imported profiles whose local i
   assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
 });
 
-test('importProfileIntakeManifest rejects imported profiles whose local intake manifest still has no entries', () => {
+test('importStaleProfileIntakeManifests skips metadata-only profiles whose local intake manifest is still the starter scaffold', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'This metadata-only profile still has the untouched starter manifest.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Loaded Intake',
+    displayName: 'Loaded Intake',
+    summary: 'This metadata-only profile customized its local intake manifest.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'sample.txt'), 'Loaded intake sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'loaded-intake', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Loaded Intake',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importStaleProfileIntakeManifests({ refreshFoundation: true });
+
+  assert.equal(result.profileCount, 1);
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['loaded-intake']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['loaded-intake']);
+  assert.equal(result.foundationRefresh.profileCount, 1);
+  assert.deepEqual(result.foundationRefresh.results.map((entry) => entry.personId), ['loaded-intake']);
+});
+
+test('importProfileIntakeManifest preserves replayed profile summaries on skipped no-refresh reruns', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Imported Ready',
+    displayName: 'Imported Ready',
+    summary: 'Already imported and ready for local manifest reruns.',
+  });
+  ingestion.importMessage({
+    personId: 'Imported Ready',
+    text: 'Existing imported material.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'sample.txt'), 'Imported rerun sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'imported-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Imported Ready',
+      entries: [{ type: 'text', file: 'sample.txt' }],
+    }, null, 2),
+  );
+
+  const firstResult = ingestion.importProfileIntakeManifest({ personId: 'imported-ready', refreshFoundation: false });
+  const secondResult = ingestion.importProfileIntakeManifest({ personId: 'imported-ready', refreshFoundation: false });
+
+  assert.equal(firstResult.entryCount, 1);
+  assert.deepEqual(firstResult.profileIds, ['imported-ready']);
+  assert.deepEqual(firstResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.profileIds, ['imported-ready']);
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
+  assert.equal(secondResult.profileSummaries[0].materialCount, 0);
+  assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+});
+
+test('importProfileIntakeManifest explains how to promote starter templates into entries before rerunning imported profile intake', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -1288,7 +1513,25 @@ test('importProfileIntakeManifest rejects imported profiles whose local intake m
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'starter-only', refreshFoundation: true }),
-    /Profile intake manifest has no entries yet: starter-only/,
+    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
+  );
+});
+
+test('importManifest explains how to promote starter templates into entries before rerunning a starter manifest', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Starter Only',
+    displayName: 'Starter Only',
+    summary: 'Starter-template manifest should fail with actionable guidance.',
+  });
+
+  const starterManifestPath = path.join(rootDir, 'profiles', 'starter-only', 'imports', 'materials.template.json');
+
+  assert.throws(
+    () => ingestion.importManifest({ manifestFile: starterManifestPath, refreshFoundation: true }),
+    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
   );
 });
 
@@ -1304,6 +1547,40 @@ test('importImportedProfileIntakeManifests still surfaces invalid imported intak
 
   assert.throws(
     () => ingestion.importImportedProfileIntakeManifests({ refreshFoundation: true }),
+    /Unexpected token|Expected property name|JSON/i,
+  );
+});
+
+test('importStaleProfileIntakeManifests still surfaces invalid metadata-only intake manifests instead of silently skipping them', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Broken Intake',
+    displayName: 'Broken Intake',
+    summary: 'This metadata-only profile has a malformed local intake manifest.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'broken-intake', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  assert.throws(
+    () => ingestion.importStaleProfileIntakeManifests({ refreshFoundation: true }),
+    /Unexpected token|Expected property name|JSON/i,
+  );
+});
+
+test('importAllProfileIntakeManifests still surfaces invalid ready intake manifests instead of silently skipping them', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Broken Intake',
+    displayName: 'Broken Intake',
+    summary: 'This ready intake manifest is malformed and should still fail loudly.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'broken-intake', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  assert.throws(
+    () => ingestion.importAllProfileIntakeManifests({ refreshFoundation: true }),
     /Unexpected token|Expected property name|JSON/i,
   );
 });
@@ -1325,6 +1602,47 @@ test('importProfileIntakeManifest rejects a profile-local manifest that targets 
         {
           type: 'message',
           text: 'This should stay bound to the owning profile.',
+        },
+      ],
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /targets a different profile/i,
+  );
+
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'jane-doe')), false);
+  const materialFiles = fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    ? fs.readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials')).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+});
+
+test('importProfileIntakeManifest rejects a profile-local manifest whose profiles array seeds a different profile', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      profiles: [
+        {
+          personId: 'Jane Doe',
+          displayName: 'Jane Doe',
+          summary: 'This metadata should not escape the local intake owner.',
+        },
+      ],
+      entries: [
+        {
+          type: 'message',
+          text: 'Keep this manifest scoped to Harry only.',
         },
       ],
     }, null, 2),
@@ -1399,7 +1717,7 @@ test('importProfileIntakeManifest rejects a profile-local manifest entry that re
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
-    /Manifest entry 0 references a missing file: missing-post\.txt/,
+    /Profile intake manifest is not ready for import: harry-han @ profiles\/harry-han\/imports\/materials\.template\.json — Manifest entry 0 references a missing file: missing-post\.txt/,
   );
   const materialFiles = fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
     ? fs.readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials')).filter((name) => name.endsWith('.json'))
@@ -1436,6 +1754,36 @@ test('importProfileIntakeManifest rejects a starter profile-local manifest that 
   );
 });
 
+test('importProfileIntakeManifest rejects a starter profile-local manifest that references a missing starter file', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [],
+      entryTemplates: {
+        text: {
+          type: 'text',
+          file: 'missing-post.txt',
+          notes: 'starter text import',
+        },
+      },
+    }, null, 2),
+  );
+
+  assert.throws(
+    () => ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true }),
+    /missing file: missing-post\.txt/i,
+  );
+});
+
 test('buildSummary prompt preview keeps starter-only metadata intake templates off the import-intake shortcut path', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1450,7 +1798,7 @@ test('buildSummary prompt preview keeps starter-only metadata intake templates o
 
   assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, null);
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 1 starter template, 0 partial, 0 missing/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {

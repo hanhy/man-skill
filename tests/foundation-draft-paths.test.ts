@@ -1,0 +1,83 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { buildFoundationDraftPaths, collectFoundationDraftPaths } from '../src/core/foundation-draft-paths.ts';
+
+test('buildFoundationDraftPaths trims profile ids, draft file paths, and missing draft names before building refresh paths', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: ' jane-doe ',
+      draftFiles: {
+        memory: ' profiles/jane-doe/memory/long-term/foundation.json ',
+        skills: '   ',
+      },
+      missingDrafts: [' voice ', ' soul ', '', 'memory'],
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
+test('buildFoundationDraftPaths normalizes Windows-style draft paths and dedupes repeated explicit targets within one profile', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: ' profiles\\jane-doe\\memory\\long-term\\foundation.json ',
+        skills: 'profiles/jane-doe/soul/README.md',
+        soul: ' profiles\\jane-doe\\soul\\README.md ',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/soul/README.md',
+    ],
+  );
+});
+
+test('buildFoundationDraftPaths collapses redundant relative separators before deduping refresh targets', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: ' ./profiles//jane-doe/memory//long-term///foundation.json ',
+        skills: '.\\profiles\\jane-doe\\skills\\README.md',
+        soul: 'profiles/jane-doe//skills/README.md',
+      },
+      missingDrafts: [' voice '],
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
+test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
+  assert.deepEqual(
+    collectFoundationDraftPaths([
+      {
+        profileId: ' jane-doe ',
+        draftFiles: {
+          memory: ' profiles/jane-doe/memory/long-term/foundation.json ',
+        },
+        missingDrafts: [' voice '],
+      },
+      {
+        profileId: 'jane-doe',
+        draftFiles: {
+          memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+        },
+        missingDrafts: ['voice'],
+      },
+    ]),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});

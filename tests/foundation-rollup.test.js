@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { buildFoundationRollup } from '../src/core/foundation-rollup.js';
 import { buildFoundationRollup as buildFoundationRollupTs } from '../src/core/foundation-rollup.ts';
-import { PromptAssembler } from '../src/core/prompt-assembler.ts';
+import { buildProfileSnapshotSummaries, PromptAssembler } from '../src/core/prompt-assembler.ts';
 import { buildCoreFoundationCommand } from '../src/core/foundation-core-commands.ts';
 import { MaterialIngestion } from '../src/core/material-ingestion.js';
 import { buildSummary } from '../src/index.js';
@@ -75,10 +75,10 @@ test('JS foundation rollup shim stays aligned with the TypeScript implementation
         skills: { generated: true, highlights: ['- execution heuristic'] },
       },
       foundationReadiness: {
-        memory: { candidateCount: 2, sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
-        voice: { candidateCount: 2, sampleExcerpts: ['Ship the first slice.'] },
-        soul: { candidateCount: 1, sampleExcerpts: ['Keep the scope tight.'] },
-        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        memory: { candidateCount: 2, latestTypes: ['message', 'text'], sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
+        voice: { candidateCount: 2, sampleTypes: ['message', 'text'], sampleExcerpts: ['Ship the first slice.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the scope tight.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
       },
     },
     {
@@ -94,15 +94,400 @@ test('JS foundation rollup shim stays aligned with the TypeScript implementation
         skills: { generated: false, highlights: [] },
       },
       foundationReadiness: {
-        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
-        voice: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
-        soul: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
-        skills: { candidateCount: 1, sampleExcerpts: ['feedback-loop heuristic'] },
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['feedback-loop heuristic'] },
       },
     },
   ];
 
   assert.deepEqual(buildFoundationRollup(profiles), buildFoundationRollupTs(profiles));
+});
+
+test('buildFoundationRollup uses latest material ids to break stale-queue ties when timestamps match', () => {
+  const profiles = [
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-message',
+      latestMaterialSourcePath: 'profiles/alpha-operator/materials/2026-04-20T12-00-00-000Z-message.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      profile: { displayName: 'Beta Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ];
+
+  const rollup = buildFoundationRollupTs(profiles);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'beta-operator');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.id, 'beta-operator');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialId, '2026-04-20T12-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.latestMaterialSourcePath, 'profiles/beta-operator/materials/2026-04-20T12-00-00-000Z-talk.json');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.id, 'alpha-operator');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialId, '2026-04-20T12-00-00-000Z-message');
+  assert.equal(rollup.maintenance.queuedProfiles[1]?.latestMaterialSourcePath, 'profiles/alpha-operator/materials/2026-04-20T12-00-00-000Z-message.json');
+  assert.deepEqual(buildFoundationRollup(profiles), rollup);
+});
+
+test('buildFoundationRollup uses latest material source paths to break stale-queue ties when timestamps and ids match', () => {
+  const profiles = [
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/alpha-operator/imports/a-first.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      profile: { displayName: 'Beta Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/beta-operator/imports/z-last.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+        refreshReasons: ['missing drafts', 'new materials'],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ];
+
+  const rollup = buildFoundationRollupTs(profiles);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'beta-operator');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/beta-operator/imports/z-last.txt');
+  assert.deepEqual(rollup.maintenance.queuedProfiles.map((profile) => profile.id), ['beta-operator', 'alpha-operator']);
+  assert.deepEqual(buildFoundationRollup(profiles), rollup);
+});
+
+test('buildFoundationRollup normalizes stale maintenance queue metadata before exposing it', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: '  jane-doe  ',
+      materialCount: 1,
+      profile: {
+        displayName: '  Jane Doe  ',
+        summary: '  Tight loops beat big plans.  ',
+      },
+      latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+      latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+      latestMaterialSourcePath: ' profiles/jane-doe/materials/2026-04-16T16-00-00-000Z-talk.json ',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: [' memory ', 'skills', 'memory', '', '   '],
+        refreshReasons: [' missing drafts ', 'metadata-updated', 'missing drafts', '', '   '],
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'jane-doe');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialAt, '2026-04-16T16:00:00.000Z');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialId, '2026-04-16T16-00-00-000Z-talk');
+  assert.equal(rollup.maintenance.recommendedLatestMaterialSourcePath, 'profiles/jane-doe/materials/2026-04-16T16-00-00-000Z-talk.json');
+  assert.match(rollup.maintenance.recommendedAction ?? '', /^refresh Jane Doe \(jane-doe\) — reasons missing drafts \+ metadata-updated; evidence memory 1 \| voice 0 \| soul 0 \| skills 0$/);
+  assert.deepEqual(rollup.maintenance.missingDraftCounts, {
+    memory: 1,
+    skills: 1,
+    soul: 0,
+    voice: 0,
+  });
+  assert.deepEqual(rollup.maintenance.refreshReasonCounts, {
+    'missing drafts': 1,
+    'metadata-updated': 1,
+  });
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.label, 'Jane Doe (jane-doe)');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.displayName, 'Jane Doe');
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.summary, 'Tight loops beat big plans.');
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.missingDrafts, ['memory', 'skills']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['missing drafts', 'metadata-updated']);
+});
+
+test('buildFoundationRollup carries stale draft source provenance onto maintenance recommendations', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: 'jane-doe',
+      materialCount: 2,
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['new materials', 'draft metadata drift'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
+          entryCount: 1,
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          sourceCount: 1,
+          materialTypes: { talk: 1 },
+        },
+        voice: {
+          generated: true,
+          path: 'profiles/jane-doe/voice/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+          sourceCount: 2,
+          materialTypes: { message: 1, talk: 1 },
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 2, latestTypes: ['message', 'talk'], sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 2, sampleTypes: ['message', 'talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['feedback-loop heuristic'] },
+      },
+    },
+  ]);
+
+  const expectedDraftSourcesSummary = 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt';
+
+  assert.equal(rollup.maintenance.recommendedDraftSourcesSummary, expectedDraftSourcesSummary);
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.draftSourcesSummary, expectedDraftSourcesSummary);
+});
+
+test('buildFoundationRollup keeps draft-path provenance when draft source counts are unavailable', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      profile: { displayName: 'Jane Doe' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: '.\\profiles\\jane-doe//materials\\2026-04-20T12-00-00-000Z-text.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['draft metadata drift'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: '.\\profiles\\jane-doe//memory\\long-term\\foundation.json',
+          latestMaterialSourcePath: '.\\profiles\\jane-doe//imports\\call-notes.txt',
+          entryCount: 1,
+        },
+        skills: {
+          generated: true,
+          path: '.\\profiles\\jane-doe//skills\\README.md',
+        },
+        soul: null,
+        voice: {
+          generated: true,
+          path: '.\\profiles\\jane-doe//voice\\README.md',
+          latestMaterialSourcePath: '.\\profiles\\jane-doe//imports\\voice-note.txt',
+          materialTypes: { message: 1 },
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the loop short.'] },
+        voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Keep the loop short.'] },
+        soul: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
+        skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
+      },
+    },
+  ]);
+
+  const expectedDraftSourcesSummary = 'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)';
+
+  assert.equal(rollup.maintenance.recommendedDraftSourcesSummary, expectedDraftSourcesSummary);
+  assert.equal(rollup.maintenance.queuedProfiles[0]?.draftSourcesSummary, expectedDraftSourcesSummary);
+});
+
+test('buildFoundationRollup prioritizes metadata-drift foundation refreshes ahead of newer pure material refreshes when stale profiles are otherwise equally complete', () => {
+  const rollup = buildFoundationRollupTs([
+    {
+      id: 'alpha-operator',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Operator' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['profile metadata drift', 'draft metadata drift'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-operator',
+      materialCount: 1,
+      profile: { displayName: 'Beta Operator' },
+      latestMaterialAt: '2026-04-21T12:00:00.000Z',
+      latestMaterialId: '2026-04-21T12-00-00-000Z-text',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'alpha-operator');
+  assert.deepEqual(rollup.maintenance.queuedProfiles.map((profile) => profile.id), ['alpha-operator', 'beta-operator']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['profile metadata drift', 'draft metadata drift']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[1]?.refreshReasons, ['new materials']);
+});
+
+test('buildFoundationRollup keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'alpha-legacy-refresh',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Legacy Refresh' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-alpha',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['new-material'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-empty-refresh',
+      materialCount: 1,
+      profile: { displayName: 'Beta Empty Refresh' },
+      latestMaterialAt: '2026-04-21T12:00:00.000Z',
+      latestMaterialId: '2026-04-21T12-00-00-000Z-beta',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: [],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'alpha-legacy-refresh');
+  assert.deepEqual(rollup.maintenance.queuedProfiles.map((profile) => profile.id), ['alpha-legacy-refresh', 'beta-empty-refresh']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['new-material']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[1]?.refreshReasons, []);
 });
 
 test('buildFoundationRollup aggregates generated, stale, and candidate foundation signals across profiles', () => {
@@ -118,10 +503,10 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         skills: { generated: true, highlights: ['- execution heuristic'] },
       },
       foundationReadiness: {
-        memory: { candidateCount: 2, sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
-        voice: { candidateCount: 2, sampleExcerpts: ['Ship the first slice.'] },
-        soul: { candidateCount: 1, sampleExcerpts: ['Keep the scope tight.'] },
-        skills: { candidateCount: 1, sampleExcerpts: ['execution heuristic'] },
+        memory: { candidateCount: 2, latestTypes: ['message', 'text'], sampleSummaries: ['Ship the first slice.', 'Keep the scope tight.'] },
+        voice: { candidateCount: 2, sampleTypes: ['message', 'text'], sampleExcerpts: ['Ship the first slice.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the scope tight.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
       },
     },
     {
@@ -156,10 +541,10 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         },
       },
       foundationReadiness: {
-        memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
-        voice: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
-        soul: { candidateCount: 1, sampleExcerpts: ['Tight loops beat big plans.'] },
-        skills: { candidateCount: 1, sampleExcerpts: ['feedback-loop heuristic'] },
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Tight loops beat big plans.'] },
+        voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Tight loops beat big plans.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['feedback-loop heuristic'] },
       },
     },
   ]);
@@ -168,6 +553,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Ship the first slice.', 'Keep the scope tight.', 'Tight loops beat big plans.'],
@@ -176,6 +562,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     highlights: ['[message] Ship the first slice.', 'Tight loops beat big plans.'],
   });
@@ -183,6 +570,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 2,
     repoStaleProfileCount: 1,
     highlights: ['[text] Keep the scope tight.', 'Tight loops beat big plans.'],
   });
@@ -220,7 +608,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
     recommendedLabel: 'Jane Doe (jane-doe)',
-    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts',
+    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts; evidence memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
     recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
@@ -230,6 +618,9 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     ],
     recommendedLatestMaterialAt: null,
     recommendedLatestMaterialId: null,
+    recommendedLatestMaterialSourcePath: null,
+    recommendedDraftSourcesSummary: null,
+    recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -250,6 +641,9 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         refreshReasons: ['missing drafts'],
         latestMaterialAt: null,
         latestMaterialId: null,
+        latestMaterialSourcePath: null,
+        candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
+        draftSourcesSummary: null,
         draftGapCount: 8,
         draftGapCounts: {
           memory: 1,
@@ -268,6 +662,78 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
       },
     ],
   });
+});
+
+test('buildFoundationRollup keeps maintenance refresh paths aligned with concrete generated draft files', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-23T10:00:00.000Z',
+      latestMaterialId: '2026-04-23T10-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-23T10-00-00-000Z-talk.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['voice'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/custom-foundation.json',
+          entryCount: 2,
+          latestSummaries: ['Preserve the concrete draft paths.'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/skills/CUSTOM.md',
+          highlights: ['- execution checklist'],
+          readySectionCount: 3,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/soul/CUSTOM.md',
+          highlights: ['- Protect the operator context.'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+          missingSections: [],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Preserve the concrete draft paths.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['execution checklist'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['Protect the operator context.'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the next step direct.'] },
+      },
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Tight loops beat big plans.',
+      },
+    },
+  ]);
+
+  const expectedPaths = [
+    'profiles/jane-doe/memory/custom-foundation.json',
+    'profiles/jane-doe/skills/CUSTOM.md',
+    'profiles/jane-doe/soul/CUSTOM.md',
+    'profiles/jane-doe/voice/README.md',
+  ];
+
+  assert.deepEqual(rollup.maintenance.recommendedPaths, expectedPaths);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
 });
 
 test('buildFoundationRollup shell-quotes refresh commands for profile ids with spaces and apostrophes', () => {
@@ -343,8 +809,22 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
       foundationDraftSummaries: {
         memory: { generated: false, entryCount: 0, latestSummaries: [] },
         skills: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 3 },
-        soul: { generated: false, highlights: [], readySectionCount: 2, totalSectionCount: 4, readySections: ['core-truths', 'boundaries'] },
-        voice: { generated: false, highlights: [], readySectionCount: 1, totalSectionCount: 4, readySections: ['tone'] },
+        soul: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 2,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries'],
+          headingAliases: ['core-values->core-truths'],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          headingAliases: ['voice-should-capture->signature-moves'],
+        },
       },
       foundationReadiness: {
         memory: { candidateCount: 1, sampleSummaries: ['Tight loops beat big plans.'] },
@@ -358,11 +838,11 @@ test('buildFoundationRollup preserves aggregate draft gap counts when section na
 
   assert.equal(
     rollup.maintenance.recommendedDraftGapSummary,
-    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries); aliases core-values->core-truths | voice 1/4 ready (tone); aliases voice-should-capture->signature-moves',
   );
   assert.equal(
     rollup.maintenance.queuedProfiles[0]?.draftGapSummary,
-    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries) | voice 1/4 ready (tone)',
+    'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready | soul 2/4 ready (core-truths, boundaries); aliases core-values->core-truths | voice 1/4 ready (tone); aliases voice-should-capture->signature-moves',
   );
 });
 
@@ -429,6 +909,308 @@ test('buildFoundationRollup prioritizes stale profiles with more structured draf
   assert.equal(rollup.maintenance.queuedProfiles[1]?.draftGapCount, 4);
 });
 
+test('PromptAssembler work loop surfaces draft-source follow-up lines for current and advisory priorities', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 1,
+      objectives: ['strengthen foundation'],
+      priorityCount: 2,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      runnablePriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      actionableReadyPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: '1 imported starter template still needs edits',
+        nextAction: 'finish the starter manifest edits',
+        command: null,
+        draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        editPath: 'profiles/jane-doe/imports/materials.template.json',
+        paths: ['profiles/jane-doe/imports/materials.template.json'],
+      },
+      recommendedPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: "node src/index.js update foundation --person 'jane-doe'",
+          draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+          paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'ready',
+          summary: '1 imported starter template still needs edits',
+          nextAction: 'finish the starter manifest edits',
+          command: null,
+          draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+          editPath: 'profiles/jane-doe/imports/materials.template.json',
+          paths: ['profiles/jane-doe/imports/materials.template.json'],
+        },
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(preview, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.doesNotMatch(preview, /runnable draft sources:/);
+  assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+});
+
+test('PromptAssembler work loop trims and slash-normalizes latest-material fields before rendering current and advisory follow-ups', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 1,
+      objectives: ['strengthen foundation'],
+      priorityCount: 2,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      actionableReadyPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: '1 imported starter template still needs edits',
+        nextAction: 'finish the starter manifest edits',
+        command: null,
+        latestMaterialAt: '   ',
+        latestMaterialId: '   ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\voice-note.txt ',
+        editPath: 'profiles/jane-doe/imports/materials.template.json',
+        paths: ['profiles/jane-doe/imports/materials.template.json'],
+      },
+      recommendedPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: "node src/index.js update foundation --person 'jane-doe'",
+          latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+          latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+          latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\call-notes.txt ',
+          paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'ready',
+          summary: '1 imported starter template still needs edits',
+          nextAction: 'finish the starter manifest edits',
+          command: null,
+          latestMaterialAt: '   ',
+          latestMaterialId: '   ',
+          latestMaterialSourcePath: ' .\\profiles\\jane-doe//imports\\voice-note.txt ',
+          editPath: 'profiles/jane-doe/imports/materials.template.json',
+          paths: ['profiles/jane-doe/imports/materials.template.json'],
+        },
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(preview, /latest material: 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\) @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.match(preview, /advisory latest material: unknown timestamp @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.doesNotMatch(preview, /latest material:  2026-04-16T16:00:00\.000Z /);
+  assert.doesNotMatch(preview, /@ profiles\/jane-doe\/imports\/voice-note\.txt /);
+});
+
+test('PromptAssembler work loop keeps draft-path provenance visible when draft source counts are unavailable', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 1,
+      objectives: ['strengthen foundation'],
+      priorityCount: 1,
+      readyPriorityCount: 0,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      recommendedPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: "node src/index.js update foundation --person 'jane-doe'",
+          draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
+          paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+        },
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(preview, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(types message:1, latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
+});
+
+test('PromptAssembler profile snapshots keep draft-path provenance visible when draft source counts are unavailable', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([
+    {
+      id: 'jane-doe',
+      profile: { displayName: 'Jane Doe' },
+      materialCount: 1,
+      materialTypes: { text: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['draft metadata drift'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/jane-doe/memory/long-term/foundation.json',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+          entryCount: 1,
+        },
+        voice: {
+          generated: true,
+          path: 'profiles/jane-doe/voice/README.md',
+          latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+          materialTypes: { message: 1 },
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the loop short.'] },
+        voice: { candidateCount: 1, sampleTypes: ['message'], sampleExcerpts: ['Keep the loop short.'] },
+        soul: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
+        skills: { candidateCount: 0, sampleTypes: [], sampleExcerpts: [] },
+      },
+    },
+  ]);
+
+  assert.match(snapshot.snapshot, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(types message:1, latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
+});
+
 test('PromptAssembler foundation rollup keeps repo-stale counts visible across voice, soul, and skills', () => {
   const preview = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
@@ -441,6 +1223,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 3,
         repoStaleProfileCount: 1,
         totalEntries: 2,
         highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.'],
@@ -449,6 +1232,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 2,
         repoStaleProfileCount: 1,
         highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
       },
@@ -456,6 +1240,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         profileCount: 2,
         generatedProfileCount: 1,
         candidateProfileCount: 2,
+        candidateCount: 2,
         repoStaleProfileCount: 1,
         highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
       },
@@ -474,18 +1259,47 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         incompleteProfileCount: 1,
         missingDraftCounts: { memory: 1, skills: 1, soul: 1, voice: 1 },
         refreshReasonCounts: { 'missing drafts': 1 },
+        recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts; evidence memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
+        recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
+        recommendedPaths: [
+          'profiles/jane-doe/memory/long-term/foundation.json',
+          'profiles/jane-doe/skills/README.md',
+          'profiles/jane-doe/soul/README.md',
+          'profiles/jane-doe/voice/README.md',
+        ],
+        recommendedLatestMaterialAt: '2026-04-20T12:00:00.000Z',
+        recommendedLatestMaterialId: '2026-04-20T12-00-00-000Z-text',
+        recommendedLatestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+        recommendedDraftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
         staleRefreshCommand: "node src/index.js update foundation --stale",
         helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
-        queuedProfiles: [],
+        queuedProfiles: [
+          {
+            id: 'jane-doe',
+            label: 'Jane Doe (jane-doe)',
+            status: 'stale',
+            generatedDraftCount: 0,
+            expectedDraftCount: 4,
+            missingDrafts: ['memory', 'skills', 'soul', 'voice'],
+            latestMaterialAt: '2026-04-20T12:00:00.000Z',
+            latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+            latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
+            candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
+            draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+          },
+        ],
       },
     },
   }).buildPreview(10000);
 
   assert.match(preview, /Foundation rollup:/);
-  assert.match(preview, /memory: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 entries, highlights: Keep the feedback loop short\. \| Ship the thin slice first\./);
-  assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
-  assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /memory: 1\/2 generated, 2 candidate profiles, 3 candidates, 1 repo-stale profile, 2 entries, highlights: Keep the feedback loop short\. \| Ship the thin slice first\./);
+  assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
+  assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
+  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
 });
 
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {
@@ -526,6 +1340,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     totalEntries: 2,
     highlights: ['Keep the feedback loop short.', 'Ship the thin slice first.', 'Tight loops beat big plans.'],
@@ -534,6 +1349,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 3,
     repoStaleProfileCount: 1,
     highlights: ['[talk] Keep the feedback loop short.', '[message] Ship the thin slice first.', 'Tight loops beat big plans.'],
   });
@@ -541,6 +1357,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     profileCount: 2,
     generatedProfileCount: 1,
     candidateProfileCount: 2,
+    candidateCount: 2,
     repoStaleProfileCount: 1,
     highlights: ['[talk] Keep the feedback loop short.', 'Tight loops beat big plans.'],
   });
@@ -579,7 +1396,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     refreshBundleCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedProfileId: 'jane-doe',
     recommendedLabel: 'Jane Doe (jane-doe)',
-    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + new materials',
+    recommendedAction: 'refresh Jane Doe (jane-doe) — reasons missing drafts + new materials; evidence memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
     recommendedCommand: "node src/index.js update foundation --person 'jane-doe'",
     recommendedPaths: [
       'profiles/jane-doe/memory/long-term/foundation.json',
@@ -589,6 +1406,9 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     ],
     recommendedLatestMaterialAt: summary.foundation.maintenance.recommendedLatestMaterialAt,
     recommendedLatestMaterialId: summary.foundation.maintenance.recommendedLatestMaterialId,
+    recommendedLatestMaterialSourcePath: summary.foundation.maintenance.recommendedLatestMaterialSourcePath,
+    recommendedDraftSourcesSummary: summary.foundation.maintenance.recommendedDraftSourcesSummary,
+    recommendedCandidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
@@ -609,6 +1429,9 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         refreshReasons: ['missing drafts', 'new materials'],
         latestMaterialAt: summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt,
         latestMaterialId: summary.foundation.maintenance.queuedProfiles[0].latestMaterialId,
+        latestMaterialSourcePath: summary.foundation.maintenance.queuedProfiles[0].latestMaterialSourcePath,
+        candidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
+        draftSourcesSummary: summary.foundation.maintenance.queuedProfiles[0].draftSourcesSummary,
         draftGapCount: 12,
         draftGapCounts: {
           memory: 1,
@@ -639,7 +1462,8 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     'profiles/jane-doe/voice/README.md',
   ]);
   assert.match(summary.profileSnapshots[1].snapshot, /refresh drafts: node src\/index\.js update foundation --person 'jane-doe'/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
+  assert.match(summary.profileSnapshots[1].snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
@@ -666,6 +1490,7 @@ test('buildSummary omits the foundation rollup block from prompt previews when t
     profileCount: 0,
     generatedProfileCount: 0,
     candidateProfileCount: 0,
+    candidateCount: 0,
     repoStaleProfileCount: 0,
     totalEntries: 0,
     highlights: [],
@@ -1316,12 +2141,12 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
     readyAreaCount: 0,
     missingAreaCount: 2,
     thinAreaCount: 2,
-    recommendedArea: 'memory',
+    recommendedArea: null,
     recommendedStatus: null,
     recommendedSummary: null,
-    recommendedAction: 'add at least one entry under memory/daily, memory/long-term, and memory/scratch',
-    recommendedCommand: memoryCommand,
-    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md'],
+    recommendedAction: 'scaffold missing or thin core foundation areas — starting with add at least one entry under memory/daily, memory/long-term, and memory/scratch',
+    recommendedCommand: scaffoldAllCommand,
+    recommendedPaths: ['memory/daily/$(date +%F).md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md'],
     helperCommands: {
       scaffoldAll: scaffoldAllCommand,
       scaffoldMissing: [skillsCommand, voiceCommand].map((command) => `(${command})`).join(' && '),
@@ -1376,7 +2201,7 @@ test('buildSummary flags missing and thin core foundation areas in the prompt pr
   assert.match(summary.promptPreview, /helpers: scaffold-all [\s\S]*node --input-type=module -e/);
   assert.match(summary.promptPreview, /memory \[thin\]: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md; context root sections 2\/2 ready \(what-belongs-here, buckets\); command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'/);
   assert.match(summary.promptPreview, /skills \[missing\]: create skills\/\<name\>\/SKILL\.md for at least one repo skill @ skills\/starter\/SKILL\.md; command mkdir -p 'skills\/starter' && for file in 'skills\/starter\/SKILL\.md'; do \[ -f \"\$file\" \] \|\| printf %s '# Starter skill/);
-  assert.match(summary.promptPreview, /- next repair: add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md/);
+  assert.match(summary.promptPreview, /- next repair: scaffold missing or thin core foundation areas — starting with add at least one entry under memory\/daily, memory\/long-term, and memory\/scratch; command \(mkdir -p 'memory\/daily' 'memory\/long-term' 'memory\/scratch'[\s\S]*\) && \(mkdir -p 'skills\/starter'[\s\S]*\) && \(node --input-type=module -e[\s\S]*\) && \(mkdir -p voice && printf %s '# Voice[\s\S]* @ memory\/daily\/\$\(date \+%F\)\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- next repair: [^\n]*; context /);
   assert.match(summary.promptPreview, /\+2 more queued: soul \[thin\] \(present, 0 lines\), voice \[missing\] \(missing, 0 lines\)/);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(2 thin, 2 missing\); profiles 0 queued for refresh, 0 incomplete/);
@@ -1698,7 +2523,7 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
     {
       area: 'memory',
       status: 'thin',
-      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets',
+      summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets, aliases what-lives-here->what-belongs-here',
       action: 'add missing sections to memory/README.md: buckets',
       paths: ['memory/README.md'],
       thinPaths: ['memory/README.md'],
@@ -1717,7 +2542,7 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
     {
       area: 'skills',
       status: 'thin',
-      summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout',
+      summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout, aliases what-belongs-here->what-lives-here',
       action: 'add missing sections to skills/README.md: layout',
       paths: ['skills/README.md'],
       thinPaths: ['skills/README.md'],
@@ -1761,7 +2586,7 @@ test('buildSummary surfaces root heading alias context on thin soul and voice qu
     {
       area: 'soul',
       status: 'thin',
-      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity',
+      summary: 'present, 1 lines, sections 1/4 ready (core-truths), missing boundaries, vibe, continuity, aliases core-values->core-truths',
       action: 'add missing sections to SOUL.md: boundaries, vibe, continuity',
       paths: ['SOUL.md'],
       rootThinMissingSections: ['boundaries', 'vibe', 'continuity'],
@@ -1778,7 +2603,7 @@ test('buildSummary surfaces root heading alias context on thin soul and voice qu
     {
       area: 'voice',
       status: 'thin',
-      summary: 'present, 1 lines, sections 2/4 ready (tone, signature-moves), missing avoid, language-hints',
+      summary: 'present, 1 lines, sections 2/4 ready (tone, signature-moves), missing avoid, language-hints, aliases voice-should-capture->signature-moves',
       action: 'add missing sections to voice/README.md: avoid, language-hints',
       paths: ['voice/README.md'],
       rootThinMissingSections: ['avoid', 'language-hints'],

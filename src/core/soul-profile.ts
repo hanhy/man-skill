@@ -80,6 +80,21 @@ function cleanSoulLine(value: string) {
   ).trim();
 }
 
+function pushUnique(target: string[], value: string) {
+  if (!target.includes(value)) {
+    target.push(value);
+  }
+}
+
+function appendToLast(target: string[], value: string) {
+  if (target.length === 0) {
+    pushUnique(target, value);
+    return;
+  }
+
+  target[target.length - 1] = `${target[target.length - 1]} ${value}`.trim();
+}
+
 function isStarterSoulGuidance(value: string) {
   return SOUL_STARTER_GUIDANCE_LINES.has(value);
 }
@@ -105,9 +120,11 @@ export class SoulProfile {
     const normalizedExcerpt = excerpt ? cleanSoulLine(excerpt) : null;
     const soul = new SoulProfile({ excerpt: normalizedExcerpt && !isStarterSoulGuidance(normalizedExcerpt) ? normalizedExcerpt : null });
     let currentSection: SoulSection = null;
+    let currentSectionHasContent = false;
 
     collectVisibleDocumentLines(normalizedDocument).forEach((rawLine) => {
       const line = rawLine.trim();
+      const lineIsIndentedContinuation = rawLine.length > 0 && /^[ \t]+/.test(rawLine) && !LIST_MARKER_PATTERN.test(line);
       if (!line) {
         return;
       }
@@ -115,6 +132,7 @@ export class SoulProfile {
       const heading = parseStructuredHeading(line);
       if (heading) {
         currentSection = heading.level >= 2 ? mapSoulHeadingToSection(heading.text) : null;
+        currentSectionHasContent = false;
         return;
       }
 
@@ -123,14 +141,23 @@ export class SoulProfile {
         return;
       }
 
+      const appendSectionLine = (target: string[]) => {
+        if (currentSectionHasContent && lineIsIndentedContinuation) {
+          appendToLast(target, cleaned);
+        } else {
+          pushUnique(target, cleaned);
+        }
+        currentSectionHasContent = true;
+      };
+
       if (currentSection === 'core-truths') {
-        soul.coreTruths.push(cleaned);
+        appendSectionLine(soul.coreTruths);
       } else if (currentSection === 'boundaries') {
-        soul.boundaries.push(cleaned);
+        appendSectionLine(soul.boundaries);
       } else if (currentSection === 'vibe') {
-        soul.vibe.push(cleaned);
+        appendSectionLine(soul.vibe);
       } else if (currentSection === 'continuity') {
-        soul.continuity.push(cleaned);
+        appendSectionLine(soul.continuity);
       }
     });
 

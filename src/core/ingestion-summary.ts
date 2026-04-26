@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
 import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value: string) {
@@ -40,7 +41,7 @@ function buildProfileLabel(profile) {
 }
 
 function normalizeRelativePath(value) {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  return normalizeDraftPath(typeof value === 'string' ? value : null);
 }
 
 function shellQuote(value) {
@@ -72,10 +73,129 @@ function buildCommandBundle(commands: Array<string | null | undefined>): string 
   return normalizedCommands.map((command) => `(${command})`).join(' && ');
 }
 
+function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> {
+  const normalizedDetails = Array.isArray(details)
+    ? details
+      .filter((detail): detail is Record<string, unknown> => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = typeof detail.type === 'string' ? detail.type.trim() : '';
+        const source = detail.source === 'file' ? 'file' : 'text';
+        const path = typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null;
+        const preview = typeof detail.preview === 'string' && detail.preview.trim().length > 0 ? detail.preview.trim() : null;
+        return type.length > 0
+          ? { type, source, path, preview }
+          : null;
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+    : [];
+
+  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
+    || left.source.localeCompare(right.source)
+    || (left.path ?? '').localeCompare(right.path ?? '')
+    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+}
+
+function collectRecommendedStarterTemplateSummary(
+  profiles: Array<any>,
+): {
+  types: string[];
+  count: number;
+  details: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+} {
+  const types = Array.from(new Set(
+    profiles.flatMap((profile) => Array.isArray(profile?.intakeManifestEntryTemplateTypes)
+      ? profile.intakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+      : []),
+  )).sort((left, right) => left.localeCompare(right));
+
+  const details = normalizeStarterTemplateDetails(profiles.flatMap((profile) => profile?.intakeManifestEntryTemplateDetails ?? []));
+  const dedupedDetails = Array.from(new Map(details.map((detail) => [
+    `${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`,
+    detail,
+  ])).values());
+
+  if (types.length > 0) {
+    return {
+      types,
+      count: types.length,
+      details: dedupedDetails,
+    };
+  }
+
+  const fallbackCount = profiles.reduce((maxCount, profile) => {
+    const entryTemplateCount = Number.isFinite(profile?.intakeManifestEntryTemplateCount)
+      ? Number(profile.intakeManifestEntryTemplateCount)
+      : 0;
+    return Math.max(maxCount, entryTemplateCount);
+  }, 0);
+
+  return {
+    types: [],
+    count: fallbackCount,
+    details: dedupedDetails,
+  };
+}
+
+function buildRecommendedStarterProfileSlice(profile: any) {
+  if (!profile || typeof profile !== 'object') {
+    return null;
+  }
+
+  const intakeManifestEntryTemplateTypes = Array.isArray(profile?.intakeManifestEntryTemplateTypes)
+    ? profile.intakeManifestEntryTemplateTypes.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails);
+  const fallbackTemplateCount = Math.max(intakeManifestEntryTemplateTypes.length, intakeManifestEntryTemplateDetails.length);
+  const intakeManifestEntryTemplateCount = Number.isFinite(profile?.intakeManifestEntryTemplateCount)
+    ? Number(profile.intakeManifestEntryTemplateCount)
+    : fallbackTemplateCount;
+  const intakeManifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
+
+  return {
+    personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
+    label: typeof profile?.label === 'string' && profile.label.length > 0 ? profile.label : null,
+    latestMaterialAt: typeof profile?.latestMaterialAt === 'string' && profile.latestMaterialAt.length > 0 ? profile.latestMaterialAt : null,
+    latestMaterialId: typeof profile?.latestMaterialId === 'string' && profile.latestMaterialId.length > 0 ? profile.latestMaterialId : null,
+    latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
+    fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
+    refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
+    editPath: intakeManifestPath,
+    editPaths: collectStarterTemplateEditPaths(profile),
+    manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
+    manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
+    intakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateDetails,
+    intakeManifestEntryTemplateCount,
+    inspectCommand: typeof profile?.followUpImportIntakeWithoutRefreshCommand === 'string' && profile.followUpImportIntakeWithoutRefreshCommand.length > 0 ? profile.followUpImportIntakeWithoutRefreshCommand : null,
+    followUpCommand: typeof profile?.followUpImportIntakeCommand === 'string' && profile.followUpImportIntakeCommand.length > 0 ? profile.followUpImportIntakeCommand : null,
+    paths: collectProfileIntakePaths(profile),
+  };
+}
+
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
 
 function countGeneratedDrafts(profile) {
   return FOUNDATION_DRAFT_KEYS.filter((key) => profile?.foundationDraftSummaries?.[key]?.generated).length;
+}
+
+const FOUNDATION_REFRESH_REASON_SCORES = {
+  'profile metadata drift': 4,
+  'metadata-updated': 4,
+  'draft metadata drift': 2,
+  'new materials': 1,
+  'new-material': 1,
+};
+
+function scoreRefreshReasons(refreshReasons) {
+  return Array.isArray(refreshReasons)
+    ? refreshReasons.reduce((score, reason) => {
+      if (typeof reason !== 'string') {
+        return score;
+      }
+
+      return score + (FOUNDATION_REFRESH_REASON_SCORES[reason.trim()] ?? 0);
+    }, 0)
+    : 0;
 }
 
 function compareFoundationRefreshPriority(left, right) {
@@ -89,8 +209,43 @@ function compareFoundationRefreshPriority(left, right) {
     return generatedDraftDifference;
   }
 
-  return (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '')
-    || buildProfileLabel(left).localeCompare(buildProfileLabel(right));
+  const refreshReasonDifference = scoreRefreshReasons(right?.foundationDraftStatus?.refreshReasons) - scoreRefreshReasons(left?.foundationDraftStatus?.refreshReasons);
+  if (refreshReasonDifference !== 0) {
+    return refreshReasonDifference;
+  }
+
+  const latestMaterialAtDifference = (right?.latestMaterialAt ?? '').localeCompare(left?.latestMaterialAt ?? '');
+  if (latestMaterialAtDifference !== 0) {
+    return latestMaterialAtDifference;
+  }
+
+  const latestMaterialIdDifference = (right?.latestMaterialId ?? '').localeCompare(left?.latestMaterialId ?? '');
+  if (latestMaterialIdDifference !== 0) {
+    return latestMaterialIdDifference;
+  }
+
+  const latestMaterialSourcePathDifference = (normalizeDraftPath(right?.latestMaterialSourcePath ?? null) ?? '').localeCompare(normalizeDraftPath(left?.latestMaterialSourcePath ?? null) ?? '');
+  if (latestMaterialSourcePathDifference !== 0) {
+    return latestMaterialSourcePathDifference;
+  }
+
+  return buildProfileLabel(left).localeCompare(buildProfileLabel(right));
+}
+
+function formatHeadingAliasSummary(headingAliases: unknown): string | null {
+  const normalizedAliases = Array.from(new Set(
+    Array.isArray(headingAliases)
+      ? headingAliases
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim())
+      : [],
+  ));
+
+  if (normalizedAliases.length === 0) {
+    return null;
+  }
+
+  return `; aliases ${normalizedAliases.join(', ')}`;
 }
 
 function summarizeDraftGap(summary: any, key: string): string | null {
@@ -102,6 +257,7 @@ function summarizeDraftGap(summary: any, key: string): string | null {
   const missingSections = Array.isArray(summary?.missingSections)
     ? summary.missingSections.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const headingAliasSummary = formatHeadingAliasSummary(summary?.headingAliases);
 
   if (totalSectionCount <= 0) {
     return null;
@@ -112,7 +268,7 @@ function summarizeDraftGap(summary: any, key: string): string | null {
     return null;
   }
 
-  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}`;
+  return `${key} ${readySectionCount}/${totalSectionCount} ready${readySections.length > 0 ? ` (${readySections.join(', ')})` : ''}${missingSections.length > 0 ? `, missing ${missingSections.join('/')}` : ''}${headingAliasSummary ?? ''}`;
 }
 
 function summarizeMemoryDraftGap(profile): string | null {
@@ -165,8 +321,14 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
   const sampleTextPath = typeof options.sampleTextPath === 'string' && options.sampleTextPath.trim().length > 0
     ? options.sampleTextPath
     : null;
+  const sampleScreenshotPath = typeof options.sampleScreenshotPath === 'string' && options.sampleScreenshotPath.trim().length > 0
+    ? options.sampleScreenshotPath
+    : null;
   const sampleTextPersonId = typeof options.sampleTextPersonId === 'string' && options.sampleTextPersonId.trim().length > 0
     ? options.sampleTextPersonId
+    : null;
+  const sampleScreenshotPersonId = typeof options.sampleScreenshotPersonId === 'string' && options.sampleScreenshotPersonId.trim().length > 0
+    ? options.sampleScreenshotPersonId
     : null;
   const sampleFileCommands = Array.isArray(options.sampleFileCommands)
     ? options.sampleFileCommands.filter((entry) => entry && typeof entry === 'object')
@@ -175,6 +337,7 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
     ? options.sampleInlineCommands.filter((entry) => entry && typeof entry === 'object')
     : [];
   const runnableTextPath = sampleTextPath && sampleTextPersonId === normalizedProfileId ? sampleTextPath : null;
+  const runnableScreenshotPath = sampleScreenshotPath && sampleScreenshotPersonId === normalizedProfileId ? sampleScreenshotPath : null;
   const matchingSampleFileCommands = sampleFileCommands.filter((entry) =>
     entry.personId === normalizedProfileId
     && typeof entry.type === 'string'
@@ -210,7 +373,9 @@ function buildProfileImportCommands(profileId: string, options: any = {}) {
     talk: runnableSampleCommandByType.talk
       ?? `node src/index.js import talk --person ${quotedProfileId} --text <snippet> --refresh-foundation`,
     screenshot: runnableSampleCommandByType.screenshot
-      ?? `node src/index.js import screenshot --person ${quotedProfileId} --file <image.png> --refresh-foundation`,
+      ?? (runnableScreenshotPath
+        ? `node src/index.js import screenshot --person ${quotedProfileId} --file ${shellQuote(runnableScreenshotPath)} --refresh-foundation`
+        : `node src/index.js import screenshot --person ${quotedProfileId} --file <image.png> --refresh-foundation`),
   };
 }
 
@@ -445,14 +610,13 @@ function buildUpdateProfileCommand(profile, options: any = {}) {
 }
 
 function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null, expectedProfileId: string | null = null) {
-  const starterManifestPath = typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
-    ? intake.starterManifestPath
-    : null;
+  const starterManifestPath = normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null;
   if (!rootDir || !starterManifestPath || intake?.ready !== true) {
     return {
       status: 'missing',
       path: starterManifestPath,
       error: null,
+      repairPaths: [],
     };
   }
 
@@ -541,7 +705,12 @@ function summarizeIntakeStatus(intake, manifestInspection = null) {
   }
 
   if (manifestInspection?.status === 'starter') {
-    return 'starter template — add entries before import';
+    const entryTemplateTypes = Array.isArray(manifestInspection?.entryTemplateTypes)
+      ? manifestInspection.entryTemplateTypes.filter((value) => typeof value === 'string' && value.length > 0)
+      : [];
+    return entryTemplateTypes.length > 0
+      ? `starter template — add entries before import (templates: ${entryTemplateTypes.join(', ')})`
+      : 'starter template — add entries before import';
   }
 
   if (!intake || typeof intake !== 'object') {
@@ -576,10 +745,21 @@ function buildProfileCommands(profile, options: any = {}) {
   const materialCount = profile.materialCount ?? 0;
   const imported = materialCount > 0;
   const intake = profile?.intake && typeof profile.intake === 'object' ? profile.intake : null;
+  const profileSampleScreenshotPath = intake?.ready && typeof intake?.sampleImagesDirPath === 'string' && intake.sampleImagesDirPath.trim().length > 0
+    ? `${intake.sampleImagesDirPath.replace(/\/$/, '')}/chat.png`
+    : null;
   const profileSampleTextPath = intake?.ready && typeof intake?.sampleTextPath === 'string' && intake.sampleTextPath.trim().length > 0
     ? intake.sampleTextPath
     : null;
-  const importCommands = buildProfileImportCommands(profile.id, options);
+  const importCommands = buildProfileImportCommands(profile.id, {
+    ...options,
+    ...(profileSampleScreenshotPath
+      ? {
+        sampleScreenshotPath: profileSampleScreenshotPath,
+        sampleScreenshotPersonId: profile.id,
+      }
+      : {}),
+  });
   const runnableTextImportCommand = typeof importCommands.text === 'string' && !importCommands.text.includes('<')
     ? importCommands.text
     : null;
@@ -593,8 +773,8 @@ function buildProfileCommands(profile, options: any = {}) {
     ? importCommands.screenshot
     : null;
   const intakeManifest = inspectProfileIntakeManifest(typeof options?.rootDir === 'string' ? options.rootDir : null, intake, profile.id);
-  const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
-    ? intake.starterManifestPath
+  const intakeManifestPath = intake?.ready
+    ? (normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null)
     : null;
   const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
@@ -607,19 +787,26 @@ function buildProfileCommands(profile, options: any = {}) {
   const preferredIntakeManifestCommand = intakeManifest.status === 'loaded'
     ? intakeImportManifestCommand
     : null;
+  const profileStarterScreenshotImportCommand = profileSampleScreenshotPath
+    ? `node src/index.js import screenshot --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleScreenshotPath)} --refresh-foundation`
+    : null;
   const profileStarterTextImportCommand = profileSampleTextPath
     ? `node src/index.js import text --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
+  const sampleDrivenScreenshotImportCommand = runnableScreenshotImportCommand && runnableScreenshotImportCommand !== profileStarterScreenshotImportCommand
+    ? runnableScreenshotImportCommand
+    : null;
   const defaultImportCommand = imported
     ? null
-    : intakeManifest.status === 'invalid'
+      : intakeManifest.status === 'invalid'
       ? null
       : (preferredIntakeManifestCommand
         ?? runnableTextImportCommand
-        ?? runnableScreenshotImportCommand
+        ?? sampleDrivenScreenshotImportCommand
         ?? runnableMessageImportCommand
         ?? runnableTalkImportCommand
         ?? profileStarterTextImportCommand
+        ?? runnableScreenshotImportCommand
         ?? importCommands.message
         ?? importCommands.talk
         ?? importCommands.text);
@@ -627,6 +814,16 @@ function buildProfileCommands(profile, options: any = {}) {
   const updateProfileAndRefreshCommand = imported ? buildUpdateProfileCommand(profile, { refreshFoundation: true }) : null;
   const updateIntakeCommand = buildUpdateIntakeCommand(profile);
   const refreshFoundationCommand = imported ? `node src/index.js update foundation --person ${shellQuote(profile.id)}` : null;
+  const intakeManifestEntryTemplateTypes = Array.isArray((intakeManifest as any)?.entryTemplateTypes)
+    ? [...(intakeManifest as any).entryTemplateTypes]
+    : [];
+  const intakeManifestRepairPaths = Array.isArray((intakeManifest as any)?.repairPaths)
+    ? Array.from(new Set((intakeManifest as any).repairPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)))
+    : [];
+  const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails((intakeManifest as any)?.entryTemplateDetails);
+  const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
+    ? (intakeManifest as any).entryTemplateCount
+    : 0;
   const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
@@ -664,6 +861,8 @@ function buildProfileCommands(profile, options: any = {}) {
     materialCount,
     materialTypes: profile?.materialTypes && typeof profile.materialTypes === 'object' ? { ...profile.materialTypes } : {},
     latestMaterialAt: imported ? (profile.latestMaterialAt ?? null) : null,
+    latestMaterialId: imported ? (profile.latestMaterialId ?? null) : null,
+    latestMaterialSourcePath: imported ? (normalizeDraftPath(profile.latestMaterialSourcePath ?? null) ?? null) : null,
     needsRefresh: imported ? Boolean(profile.foundationDraftStatus?.needsRefresh) : false,
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
@@ -683,13 +882,21 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestStatus: intakeManifest.status,
     intakeManifestPath: intakeManifest.path,
     intakeManifestError: intakeManifest.error,
-    intakePaths: intake ? [
-      intake.importsDir,
-      intake.sampleImagesDirPath,
-      intake.intakeReadmePath,
-      intake.starterManifestPath,
-      intake.sampleTextPath,
-    ].filter(Boolean) : [],
+    intakeManifestEntryTemplateTypes,
+    intakeManifestEntryTemplateDetails,
+    intakeManifestEntryTemplateCount,
+    intakePaths: intakeManifest.status === 'invalid'
+      ? Array.from(new Set([
+        intakeManifest.path,
+        ...intakeManifestRepairPaths,
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0)))
+      : intake ? [
+        intake.importsDir,
+        intake.sampleImagesDirPath,
+        intake.intakeReadmePath,
+        intake.starterManifestPath,
+        intake.sampleTextPath,
+      ].filter(Boolean) : [],
     intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
     importManifestWithoutRefreshCommand: intakeImportManifestWithoutRefreshCommand,
     importManifestCommand: intakeImportManifestCommand,
@@ -713,19 +920,6 @@ function buildProfileCommands(profile, options: any = {}) {
   };
 }
 
-function buildFoundationDraftPaths(profileId: string | null | undefined): string[] {
-  if (typeof profileId !== 'string' || profileId.length === 0) {
-    return [];
-  }
-
-  return [
-    `profiles/${profileId}/memory/long-term/foundation.json`,
-    `profiles/${profileId}/skills/README.md`,
-    `profiles/${profileId}/soul/README.md`,
-    `profiles/${profileId}/voice/README.md`,
-  ];
-}
-
 function collectProfileIntakePaths(profile: any): string[] {
   const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
     ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
@@ -737,6 +931,34 @@ function collectProfileIntakePaths(profile: any): string[] {
   return Array.isArray(profile?.intakePaths)
     ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
     : [];
+}
+
+function collectStarterTemplateEditPaths(profile: any): string[] {
+  const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
+  const manifestDir = manifestPath ? path.posix.dirname(manifestPath) : null;
+  const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
+    .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
+    .map((detail) => {
+      if (!manifestDir) {
+        return null;
+      }
+
+      const normalizedDetailPath = normalizeDraftPath(detail.path);
+      if (!normalizedDetailPath) {
+        return null;
+      }
+
+      const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, normalizedDetailPath));
+      return resolvedPath.startsWith('../') || resolvedPath === '..'
+        ? null
+        : resolvedPath;
+    })
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return Array.from(new Set([
+    manifestPath,
+    ...starterTemplateFilePaths,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0)));
 }
 
 function collectLoadedManifestFilePaths(rootDir: string, relativeManifestPath: string): string[] {
@@ -934,6 +1156,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       importedInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: intakeImportAllCommand,
@@ -947,18 +1170,24 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         .filter((profile) => profile?.intakeReady === true && profile?.intakeManifestStatus === 'loaded')
         .map((profile) => profile?.importIntakeCommand),
     ),
-    inspectImportedStarterBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
-    ),
-    replayImportedStarterBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.followUpImportIntakeCommand),
-    ),
-    starterImportBundle: buildCommandBundle(
-      importedStarterIntakeProfiles
-        .map((profile) => profile?.starterImportCommand),
-    ),
+    inspectImportedStarterBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
+      )
+      : null,
+    replayImportedStarterBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand),
+      )
+      : null,
+    starterImportBundle: importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        importedStarterIntakeProfiles
+          .map((profile) => profile?.starterImportCommand),
+      )
+      : null,
     updateProfileBundle: buildCommandBundle(
       orderedProfileCommands
         .map((profile) => profile?.updateProfileCommand),
@@ -976,6 +1205,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     ),
     sampleStarter: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
+      : null,
+    sampleManifestInspect: sampleManifestPresent
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)}`
       : null,
     sampleManifest: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
@@ -1023,15 +1255,47 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedProfileId: string | null = null;
   let recommendedLabel: string | null = null;
   let recommendedAction: string | null = null;
+  let recommendedLatestMaterialAt: string | null = null;
+  let recommendedLatestMaterialId: string | null = null;
+  let recommendedLatestMaterialSourcePath: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
+  let recommendedRefreshIntakeCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedEditPaths: string[] = [];
   let recommendedManifestInspectCommand: string | null = null;
   let recommendedManifestImportCommand: string | null = null;
+  let recommendedIntakeManifestEntryTemplateTypes: string[] = [];
+  let recommendedIntakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> = [];
+  let recommendedIntakeManifestEntryTemplateCount = 0;
+  let recommendedProfileSlices: Array<{
+    personId: string | null;
+    label: string | null;
+    latestMaterialAt: string | null;
+    latestMaterialId: string | null;
+    latestMaterialSourcePath: string | null;
+    fallbackCommand: string | null;
+    refreshIntakeCommand: string | null;
+    editPath: string | null;
+    editPaths: string[];
+    manifestInspectCommand: string | null;
+    manifestImportCommand: string | null;
+    intakeManifestEntryTemplateTypes: string[];
+    intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
+    intakeManifestEntryTemplateCount: number;
+    inspectCommand: string | null;
+    followUpCommand: string | null;
+    paths: string[];
+  }> = [];
   let recommendedInspectCommand: string | null = null;
   let recommendedFollowUpCommand: string | null = null;
   let recommendedPaths: string[] = [];
+
+  const setRecommendedLatestMaterial = (profile: any) => {
+    recommendedLatestMaterialAt = profile?.latestMaterialAt ?? null;
+    recommendedLatestMaterialId = profile?.latestMaterialId ?? null;
+    recommendedLatestMaterialSourcePath = normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null;
+  };
 
   if (safeProfiles.length === 0) {
     const sampleStarterCommand = sampleManifestPresent && sampleManifest.status === 'loaded'
@@ -1051,12 +1315,15 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           : `import the checked-in sample target profile for ${sampleManifest.starterLabel}`)
         : 'import the checked-in sample target profile';
       recommendedCommand = exactSampleManifestCommand ?? sampleStarterCommand;
+      recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
+      recommendedManifestImportCommand = exactSampleManifestCommand;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
       recommendedAction = sampleManifestInvalidReason
         ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
         : 'fix the checked-in sample manifest for first imports';
       recommendedCommand = null;
+      recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
       recommendedPaths = [sampleManifestPath];
     } else {
       recommendedAction = 'bootstrap a target profile';
@@ -1067,8 +1334,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedProfileId = firstRefreshTarget.personId ?? null;
     recommendedLabel = firstRefreshTarget.label ?? firstRefreshTarget.personId ?? null;
     recommendedAction = 'refresh stale or incomplete target profiles';
+    setRecommendedLatestMaterial(firstRefreshTarget);
     recommendedCommand = helperCommands.refreshFoundationBundle ?? helperCommands.refreshStaleFoundation ?? firstRefreshTarget.refreshFoundationCommand ?? null;
-    recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths(profile.personId ?? null))));
+    recommendedPaths = Array.from(new Set(refreshTargets.flatMap((profile) => buildFoundationDraftPaths({ profileId: profile.personId ?? null }))));
   } else if (importedIntakeBackfillProfiles.length > 0) {
     const firstImportedBackfillProfile = importedIntakeBackfillProfiles[0] ?? null;
     recommendedProfileId = firstImportedBackfillProfile?.personId ?? null;
@@ -1076,6 +1344,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedAction = recommendedLabel
       ? `backfill the intake landing zone for imported profiles — starting with ${recommendedLabel}`
       : 'backfill intake landing zones for imported profiles';
+    setRecommendedLatestMaterial(firstImportedBackfillProfile);
     recommendedCommand = importedIntakeBackfillProfiles.length > 1
       ? (helperCommands.scaffoldImportedBundle ?? firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImported ?? null)
       : (firstImportedBackfillProfile?.updateIntakeCommand ?? helperCommands.scaffoldImportedBundle ?? helperCommands.scaffoldImported ?? null);
@@ -1092,14 +1361,20 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? `repair invalid intake manifests for imported profiles — starting with ${recommendedLabel}`
         : `repair the invalid intake manifest for imported profile ${recommendedLabel}${firstInvalidImportedReason ? ` — ${firstInvalidImportedReason}` : ''}`)
       : 'repair invalid intake manifests for imported profiles';
+    setRecommendedLatestMaterial(firstInvalidImportedIntakeProfile);
+    const starterTemplateSummary = collectRecommendedStarterTemplateSummary(importedInvalidIntakeManifestProfiles);
     recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
+    recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+    recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
+    recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
-      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : (firstInvalidImportedIntakeProfile?.intakeManifestPath ? [firstInvalidImportedIntakeProfile.intakeManifestPath] : []);
+      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
+      : collectProfileIntakePaths(firstInvalidImportedIntakeProfile);
   } else if (importedStarterIntakeProfiles.length > 0) {
     const firstImportedStarterIntakeProfile = importedStarterIntakeProfiles[0] ?? null;
+    const starterTemplateSummary = collectRecommendedStarterTemplateSummary(importedStarterIntakeProfiles);
     recommendedProfileId = firstImportedStarterIntakeProfile?.personId ?? null;
     recommendedLabel = firstImportedStarterIntakeProfile?.label ?? firstImportedStarterIntakeProfile?.personId ?? null;
     recommendedAction = recommendedLabel
@@ -1107,20 +1382,30 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? `populate imported intake starter manifests — starting with ${recommendedLabel}`
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
+    setRecommendedLatestMaterial(firstImportedStarterIntakeProfile);
     recommendedCommand = null;
     recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
       : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
-    recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
+    recommendedRefreshIntakeCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.updateIntakeCommand ?? null);
+    recommendedEditPath = normalizeDraftPath(firstImportedStarterIntakeProfile?.intakeManifestPath ?? null) ?? null;
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
-      ? Array.from(new Set(importedStarterIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : (recommendedEditPath ? [recommendedEditPath] : []);
+      ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
+      : collectStarterTemplateEditPaths(firstImportedStarterIntakeProfile);
     recommendedManifestInspectCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
     recommendedManifestImportCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
       : (firstImportedStarterIntakeProfile?.importManifestCommand ?? null);
+    recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+    recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
+    recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
+    recommendedProfileSlices = importedStarterIntakeProfiles
+      .map((profile) => buildRecommendedStarterProfileSlice(profile))
+      .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedStarterProfileSlice>> => Boolean(profile));
     recommendedInspectCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
@@ -1149,6 +1434,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : (recommendedLabel
         ? `import source materials for ${recommendedLabel}`
         : 'import source materials for imported intake replays');
+    setRecommendedLatestMaterial(firstImportedReadyIntakeProfile);
     recommendedCommand = importedProfilesWithReadyIntake.length > 1
       ? (helperCommands.importIntakeImportedAndRefresh
         ?? helperCommands.importIntakeBundle
@@ -1192,12 +1478,16 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           ? `repair invalid profile-local intake manifests — starting with ${recommendedLabel}`
           : `repair the invalid intake manifest for ${recommendedLabel}${firstInvalidReadyReason ? ` — ${firstInvalidReadyReason}` : ''}`)
         : 'repair invalid profile-local intake manifests';
+      const starterTemplateSummary = collectRecommendedStarterTemplateSummary(invalidReadyIntakeProfiles);
       recommendedCommand = invalidReadyIntakeProfiles.length > 1
         ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)
         : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? helperCommands.repairInvalidBundle ?? null);
+      recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
+      recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
+      recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
       recommendedPaths = invalidReadyIntakeProfiles.length > 1
-        ? Array.from(new Set(invalidReadyIntakeProfiles.map((profile) => profile?.intakeManifestPath).filter((value): value is string => typeof value === 'string' && value.length > 0)))
-        : (firstInvalidReadyIntakeProfile?.intakeManifestPath ? [firstInvalidReadyIntakeProfile.intakeManifestPath] : []);
+        ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
+        : collectProfileIntakePaths(firstInvalidReadyIntakeProfile);
     } else if (readyIntakeProfiles.length > 0) {
       const firstReadyIntakeProfile = readyIntakeProfiles[0] ?? null;
       recommendedProfileId = firstReadyIntakeProfile?.personId ?? null;
@@ -1308,6 +1598,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeImportedCommand: importedIntakeScaffoldCommand,
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    importManifestInspectCommand: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     refreshAllFoundationCommand: 'node src/index.js update foundation --all',
     sampleManifestPath,
@@ -1327,6 +1618,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : null,
     sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? sampleManifest.starterLabel
+      : null,
+    sampleManifestInspectCommand: sampleManifestPresent
+      ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)}`
       : null,
     sampleManifestCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? `node src/index.js import manifest --file ${shellQuote(sampleManifestPath)} --refresh-foundation`
@@ -1349,12 +1643,20 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedProfileId,
     recommendedLabel,
     recommendedAction,
+    recommendedLatestMaterialAt,
+    recommendedLatestMaterialId,
+    recommendedLatestMaterialSourcePath,
     recommendedCommand,
     recommendedFallbackCommand,
+    recommendedRefreshIntakeCommand,
     recommendedEditPath,
     recommendedEditPaths,
     recommendedManifestInspectCommand,
     recommendedManifestImportCommand,
+    recommendedIntakeManifestEntryTemplateTypes,
+    recommendedIntakeManifestEntryTemplateDetails,
+    recommendedIntakeManifestEntryTemplateCount,
+    recommendedProfileSlices,
     recommendedInspectCommand,
     recommendedFollowUpCommand,
     recommendedPaths,

@@ -30,6 +30,38 @@ test('findDocumentExcerpt strips admonition labels that share a line with prose 
   assert.equal(excerpt, 'Stay faithful to the source material.');
 });
 
+test('extractFrontmatterDescription accepts YAML document-end frontmatter closures', () => {
+  const description = extractFrontmatterDescription([
+    '---',
+    'description: Keep the operating posture grounded.',
+    '...',
+    '',
+    '# Soul',
+    '',
+    '## Boundaries',
+    '- Do not bluff certainty.',
+  ].join('\n'));
+
+  assert.equal(description, 'Keep the operating posture grounded.');
+});
+
+test('findDocumentExcerpt skips YAML document-end frontmatter before body guidance', () => {
+  const excerpt = findDocumentExcerpt([
+    '---',
+    'summary: ignored metadata',
+    '...',
+    '',
+    '# Voice',
+    '',
+    'Warm and grounded.',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+  ].join('\n'));
+
+  assert.equal(excerpt, 'Warm and grounded.');
+});
+
 test('collectVisibleDocumentLines preserves admonition lines for downstream structured parsing', () => {
   const lines = collectVisibleDocumentLines([
     '# Voice',

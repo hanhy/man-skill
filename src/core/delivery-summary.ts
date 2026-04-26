@@ -300,7 +300,7 @@ export function buildPopulateEnvCommand(envVars: string[], envFilePath = '.env')
 
   const quotedEnvVars = normalizedEnvVars.map((envVar) => shellSingleQuote(envVar)).join(' ');
   const quotedEnvFilePath = shellSingleQuote(envFilePath);
-  return `touch ${quotedEnvFilePath} && for key in ${quotedEnvVars}; do grep -q "^\${key}=" ${quotedEnvFilePath} || printf '%s=\\n' "$key" >> ${quotedEnvFilePath}; done`;
+  return `touch ${quotedEnvFilePath} && for key in ${quotedEnvVars}; do grep -Eq "^(export[[:space:]]+)?\${key}=" ${quotedEnvFilePath} || printf '%s=\\n' "$key" >> ${quotedEnvFilePath}; done`;
 }
 
 function buildChannelSetupHint(record: ChannelSummaryRecord, environment: NodeJS.ProcessEnv): string {
