@@ -1513,7 +1513,7 @@ test('importProfileIntakeManifest explains how to promote starter templates into
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'starter-only', refreshFoundation: true }),
-    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
+    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text; starter root: profiles\/starter-only\/imports; starter details: message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
   );
 });
 
@@ -1531,7 +1531,7 @@ test('importManifest explains how to promote starter templates into entries befo
 
   assert.throws(
     () => ingestion.importManifest({ manifestFile: starterManifestPath, refreshFoundation: true }),
-    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
+    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text; starter root: profiles\/starter-only\/imports; starter details: message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
   );
 });
 

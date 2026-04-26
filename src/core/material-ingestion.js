@@ -550,6 +550,22 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
   });
 }
 
+function normalizeRepoRelativePath(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\.(?=\/)/, '')
+    .replace(/^\//, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/');
+}
+
 function formatStarterTemplateTypes(entryTemplateTypes = []) {
   return entryTemplateTypes
     .filter((value) => isNonEmptyString(value))
@@ -557,16 +573,49 @@ function formatStarterTemplateTypes(entryTemplateTypes = []) {
     .join(', ');
 }
 
+function formatStarterTemplateDetails(entryTemplateDetails = []) {
+  if (!Array.isArray(entryTemplateDetails) || entryTemplateDetails.length === 0) {
+    return null;
+  }
+
+  const detailSummary = entryTemplateDetails
+    .map((detail) => {
+      if (!detail || typeof detail !== 'object' || !isNonEmptyString(detail.type)) {
+        return null;
+      }
+
+      const preview = normalizeText(detail.preview);
+      const detailPath = normalizeRepoRelativePath(detail.path);
+      const detailValue = preview ?? detailPath;
+      return detailValue ? `${detail.type.trim()} ${detailValue}` : detail.type.trim();
+    })
+    .filter(Boolean)
+    .join(' | ');
+
+  return detailSummary.length > 0 ? detailSummary : null;
+}
+
 function buildStarterTemplatePromotionError({
   label,
   location = null,
   entryTemplateTypes = [],
+  entryTemplateDetails = [],
+  starterRoot = null,
   inspectCommand,
   importCommand,
 }) {
   const templateSummary = formatStarterTemplateTypes(entryTemplateTypes) || 'none';
+  const starterRootSummary = normalizeRepoRelativePath(starterRoot ?? (isNonEmptyString(location) ? path.posix.dirname(location) : null));
+  const starterTemplateDetailSummary = formatStarterTemplateDetails(entryTemplateDetails);
   const locationSegment = isNonEmptyString(location) ? `: ${location}` : '';
-  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (templates: ${templateSummary}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
+  const templateContextParts = [`templates: ${templateSummary}`];
+  if (starterRootSummary) {
+    templateContextParts.push(`starter root: ${starterRootSummary}`);
+  }
+  if (starterTemplateDetailSummary) {
+    templateContextParts.push(`starter details: ${starterTemplateDetailSummary}`);
+  }
+  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (${templateContextParts.join('; ')}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
 }
 
 function manifestOwnerMatchesExpectedPersonId(ownerValue, expectedPersonId) {
@@ -1169,6 +1218,8 @@ export class MaterialIngestion {
       throw new Error(buildStarterTemplatePromotionError({
         label: `Profile intake manifest still contains only starter templates: ${normalizedPersonId} @ ${profile.intake.starterManifestPath}`,
         entryTemplateTypes: intakeManifestState.entryTemplateTypes,
+        entryTemplateDetails: intakeManifestState.entryTemplateDetails,
+        starterRoot: path.posix.dirname(profile.intake.starterManifestPath),
         inspectCommand: buildImportIntakeCommand(normalizedPersonId),
         importCommand: buildImportIntakeCommand(normalizedPersonId, { refreshFoundation: true }),
       }));
@@ -1477,6 +1528,8 @@ export class MaterialIngestion {
         label: 'Manifest still contains only starter templates',
         location: manifestRelativePath,
         entryTemplateTypes: starterManifestState.entryTemplateTypes,
+        entryTemplateDetails: starterManifestState.entryTemplateDetails,
+        starterRoot: path.posix.dirname(manifestRelativePath),
         inspectCommand: buildManifestImportCommand(manifestRelativePath),
         importCommand: buildManifestImportCommand(manifestRelativePath, { refreshFoundation: true }),
       }));
