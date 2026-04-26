@@ -430,6 +430,66 @@ test('buildFoundationRollup prioritizes metadata-drift foundation refreshes ahea
   assert.deepEqual(rollup.maintenance.queuedProfiles[1]?.refreshReasons, ['new materials']);
 });
 
+test('buildFoundationRollup keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'alpha-legacy-refresh',
+      materialCount: 1,
+      profile: { displayName: 'Alpha Legacy Refresh' },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-alpha',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: ['new-material'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+    {
+      id: 'beta-empty-refresh',
+      materialCount: 1,
+      profile: { displayName: 'Beta Empty Refresh' },
+      latestMaterialAt: '2026-04-21T12:00:00.000Z',
+      latestMaterialId: '2026-04-21T12-00-00-000Z-beta',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: true,
+        missingDrafts: [],
+        refreshReasons: [],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true, entryCount: 1, latestSummaries: ['Keep the lane simple.'] },
+        voice: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        soul: { generated: true, highlights: ['- [text] Keep the lane simple.'] },
+        skills: { generated: true, highlights: ['- execution heuristic'] },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, latestTypes: ['text'], sampleSummaries: ['Keep the lane simple.'] },
+        voice: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        soul: { candidateCount: 1, sampleTypes: ['text'], sampleExcerpts: ['Keep the lane simple.'] },
+        skills: { candidateCount: 1, sampleTypes: ['talk'], sampleExcerpts: ['execution heuristic'] },
+      },
+    },
+  ]);
+
+  assert.equal(rollup.maintenance.recommendedProfileId, 'alpha-legacy-refresh');
+  assert.deepEqual(rollup.maintenance.queuedProfiles.map((profile) => profile.id), ['alpha-legacy-refresh', 'beta-empty-refresh']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.refreshReasons, ['new-material']);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[1]?.refreshReasons, []);
+});
+
 test('buildFoundationRollup aggregates generated, stale, and candidate foundation signals across profiles', () => {
   const rollup = buildFoundationRollup([
     {

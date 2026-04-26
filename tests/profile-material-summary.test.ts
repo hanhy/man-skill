@@ -700,6 +700,78 @@ test('buildIngestionSummary breaks stale imported-profile ties with latest mater
   );
 });
 
+test('buildIngestionSummary keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
+  const profiles = [
+    {
+      id: 'alpha-legacy-refresh',
+      materialCount: 1,
+      materialTypes: { text: 1 },
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-alpha',
+      profile: {
+        displayName: 'Alpha Legacy Refresh',
+      },
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+        refreshReasons: ['new-material'],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true },
+        skills: { generated: true },
+        soul: { generated: true },
+        voice: { generated: true },
+      },
+    },
+    {
+      id: 'beta-empty-refresh',
+      materialCount: 1,
+      materialTypes: { text: 1 },
+      latestMaterialAt: '2026-04-21T12:00:00.000Z',
+      latestMaterialId: '2026-04-21T12-00-00-000Z-beta',
+      profile: {
+        displayName: 'Beta Empty Refresh',
+      },
+      foundationDraftStatus: {
+        complete: true,
+        needsRefresh: true,
+        missingDrafts: [],
+        refreshReasons: [],
+      },
+      foundationDraftSummaries: {
+        memory: { generated: true },
+        skills: { generated: true },
+        soul: { generated: true },
+        voice: { generated: true },
+      },
+    },
+  ];
+
+  const jsSummary = buildJsIngestionSummary(profiles, {});
+  const tsSummary = buildTsIngestionSummary(profiles, {});
+
+  assert.deepEqual(jsSummary, tsSummary);
+  assert.equal(tsSummary.recommendedProfileId, 'alpha-legacy-refresh');
+  assert.equal(tsSummary.recommendedLabel, 'Alpha Legacy Refresh (alpha-legacy-refresh)');
+  assert.equal(
+    tsSummary.recommendedCommand,
+    "(node src/index.js update foundation --person 'alpha-legacy-refresh') && (node src/index.js update foundation --person 'beta-empty-refresh')",
+  );
+  assert.equal(
+    tsSummary.refreshFoundationBundleCommand,
+    "(node src/index.js update foundation --person 'alpha-legacy-refresh') && (node src/index.js update foundation --person 'beta-empty-refresh')",
+  );
+  assert.deepEqual(
+    tsSummary.profileCommands.map((profile) => profile.personId),
+    ['alpha-legacy-refresh', 'beta-empty-refresh'],
+  );
+  assert.deepEqual(
+    tsSummary.allProfileCommands.map((profile) => profile.personId),
+    ['alpha-legacy-refresh', 'beta-empty-refresh'],
+  );
+});
+
 test('buildIngestionSummary keeps starter-only metadata intake templates off the ready-intake bundle path', () => {
   const summary = buildTsIngestionSummary([
     {

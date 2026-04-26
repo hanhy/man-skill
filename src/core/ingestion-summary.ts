@@ -147,6 +147,7 @@ const FOUNDATION_REFRESH_REASON_SCORES = {
   'metadata-updated': 4,
   'draft metadata drift': 2,
   'new materials': 1,
+  'new-material': 1,
 };
 
 function scoreRefreshReasons(refreshReasons) {
