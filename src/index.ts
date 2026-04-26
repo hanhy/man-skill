@@ -1239,6 +1239,12 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedRefreshIntakeCommand = typeof ingestionSummary?.recommendedRefreshIntakeCommand === 'string' && ingestionSummary.recommendedRefreshIntakeCommand.length > 0
     ? ingestionSummary.recommendedRefreshIntakeCommand
     : null;
+  const recommendedUpdateProfileCommand = typeof ingestionSummary?.recommendedUpdateProfileCommand === 'string' && ingestionSummary.recommendedUpdateProfileCommand.length > 0
+    ? ingestionSummary.recommendedUpdateProfileCommand
+    : null;
+  const recommendedUpdateProfileAndRefreshCommand = typeof ingestionSummary?.recommendedUpdateProfileAndRefreshCommand === 'string' && ingestionSummary.recommendedUpdateProfileAndRefreshCommand.length > 0
+    ? ingestionSummary.recommendedUpdateProfileAndRefreshCommand
+    : null;
   const recommendedEditPath = typeof ingestionSummary?.recommendedEditPath === 'string' && ingestionSummary.recommendedEditPath.length > 0
     ? ingestionSummary.recommendedEditPath
     : null;
@@ -1275,6 +1281,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
       draftGapSummary?: string | null;
       fallbackCommand: string | null;
       refreshIntakeCommand: string | null;
+      updateProfileCommand: string | null;
+      updateProfileAndRefreshCommand: string | null;
       editPath: string | null;
       editPaths: string[];
       manifestInspectCommand: string | null;
@@ -1324,6 +1332,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     latestMaterialSourcePath: recommendedLatestMaterialSourcePath,
     fallbackCommand: recommendedFallbackCommand,
     refreshIntakeCommand: recommendedRefreshIntakeCommand,
+    updateProfileCommand: recommendedUpdateProfileCommand,
+    updateProfileAndRefreshCommand: recommendedUpdateProfileAndRefreshCommand,
     editPath: recommendedEditPath,
     editPaths: recommendedEditPaths,
     manifestInspectCommand: recommendedManifestInspectCommand,

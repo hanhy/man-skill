@@ -563,6 +563,8 @@ type RecommendedStarterProfileSlice = {
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
+  updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -735,6 +737,8 @@ type IngestionSummary = {
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedRefreshIntakeCommand?: string | null;
+  recommendedUpdateProfileCommand?: string | null;
+  recommendedUpdateProfileAndRefreshCommand?: string | null;
   recommendedEditPath?: string | null;
   recommendedEditPaths?: string[];
   recommendedManifestInspectCommand?: string | null;
@@ -775,6 +779,8 @@ type WorkLoopPriority = {
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
+  updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -2064,6 +2070,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedRefreshIntakeCommand = typeof ingestion?.recommendedRefreshIntakeCommand === 'string' && ingestion.recommendedRefreshIntakeCommand.length > 0
     ? ingestion.recommendedRefreshIntakeCommand
     : null;
+  const recommendedUpdateProfileCommand = typeof ingestion?.recommendedUpdateProfileCommand === 'string' && ingestion.recommendedUpdateProfileCommand.length > 0
+    ? ingestion.recommendedUpdateProfileCommand
+    : null;
+  const recommendedUpdateProfileAndRefreshCommand = typeof ingestion?.recommendedUpdateProfileAndRefreshCommand === 'string' && ingestion.recommendedUpdateProfileAndRefreshCommand.length > 0
+    ? ingestion.recommendedUpdateProfileAndRefreshCommand
+    : null;
   const recommendedIntakeManifestEntryTemplateTypes = Array.isArray(ingestion?.recommendedIntakeManifestEntryTemplateTypes)
     ? ingestion.recommendedIntakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
@@ -2086,7 +2098,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; manifest ${recommendedManifestImportCommand}`
     : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2935,6 +2947,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRecommendedPriorityDetails && recommendedPriority?.refreshIntakeCommand
       ? `- recommended refresh intake: ${recommendedPriority.refreshIntakeCommand}`
       : null,
+    showRecommendedPriorityDetails && recommendedPriority?.updateProfileCommand
+      ? `- recommended update profile: ${recommendedPriority.updateProfileCommand}`
+      : null,
+    showRecommendedPriorityDetails && recommendedPriority?.updateProfileAndRefreshCommand
+      ? `- recommended sync profile: ${recommendedPriority.updateProfileAndRefreshCommand}`
+      : null,
     showRecommendedPriorityDetails && recommendedPriorityTemplateSummary
       ? `- recommended starter templates: ${recommendedPriorityTemplateSummary}`
       : null,
@@ -2986,6 +3004,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     currentPriority?.refreshIntakeCommand
       ? `- refresh intake: ${currentPriority.refreshIntakeCommand}`
+      : null,
+    currentPriority?.updateProfileCommand
+      ? `- update profile: ${currentPriority.updateProfileCommand}`
+      : null,
+    currentPriority?.updateProfileAndRefreshCommand
+      ? `- sync profile: ${currentPriority.updateProfileAndRefreshCommand}`
       : null,
     currentPriorityTemplateSummary
       ? `- starter templates: ${currentPriorityTemplateSummary}`
@@ -3039,6 +3063,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority && runnablePriority?.refreshIntakeCommand
       ? `- runnable refresh intake: ${runnablePriority.refreshIntakeCommand}`
       : null,
+    showRunnablePriority && runnablePriority?.updateProfileCommand
+      ? `- runnable update profile: ${runnablePriority.updateProfileCommand}`
+      : null,
+    showRunnablePriority && runnablePriority?.updateProfileAndRefreshCommand
+      ? `- runnable sync profile: ${runnablePriority.updateProfileAndRefreshCommand}`
+      : null,
     showRunnablePriority && runnablePriorityTemplateSummary
       ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
       : null,
@@ -3090,6 +3120,12 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       : null,
     showActionableReadyPriority && actionableReadyPriority?.refreshIntakeCommand
       ? `- advisory refresh intake: ${actionableReadyPriority.refreshIntakeCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.updateProfileCommand
+      ? `- advisory update profile: ${actionableReadyPriority.updateProfileCommand}`
+      : null,
+    showActionableReadyPriority && actionableReadyPriority?.updateProfileAndRefreshCommand
+      ? `- advisory sync profile: ${actionableReadyPriority.updateProfileAndRefreshCommand}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityTemplateSummary
       ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`

@@ -4902,6 +4902,14 @@ test('buildSummary recommends populating imported starter intake manifests once 
     summary.ingestion.recommendedRefreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
   );
+  assert.match(
+    summary.ingestion.recommendedUpdateProfileCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.match(
+    summary.ingestion.recommendedUpdateProfileAndRefreshCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
+  );
   assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(summary.ingestion.recommendedIntakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
@@ -4935,7 +4943,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   );
   assert.match(
     summary.promptPreview,
-    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.doesNotMatch(summary.promptPreview, /helpers: .*starter-import-bundle/);
 });
@@ -5061,6 +5069,14 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     summary.ingestion.recommendedRefreshIntakeCommand ?? '',
     /^\(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)$/,
   );
+  assert.match(
+    summary.ingestion.recommendedUpdateProfileCommand ?? '',
+    /^\(node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)$/,
+  );
+  assert.match(
+    summary.ingestion.recommendedUpdateProfileAndRefreshCommand ?? '',
+    /^\(node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation\) && \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')? --refresh-foundation\)$/,
+  );
   assert.equal(summary.ingestion.recommendedManifestInspectCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
   assert.equal(summary.ingestion.recommendedManifestImportCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation) && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json' --refresh-foundation)");
   const harryCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
@@ -5077,6 +5093,8 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       draftGapSummary: harryCommand?.draftGapSummary ?? null,
       fallbackCommand: harryCommand?.starterImportCommand ?? null,
       refreshIntakeCommand: harryCommand?.updateIntakeCommand ?? null,
+      updateProfileCommand: harryCommand?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: harryCommand?.updateProfileAndRefreshCommand ?? null,
       editPath: harryCommand?.intakeManifestPath ?? null,
       editPaths: [
         'profiles/harry-han/imports/materials.template.json',
@@ -5109,6 +5127,8 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       draftGapSummary: janeCommand?.draftGapSummary ?? null,
       fallbackCommand: janeCommand?.starterImportCommand ?? null,
       refreshIntakeCommand: janeCommand?.updateIntakeCommand ?? null,
+      updateProfileCommand: janeCommand?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: janeCommand?.updateProfileAndRefreshCommand ?? null,
       editPath: janeCommand?.intakeManifestPath ?? null,
       editPaths: [
         'profiles/jane-doe/imports/materials.template.json',
@@ -5297,6 +5317,8 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
       draftGapSummary: harry?.draftGapSummary ?? null,
       fallbackCommand: harry?.starterImportCommand ?? null,
       refreshIntakeCommand: harry?.updateIntakeCommand ?? null,
+      updateProfileCommand: harry?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: harry?.updateProfileAndRefreshCommand ?? null,
       editPath: harry?.intakeManifestPath ?? null,
       editPaths: ['profiles/harry-han/imports/materials.template.json'],
       manifestInspectCommand: null,
@@ -5317,7 +5339,7 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (invalid JSON)');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
-  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; starter root profiles\/harry-han\/imports; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter root profiles\/harry-han\/imports; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\)/);
 });
 
@@ -5887,6 +5909,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     recommendedFallbackCommand: null,
     recommendedRefreshIntakeCommand: null,
+    recommendedUpdateProfileCommand: null,
+    recommendedUpdateProfileAndRefreshCommand: null,
     recommendedEditPath: null,
     recommendedEditPaths: [],
     recommendedManifestInspectCommand: null,

@@ -20,6 +20,8 @@ export type WorkPriority = {
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
+  updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -39,6 +41,8 @@ export type WorkPriority = {
     draftGapSummary?: string | null;
     fallbackCommand: string | null;
     refreshIntakeCommand: string | null;
+    updateProfileCommand: string | null;
+    updateProfileAndRefreshCommand: string | null;
     editPath: string | null;
     editPaths: string[];
     manifestInspectCommand: string | null;
@@ -84,6 +88,8 @@ function hasActionablePrioritySurface(priority: WorkPriority): boolean {
       || priority.command
       || priority.fallbackCommand
       || priority.refreshIntakeCommand
+      || priority.updateProfileCommand
+      || priority.updateProfileAndRefreshCommand
       || priority.editPath
       || priority.editPaths?.length
       || priority.manifestInspectCommand

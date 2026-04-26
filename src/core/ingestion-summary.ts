@@ -169,6 +169,8 @@ function buildRecommendedStarterProfileSlice(profile: any) {
       : null,
     fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
     refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
+    updateProfileCommand: typeof profile?.updateProfileCommand === 'string' && profile.updateProfileCommand.length > 0 ? profile.updateProfileCommand : null,
+    updateProfileAndRefreshCommand: typeof profile?.updateProfileAndRefreshCommand === 'string' && profile.updateProfileAndRefreshCommand.length > 0 ? profile.updateProfileAndRefreshCommand : null,
     editPath: intakeManifestPath,
     editPaths: collectStarterTemplateEditPaths(profile),
     intakeManifestEntryTemplateRoot,
@@ -1303,6 +1305,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
+  let recommendedUpdateProfileCommand: string | null = null;
+  let recommendedUpdateProfileAndRefreshCommand: string | null = null;
   let recommendedEditPath: string | null = null;
   let recommendedEditPaths: string[] = [];
   let recommendedManifestInspectCommand: string | null = null;
@@ -1319,6 +1323,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     latestMaterialSourcePath: string | null;
     fallbackCommand: string | null;
     refreshIntakeCommand: string | null;
+    updateProfileCommand: string | null;
+    updateProfileAndRefreshCommand: string | null;
     editPath: string | null;
     editPaths: string[];
     manifestInspectCommand: string | null;
@@ -1413,6 +1419,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedRefreshIntakeCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null);
+    recommendedUpdateProfileCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.updateProfileCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.updateProfileCommand ?? null);
+    recommendedUpdateProfileAndRefreshCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.updateProfileAndRefreshCommand ?? null);
     recommendedEditPath = normalizeDraftPath(firstInvalidImportedIntakeProfile?.intakeManifestPath ?? null) ?? null;
     recommendedEditPaths = importedInvalidIntakeManifestProfiles.length > 1
       ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
@@ -1459,6 +1471,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedRefreshIntakeCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
       : (firstImportedStarterIntakeProfile?.updateIntakeCommand ?? null);
+    recommendedUpdateProfileCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateProfileCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.updateProfileCommand ?? null);
+    recommendedUpdateProfileAndRefreshCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.updateProfileAndRefreshCommand ?? null);
     recommendedEditPath = normalizeDraftPath(firstImportedStarterIntakeProfile?.intakeManifestPath ?? null) ?? null;
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
@@ -1746,6 +1764,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,
+    recommendedUpdateProfileCommand,
+    recommendedUpdateProfileAndRefreshCommand,
     recommendedEditPath,
     recommendedEditPaths,
     recommendedManifestInspectCommand,
