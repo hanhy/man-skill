@@ -991,6 +991,23 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const profileDraftGapSummary = typeof recommendedProfile?.draftGapSummary === 'string' && recommendedProfile.draftGapSummary.length > 0
     ? recommendedProfile.draftGapSummary
     : null;
+  const coreRootThinReadySections = Array.isArray(queuedArea?.rootThinReadySections)
+    ? queuedArea.rootThinReadySections.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const coreRootThinMissingSections = Array.isArray(queuedArea?.rootThinMissingSections)
+    ? queuedArea.rootThinMissingSections.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const coreRootThinReadySectionCount = typeof queuedArea?.rootThinReadySectionCount === 'number'
+    ? queuedArea.rootThinReadySectionCount
+    : (coreRootThinReadySections.length > 0 ? coreRootThinReadySections.length : null);
+  const coreRootThinTotalSectionCount = typeof queuedArea?.rootThinTotalSectionCount === 'number'
+    ? queuedArea.rootThinTotalSectionCount
+    : ((coreRootThinReadySections.length > 0 || coreRootThinMissingSections.length > 0)
+      ? coreRootThinReadySections.length + coreRootThinMissingSections.length
+      : null);
+  const coreRootHeadingAliases = Array.isArray(queuedArea?.rootHeadingAliases)
+    ? queuedArea.rootHeadingAliases.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
+    : [];
 
   const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
 
@@ -1006,6 +1023,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     latestMaterialSourcePath: hasQueuedCoreFoundation ? null : profileLatestMaterialSourcePath,
     refreshReasons: hasQueuedCoreFoundation ? [] : profileRefreshReasons,
     missingDrafts: hasQueuedCoreFoundation ? [] : profileMissingDrafts,
+    ...(hasQueuedCoreFoundation && coreRootThinReadySections.length > 0 ? { rootThinReadySections: coreRootThinReadySections } : {}),
+    ...(hasQueuedCoreFoundation && coreRootThinMissingSections.length > 0 ? { rootThinMissingSections: coreRootThinMissingSections } : {}),
+    ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
+    ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
+    ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
     candidateSignalSummary: hasQueuedCoreFoundation ? null : profileCandidateSignalSummary,
     draftSourcesSummary: hasQueuedCoreFoundation ? null : profileDraftSourcesSummary,
     draftGapSummary: hasQueuedCoreFoundation ? null : profileDraftGapSummary,

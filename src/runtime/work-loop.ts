@@ -10,6 +10,11 @@ export type WorkPriority = {
   latestMaterialSourcePath?: string | null;
   refreshReasons?: string[];
   missingDrafts?: string[];
+  rootThinReadySections?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;

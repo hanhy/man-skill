@@ -731,6 +731,11 @@ type WorkLoopPriority = {
   latestMaterialSourcePath?: string | null;
   refreshReasons?: string[];
   missingDrafts?: string[];
+  rootThinReadySections?: string[];
+  rootThinMissingSections?: string[];
+  rootThinReadySectionCount?: number;
+  rootThinTotalSectionCount?: number;
+  rootHeadingAliases?: string[];
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -2775,6 +2780,20 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
     return draftGapSummary ? `${prefix}${draftGapSummary}` : null;
   };
+  const formatPriorityRootSections = (priority?: WorkLoopPriority | null, prefix = '- root sections: '): string | null => {
+    const summary = formatRootSectionSummary(
+      Array.isArray(priority?.rootThinReadySections) ? priority.rootThinReadySections : undefined,
+      Array.isArray(priority?.rootThinMissingSections) ? priority.rootThinMissingSections : undefined,
+      typeof priority?.rootThinReadySectionCount === 'number' ? priority.rootThinReadySectionCount : undefined,
+      typeof priority?.rootThinTotalSectionCount === 'number' ? priority.rootThinTotalSectionCount : undefined,
+    );
+
+    return summary ? summary.replace(/^; root sections /, prefix) : null;
+  };
+  const formatPriorityRootHeadingAliases = (priority?: WorkLoopPriority | null, prefix = '- root heading aliases: '): string | null => {
+    const summary = formatHeadingAliasSummary(Array.isArray(priority?.rootHeadingAliases) ? priority.rootHeadingAliases : undefined);
+    return summary ? summary.replace(/^; aliases /, prefix) : null;
+  };
 
   const cadenceLine = workLoop.intervalMinutes
     ? `- cadence: every ${workLoop.intervalMinutes} minute${workLoop.intervalMinutes === 1 ? '' : 's'}`
@@ -2815,6 +2834,8 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     formatPriorityEvidence(currentPriority),
     formatPriorityDraftSources(currentPriority),
     formatPriorityDraftGaps(currentPriority),
+    formatPriorityRootSections(currentPriority),
+    formatPriorityRootHeadingAliases(currentPriority),
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
@@ -2862,6 +2883,8 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority ? formatPriorityEvidence(runnablePriority, '- runnable evidence: ') : null,
     showRunnablePriority ? formatPriorityDraftSources(runnablePriority, '- runnable draft sources: ') : null,
     showRunnablePriority ? formatPriorityDraftGaps(runnablePriority, '- runnable draft gaps: ') : null,
+    showRunnablePriority ? formatPriorityRootSections(runnablePriority, '- runnable root sections: ') : null,
+    showRunnablePriority ? formatPriorityRootHeadingAliases(runnablePriority, '- runnable root heading aliases: ') : null,
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
@@ -2909,6 +2932,8 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority ? formatPriorityEvidence(actionableReadyPriority, '- advisory evidence: ') : null,
     showActionableReadyPriority ? formatPriorityDraftSources(actionableReadyPriority, '- advisory draft sources: ') : null,
     showActionableReadyPriority ? formatPriorityDraftGaps(actionableReadyPriority, '- advisory draft gaps: ') : null,
+    showActionableReadyPriority ? formatPriorityRootSections(actionableReadyPriority, '- advisory root sections: ') : null,
+    showActionableReadyPriority ? formatPriorityRootHeadingAliases(actionableReadyPriority, '- advisory root heading aliases: ') : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,
