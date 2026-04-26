@@ -2020,6 +2020,54 @@ test('buildSummary keeps starter template details visible when a metadata-only i
   assert.match(summary.promptPreview, /starter details: message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt/);
 });
 
+test('buildSummary slash-normalizes starter template detail paths across work-loop and prompt surfaces', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: { file: '.\\sample.txt' },
+        message: { text: '<paste a representative short message>' },
+        talk: { text: '<paste a transcript snippet>' },
+        screenshot: { file: '.\\images\\missing-chat.png' },
+      },
+    }, null, 2),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
+  assert.deepEqual(summary.workLoop.currentPriority.intakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: '<paste a representative short message>' },
+    { type: 'screenshot', source: 'file', path: 'images/missing-chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
+  assert.match(summary.promptPreview, /starter details: message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt/);
+  assert.doesNotMatch(summary.promptPreview, /\.\\images\\missing-chat\.png/);
+  assert.doesNotMatch(summary.promptPreview, /\.\\sample\.txt/);
+});
+
 test('buildSummary dedupes bundled starter template metadata when multiple invalid intake manifests share the same starter shape', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

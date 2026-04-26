@@ -80,10 +80,10 @@ function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string
       .map((detail) => {
         const type = typeof detail.type === 'string' ? detail.type.trim() : '';
         const source = detail.source === 'file' ? 'file' : 'text';
-        const path = typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null;
+        const detailPath = normalizeRelativePath(typeof detail.path === 'string' && detail.path.trim().length > 0 ? detail.path.trim() : null);
         const preview = typeof detail.preview === 'string' && detail.preview.trim().length > 0 ? detail.preview.trim() : null;
         return type.length > 0
-          ? { type, source, path, preview }
+          ? { type, source, path: detailPath, preview }
           : null;
       })
       .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))

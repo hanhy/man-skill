@@ -69,11 +69,13 @@ function normalizeEntryTemplateDetails(entryTemplates) {
     const filePath = isNonEmptyString(template?.file) ? template.file.trim() : null;
     const textPreview = truncateTemplatePreview(template?.text);
 
+    const normalizedFilePath = normalizeRelativeRepoPath(filePath);
+
     return {
       type,
-      source: filePath ? 'file' : 'text',
-      path: filePath,
-      preview: filePath ? null : textPreview,
+      source: normalizedFilePath ? 'file' : 'text',
+      path: normalizedFilePath,
+      preview: normalizedFilePath ? null : textPreview,
     };
   });
 }
