@@ -173,7 +173,7 @@ function parseWorkLoopObjectiveLine(line: string): { objective: string; indent: 
 
   const indent = normalizedLine.match(/^(\s*)/)?.[1].length ?? 0;
 
-  const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(.+)$/);
+  const numberedMatch = trimmedLine.match(/^\d+[.)]\s+(?:\[(?: |x|X)\]\s+)?(.+)$/);
   if (numberedMatch?.[1]) {
     return {
       objective: numberedMatch[1].trim(),

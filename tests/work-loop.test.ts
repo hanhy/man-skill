@@ -812,6 +812,42 @@ test('buildSummary accepts starred and plus task-list objectives in USER.md curr
   assert.match(summary.promptPreview, /objectives: keep soul and voice guidance in lockstep \| keep intake reruns explicit for imported profiles \| stage Slack after Telegram stays stable \| validate OpenAI before widening provider coverage \| report progress in small verified increments/);
 });
 
+test('buildSummary strips checklist markers from ordered objectives in USER.md current product direction', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. [ ] keep memory + voice guidance aligned before rollout',
+      '2) [x] keep intake reruns explicit for imported profiles',
+      '3. [ ] stage Telegram before Slack and WhatsApp',
+      '4) [ ] validate Anthropic before widening provider coverage',
+      '',
+      '## Usage notes',
+      '',
+      'Checklist markers should not leak into parsed objectives.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep memory + voice guidance aligned before rollout',
+    'keep intake reruns explicit for imported profiles',
+    'stage Telegram before Slack and WhatsApp',
+    'validate Anthropic before widening provider coverage',
+    'report progress in small verified increments',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 5);
+  assert.match(summary.promptPreview, /objectives: keep memory \+ voice guidance aligned before rollout \| keep intake reruns explicit for imported profiles \| stage Telegram before Slack and WhatsApp \| validate Anthropic before widening provider coverage \| report progress in small verified increments/);
+  assert.doesNotMatch(summary.promptPreview, /\[ \]|\[x\]/i);
+});
+
 test('buildSummary ignores nested bullet details under current product direction objectives in USER.md', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
