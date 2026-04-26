@@ -92,6 +92,20 @@ function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
   });
 }
 
+function resolveImportFile(baseDir, filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  const trimmedFilePath = filePath.trim();
+  if (path.isAbsolute(trimmedFilePath)) {
+    return trimmedFilePath;
+  }
+
+  const normalizedRelativePath = normalizeRelativeRepoPath(trimmedFilePath);
+  return normalizedRelativePath ? path.resolve(baseDir, normalizedRelativePath) : null;
+}
+
 function toRepoRelativePath(realRootDir, absolutePath) {
   if (!isNonEmptyString(realRootDir) || !isNonEmptyString(absolutePath)) {
     return null;
@@ -218,16 +232,16 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
         throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
       }
 
-      const normalizedEntryFile = normalizeRelativeRepoPath(entry.file);
-      if (!normalizedEntryFile) {
+      const displayEntryFile = normalizeRelativeRepoPath(entry.file) ?? entry.file.trim();
+      const resolvedFilePath = resolveImportFile(realManifestDir, entry.file);
+      if (!resolvedFilePath) {
         throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
       }
 
-      const resolvedFilePath = path.resolve(realManifestDir, normalizedEntryFile);
       const relativeResolvedFilePath = toRepoRelativePath(realRootDir, resolvedFilePath);
       if (!fs.existsSync(resolvedFilePath)) {
         throw attachRepairPaths(
-          new Error(`Manifest entry ${index} references a missing file: ${normalizedEntryFile}`),
+          new Error(`Manifest entry ${index} references a missing file: ${displayEntryFile}`),
           relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
         );
       }
@@ -235,14 +249,14 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
       const realFilePath = fs.realpathSync(resolvedFilePath);
       if (!fs.statSync(realFilePath).isFile()) {
         throw attachRepairPaths(
-          new Error(`Manifest entry ${index} references a non-file path: ${normalizedEntryFile}`),
+          new Error(`Manifest entry ${index} references a non-file path: ${displayEntryFile}`),
           relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
         );
       }
 
       const relativeFilePath = toRepoRelativePath(realRootDir, realFilePath);
       if (!relativeFilePath) {
-        throw new Error(`Manifest entry ${index} references a file outside the repo: ${normalizedEntryFile}`);
+        throw new Error(`Manifest entry ${index} references a file outside the repo: ${displayEntryFile}`);
       }
     }
   });
