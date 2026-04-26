@@ -3087,6 +3087,8 @@ test('buildSummary work loop includes both .env.example and .env in blocked env 
   assert.equal(summary.workLoop.blockedPriorityCount, 1);
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.editPath, '.env');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /next action: bootstrap \.env from \.env\.example; set FEISHU_APP_ID, FEISHU_APP_SECRET/);
@@ -3240,6 +3242,13 @@ test('buildSummary work loop repairs missing credentials for active delivery int
   assert.equal(summary.workLoop.currentPriority.command, 'cp .env.example .env');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'bootstrap .env from .env.example; set FEISHU_APP_ID, FEISHU_APP_SECRET');
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.currentPriority.editPath, '.env');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.priorities[3].id, 'providers');
+  assert.equal(summary.workLoop.priorities[3].command, 'cp .env.example .env');
+  assert.deepEqual(summary.workLoop.priorities[3].paths, ['.env.example', '.env']);
+  assert.equal(summary.workLoop.priorities[3].editPath, '.env');
+  assert.deepEqual(summary.workLoop.priorities[3].editPaths, ['.env.example', '.env']);
   assert.equal(summary.workLoop.currentPriority.summary, '4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4/4 present, implementations 4/4 ready');
   assert.match(summary.promptPreview, /current: Channels \[blocked\] — 4 pending, 0 configured, 4 auth-blocked, manifest ready, scaffolds 4\/4 present, implementations 4\/4 ready/);
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
