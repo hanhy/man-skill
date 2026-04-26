@@ -4380,6 +4380,7 @@ test('buildSummary work loop paths follow the actual missing delivery file when 
 
 test('buildSummary work loop bundles missing provider implementations once the provider manifest exists', () => {
   const rootDir = makeTempRepo();
+  const repoRoot = process.cwd();
   seedReadyFoundationRepo(rootDir);
   writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -4390,6 +4391,13 @@ test('buildSummary work loop bundles missing provider implementations once the p
     { id: 'feishu', status: 'active' },
   ], null, 2));
   fs.writeFileSync(path.join(rootDir, 'manifests', 'providers.json'), JSON.stringify([{ id: 'openai', status: 'planned' }], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
 
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
@@ -4414,6 +4422,7 @@ test('buildSummary work loop bundles missing provider implementations once the p
 
 test('buildSummary work loop refuses to scaffold outside-repo provider implementation paths', () => {
   const rootDir = makeTempRepo();
+  const repoRoot = process.cwd();
   seedReadyFoundationRepo(rootDir);
   writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -4443,6 +4452,20 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
       nextStep: 'implement deepseek transport adapter',
     },
   ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
+  fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'models', `${providerId}.js`),
+      path.join(rootDir, 'src', 'models', `${providerId}.js`),
+    );
+  });
 
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
@@ -4465,6 +4488,7 @@ test('buildSummary work loop refuses to scaffold outside-repo provider implement
 
 test('buildSummary work loop omits outside-repo implementation paths when bundling provider scaffolds', () => {
   const rootDir = makeTempRepo();
+  const repoRoot = process.cwd();
   seedReadyFoundationRepo(rootDir);
   writeFullDeliveryEnv(rootDir, '.env');
   fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
@@ -4494,9 +4518,20 @@ test('buildSummary work loop omits outside-repo implementation paths when bundli
       nextStep: 'implement deepseek transport adapter',
     },
   ], null, 2));
+  fs.mkdirSync(path.join(rootDir, 'src', 'channels'), { recursive: true });
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'channels', `${channelId}.js`),
+      path.join(rootDir, 'src', 'channels', `${channelId}.js`),
+    );
+  });
   fs.mkdirSync(path.join(rootDir, 'src', 'models'), { recursive: true });
-  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'openai.js'), 'export const providerId = \'openai\';\n');
-  fs.writeFileSync(path.join(rootDir, 'src', 'models', 'anthropic.js'), 'export const providerId = \'anthropic\';\n');
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.copyFileSync(
+      path.join(repoRoot, 'src', 'models', `${providerId}.js`),
+      path.join(rootDir, 'src', 'models', `${providerId}.js`),
+    );
+  });
   fs.rmSync(path.join(rootDir, 'src', 'models', 'openai.js'));
   fs.rmSync(path.join(rootDir, 'src', 'models', 'anthropic.js'));
 

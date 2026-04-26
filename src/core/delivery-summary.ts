@@ -441,7 +441,7 @@ export function buildDeliverySummary(
     })
     .sort((left, right) => compareRolloutOrder(left.id, right.id, channelRolloutOrder));
   const channelQueue = allChannelQueueRecords
-    .filter((channel) => channel?.status !== 'active' || channel.missingEnvVars.length > 0);
+    .filter((channel) => channel?.status !== 'active' || channel.missingEnvVars.length > 0 || channel.implementationReady === false);
   const allProviderQueueRecords = (models?.providers ?? [])
     .map((provider) => {
       const missingEnvVars = provider.authEnvVar ? collectMissingEnvVars([provider.authEnvVar], environment) : [];
@@ -483,7 +483,7 @@ export function buildDeliverySummary(
     })
     .sort((left, right) => compareRolloutOrder(left.id, right.id, providerRolloutOrder));
   const providerQueue = allProviderQueueRecords
-    .filter((provider) => provider?.status !== 'active' || provider.missingEnvVars.length > 0);
+    .filter((provider) => provider?.status !== 'active' || provider.missingEnvVars.length > 0 || provider.implementationReady === false);
 
   const orderedChannelEnvVars = collectOrderedChannelEnvVars(allChannelRecords, channelRolloutOrder);
   const orderedProviderEnvVars = collectOrderedProviderEnvVars(allProviderRecords, providerRolloutOrder);
