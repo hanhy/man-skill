@@ -200,13 +200,16 @@ function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
   });
 }
 
-function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, manifest, entries }) {
+function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, manifest, entries, expectedPersonId = null }) {
   const absoluteManifestPath = path.join(rootDir, starterManifestPath);
   const manifestDir = path.dirname(absoluteManifestPath);
   const realManifestDir = fs.realpathSync(manifestDir);
   const realRootDir = fs.realpathSync(rootDir);
   const supportedTypes = new Set(['text', 'message', 'talk', 'screenshot']);
   const manifestPersonId = isNonEmptyString(manifest?.personId) ? manifest.personId : null;
+  const normalizedManifestPersonId = manifestPersonId ? slugifyPersonId(manifestPersonId) : null;
+  const normalizedExpectedPersonId = isNonEmptyString(expectedPersonId) ? slugifyPersonId(expectedPersonId) : null;
+  const expectedOwnerPersonId = normalizedManifestPersonId || normalizedExpectedPersonId;
 
   entries.forEach((entry, index) => {
     if (!entry || typeof entry !== 'object') {
@@ -219,8 +222,8 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
     }
 
     const resolvedPersonId = isNonEmptyString(entry.personId) ? entry.personId : manifestPersonId;
-    if (manifestPersonId && resolvedPersonId && slugifyPersonId(resolvedPersonId) !== slugifyPersonId(manifestPersonId)) {
-      throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${slugifyPersonId(manifestPersonId)}`);
+    if (expectedOwnerPersonId && resolvedPersonId && slugifyPersonId(resolvedPersonId) !== expectedOwnerPersonId) {
+      throw new Error(`Profile intake manifest entry ${index} targets a different profile: expected ${expectedOwnerPersonId}`);
     }
 
     if ((type === 'message' || type === 'talk') && !isNonEmptyString(entry.text)) {
@@ -354,6 +357,7 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
         starterManifestPath: manifestPath,
         manifest,
         entries,
+        expectedPersonId,
       });
     }
     if (hasStarterTemplates) {
@@ -362,6 +366,7 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
         starterManifestPath: manifestPath,
         manifest,
         entries: buildStarterTemplateEntries(manifest, entryTemplateTypes),
+        expectedPersonId,
       });
     }
   } catch (error) {

@@ -103,3 +103,33 @@ test('inspectProfileIntakeManifest keeps backslash-normalized relative entry fil
   assert.equal(manifest.error, null);
   assert.deepEqual(manifest.repairPaths, []);
 });
+
+test('inspectProfileIntakeManifest rejects starter templates that target a different expected profile when manifest personId is omitted', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      entries: [],
+      entryTemplates: {
+        text: {
+          file: 'sample.txt',
+          personId: 'jane-doe',
+        },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/harry-han/imports/materials.template.json',
+    expectedPersonId: 'harry-han',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /targets a different profile: expected harry-han/);
+  assert.deepEqual(manifest.entryTemplateTypes, ['text']);
+  assert.equal(manifest.entryTemplateCount, 1);
+});
