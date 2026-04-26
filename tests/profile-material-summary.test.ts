@@ -5207,11 +5207,52 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 0);
   assert.equal(summary.ingestion.profileCommands.some((profile) => profile.personId === 'harry-han'), true);
   assert.equal(summary.ingestion.helperCommands?.repairImportedInvalidBundle, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(summary.ingestion.recommendedProfileId, 'harry-han');
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+  ]);
+  assert.match(
+    summary.ingestion.recommendedRefreshIntakeCommand ?? '',
+    /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, null);
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, null);
+  assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.deepEqual(summary.ingestion.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: harry?.latestMaterialAt ?? null,
+      latestMaterialId: harry?.latestMaterialId ?? null,
+      latestMaterialSourcePath: harry?.latestMaterialSourcePath ?? null,
+      refreshReasons: harry?.refreshReasons ?? [],
+      missingDrafts: harry?.missingDrafts ?? [],
+      draftGapSummary: harry?.draftGapSummary ?? null,
+      fallbackCommand: harry?.starterImportCommand ?? null,
+      refreshIntakeCommand: harry?.updateIntakeCommand ?? null,
+      editPath: harry?.intakeManifestPath ?? null,
+      editPaths: ['profiles/harry-han/imports/materials.template.json'],
+      manifestInspectCommand: null,
+      manifestImportCommand: null,
+      intakeManifestEntryTemplateTypes: harry?.intakeManifestEntryTemplateTypes ?? [],
+      intakeManifestEntryTemplateDetails: harry?.intakeManifestEntryTemplateDetails ?? [],
+      intakeManifestEntryTemplateCount: harry?.intakeManifestEntryTemplateCount ?? 0,
+      intakeManifestEntryTemplateRoot: harry?.intakeManifestEntryTemplateRoot ?? null,
+      inspectCommand: harry?.followUpImportIntakeWithoutRefreshCommand ?? null,
+      followUpCommand: harry?.followUpImportIntakeCommand ?? null,
+      paths: [
+        'profiles/harry-han/imports/materials.template.json',
+      ],
+    },
+  ]);
   assert.equal(harry?.intakeReady, true);
   assert.equal(harry?.intakeManifestStatus, 'invalid');
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (invalid JSON)');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; starter root profiles\/harry-han\/imports; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\)/);
 });
 

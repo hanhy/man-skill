@@ -2255,12 +2255,23 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for imported profile Harry Han (harry-han) — invalid JSON');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['profiles/harry-han/imports/materials.template.json']);
+  assert.equal(summary.workLoop.currentPriority.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
+  assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, null);
+  assert.equal(summary.workLoop.currentPriority.manifestImportCommand, null);
+  assert.equal(summary.workLoop.currentPriority.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports/materials.template.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\]/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(summary.promptPreview, /paths: profiles\/harry-han\/imports\/materials\.template\.json/);
 });
 
@@ -2760,10 +2771,22 @@ test('buildSummary work loop bundles imported invalid intake manifest repairs wh
   assert.equal(summary.workLoop.currentPriority.command, summary.ingestion.repairImportedInvalidIntakeBundleCommand);
   assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.workLoop.currentPriority.command ?? '', /node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe' --summary 'Fast feedback beats polished drift\.'/);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/jane-doe/imports/materials.template.json',
+  ]);
+  assert.match(summary.workLoop.currentPriority.refreshIntakeCommand ?? '', /node src\/index\.js update intake --person 'harry-han'/);
+  assert.match(summary.workLoop.currentPriority.refreshIntakeCommand ?? '', /node src\/index\.js update intake --person 'jane-doe'/);
+  assert.equal(summary.workLoop.currentPriority.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/jane-doe/imports/materials.template.json',
   ]);
+  assert.match(summary.promptPreview, /edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /inspect after editing: \(node src\/index\.js import intake --person 'harry-han'\) && \(node src\/index\.js import intake --person 'jane-doe'\)/);
+  assert.match(summary.promptPreview, /then run: \(node src\/index\.js import intake --person 'harry-han' --refresh-foundation\) && \(node src\/index\.js import intake --person 'jane-doe' --refresh-foundation\)/);
 });
 
 test('buildSummary work loop bundles metadata-only invalid intake manifest repairs when multiple starter manifests are broken', () => {

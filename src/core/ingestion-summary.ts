@@ -847,12 +847,12 @@ function buildProfileCommands(profile, options: any = {}) {
     : null;
   const starterTemplateFollowUpImportIntakeWithoutRefreshCommand = imported
     && intake?.ready === true
-    && intakeManifest.status === 'starter'
+    && (intakeManifest.status === 'starter' || intakeManifest.status === 'invalid')
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
   const starterTemplateFollowUpImportIntakeCommand = imported
     && intake?.ready === true
-    && intakeManifest.status === 'starter'
+    && (intakeManifest.status === 'starter' || intakeManifest.status === 'invalid')
     ? `node src/index.js import intake --person ${shellQuote(profile.id)} --refresh-foundation`
     : null;
   const starterImportCommand = imported
@@ -1401,12 +1401,34 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedCommand = importedInvalidIntakeManifestProfiles.length > 1
       ? (helperCommands.repairImportedInvalidBundle ?? firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null)
       : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? helperCommands.repairImportedInvalidBundle ?? null);
+    recommendedRefreshIntakeCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.updateIntakeCommand ?? null);
+    recommendedEditPath = normalizeDraftPath(firstInvalidImportedIntakeProfile?.intakeManifestPath ?? null) ?? null;
+    recommendedEditPaths = importedInvalidIntakeManifestProfiles.length > 1
+      ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
+      : collectStarterTemplateEditPaths(firstInvalidImportedIntakeProfile);
+    recommendedManifestInspectCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
+    recommendedManifestImportCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.importManifestCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.importManifestCommand ?? null);
     recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
     recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
     recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
     recommendedIntakeManifestEntryTemplateRoot = importedInvalidIntakeManifestProfiles.length > 1
       ? null
       : collectStarterTemplateRoot(firstInvalidImportedIntakeProfile);
+    recommendedProfileSlices = importedInvalidIntakeManifestProfiles
+      .map((profile) => buildRecommendedStarterProfileSlice(profile))
+      .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedStarterProfileSlice>> => Boolean(profile));
+    recommendedInspectCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.followUpImportIntakeWithoutRefreshCommand ?? null);
+    recommendedFollowUpCommand = importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(importedInvalidIntakeManifestProfiles.map((profile) => profile?.followUpImportIntakeCommand ?? null))
+      : (firstInvalidImportedIntakeProfile?.followUpImportIntakeCommand ?? null);
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
       ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstInvalidImportedIntakeProfile);
@@ -1523,12 +1545,34 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedCommand = invalidReadyIntakeProfiles.length > 1
         ? (helperCommands.repairInvalidBundle ?? firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null)
         : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? helperCommands.repairInvalidBundle ?? null);
+      recommendedRefreshIntakeCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.updateIntakeCommand ?? null);
+      recommendedEditPath = normalizeDraftPath(firstInvalidReadyIntakeProfile?.intakeManifestPath ?? null) ?? null;
+      recommendedEditPaths = invalidReadyIntakeProfiles.length > 1
+        ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
+        : collectStarterTemplateEditPaths(firstInvalidReadyIntakeProfile);
+      recommendedManifestInspectCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
+      recommendedManifestImportCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.importManifestCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.importManifestCommand ?? null);
       recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
       recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
       recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
       recommendedIntakeManifestEntryTemplateRoot = invalidReadyIntakeProfiles.length > 1
         ? null
         : collectStarterTemplateRoot(firstInvalidReadyIntakeProfile);
+      recommendedProfileSlices = invalidReadyIntakeProfiles
+        .map((profile) => buildRecommendedStarterProfileSlice(profile))
+        .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedStarterProfileSlice>> => Boolean(profile));
+      recommendedInspectCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.followUpImportIntakeWithoutRefreshCommand ?? null);
+      recommendedFollowUpCommand = invalidReadyIntakeProfiles.length > 1
+        ? buildCommandBundle(invalidReadyIntakeProfiles.map((profile) => profile?.followUpImportIntakeCommand ?? null))
+        : (firstInvalidReadyIntakeProfile?.followUpImportIntakeCommand ?? null);
       recommendedPaths = invalidReadyIntakeProfiles.length > 1
         ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
         : collectProfileIntakePaths(firstInvalidReadyIntakeProfile);
