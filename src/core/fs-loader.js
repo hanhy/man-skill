@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeAdmonitionLine, normalizeDocument } from './document-excerpt.ts';
+import { normalizeDraftPath } from './foundation-draft-paths.ts';
 
 function readTextIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -719,7 +720,7 @@ export function parseDraftMetadata(filePath) {
   const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
   const latestMaterialId = latestMaterialMatch?.[2] ?? null;
   const latestMaterialSourcePath = latestMaterialSourceMatch?.[1] && latestMaterialSourceMatch[1] !== 'Not set.'
-    ? latestMaterialSourceMatch[1]
+    ? normalizeDraftPath(latestMaterialSourceMatch[1])
     : null;
   const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
   const materialTypes = parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null);
@@ -921,9 +922,12 @@ export function hasFoundationDraftMaterialMetadataMismatch(
     : countMaterialTypes(normalizedExpectedMaterialTypes);
   const draftSourceCount = Number.isFinite(draftMetadata.sourceCount) ? draftMetadata.sourceCount : 0;
 
+  const normalizedExpectedMaterialSourcePath = normalizeDraftPath(latestMaterialSourcePath);
+  const normalizedDraftMaterialSourcePath = normalizeDraftPath(draftMetadata.latestMaterialSourcePath);
+
   return (draftMetadata.latestMaterialAt ?? null) !== (latestMaterialAt ?? null)
     || (draftMetadata.latestMaterialId ?? null) !== (latestMaterialId ?? null)
-    || (draftMetadata.latestMaterialSourcePath ?? null) !== (latestMaterialSourcePath ?? null)
+    || normalizedDraftMaterialSourcePath !== normalizedExpectedMaterialSourcePath
     || draftSourceCount !== expectedSourceCount
     || !haveSameMaterialTypeCounts(normalizedDraftMaterialTypes, normalizedExpectedMaterialTypes);
 }
@@ -963,9 +967,12 @@ export function hasFoundationMemoryDraftMaterialMetadataMismatch(
     ? memoryDraft.entryCount
     : countMaterialTypes(normalizedDraftMaterialTypes);
 
+  const normalizedExpectedMaterialSourcePath = normalizeDraftPath(latestMaterialSourcePath);
+  const normalizedDraftMaterialSourcePath = normalizeDraftPath(memoryDraft.latestMaterialSourcePath);
+
   return (memoryDraft.latestMaterialAt ?? null) !== (latestMaterialAt ?? null)
     || (memoryDraft.latestMaterialId ?? null) !== (latestMaterialId ?? null)
-    || (memoryDraft.latestMaterialSourcePath ?? null) !== (latestMaterialSourcePath ?? null)
+    || normalizedDraftMaterialSourcePath !== normalizedExpectedMaterialSourcePath
     || draftSourceCount !== expectedSourceCount
     || !haveSameMaterialTypeCounts(normalizedDraftMaterialTypes, normalizedExpectedMaterialTypes);
 }
