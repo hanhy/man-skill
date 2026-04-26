@@ -110,6 +110,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(architectureDoc, /`USER\.md` current product direction loader.*ignores fenced or commented scaffold headings so only visible objectives drive the work loop while still accepting blockquoted visible headings\/list items/i);
   assert.match(architectureDoc, /exact checked-in sample manifest inspect command via `sampleManifestInspectCommand`/);
   assert.match(architectureDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
+  assert.match(architectureDoc, /generic inspect-first manifest helper via `importManifestInspectCommand`/);
   assert.match(architectureDoc, /shorter starter alias via `sampleStarterCommand`/);
   assert.match(architectureDoc, /during bootstrap that means `paths` includes both `\.env\.example` and `\.env` so the active step names the full copy surface rather than only the shared template/i);
   assert.match(architectureDoc, /once `\.env` is already present, switch the blocked rollout step to the narrower `touch '\.env' && \.{3}` populate helper so `paths` narrows to `\.env`/i);
@@ -155,6 +156,7 @@ test('architecture and ingestion docs explain work-loop leader/blocker semantics
   assert.match(ingestionDoc, /current rollout leader is auth-blocked and otherwise runtime-ready.*delivery priority also upgrades to `blocked`.*later channels\/providers still need implementation files/i);
   assert.match(ingestionDoc, /exact checked-in sample manifest inspect command via `sampleManifestInspectCommand`/);
   assert.match(ingestionDoc, /exact checked-in sample manifest command via `sampleManifestCommand`/);
+  assert.match(ingestionDoc, /generic inspect-first manifest helper via `importManifestInspectCommand`/);
   assert.match(ingestionDoc, /shorter `sampleStarterCommand` visible as the friendly starter shortcut/);
   assert.match(ingestionDoc, /`sampleStarterSource` keeps the exact checked-in manifest path visible/i);
   assert.match(ingestionDoc, /`import intake --stale` bulk-imports only import-ready metadata-only intake scaffolds/i);

@@ -1154,6 +1154,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       importedInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     importIntakeAll: intakeImportAllCommand,
@@ -1595,6 +1596,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeImportedCommand: importedIntakeScaffoldCommand,
     sampleImportCommand: 'node src/index.js import text --person <person-id> --file <sample.txt> --refresh-foundation',
     importManifestCommand: 'node src/index.js import manifest --file <manifest.json>',
+    importManifestInspectCommand: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefreshCommand: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
     refreshAllFoundationCommand: 'node src/index.js update foundation --all',
     sampleManifestPath,

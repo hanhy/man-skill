@@ -624,6 +624,7 @@ type IngestionHelperCommands = {
   scaffoldImportedBundle?: string | null;
   repairInvalidBundle?: string | null;
   repairImportedInvalidBundle?: string | null;
+  importManifestInspect?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
   importIntakeAll?: string | null;
@@ -677,6 +678,7 @@ type IngestionSummary = {
   intakeImportImportedAndRefreshCommand?: string | null;
   sampleImportCommand?: string | null;
   importManifestCommand?: string | null;
+  importManifestInspectCommand?: string | null;
   importManifestAndRefreshCommand?: string | null;
   refreshAllFoundationCommand?: string | null;
   sampleManifestPath?: string | null;
@@ -2120,8 +2122,8 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
       pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
-      pushHelperEntry(helperCommands.importManifest ? `manifest ${helperCommands.importManifest}` : null);
-      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest+refresh ${helperCommands.importManifestAndRefresh}` : null);
+      pushHelperEntry(helperCommands.importManifestInspect ? `manifest-inspect ${helperCommands.importManifestInspect}` : null);
+      pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
       pushHelperEntry(helperCommands.importIntakeAllAndRefresh ? `import-all+refresh ${helperCommands.importIntakeAllAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeStale ? `import-stale ${helperCommands.importIntakeStale}` : null);
@@ -2166,13 +2168,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         ? `- helpers: ${helperEntries.join(' | ')}`
         : null;
     })(),
-    (ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
-      ? `- commands: ${[
+    (ingestion.importManifestInspectCommand || ingestion.importManifestCommand || ingestion.importManifestAndRefreshCommand || ingestion.refreshAllFoundationCommand || ingestion.staleRefreshCommand)
+      ? `- commands: ${Array.from(new Set([
+        ingestion.importManifestInspectCommand,
         ingestion.importManifestCommand,
         ingestion.importManifestAndRefreshCommand,
         ingestion.refreshAllFoundationCommand,
         ingestion.staleRefreshCommand,
-      ].filter(Boolean).join(' | ')}`
+      ].filter((value): value is string => typeof value === 'string' && value.length > 0))).join(' | ')}`
       : null,
     ingestion.sampleImportCommand
       ? `- sample import: ${ingestion.sampleImportCommand}`
