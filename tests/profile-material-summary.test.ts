@@ -733,6 +733,72 @@ test('buildIngestionSummary slash-normalizes latest material source paths on rec
   assert.equal(tsSummary.allProfileCommands[0]?.latestMaterialSourcePath, 'profiles/jane-doe/imports/sample.txt');
 });
 
+test('buildIngestionSummary slash-normalizes starter-manifest edit paths before resolving template file targets', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');
+  const imagesDir = path.join(importsDir, 'images');
+  fs.mkdirSync(imagesDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'Ship the first slice before polishing the plan.\n');
+  fs.writeFileSync(path.join(imagesDir, 'chat.png'), 'png-placeholder');
+  fs.writeFileSync(path.join(importsDir, 'materials.template.json'), JSON.stringify({
+    personId: 'harry-han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+    entries: [],
+    entryTemplates: {
+      message: { type: 'message', text: '<paste a representative short message>' },
+      screenshot: { type: 'screenshot', file: 'images\\chat.png' },
+      talk: { type: 'talk', text: '<paste a transcript snippet>' },
+      text: { type: 'text', file: 'sample.txt' },
+    },
+  }, null, 2));
+
+  const profiles = [{
+    id: 'harry-han',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    latestMaterialAt: '2026-04-20T12:00:00.000Z',
+    latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+    latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+    profile: {
+      displayName: 'Harry Han',
+      summary: 'Direct operator with a bias for momentum.',
+    },
+    intake: {
+      ready: true,
+      completion: 'ready',
+      importsDir: 'profiles/harry-han/imports',
+      intakeReadmePath: 'profiles/harry-han/imports/README.md',
+      starterManifestPath: ' .\\profiles\\harry-han\\imports\\materials.template.json ',
+      sampleImagesDirPath: 'profiles/harry-han/imports/images',
+      sampleTextPath: 'profiles/harry-han/imports/sample.txt',
+      missingPaths: [],
+    },
+    foundationDraftStatus: {
+      complete: true,
+      needsRefresh: false,
+      missingDrafts: [],
+    },
+    foundationDraftSummaries: {
+      memory: { generated: true },
+      skills: { generated: true },
+      soul: { generated: true },
+      voice: { generated: true },
+    },
+  }];
+
+  const jsSummary = buildJsIngestionSummary(profiles, { rootDir });
+  const tsSummary = buildTsIngestionSummary(profiles, { rootDir });
+
+  assert.deepEqual(jsSummary, tsSummary);
+  assert.equal(tsSummary.recommendedEditPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(tsSummary.recommendedEditPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/images/chat.png',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+});
+
 test('buildIngestionSummary keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
   const profiles = [
     {

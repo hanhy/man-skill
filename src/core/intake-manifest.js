@@ -13,6 +13,22 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function normalizeRelativeRepoPath(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\.(?=\/)/, '')
+    .replace(/^\//, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/');
+}
+
 function slugifyPersonId(value) {
   return value
     .trim()
@@ -67,7 +83,7 @@ function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
     const template = manifest?.entryTemplates?.[type] ?? {};
     return {
       type,
-      ...(isNonEmptyString(template?.file) ? { file: template.file.trim() } : {}),
+      ...(normalizeRelativeRepoPath(template?.file) ? { file: normalizeRelativeRepoPath(template.file) } : {}),
       ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
       ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
     };
@@ -200,11 +216,16 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
         throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
       }
 
-      const resolvedFilePath = path.resolve(realManifestDir, entry.file);
+      const normalizedEntryFile = normalizeRelativeRepoPath(entry.file);
+      if (!normalizedEntryFile) {
+        throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
+      }
+
+      const resolvedFilePath = path.resolve(realManifestDir, normalizedEntryFile);
       const relativeResolvedFilePath = toRepoRelativePath(realRootDir, resolvedFilePath);
       if (!fs.existsSync(resolvedFilePath)) {
         throw attachRepairPaths(
-          new Error(`Manifest entry ${index} references a missing file: ${entry.file}`),
+          new Error(`Manifest entry ${index} references a missing file: ${normalizedEntryFile}`),
           relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
         );
       }
@@ -212,14 +233,14 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
       const realFilePath = fs.realpathSync(resolvedFilePath);
       if (!fs.statSync(realFilePath).isFile()) {
         throw attachRepairPaths(
-          new Error(`Manifest entry ${index} references a non-file path: ${entry.file}`),
+          new Error(`Manifest entry ${index} references a non-file path: ${normalizedEntryFile}`),
           relativeResolvedFilePath ? [relativeResolvedFilePath] : [],
         );
       }
 
       const relativeFilePath = toRepoRelativePath(realRootDir, realFilePath);
       if (!relativeFilePath) {
-        throw new Error(`Manifest entry ${index} references a file outside the repo: ${entry.file}`);
+        throw new Error(`Manifest entry ${index} references a file outside the repo: ${normalizedEntryFile}`);
       }
     }
   });
@@ -229,7 +250,7 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
  * @param {{ rootDir?: string | null, starterManifestPath?: string | null, expectedPersonId?: string | null }} [options]
  */
 export function inspectProfileIntakeManifest({ rootDir, starterManifestPath, expectedPersonId = null } = {}) {
-  const manifestPath = isNonEmptyString(starterManifestPath) ? starterManifestPath : null;
+  const manifestPath = normalizeRelativeRepoPath(starterManifestPath);
   const emptyEntryTemplateDetails = [];
   const emptyRepairPaths = [];
   if (!isNonEmptyString(rootDir) || !manifestPath) {

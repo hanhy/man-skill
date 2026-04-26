@@ -41,7 +41,7 @@ function buildProfileLabel(profile) {
 }
 
 function normalizeRelativePath(value) {
-  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  return normalizeDraftPath(typeof value === 'string' ? value : null);
 }
 
 function shellQuote(value) {
@@ -149,6 +149,7 @@ function buildRecommendedStarterProfileSlice(profile: any) {
   const intakeManifestEntryTemplateCount = Number.isFinite(profile?.intakeManifestEntryTemplateCount)
     ? Number(profile.intakeManifestEntryTemplateCount)
     : fallbackTemplateCount;
+  const intakeManifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
 
   return {
     personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
@@ -158,7 +159,7 @@ function buildRecommendedStarterProfileSlice(profile: any) {
     latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
     fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
     refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
-    editPath: typeof profile?.intakeManifestPath === 'string' && profile.intakeManifestPath.length > 0 ? profile.intakeManifestPath : null,
+    editPath: intakeManifestPath,
     editPaths: collectStarterTemplateEditPaths(profile),
     manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
     manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
@@ -609,9 +610,7 @@ function buildUpdateProfileCommand(profile, options: any = {}) {
 }
 
 function inspectProfileIntakeManifest(rootDir: string | null, intake: any = null, expectedProfileId: string | null = null) {
-  const starterManifestPath = typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
-    ? intake.starterManifestPath
-    : null;
+  const starterManifestPath = normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null;
   if (!rootDir || !starterManifestPath || intake?.ready !== true) {
     return {
       status: 'missing',
@@ -774,8 +773,8 @@ function buildProfileCommands(profile, options: any = {}) {
     ? importCommands.screenshot
     : null;
   const intakeManifest = inspectProfileIntakeManifest(typeof options?.rootDir === 'string' ? options.rootDir : null, intake, profile.id);
-  const intakeManifestPath = intake?.ready && typeof intake?.starterManifestPath === 'string' && intake.starterManifestPath.trim().length > 0
-    ? intake.starterManifestPath
+  const intakeManifestPath = intake?.ready
+    ? (normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null)
     : null;
   const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
@@ -935,9 +934,7 @@ function collectProfileIntakePaths(profile: any): string[] {
 }
 
 function collectStarterTemplateEditPaths(profile: any): string[] {
-  const manifestPath = typeof profile?.intakeManifestPath === 'string' && profile.intakeManifestPath.length > 0
-    ? profile.intakeManifestPath
-    : null;
+  const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
   const manifestDir = manifestPath ? path.posix.dirname(manifestPath) : null;
   const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
     .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
@@ -946,7 +943,12 @@ function collectStarterTemplateEditPaths(profile: any): string[] {
         return null;
       }
 
-      const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, detail.path));
+      const normalizedDetailPath = normalizeDraftPath(detail.path);
+      if (!normalizedDetailPath) {
+        return null;
+      }
+
+      const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, normalizedDetailPath));
       return resolvedPath.startsWith('../') || resolvedPath === '..'
         ? null
         : resolvedPath;
@@ -1388,7 +1390,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedRefreshIntakeCommand = importedStarterIntakeProfiles.length > 1
       ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.updateIntakeCommand ?? null))
       : (firstImportedStarterIntakeProfile?.updateIntakeCommand ?? null);
-    recommendedEditPath = firstImportedStarterIntakeProfile?.intakeManifestPath ?? null;
+    recommendedEditPath = normalizeDraftPath(firstImportedStarterIntakeProfile?.intakeManifestPath ?? null) ?? null;
     recommendedEditPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectStarterTemplateEditPaths(profile))))
       : collectStarterTemplateEditPaths(firstImportedStarterIntakeProfile);
