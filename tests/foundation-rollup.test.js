@@ -944,6 +944,106 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
   assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
 });
 
+test('PromptAssembler work loop trims latest-material fields before rendering current and advisory follow-ups', () => {
+  const preview = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'A configurable personality core.' },
+    soulProfile: { excerpt: null, coreTruths: [], boundaries: [], vibe: [], continuity: [] },
+    voice: { tone: 'direct', style: 'documented' },
+    memorySummary: { shortTermEntries: 0, longTermEntries: 0, totalEntries: 0, shortTermPresent: false, longTermPresent: false },
+    skillsSummary: { skillCount: 0, discoveredCount: 0, customCount: 0, skills: [] },
+    workLoop: {
+      intervalMinutes: 10,
+      objectiveCount: 1,
+      objectives: ['strengthen foundation'],
+      priorityCount: 2,
+      readyPriorityCount: 1,
+      queuedPriorityCount: 1,
+      blockedPriorityCount: 0,
+      leadingPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      currentPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      actionableReadyPriority: {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: '1 imported starter template still needs edits',
+        nextAction: 'finish the starter manifest edits',
+        command: null,
+        latestMaterialAt: '   ',
+        latestMaterialId: '   ',
+        latestMaterialSourcePath: ' profiles/jane-doe/imports/voice-note.txt ',
+        editPath: 'profiles/jane-doe/imports/materials.template.json',
+        paths: ['profiles/jane-doe/imports/materials.template.json'],
+      },
+      recommendedPriority: {
+        id: 'foundation',
+        label: 'Foundation',
+        status: 'queued',
+        summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+        nextAction: 'refresh Jane Doe (jane-doe)',
+        command: "node src/index.js update foundation --person 'jane-doe'",
+        latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+        latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+        latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+        paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+      },
+      priorities: [
+        {
+          id: 'foundation',
+          label: 'Foundation',
+          status: 'queued',
+          summary: 'core 4/4 ready; profiles 1 queued for refresh, 0 incomplete',
+          nextAction: 'refresh Jane Doe (jane-doe)',
+          command: "node src/index.js update foundation --person 'jane-doe'",
+          latestMaterialAt: ' 2026-04-16T16:00:00.000Z ',
+          latestMaterialId: ' 2026-04-16T16-00-00-000Z-talk ',
+          latestMaterialSourcePath: ' profiles/jane-doe/imports/call-notes.txt ',
+          paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
+        },
+        {
+          id: 'ingestion',
+          label: 'Ingestion',
+          status: 'ready',
+          summary: '1 imported starter template still needs edits',
+          nextAction: 'finish the starter manifest edits',
+          command: null,
+          latestMaterialAt: '   ',
+          latestMaterialId: '   ',
+          latestMaterialSourcePath: ' profiles/jane-doe/imports/voice-note.txt ',
+          editPath: 'profiles/jane-doe/imports/materials.template.json',
+          paths: ['profiles/jane-doe/imports/materials.template.json'],
+        },
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(preview, /latest material: 2026-04-16T16:00:00\.000Z \(2026-04-16T16-00-00-000Z-talk\) @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.match(preview, /advisory latest material: unknown timestamp @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.doesNotMatch(preview, /latest material:  2026-04-16T16:00:00\.000Z /);
+  assert.doesNotMatch(preview, /@ profiles\/jane-doe\/imports\/voice-note\.txt /);
+});
+
 test('PromptAssembler work loop keeps draft-path provenance visible when draft source counts are unavailable', () => {
   const preview = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'A configurable personality core.' },

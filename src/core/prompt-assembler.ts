@@ -2735,15 +2735,9 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const actionableReadyPriorityTemplateSummary = formatPriorityTemplateSummary(actionableReadyPriority);
   const actionableReadyPriorityTemplateDetailSummary = formatPriorityTemplateDetails(actionableReadyPriority);
   const formatPriorityLatestMaterial = (priority?: WorkLoopPriority | null, prefix = '- latest material: '): string | null => {
-    const latestMaterialAt = typeof priority?.latestMaterialAt === 'string' && priority.latestMaterialAt.length > 0
-      ? priority.latestMaterialAt
-      : null;
-    const latestMaterialId = typeof priority?.latestMaterialId === 'string' && priority.latestMaterialId.length > 0
-      ? priority.latestMaterialId
-      : null;
-    const latestMaterialSourcePath = typeof priority?.latestMaterialSourcePath === 'string' && priority.latestMaterialSourcePath.length > 0
-      ? priority.latestMaterialSourcePath
-      : null;
+    const latestMaterialAt = normalizeOptionalString(priority?.latestMaterialAt);
+    const latestMaterialId = normalizeOptionalString(priority?.latestMaterialId);
+    const latestMaterialSourcePath = normalizeOptionalString(priority?.latestMaterialSourcePath);
 
     if (!latestMaterialAt && !latestMaterialId && !latestMaterialSourcePath) {
       return null;
