@@ -595,6 +595,29 @@ test('buildCoreFoundationCommand keeps nested subheadings from triggering thin s
   );
 });
 
+test('buildCoreFoundationCommand keeps nested Setext subheadings from triggering thin skill doc repairs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-setext-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n## What this skill is for\nSignals\n-------\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\nSignals\n-------\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+});
+
 test('buildCoreFoundationCommand keeps thin voice scaffolds idempotent', () => {
   const command = buildCoreFoundationCommand({
     area: 'voice',
