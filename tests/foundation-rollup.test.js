@@ -559,6 +559,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
     recommendedLatestMaterialAt: null,
     recommendedLatestMaterialId: null,
     recommendedLatestMaterialSourcePath: null,
+    recommendedDraftSourcesSummary: null,
     recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills 1/3 ready (candidate-skills), missing evidence/gaps-to-validate | soul 1/3 ready (core-truths), missing boundaries/continuity | voice 1/4 ready (tone), missing signature-moves/avoid/language-hints',
     helperCommands: {
@@ -582,6 +583,7 @@ test('buildFoundationRollup aggregates generated, stale, and candidate foundatio
         latestMaterialId: null,
         latestMaterialSourcePath: null,
         candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
+        draftSourcesSummary: null,
         draftGapCount: 8,
         draftGapCounts: {
           memory: 1,
@@ -1345,6 +1347,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     recommendedLatestMaterialAt: summary.foundation.maintenance.recommendedLatestMaterialAt,
     recommendedLatestMaterialId: summary.foundation.maintenance.recommendedLatestMaterialId,
     recommendedLatestMaterialSourcePath: summary.foundation.maintenance.recommendedLatestMaterialSourcePath,
+    recommendedDraftSourcesSummary: summary.foundation.maintenance.recommendedDraftSourcesSummary,
     recommendedCandidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
     recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
     helperCommands: {
@@ -1368,6 +1371,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
         latestMaterialId: summary.foundation.maintenance.queuedProfiles[0].latestMaterialId,
         latestMaterialSourcePath: summary.foundation.maintenance.queuedProfiles[0].latestMaterialSourcePath,
         candidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
+        draftSourcesSummary: summary.foundation.maintenance.queuedProfiles[0].draftSourcesSummary,
         draftGapCount: 12,
         draftGapCounts: {
           memory: 1,

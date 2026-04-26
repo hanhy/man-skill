@@ -448,7 +448,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
         latestMaterialId: normalizeOptionalString(profile.latestMaterialId),
         latestMaterialSourcePath: normalizeOptionalString(profile.latestMaterialSourcePath),
         candidateSignalSummary,
-        ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
+        draftSourcesSummary,
         draftGapCount: countDraftGaps(draftGapCounts),
         draftGapCounts,
         draftGapSummary: summarizeProfileDraftGaps(profile),
@@ -510,7 +510,7 @@ function summarizeMaintenanceQueue(profiles: any[] = []) {
     recommendedLatestMaterialAt: recommendedProfile?.latestMaterialAt ?? null,
     recommendedLatestMaterialId: recommendedProfile?.latestMaterialId ?? null,
     recommendedLatestMaterialSourcePath: recommendedProfile?.latestMaterialSourcePath ?? null,
-    ...(recommendedProfile?.draftSourcesSummary ? { recommendedDraftSourcesSummary: recommendedProfile.draftSourcesSummary } : {}),
+    recommendedDraftSourcesSummary: recommendedProfile?.draftSourcesSummary ?? null,
     recommendedCandidateSignalSummary: recommendedProfile?.candidateSignalSummary ?? null,
     recommendedDraftGapSummary: recommendedProfile?.draftGapSummary ?? null,
     helperCommands: {
