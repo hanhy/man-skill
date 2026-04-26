@@ -139,6 +139,30 @@ test('direct screenshot imports skip unchanged reruns before copying duplicate a
   assert.equal(materialRecords.length, 1);
 });
 
+test('direct message and talk imports reject whitespace-only text without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  assert.throws(
+    () => ingestion.importMessage({
+      personId: 'harry-han',
+      text: '   ',
+    }),
+    /text is required for message import/,
+  );
+
+  assert.throws(
+    () => ingestion.importTalkSnippet({
+      personId: 'harry-han',
+      text: '   ',
+    }),
+    /text is required for talk import/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  assert.equal(fs.existsSync(materialsDir), false);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

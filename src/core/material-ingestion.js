@@ -1321,7 +1321,7 @@ export class MaterialIngestion {
   }
 
   importMessage({ personId, text, notes = null, fingerprint = null }) {
-    if (!text) {
+    if (!isNonEmptyString(text)) {
       throw new Error('text is required for message import');
     }
 
@@ -1348,7 +1348,7 @@ export class MaterialIngestion {
   }
 
   importTalkSnippet({ personId, text, notes = null, fingerprint = null }) {
-    if (!text) {
+    if (!isNonEmptyString(text)) {
       throw new Error('text is required for talk import');
     }
 
