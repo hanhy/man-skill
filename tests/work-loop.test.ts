@@ -2017,6 +2017,8 @@ test('buildSummary keeps starter template details visible when a metadata-only i
     { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
     { type: 'text', source: 'file', path: 'sample.txt', preview: null },
   ]);
+  assert.equal(summary.workLoop.currentPriority.intakeManifestEntryTemplateRoot, 'profiles/metadata-only/imports');
+  assert.match(summary.promptPreview, /starter root profiles\/metadata-only\/imports/);
   assert.match(summary.promptPreview, /starter details: message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt/);
 });
 
@@ -2063,6 +2065,8 @@ test('buildSummary slash-normalizes starter template detail paths across work-lo
     { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
     { type: 'text', source: 'file', path: 'sample.txt', preview: null },
   ]);
+  assert.equal(summary.workLoop.currentPriority.intakeManifestEntryTemplateRoot, 'profiles/metadata-only/imports');
+  assert.match(summary.promptPreview, /starter root profiles\/metadata-only\/imports/);
   assert.match(summary.promptPreview, /starter details: message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt/);
   assert.doesNotMatch(summary.promptPreview, /\.\\images\\missing-chat\.png/);
   assert.doesNotMatch(summary.promptPreview, /\.\\sample\.txt/);

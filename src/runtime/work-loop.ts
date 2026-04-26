@@ -27,6 +27,7 @@ export type WorkPriority = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
   intakeManifestEntryTemplateCount?: number;
+  intakeManifestEntryTemplateRoot?: string | null;
   recommendedProfileSlices?: Array<{
     personId: string | null;
     label: string | null;
@@ -42,6 +43,7 @@ export type WorkPriority = {
     intakeManifestEntryTemplateTypes: string[];
     intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
     intakeManifestEntryTemplateCount: number;
+    intakeManifestEntryTemplateRoot: string | null;
     inspectCommand: string | null;
     followUpCommand: string | null;
     paths: string[];

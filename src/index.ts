@@ -1248,7 +1248,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
       intakeManifestEntryTemplateTypes: string[];
       intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
       intakeManifestEntryTemplateCount: number;
+      intakeManifestEntryTemplateRoot: string | null;
       inspectCommand: string | null;
+
       followUpCommand: string | null;
       paths: string[];
     } => Boolean(value) && typeof value === 'object' && !Array.isArray(value))
@@ -1295,6 +1297,9 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     intakeManifestEntryTemplateTypes: recommendedIntakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails: recommendedIntakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount: recommendedIntakeManifestEntryTemplateCount,
+    intakeManifestEntryTemplateRoot: typeof ingestionSummary?.recommendedIntakeManifestEntryTemplateRoot === 'string' && ingestionSummary.recommendedIntakeManifestEntryTemplateRoot.length > 0
+      ? ingestionSummary.recommendedIntakeManifestEntryTemplateRoot
+      : null,
     recommendedProfileSlices,
     inspectCommand: recommendedInspectCommand,
     followUpCommand: recommendedFollowUpCommand,

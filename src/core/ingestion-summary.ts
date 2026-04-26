@@ -150,6 +150,7 @@ function buildRecommendedStarterProfileSlice(profile: any) {
     ? Number(profile.intakeManifestEntryTemplateCount)
     : fallbackTemplateCount;
   const intakeManifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
+  const intakeManifestEntryTemplateRoot = collectStarterTemplateRoot(profile);
 
   return {
     personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
@@ -161,6 +162,7 @@ function buildRecommendedStarterProfileSlice(profile: any) {
     refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
     editPath: intakeManifestPath,
     editPaths: collectStarterTemplateEditPaths(profile),
+    intakeManifestEntryTemplateRoot,
     manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
     manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
     intakeManifestEntryTemplateTypes,
@@ -885,6 +887,7 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount,
+    intakeManifestEntryTemplateRoot: collectStarterTemplateRoot({ intakeManifestPath: intakeManifest.path }),
     intakePaths: intakeManifest.status === 'invalid'
       ? Array.from(new Set([
         intakeManifest.path,
@@ -933,9 +936,19 @@ function collectProfileIntakePaths(profile: any): string[] {
     : [];
 }
 
+function collectStarterTemplateRoot(profile: any): string | null {
+  const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
+  if (!manifestPath) {
+    return null;
+  }
+
+  const manifestDir = path.posix.dirname(manifestPath);
+  return manifestDir && manifestDir !== '.' ? manifestDir : null;
+}
+
 function collectStarterTemplateEditPaths(profile: any): string[] {
   const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
-  const manifestDir = manifestPath ? path.posix.dirname(manifestPath) : null;
+  const manifestDir = collectStarterTemplateRoot(profile);
   const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
     .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
     .map((detail) => {
@@ -1268,6 +1281,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedIntakeManifestEntryTemplateTypes: string[] = [];
   let recommendedIntakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> = [];
   let recommendedIntakeManifestEntryTemplateCount = 0;
+  let recommendedIntakeManifestEntryTemplateRoot: string | null = null;
   let recommendedProfileSlices: Array<{
     personId: string | null;
     label: string | null;
@@ -1283,6 +1297,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     intakeManifestEntryTemplateTypes: string[];
     intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
     intakeManifestEntryTemplateCount: number;
+    intakeManifestEntryTemplateRoot: string | null;
     inspectCommand: string | null;
     followUpCommand: string | null;
     paths: string[];
@@ -1369,6 +1384,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
     recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
     recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
+    recommendedIntakeManifestEntryTemplateRoot = importedInvalidIntakeManifestProfiles.length > 1
+      ? null
+      : collectStarterTemplateRoot(firstInvalidImportedIntakeProfile);
     recommendedPaths = importedInvalidIntakeManifestProfiles.length > 1
       ? Array.from(new Set(importedInvalidIntakeManifestProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstInvalidImportedIntakeProfile);
@@ -1403,6 +1421,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
     recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
     recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
+    recommendedIntakeManifestEntryTemplateRoot = importedStarterIntakeProfiles.length > 1
+      ? null
+      : collectStarterTemplateRoot(firstImportedStarterIntakeProfile);
     recommendedProfileSlices = importedStarterIntakeProfiles
       .map((profile) => buildRecommendedStarterProfileSlice(profile))
       .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedStarterProfileSlice>> => Boolean(profile));
@@ -1485,6 +1506,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedIntakeManifestEntryTemplateTypes = starterTemplateSummary.types;
       recommendedIntakeManifestEntryTemplateDetails = starterTemplateSummary.details;
       recommendedIntakeManifestEntryTemplateCount = starterTemplateSummary.count;
+      recommendedIntakeManifestEntryTemplateRoot = invalidReadyIntakeProfiles.length > 1
+        ? null
+        : collectStarterTemplateRoot(firstInvalidReadyIntakeProfile);
       recommendedPaths = invalidReadyIntakeProfiles.length > 1
         ? Array.from(new Set(invalidReadyIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
         : collectProfileIntakePaths(firstInvalidReadyIntakeProfile);
@@ -1656,6 +1680,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedIntakeManifestEntryTemplateTypes,
     recommendedIntakeManifestEntryTemplateDetails,
     recommendedIntakeManifestEntryTemplateCount,
+    recommendedIntakeManifestEntryTemplateRoot,
     recommendedProfileSlices,
     recommendedInspectCommand,
     recommendedFollowUpCommand,

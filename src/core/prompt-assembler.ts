@@ -567,6 +567,7 @@ type RecommendedStarterProfileSlice = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   intakeManifestEntryTemplateCount?: number;
+  intakeManifestEntryTemplateRoot?: string | null;
   inspectCommand?: string | null;
   followUpCommand?: string | null;
   paths?: string[];
@@ -603,6 +604,7 @@ type IngestionProfileCommand = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   intakeManifestEntryTemplateCount?: number;
+  intakeManifestEntryTemplateRoot?: string | null;
   refreshFoundationCommand?: string | null;
   importManifestWithoutRefreshCommand?: string | null;
   importManifestCommand?: string | null;
@@ -736,6 +738,7 @@ type IngestionSummary = {
   recommendedIntakeManifestEntryTemplateTypes?: string[];
   recommendedIntakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   recommendedIntakeManifestEntryTemplateCount?: number;
+  recommendedIntakeManifestEntryTemplateRoot?: string | null;
   recommendedInspectCommand?: string | null;
   recommendedFollowUpCommand?: string | null;
   recommendedPaths?: string[];
@@ -775,6 +778,7 @@ type WorkLoopPriority = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: StarterTemplateDetail[];
   intakeManifestEntryTemplateCount?: number;
+  intakeManifestEntryTemplateRoot?: string | null;
   recommendedProfileSlices?: RecommendedStarterProfileSlice[];
   inspectCommand?: string | null;
   followUpCommand?: string | null;
@@ -2068,6 +2072,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     : (recommendedIntakeManifestEntryTemplateCount > 0 ? `${recommendedIntakeManifestEntryTemplateCount} total` : null);
   const recommendedProfileSliceSummary = formatRecommendedStarterProfileSlices(ingestion?.recommendedProfileSlices);
   const recommendedTemplateDetailSummary = formatStarterTemplateDetailSummary(ingestion?.recommendedIntakeManifestEntryTemplateDetails);
+  const recommendedTemplateRoot = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedIntakeManifestEntryTemplateRoot));
   const recommendedEditSegment = recommendedEditPaths.length > 1
     ? `; edit paths ${recommendedEditPaths.join(', ')}`
     : (recommendedEditPath ? `; edit ${recommendedEditPath}` : '');
@@ -2078,7 +2083,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; manifest ${recommendedManifestImportCommand}`
     : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2231,6 +2236,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         && (isStarterTemplateProfile || profile.intakeManifestStatus === 'invalid')
         && Array.isArray(profile.intakeManifestEntryTemplateDetails)
         && profile.intakeManifestEntryTemplateDetails.length > 0;
+      const starterTemplateRoot = keepStarterTemplateDetailsVisible
+        ? normalizeDraftPath(normalizeOptionalString(profile.intakeManifestEntryTemplateRoot))
+        : null;
+      const starterTemplateRootSegment = starterTemplateRoot
+        ? `; starter root ${starterTemplateRoot}`
+        : '';
       const starterTemplateDetailSummary = keepStarterTemplateDetailsVisible
         ? formatStarterTemplateDetailSummary(profile.intakeManifestEntryTemplateDetails)
         : null;
@@ -2302,7 +2313,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const updateSegment = syncCommand
         ? ` | sync ${syncCommand}`
         : (profile.updateProfileCommand ? ` | update ${profile.updateProfileCommand}` : '');
-      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${starterTemplateDetailSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
+      return `- ${profile.label ?? profile.personId}: ${materialSummary}${latestMaterial}${intakeStatusSegment}${starterTemplateRootSegment}${starterTemplateDetailSegment}${draftGapSegment}${scaffoldSegment}${refreshIntakeSegment}${intakeShortcutSegment}${manifestInspectSegment}${manifestSegment}${followUpImportIntakeWithoutRefreshSegment}${followUpImportIntakeSegment}${starterImportSegment}${actionSegment}${updateSegment}`;
     }),
     remainingProfileSummary,
   ].filter(Boolean).join('\n');
@@ -2809,6 +2820,10 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     return `${templateTypes.join(', ')}${templateCount > 0 ? ` (${templateCount} total)` : ''}`;
   };
   const formatPriorityTemplateDetails = (priority?: WorkLoopPriority | null): string | null => formatStarterTemplateDetailSummary(priority?.intakeManifestEntryTemplateDetails);
+  const formatPriorityTemplateRoot = (priority?: WorkLoopPriority | null, prefix = '- starter root: '): string | null => {
+    const templateRoot = normalizeDraftPath(normalizeOptionalString(priority?.intakeManifestEntryTemplateRoot));
+    return templateRoot ? `${prefix}${templateRoot}` : null;
+  };
   const recommendedPriorityTemplateSummary = formatPriorityTemplateSummary(recommendedPriority);
   const recommendedPriorityTemplateDetailSummary = formatPriorityTemplateDetails(recommendedPriority);
   const currentPriorityTemplateSummary = formatPriorityTemplateSummary(currentPriority);
@@ -2921,6 +2936,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- recommended starter templates: ${recommendedPriorityTemplateSummary}`
       : null,
     showRecommendedPriorityDetails ? formatPriorityStarterProfiles(recommendedPriority, '- recommended starter profiles: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityTemplateRoot(recommendedPriority, '- recommended starter root: ') : null,
     showRecommendedPriorityDetails && recommendedPriorityTemplateDetailSummary
       ? `- recommended starter details: ${recommendedPriorityTemplateDetailSummary}`
       : null,
@@ -2971,6 +2987,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- starter templates: ${currentPriorityTemplateSummary}`
       : null,
     formatPriorityStarterProfiles(currentPriority),
+    formatPriorityTemplateRoot(currentPriority),
     currentPriorityTemplateDetailSummary
       ? `- starter details: ${currentPriorityTemplateDetailSummary}`
       : null,
@@ -3021,6 +3038,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- runnable starter templates: ${runnablePriorityTemplateSummary}`
       : null,
     showRunnablePriority ? formatPriorityStarterProfiles(runnablePriority, '- runnable starter profiles: ') : null,
+    showRunnablePriority ? formatPriorityTemplateRoot(runnablePriority, '- runnable starter root: ') : null,
     showRunnablePriority && runnablePriorityTemplateDetailSummary
       ? `- runnable starter details: ${runnablePriorityTemplateDetailSummary}`
       : null,
@@ -3071,6 +3089,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- advisory starter templates: ${actionableReadyPriorityTemplateSummary}`
       : null,
     showActionableReadyPriority ? formatPriorityStarterProfiles(actionableReadyPriority, '- advisory starter profiles: ') : null,
+    showActionableReadyPriority ? formatPriorityTemplateRoot(actionableReadyPriority, '- advisory starter root: ') : null,
     showActionableReadyPriority && actionableReadyPriorityTemplateDetailSummary
       ? `- advisory starter details: ${actionableReadyPriorityTemplateDetailSummary}`
       : null,
