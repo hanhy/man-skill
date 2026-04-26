@@ -1970,8 +1970,7 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
     return statusPrefix?.trim() || intakeStatusSummary;
   }
 
-  const materialCount = typeof profile?.materialCount === 'number' ? profile.materialCount : 0;
-  if (profile?.intakeReady === true && materialCount === 0) {
+  if (profile?.intakeReady === true) {
     return 'ready';
   }
 

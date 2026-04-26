@@ -3156,6 +3156,71 @@ test('PromptAssembler includes delivery foundation snapshots in the system promp
   assert.match(prompt, /OpenAI \[planned\]: set OPENAI_API_KEY for gpt-5 \{chat, reasoning, vision\}/);
 });
 
+test('PromptAssembler keeps hidden imported intake-ready profiles labeled in the compact remainder line', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: {
+      profileCount: 3,
+      importedProfileCount: 3,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 3,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      importedIntakeReadyProfileCount: 1,
+      importedStarterIntakeProfileCount: 0,
+      importedIntakeBackfillProfileCount: 0,
+      importedInvalidIntakeManifestProfileCount: 0,
+      invalidMetadataOnlyIntakeManifestProfileCount: 0,
+      supportedImportTypes: ['message', 'text'],
+      helperCommands: {
+        bootstrap: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
+      },
+      allProfileCommands: [
+        {
+          personId: 'jane-doe',
+          label: 'Jane Doe (jane-doe)',
+          materialCount: 1,
+          materialTypes: { message: 1 },
+          intakeReady: false,
+          intakeStatusSummary: 'intake missing — create imports, images, README.md, materials.template.json, sample.txt',
+          updateIntakeCommand: "node src/index.js update intake --person 'jane-doe' --display-name 'Jane Doe'",
+          updateProfileCommand: "node src/index.js update profile --person 'jane-doe' --display-name 'Jane Doe'",
+        },
+        {
+          personId: 'alex-doe',
+          label: 'Alex Doe (alex-doe)',
+          materialCount: 1,
+          materialTypes: { text: 1 },
+          intakeReady: false,
+          intakeStatusSummary: 'intake starter template — add entries before import (templates: message, text)',
+          updateIntakeCommand: "node src/index.js update intake --person 'alex-doe' --display-name 'Alex Doe'",
+          updateProfileCommand: "node src/index.js update profile --person 'alex-doe' --display-name 'Alex Doe'",
+        },
+        {
+          personId: 'harry-han',
+          label: 'Harry Han (harry-han)',
+          materialCount: 1,
+          materialTypes: { message: 1 },
+          intakeReady: true,
+          intakeCompletion: 'ready',
+          intakeStatusSummary: 'ready',
+          updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han'",
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /\+1 more profile: Harry Han \(harry-han\) \[intake ready\]/);
+});
+
 test('PromptAssembler falls back to ingestion helperCommands for sample helper lines', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
