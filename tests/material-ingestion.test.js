@@ -643,6 +643,45 @@ test('importManifest supports a single-target shorthand profile and inherits per
   assert.equal(materials.length, 2);
 });
 
+test('importManifest treats whitespace-only entry personId as absent when a shorthand manifest personId is available', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        entries: [
+          {
+            personId: '   ',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.results[0]?.personId, 'harry-han');
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.id, 'harry-han');
+  assert.equal(profile.displayName, 'Harry Han');
+});
+
 test('importManifest rejects entries that target profiles not declared in a multi-profile manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

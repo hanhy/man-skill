@@ -1563,7 +1563,7 @@ export class MaterialIngestion {
       }
 
       const explicitPersonId = entry.personId;
-      const resolvedPersonId = explicitPersonId ?? defaultPersonId;
+      const resolvedPersonId = isNonEmptyString(explicitPersonId) ? explicitPersonId : defaultPersonId;
       if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
