@@ -2339,8 +2339,14 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
   const { command, subcommand, options } = parseArgs(argv);
 
-  if (command === '--help' || command === 'help' || options.help) {
+  if (command === '--help' || command === 'help') {
     console.log(formatCliUsage());
+    return;
+  }
+
+  if (options.help) {
+    const usageHint = buildCommandUsageHint(command, subcommand);
+    console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
     return;
   }
 

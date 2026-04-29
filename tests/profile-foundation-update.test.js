@@ -1188,6 +1188,55 @@ test('CLI command errors print a concise usage hint without a stack trace', () =
   );
 });
 
+test('CLI subcommand help prefers command-specific usage and examples for intake and foundation flows', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'intake', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
+        /node src\/index\.js import intake --stale/,
+      ],
+    },
+    {
+      args: ['update', 'intake', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/,
+        /node src\/index\.js update intake --stale/,
+      ],
+    },
+    {
+      args: ['update', 'foundation', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js update foundation --person 'harry-han'/,
+        /node src\/index\.js update foundation --stale/,
+      ],
+    },
+  ];
+
+  cases.forEach(({ args, expectedUsage, expectedExamples }) => {
+    const output = execFileSync('node', [cliEntrypoint, ...args], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    assert.match(output, expectedUsage);
+    expectedExamples.forEach((pattern) => {
+      assert.match(output, pattern);
+    });
+    assert.doesNotMatch(output, /^Usage: node src\/index\.js \[command\] \[subcommand\] \[options\]/m);
+    assert.doesNotMatch(output, /Commands:/);
+  });
+});
+
 test('CLI update intake errors advertise the full usage surface for person, stale, imported, and all modes', () => {
   const rootDir = makeTempRepo();
 
