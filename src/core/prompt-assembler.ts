@@ -2421,6 +2421,22 @@ function formatHeadingAliasSummary(
   return `${prefix}${normalizedAliases.join(', ')}`;
 }
 
+function formatCompactPathPreview(
+  paths: string[] | null | undefined,
+  prefix = '; samples ',
+): string | null {
+  const normalizedPaths = normalizeStringArray(
+    paths,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
+
+  if (normalizedPaths.length === 0) {
+    return null;
+  }
+
+  return `${prefix}${normalizedPaths.join(', ')}`;
+}
+
 function formatRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -2614,7 +2630,7 @@ function buildReadyCoreFoundationDetails(
     path?: string | null,
   ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}${typeof path === 'string' && path.length > 0 ? ` @ ${path}` : ''}`;
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}${formatCompactPathPreview(memory.sampleEntries, ', samples ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
