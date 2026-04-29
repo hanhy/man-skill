@@ -1082,10 +1082,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(result.importCommands, {
-    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+    text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+    talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+    screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.equal(result.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
@@ -1101,10 +1101,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     directImports: {
-      text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-      message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-      talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+      text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+      talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+      screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
 
@@ -1140,10 +1140,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
   assert.match(intakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
   assert.match(intakeReadme, /Direct import commands:/);
-  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person 'harry-han' --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import message --person 'harry-han' --text <message> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import talk --person 'harry-han' --text <snippet> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import screenshot --person 'harry-han' --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
   assert.match(intakeReadme, /outside paths or symlinks that escape the repo root are rejected during import/i);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');

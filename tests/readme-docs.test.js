@@ -292,11 +292,11 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /edit target-profile metadata without refreshing drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(harryIntakeReadme, /sync target-profile metadata and refresh drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(harryIntakeReadme, /text: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
-  assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
-  assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /text: node src\/index\.js import text --person 'harry-han' --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(harryIntakeReadme, /message: node src\/index\.js import message --person 'harry-han' --text <message> --refresh-foundation/);
+  assert.match(harryIntakeReadme, /talk: node src\/index\.js import talk --person 'harry-han' --text <snippet> --refresh-foundation/);
   assert.match(harryIntakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
-  assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
+  assert.match(harryIntakeReadme, /screenshot: node src\/index\.js import screenshot --person 'harry-han' --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
   assert.match(harryIntakeReadme, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
 
   assert.equal(harryIntakeManifest.personId, 'harry-han');

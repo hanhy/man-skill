@@ -2396,17 +2396,17 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     directImports: {
-      text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-      message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-      talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+      text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+      talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+      screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
   assert.deepEqual(result.importCommands, {
-    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+    text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+    talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+    screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
   assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);
@@ -2449,7 +2449,7 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
   assert.match(intakeReadme, /Direct import commands:/);
-  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person 'harry-han' --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('CLI update intake preserves existing starter entries and customized entry templates on rerun', () => {

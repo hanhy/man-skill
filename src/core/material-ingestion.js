@@ -460,11 +460,13 @@ function shellQuote(value) {
 const DEFAULT_STARTER_SCREENSHOT_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==';
 
 function buildDirectImportCommands({ personId, sampleTextPath, sampleScreenshotPath }) {
+  const quotedPersonId = shellQuote(personId);
+
   return {
-    text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
-    message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
-    talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${personId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
+    text: `node src/index.js import text --person ${quotedPersonId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
+    message: `node src/index.js import message --person ${quotedPersonId} --text <message> --refresh-foundation`,
+    talk: `node src/index.js import talk --person ${quotedPersonId} --text <snippet> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${quotedPersonId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
   };
 }
 
