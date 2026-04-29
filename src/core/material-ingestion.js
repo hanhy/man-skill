@@ -390,6 +390,10 @@ function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = fi
   return realFilePath;
 }
 
+function buildRepoRelativeSourcePath(rootDir, filePath) {
+  return path.relative(fs.realpathSync(rootDir), filePath).split(path.sep).join('/');
+}
+
 function buildFallbackDisplayName(value) {
   if (!value || typeof value !== 'string') {
     return null;
@@ -550,6 +554,22 @@ function inspectIntakeManifestState(rootDir, starterManifestPath, expectedPerson
   });
 }
 
+function normalizeRepoRelativePath(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\.(?=\/)/, '')
+    .replace(/^\//, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/');
+}
+
 function formatStarterTemplateTypes(entryTemplateTypes = []) {
   return entryTemplateTypes
     .filter((value) => isNonEmptyString(value))
@@ -557,16 +577,49 @@ function formatStarterTemplateTypes(entryTemplateTypes = []) {
     .join(', ');
 }
 
+function formatStarterTemplateDetails(entryTemplateDetails = []) {
+  if (!Array.isArray(entryTemplateDetails) || entryTemplateDetails.length === 0) {
+    return null;
+  }
+
+  const detailSummary = entryTemplateDetails
+    .map((detail) => {
+      if (!detail || typeof detail !== 'object' || !isNonEmptyString(detail.type)) {
+        return null;
+      }
+
+      const preview = normalizeText(detail.preview);
+      const detailPath = normalizeRepoRelativePath(detail.path);
+      const detailValue = preview ?? detailPath;
+      return detailValue ? `${detail.type.trim()} ${detailValue}` : detail.type.trim();
+    })
+    .filter(Boolean)
+    .join(' | ');
+
+  return detailSummary.length > 0 ? detailSummary : null;
+}
+
 function buildStarterTemplatePromotionError({
   label,
   location = null,
   entryTemplateTypes = [],
+  entryTemplateDetails = [],
+  starterRoot = null,
   inspectCommand,
   importCommand,
 }) {
   const templateSummary = formatStarterTemplateTypes(entryTemplateTypes) || 'none';
+  const starterRootSummary = normalizeRepoRelativePath(starterRoot ?? (isNonEmptyString(location) ? path.posix.dirname(location) : null));
+  const starterTemplateDetailSummary = formatStarterTemplateDetails(entryTemplateDetails);
   const locationSegment = isNonEmptyString(location) ? `: ${location}` : '';
-  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (templates: ${templateSummary}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
+  const templateContextParts = [`templates: ${templateSummary}`];
+  if (starterRootSummary) {
+    templateContextParts.push(`starter root: ${starterRootSummary}`);
+  }
+  if (starterTemplateDetailSummary) {
+    templateContextParts.push(`starter details: ${starterTemplateDetailSummary}`);
+  }
+  return `${label}${locationSegment} — copy entryTemplates into entries[] and fill in real content (${templateContextParts.join('; ')}); then rerun ${inspectCommand} to inspect or ${importCommand} to import and refresh drafts`;
 }
 
 function manifestOwnerMatchesExpectedPersonId(ownerValue, expectedPersonId) {
@@ -1169,6 +1222,8 @@ export class MaterialIngestion {
       throw new Error(buildStarterTemplatePromotionError({
         label: `Profile intake manifest still contains only starter templates: ${normalizedPersonId} @ ${profile.intake.starterManifestPath}`,
         entryTemplateTypes: intakeManifestState.entryTemplateTypes,
+        entryTemplateDetails: intakeManifestState.entryTemplateDetails,
+        starterRoot: path.posix.dirname(profile.intake.starterManifestPath),
         inspectCommand: buildImportIntakeCommand(normalizedPersonId),
         importCommand: buildImportIntakeCommand(normalizedPersonId, { refreshFoundation: true }),
       }));
@@ -1308,9 +1363,15 @@ export class MaterialIngestion {
       throw new Error('sourceFile is required for text import');
     }
 
+    const validatedSourceFile = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolveImportFile(this.rootDir, sourceFile),
+      errorLabel: 'Text import',
+      originalPath: sourceFile,
+    });
     const normalized = this.ensureProfile(personId);
-    const content = fs.readFileSync(sourceFile, 'utf8');
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+    const content = fs.readFileSync(validatedSourceFile, 'utf8');
+    const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
       personId: normalized.personId,
       notes,
@@ -1392,9 +1453,15 @@ export class MaterialIngestion {
       throw new Error('sourceFile is required for screenshot import');
     }
 
+    const validatedSourceFile = assertFileWithinRoot({
+      rootDir: this.rootDir,
+      filePath: resolveImportFile(this.rootDir, sourceFile),
+      errorLabel: 'Screenshot import',
+      originalPath: sourceFile,
+    });
     const normalized = this.ensureProfile(personId);
-    const relativeSourceFile = path.relative(this.rootDir, sourceFile);
-    const fileBuffer = fs.readFileSync(sourceFile);
+    const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
+    const fileBuffer = fs.readFileSync(validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildScreenshotMaterialFingerprint({
       personId: normalized.personId,
       notes,
@@ -1405,9 +1472,9 @@ export class MaterialIngestion {
       this.scaffoldProfileIntake({ personId: normalized.personId });
       return this.buildSkippedMaterialResult(materialFingerprint);
     }
-    const assetFileName = `${timestampId()}-${path.basename(sourceFile)}`;
+    const assetFileName = `${timestampId()}-${path.basename(validatedSourceFile)}`;
     const targetPath = path.join(normalized.materialsDir, 'screenshots', assetFileName);
-    fs.copyFileSync(sourceFile, targetPath);
+    fs.copyFileSync(validatedSourceFile, targetPath);
 
     const result = this.writeMaterialRecord({
       personId: normalized.personId,
@@ -1477,6 +1544,8 @@ export class MaterialIngestion {
         label: 'Manifest still contains only starter templates',
         location: manifestRelativePath,
         entryTemplateTypes: starterManifestState.entryTemplateTypes,
+        entryTemplateDetails: starterManifestState.entryTemplateDetails,
+        starterRoot: path.posix.dirname(manifestRelativePath),
         inspectCommand: buildManifestImportCommand(manifestRelativePath),
         importCommand: buildManifestImportCommand(manifestRelativePath, { refreshFoundation: true }),
       }));
@@ -1494,7 +1563,7 @@ export class MaterialIngestion {
       }
 
       const explicitPersonId = entry.personId;
-      const resolvedPersonId = explicitPersonId ?? defaultPersonId;
+      const resolvedPersonId = isNonEmptyString(explicitPersonId) ? explicitPersonId : defaultPersonId;
       if (!isNonEmptyString(resolvedPersonId)) {
         throw new Error(`Manifest entry ${index} is missing personId`);
       }
@@ -1520,7 +1589,7 @@ export class MaterialIngestion {
           errorLabel: `Manifest entry ${index}`,
           originalPath: entry.file,
         });
-        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+        const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
         const content = fs.readFileSync(sourceFile, 'utf8');
 
         return {
@@ -1585,7 +1654,7 @@ export class MaterialIngestion {
           errorLabel: `Manifest entry ${index}`,
           originalPath: entry.file,
         });
-        const relativeSourceFile = path.relative(this.rootDir, sourceFile);
+        const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
 
         return {
           personId: resolvedPersonId,

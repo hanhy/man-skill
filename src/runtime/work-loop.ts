@@ -20,6 +20,8 @@ export type WorkPriority = {
   draftGapSummary?: string | null;
   fallbackCommand?: string | null;
   refreshIntakeCommand?: string | null;
+  updateProfileCommand?: string | null;
+  updateProfileAndRefreshCommand?: string | null;
   editPath?: string | null;
   editPaths?: string[];
   manifestInspectCommand?: string | null;
@@ -27,14 +29,20 @@ export type WorkPriority = {
   intakeManifestEntryTemplateTypes?: string[];
   intakeManifestEntryTemplateDetails?: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
   intakeManifestEntryTemplateCount?: number;
+  intakeManifestEntryTemplateRoot?: string | null;
   recommendedProfileSlices?: Array<{
     personId: string | null;
     label: string | null;
     latestMaterialAt: string | null;
     latestMaterialId: string | null;
     latestMaterialSourcePath: string | null;
+    refreshReasons?: string[];
+    missingDrafts?: string[];
+    draftGapSummary?: string | null;
     fallbackCommand: string | null;
     refreshIntakeCommand: string | null;
+    updateProfileCommand: string | null;
+    updateProfileAndRefreshCommand: string | null;
     editPath: string | null;
     editPaths: string[];
     manifestInspectCommand: string | null;
@@ -42,6 +50,7 @@ export type WorkPriority = {
     intakeManifestEntryTemplateTypes: string[];
     intakeManifestEntryTemplateDetails: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }>;
     intakeManifestEntryTemplateCount: number;
+    intakeManifestEntryTemplateRoot: string | null;
     inspectCommand: string | null;
     followUpCommand: string | null;
     paths: string[];
@@ -79,6 +88,8 @@ function hasActionablePrioritySurface(priority: WorkPriority): boolean {
       || priority.command
       || priority.fallbackCommand
       || priority.refreshIntakeCommand
+      || priority.updateProfileCommand
+      || priority.updateProfileAndRefreshCommand
       || priority.editPath
       || priority.editPaths?.length
       || priority.manifestInspectCommand

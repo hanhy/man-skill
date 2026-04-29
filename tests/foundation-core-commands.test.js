@@ -158,6 +158,17 @@ test('buildCoreFoundationCommand canonicalizes and quotes memory scaffolds', () 
   );
 });
 
+test('buildCoreFoundationCommand canonicalizes backslash memory scaffolds', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'memory',
+      status: 'thin',
+      paths: ['memory\\scratch\\draft.md', 'memory\\README.md', 'memory\\long-term\\notes.md', 'memory\\scratch\\draft.md'],
+    }),
+    "mkdir -p 'memory' 'memory/long-term' 'memory/scratch' && printf %s '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n' > 'memory/README.md' && touch 'memory/long-term/notes.md' 'memory/scratch/draft.md'",
+  );
+});
+
 test('buildCoreFoundationCommand daily memory scaffold expands the date at execution time', () => {
   const command = buildCoreFoundationCommand({
     area: 'memory',
@@ -316,6 +327,30 @@ test('buildCoreFoundationCommand repairs thin memory README sections when only c
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
     '# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n<!-- explain the purpose here -->\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n```md\n- Example layout guidance lives here.\n```\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps memory README frontmatter at the top while repairing thin root sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'memory',
+    status: 'thin',
+    paths: ['memory/README.md'],
+    thinPaths: ['memory/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-memory-readme-frontmatter-command-'));
+  fs.mkdirSync(path.join(rootDir, 'memory'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '---\ndescription: Durable memory guide\nslug: memory\n---\n# Memory\n\n## What belongs here\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'memory', 'README.md'), 'utf8'),
+    '---\ndescription: Durable memory guide\nslug: memory\n---\n# Memory\n\n## What belongs here\n- Durable repo knowledge and operator context.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n',
   );
 });
 
@@ -514,6 +549,30 @@ test('buildCoreFoundationCommand repairs thin skills root sections when only com
   );
 });
 
+test('buildCoreFoundationCommand keeps skills root README frontmatter at the top while repairing thin root sections', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/README.md'],
+    thinPaths: ['skills/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skills-readme-frontmatter-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '---\ndescription: Shared skill registry guide\nslug: skills\n...\n# Skills\n\n## What lives here\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'README.md'), 'utf8'),
+    '---\ndescription: Shared skill registry guide\nslug: skills\n...\n# Skills\n\n## What lives here\n- Reusable operator procedures and behavior modules.\n\n## Layout\n- <skill>/SKILL.md: per-skill workflow and guidance\n- <category>/<skill>/SKILL.md: grouped skill families for larger registries\n- README.md: shared conventions for the repo skills layer\n',
+  );
+});
+
 test('buildCoreFoundationCommand ignores root section headings that only appear inside fenced code blocks', () => {
   const command = buildCoreFoundationCommand({
     area: 'skills',
@@ -581,6 +640,29 @@ test('buildCoreFoundationCommand keeps nested subheadings from triggering thin s
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
     '# Delivery\n\n## What this skill is for\n### Signals\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps nested Setext subheadings from triggering thin skill doc repairs', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'skills',
+    status: 'thin',
+    paths: ['skills/delivery/SKILL.md'],
+    thinPaths: ['skills/delivery/SKILL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-skill-setext-heading-command-'));
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'delivery', 'SKILL.md'),
+    '# Delivery\n\n## What this skill is for\nSignals\n-------\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), 'utf8'),
+    '# Delivery\n\n## What this skill is for\nSignals\n-------\n\n## Suggested workflow\n- Keep existing workflow steps.\n',
   );
 });
 
@@ -1153,6 +1235,17 @@ test('buildCoreFoundationCommand keeps skill documentation scaffolds quoted', ()
       area: 'skills',
       status: 'thin',
       paths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+    }),
+    "mkdir -p 'skills/slack' 'skills/telegram' && for file in 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
+  );
+});
+
+test('buildCoreFoundationCommand canonicalizes backslash skill documentation scaffolds', () => {
+  assert.equal(
+    buildCoreFoundationCommand({
+      area: 'skills',
+      status: 'thin',
+      paths: ['skills\\slack\\SKILL.md', 'skills\\telegram\\SKILL.md'],
     }),
     "mkdir -p 'skills/slack' 'skills/telegram' && for file in 'skills/slack/SKILL.md' 'skills/telegram/SKILL.md'; do [ -f \"$file\" ] || printf %s '# Starter skill\n\n## What this skill is for\n- Describe when to use this skill.\n\n## Suggested workflow\n- Add the steps here.\n' > \"$file\"; done",
   );

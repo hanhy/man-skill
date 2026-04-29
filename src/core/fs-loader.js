@@ -745,6 +745,7 @@ export function parseDraftMetadata(filePath) {
       && summaryMatch
       && generatedAtMatch
       && latestMaterialMatch
+      && latestMaterialSourceMatch
       && sourceMaterialsMatch
       && isNonEmptyString(profileId)
       && isNonEmptyString(displayName)

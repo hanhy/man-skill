@@ -68,6 +68,22 @@ export class ChannelRegistry extends BaseRegistry<string | ChannelRecord> {
 
   normalize(channel: string | ChannelRecord): ChannelRecord {
     if (typeof channel === 'string') {
+      const defaultChannel = DEFAULT_CHANNEL_SCAFFOLDS_BY_ID.get(channel);
+      if (defaultChannel) {
+        return {
+          ...defaultChannel,
+          direction: [...defaultChannel.direction],
+          capabilities: [...defaultChannel.capabilities],
+          auth: defaultChannel.auth
+            ? {
+                ...defaultChannel.auth,
+                envVars: [...defaultChannel.auth.envVars],
+              }
+            : null,
+          deliveryModes: [...defaultChannel.deliveryModes],
+        };
+      }
+
       return {
         id: channel,
         name: channel,
