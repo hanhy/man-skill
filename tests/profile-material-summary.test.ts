@@ -4996,6 +4996,44 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
 });
 
+test('buildSummary accepts UTF-8 BOM-prefixed memory foundation drafts', () => {
+  const rootDir = makeTempRepo();
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the first slice before polishing the plan.\n');
+
+  const ingestion = new MaterialIngestion(rootDir);
+  ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: path.join(rootDir, 'samples', 'harry-post.txt'),
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  fs.writeFileSync(
+    memoryDraftPath,
+    `\uFEFF${fs.readFileSync(memoryDraftPath, 'utf8')}`,
+  );
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.profiles.find((profile) => profile.id === 'harry-han');
+
+  assert.ok(harry);
+  assert.equal(harry.foundationDraftStatus.complete, true);
+  assert.deepEqual(harry.foundationDraftStatus.missingDrafts, []);
+  assert.equal(harry.foundationDraftStatus.needsRefresh, false);
+  assert.equal(harry.foundationDraftSummaries.memory.generated, true);
+  assert.equal(harry.foundationDraftSummaries.memory.path, 'profiles/harry-han/memory/long-term/foundation.json');
+  assert.equal(harry.foundationDraftSummaries.memory.entryCount, 1);
+  assert.equal(harry.foundationDraftSummaries.memory.latestMaterialSourcePath, 'samples/harry-post.txt');
+  assert.equal(summary.foundation.maintenance.refreshProfileCount, 0);
+});
+
 test('buildSummary uses the imported intake replay bundle after multiple imported starter manifests are edited', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
