@@ -2093,6 +2093,33 @@ test('refreshStaleFoundationDrafts ignores markdown draft latest material source
   assert.match(unrepairedVoiceDraft, /Latest material source: \.\\latest-source\.txt/);
 });
 
+test('refreshStaleFoundationDrafts refreshes profiles when markdown drafts lose the latest material source header even if the expected source path is not set', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({
+    personId: 'Null Source Header',
+    text: 'Messages do not keep a file-backed source path.',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Null Source Header' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'null-source-header', 'voice', 'README.md');
+  const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
+    .replace(/^Latest material source: Not set\.\n/m, '');
+  fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['null-source-header']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const repairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(repairedVoiceDraft, /^Latest material source: Not set\.$/m);
+});
+
 test('refreshStaleFoundationDrafts refreshes profiles when memory draft latest material source provenance drifts', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
