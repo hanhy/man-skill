@@ -262,9 +262,11 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`node src\/index\.js update profile --person <id>` path keeps metadata edits without requiring a new material import/i);
   assert.match(profilesDoc, /if `materials\.template\.json` becomes invalid JSON, re-running `update intake` snapshots the broken file to `materials\.template\.json\.invalid-<timestamp>\.bak`, returns `invalidStarterManifestBackupPath`, and then rebuilds the starter manifest so operators can recover the previous draft/i);
   assert.match(profilesDoc, /`voice\/README\.md`, `soul\/README\.md`, and `skills\/README\.md` now stamp `Generated at`, `Latest material`, `Latest material source`, and `Source materials` headers/i);
+  assert.match(profilesDoc, /when those markdown provenance headers go missing or get corrupted, `update foundation --stale` treats the draft as stale and rewrites it instead of leaving the broken artifact looking fresh/i);
   assert.match(ingestionDoc, /if `materials\.template\.json` becomes invalid JSON, `update intake` first snapshots the broken file to `materials\.template\.json\.invalid-<timestamp>\.bak`, returns `invalidStarterManifestBackupPath`, and then rebuilds the starter manifest so the last edit can still be recovered/i);
   assert.match(ingestionDoc, /markdown drafts stamp `Generated at`, `Latest material`, `Latest material source`, and `Source materials` headers for provenance/i);
   assert.match(architectureDoc, /markdown draft headers including `Generated at`, `Latest material`, `Latest material source`, and `Source materials`/i);
+  assert.match(readme, /if those markdown provenance headers disappear or drift, `update foundation --stale` repairs the draft instead of treating the malformed artifact as fresh/i);
 
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
