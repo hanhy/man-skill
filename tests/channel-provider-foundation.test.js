@@ -149,10 +149,10 @@ test('manifest loaders accept UTF-8 BOM-prefixed manifest files', () => {
 
 test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
-    slackChannelScaffold,
+    feishuChannelScaffold,
     telegramChannelScaffold,
     whatsappChannelScaffold,
-    feishuChannelScaffold,
+    slackChannelScaffold,
   ];
   const providerScaffolds = [
     openaiProviderScaffold,
@@ -427,10 +427,10 @@ test('buildSummary keeps active delivery integrations in the env repair backlog 
 
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
   const channelScaffolds = [
-    slackChannelScaffold,
+    feishuChannelScaffold,
     telegramChannelScaffold,
     whatsappChannelScaffold,
-    feishuChannelScaffold,
+    slackChannelScaffold,
   ];
   const providerScaffolds = [
     openaiProviderScaffold,
@@ -445,6 +445,8 @@ test('checked-in channel and provider manifests stay aligned with scaffold metad
 
   assert.equal(channelManifest.length, channelScaffolds.length);
   assert.equal(providerManifest.length, providerScaffolds.length);
+  assert.deepEqual(channelManifest.map((channel) => channel.id), channelScaffolds.map((channel) => channel.id));
+  assert.deepEqual(providerManifest.map((provider) => provider.id), providerScaffolds.map((provider) => provider.id));
 
   channelScaffolds.forEach((scaffold) => {
     const manifestRecord = channelManifest.find((channel) => channel.id === scaffold.id);
