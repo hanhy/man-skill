@@ -1973,6 +1973,7 @@ export function buildSummary(rootDir: string) {
   const soulDocument = loader.loadSoul();
   const soulShadowPaths = fs.existsSync(path.join(rootDir, 'soul', 'README.md')) ? ['soul/README.md'] : [];
   const voiceDocument = loader.loadVoice();
+  const voiceShadowPaths = fs.existsSync(path.join(rootDir, 'VOICE.md')) ? ['VOICE.md'] : [];
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
@@ -2050,6 +2051,7 @@ export function buildSummary(rootDir: string) {
     soulDocument,
     soulShadowPaths,
     voiceDocument,
+    voiceShadowPaths,
     memoryIndex,
     skillNames,
     skillInventory,

@@ -600,6 +600,7 @@ function buildCoreFoundationMaintenance({
         }
         : {}),
       ...(Array.isArray(voice.headingAliases) && voice.headingAliases.length > 0 ? { rootHeadingAliases: voice.headingAliases } : {}),
+      ...(Array.isArray(voice.shadowPaths) && voice.shadowPaths.length > 0 ? { shadowPaths: voice.shadowPaths } : {}),
     },
   ];
 
@@ -1046,7 +1047,7 @@ function buildSoulDocumentSummary(document: string | null | undefined, shadowPat
   };
 }
 
-function buildVoiceDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
+function buildVoiceDocumentSummary(document: string | null | undefined, shadowPaths: string[] = []): CoreDocumentFoundationSummary {
   const profile = VoiceProfile.fromDocument(document ?? '');
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, [
@@ -1058,6 +1059,9 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     'voice should not capture',
   ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
   const headingAliases = collectHeadingAliases(document, VOICE_HEADING_ALIAS_DEFINITIONS);
+  const normalizedShadowPaths = Array.isArray(shadowPaths)
+    ? Array.from(new Set(shadowPaths.filter((value): value is string => isNonEmptyString(value))))
+    : [];
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,
@@ -1094,6 +1098,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined): CoreDoc
     readySections,
     missingSections,
     ...(headingAliases.length > 0 ? { headingAliases } : {}),
+    ...(normalizedShadowPaths.length > 0 ? { shadowPaths: normalizedShadowPaths } : {}),
   };
 }
 
@@ -1164,6 +1169,7 @@ export interface BuildCoreFoundationSummaryOptions {
   soulDocument?: string | null;
   soulShadowPaths?: string[];
   voiceDocument?: string | null;
+  voiceShadowPaths?: string[];
   memoryIndex?: {
     root?: string | null;
     daily?: string[];
@@ -1190,6 +1196,7 @@ export function buildCoreFoundationSummary({
   soulDocument = null,
   soulShadowPaths = [],
   voiceDocument = null,
+  voiceShadowPaths = [],
   memoryIndex = null,
   skillNames = [],
   skillInventory = null,
@@ -1353,7 +1360,7 @@ export function buildCoreFoundationSummary({
     } : {}),
   };
   const soul = buildSoulDocumentSummary(soulDocument, soulShadowPaths);
-  const voice = buildVoiceDocumentSummary(voiceDocument);
+  const voice = buildVoiceDocumentSummary(voiceDocument, voiceShadowPaths);
 
   const missingAreas: string[] = [];
   const thinAreas: string[] = [];
