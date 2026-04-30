@@ -79,6 +79,10 @@ function extractWhatsAppMessageText(message = {}, interactiveReply = extractWhat
     return interactiveReply.title;
   }
 
+  if (typeof interactiveReply.description === 'string' && interactiveReply.description.length > 0) {
+    return interactiveReply.description;
+  }
+
   if (typeof message?.button?.text === 'string' && message.button.text.length > 0) {
     return message.button.text;
   }
