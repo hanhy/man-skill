@@ -1,4 +1,5 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
+import { normalizeDraftPath } from './foundation-draft-paths.ts';
 import { collectVisibleDocumentLines, findDocumentExcerpt, normalizeDocument } from './document-excerpt.ts';
 import { normalizeLegacyShortTermSources } from './memory-store.ts';
 import { SoulProfile } from './soul-profile.ts';
@@ -37,6 +38,16 @@ function buildExcerpt(candidate: string | null | undefined, maxLength = 160): st
 
 function extractExcerpt(document: string | null | undefined, maxLength = 160): string | null {
   return buildExcerpt(findDocumentExcerpt(document), maxLength);
+}
+
+function normalizeShadowPaths(shadowPaths: string[] = []): string[] {
+  return Array.from(new Set(
+    Array.isArray(shadowPaths)
+      ? shadowPaths
+        .map((value) => normalizeDraftPath(value))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [],
+  ));
 }
 
 function formatList(values: string[]): string {
@@ -1004,9 +1015,7 @@ function buildSoulDocumentSummary(document: string | null | undefined, shadowPat
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
   const headingAliases = collectHeadingAliases(document, SOUL_HEADING_ALIAS_DEFINITIONS);
-  const normalizedShadowPaths = Array.isArray(shadowPaths)
-    ? Array.from(new Set(shadowPaths.filter((value): value is string => isNonEmptyString(value))))
-    : [];
+  const normalizedShadowPaths = normalizeShadowPaths(shadowPaths);
   const readySections = structured
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
@@ -1059,9 +1068,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined, shadowPa
     'voice should not capture',
   ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
   const headingAliases = collectHeadingAliases(document, VOICE_HEADING_ALIAS_DEFINITIONS);
-  const normalizedShadowPaths = Array.isArray(shadowPaths)
-    ? Array.from(new Set(shadowPaths.filter((value): value is string => isNonEmptyString(value))))
-    : [];
+  const normalizedShadowPaths = normalizeShadowPaths(shadowPaths);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,

@@ -259,6 +259,50 @@ test('buildCoreFoundationSummary keeps canonical voice/README.md while surfacing
   assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
 });
 
+test('buildCoreFoundationSummary normalizes and dedupes shadow doc paths before surfacing them', () => {
+  const foundation = buildCoreFoundationSummary({
+    soulDocument: [
+      '# Soul',
+      '',
+      'Lead with fidelity.',
+      '',
+      '## Core truths',
+      '- Keep the system inspectable.',
+      '',
+      '## Boundaries',
+      '- Do not bluff certainty.',
+      '',
+      '## Vibe',
+      '- Grounded and direct.',
+      '',
+      '## Continuity',
+      '- Carry durable lessons forward.',
+    ].join('\n'),
+    soulShadowPaths: [' .\\soul\\README.md ', 'soul/README.md', './soul/./README.md', '', '   '],
+    voiceDocument: [
+      '# Voice',
+      '',
+      'Stay grounded and direct.',
+      '',
+      '## Tone',
+      '- Warm and grounded.',
+      '',
+      '## Signature moves',
+      '- Use crisp examples.',
+      '',
+      '## Avoid',
+      '- Never pad the answer.',
+      '',
+      '## Language hints',
+      '- Preserve bilingual phrasing when the source material switches languages.',
+    ].join('\n'),
+    voiceShadowPaths: [' .\\VOICE.md ', 'VOICE.md', '././VOICE.md'],
+  });
+
+  assert.deepEqual(foundation.soul.shadowPaths, ['soul/README.md']);
+  assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
+});
+
 test('soul and voice parsers accept plus bullets and checklist markers inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nStay faithful.\n\n## Core truths\n+ [ ] Keep the system inspectable.\n+ Prefer narrow, verified diffs.\n\n## Boundaries\n+ [x] Do not bluff certainty.\n\n## Vibe\n+ Grounded and direct.\n\n## Continuity\n+ Carry durable lessons forward.\n`);
   const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n+ [ ] Crisp and grounded.\n\n## Signature moves\n+ [ ] Use concrete examples.\n+ Close with the next step.\n\n## Avoid\n+ [x] Padding the answer.\n\n## Language hints\n+ Preserve bilingual phrasing when the source switches languages.\n`);
