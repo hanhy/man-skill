@@ -1670,6 +1670,35 @@ test('buildSummary surfaces duplicate voice root docs without replacing canonica
   assert.match(summary.promptPreview, /Voice profile:[\s\S]*shadow docs VOICE\.md/);
 });
 
+test('buildSummary surfaces duplicate memory and skills root docs without replacing canonical README roots', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n');
+  fs.writeFileSync(path.join(rootDir, 'MEMORY.md'), '# Memory\n\nLegacy duplicate guidance that should not replace memory/README.md.\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What lives here\n- Keep reusable operator procedures here.\n\n## Layout\n- skills/<name>/SKILL.md stores the per-skill workflow.\n');
+  fs.writeFileSync(path.join(rootDir, 'SKILLS.md'), '# Skills\n\nLegacy duplicate guidance that should not replace skills/README.md.\n');
+  fs.writeFileSync(path.join(rootDir, 'skills', 'cron', 'SKILL.md'), '# Cron skill\n\n## What this skill is for\n- Keep recurring updates reliable.\n\n## Suggested workflow\n- Verify the narrowest changed surface first.\n');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootPath, 'memory/README.md');
+  assert.deepEqual(summary.foundation.core.memory.shadowPaths, ['MEMORY.md']);
+  assert.equal(summary.foundation.core.skills.rootPath, 'skills/README.md');
+  assert.deepEqual(summary.foundation.core.skills.shadowPaths, ['SKILLS.md']);
+  assert.match(summary.promptPreview, /memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, shadow docs MEMORY\.md/);
+  assert.match(summary.promptPreview, /skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, shadow docs SKILLS\.md/);
+});
+
 test('buildSummary prefers skill frontmatter descriptions over raw yaml keys in core foundation excerpts', () => {
   const rootDir = makeTempRepo();
 

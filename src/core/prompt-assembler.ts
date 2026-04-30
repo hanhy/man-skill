@@ -300,6 +300,7 @@ type FoundationCore = {
     rootReadySectionCount?: number;
     rootTotalSectionCount?: number;
     headingAliases?: string[];
+    shadowPaths?: string[];
     canonicalShortTermBucket?: string;
     legacyShortTermAliases?: string[];
     legacyShortTermSourceCount?: number;
@@ -327,6 +328,7 @@ type FoundationCore = {
     rootReadySectionCount?: number;
     rootTotalSectionCount?: number;
     headingAliases?: string[];
+    shadowPaths?: string[];
     count?: number;
     documentedCount?: number;
     undocumentedCount?: number;
@@ -2633,7 +2635,7 @@ function buildReadyCoreFoundationDetails(
     shadowPaths?: string[] | null,
   ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}${typeof path === 'string' && path.length > 0 ? ` @ ${path}` : ''}${Array.isArray(shadowPaths) && shadowPaths.length > 0 ? `, shadow docs ${shadowPaths.join(', ')}` : ''}`;
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}${formatCompactPathPreview(memory.sampleEntries, ', samples ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path, soul.shadowPaths)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path, voice.shadowPaths)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}${formatCompactPathPreview(memory.sampleEntries, ', samples ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath, memory.shadowPaths)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath, skills.shadowPaths)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path, soul.shadowPaths)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path, voice.shadowPaths)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {

@@ -546,6 +546,7 @@ function buildCoreFoundationMaintenance({
         }
         : {}),
       ...(memory.headingAliases?.length > 0 ? { rootHeadingAliases: memory.headingAliases } : {}),
+      ...(Array.isArray(memory.shadowPaths) && memory.shadowPaths.length > 0 ? { shadowPaths: memory.shadowPaths } : {}),
     },
     {
       area: 'skills',
@@ -578,6 +579,7 @@ function buildCoreFoundationMaintenance({
         }
         : {}),
       ...(skills.headingAliases?.length > 0 ? { rootHeadingAliases: skills.headingAliases } : {}),
+      ...(Array.isArray(skills.shadowPaths) && skills.shadowPaths.length > 0 ? { shadowPaths: skills.shadowPaths } : {}),
     },
     {
       area: 'soul',
@@ -706,6 +708,7 @@ export interface CoreMemoryFoundationSummary {
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
   headingAliases?: string[];
+  shadowPaths?: string[];
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   legacyShortTermSourceCount: number;
@@ -732,6 +735,7 @@ export interface CoreSkillsFoundationSummary {
   rootReadySectionCount?: number;
   rootTotalSectionCount?: number;
   headingAliases?: string[];
+  shadowPaths?: string[];
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -1177,6 +1181,8 @@ export interface BuildCoreFoundationSummaryOptions {
   soulShadowPaths?: string[];
   voiceDocument?: string | null;
   voiceShadowPaths?: string[];
+  memoryShadowPaths?: string[];
+  skillsShadowPaths?: string[];
   memoryIndex?: {
     root?: string | null;
     daily?: string[];
@@ -1204,6 +1210,8 @@ export function buildCoreFoundationSummary({
   soulShadowPaths = [],
   voiceDocument = null,
   voiceShadowPaths = [],
+  memoryShadowPaths = [],
+  skillsShadowPaths = [],
   memoryIndex = null,
   skillNames = [],
   skillInventory = null,
@@ -1268,6 +1276,7 @@ export function buildCoreFoundationSummary({
     ])
     : { readySections: [], missingSections: [] };
   const memoryHeadingAliases = collectHeadingAliases(memoryIndex?.root, MEMORY_ROOT_HEADING_ALIAS_DEFINITIONS);
+  const normalizedMemoryShadowPaths = normalizeShadowPaths(memoryShadowPaths);
   const memoryHasStructuredRootSections = memoryRootSections.readySections.length > 0 || memoryRootSections.missingSections.length > 0;
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
@@ -1280,6 +1289,7 @@ export function buildCoreFoundationSummary({
       rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
     ...(memoryHeadingAliases.length > 0 ? { headingAliases: memoryHeadingAliases } : {}),
+    ...(normalizedMemoryShadowPaths.length > 0 ? { shadowPaths: normalizedMemoryShadowPaths } : {}),
     canonicalShortTermBucket: 'daily' as const,
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: legacyShortTermSources.length,
@@ -1312,6 +1322,7 @@ export function buildCoreFoundationSummary({
     ])
     : { readySections: [], missingSections: [] };
   const skillsHeadingAliases = collectHeadingAliases(skillsRootDocument, SKILLS_ROOT_HEADING_ALIAS_DEFINITIONS);
+  const normalizedSkillsShadowPaths = normalizeShadowPaths(skillsShadowPaths);
   const skillsHasStructuredRootSections = skillsRootSections.readySections.length > 0 || skillsRootSections.missingSections.length > 0;
   const skills = {
     hasRootDocument: isNonEmptyString(skillsRootDocument),
@@ -1324,6 +1335,7 @@ export function buildCoreFoundationSummary({
       rootTotalSectionCount: skillsRootSections.readySections.length + skillsRootSections.missingSections.length,
     } : {}),
     ...(skillsHeadingAliases.length > 0 ? { headingAliases: skillsHeadingAliases } : {}),
+    ...(normalizedSkillsShadowPaths.length > 0 ? { shadowPaths: normalizedSkillsShadowPaths } : {}),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,
