@@ -422,6 +422,9 @@ function summarizeSkillsFoundation(skills: CoreSkillsFoundationSummary): string 
 function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): string {
   const missingSections = Array.isArray(document.missingSections) ? document.missingSections : [];
   const readySections = Array.isArray(document.readySections) ? document.readySections : [];
+  const shadowPaths = Array.isArray(document.shadowPaths)
+    ? document.shadowPaths.filter((value): value is string => isNonEmptyString(value))
+    : [];
   const headingAliasSummary = summarizeHeadingAliases(document.headingAliases);
   const sectionSummary = document.present && document.lineCount > 0
     && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
@@ -433,7 +436,8 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
   const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
     ? `, missing ${missingSections.join(', ')}`
     : '';
-  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}${headingAliasSummary}`;
+  const shadowPathSummary = shadowPaths.length > 0 ? `, shadow docs ${shadowPaths.join(', ')}` : '';
+  return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}${shadowPathSummary}${headingAliasSummary}`;
 }
 
 function buildDocumentMaintenanceAction(document: CoreDocumentFoundationSummary): string | null {
@@ -579,6 +583,7 @@ function buildCoreFoundationMaintenance({
         }
         : {}),
       ...(Array.isArray(soul.headingAliases) && soul.headingAliases.length > 0 ? { rootHeadingAliases: soul.headingAliases } : {}),
+      ...(Array.isArray(soul.shadowPaths) && soul.shadowPaths.length > 0 ? { shadowPaths: soul.shadowPaths } : {}),
     },
     {
       area: 'voice',
@@ -747,6 +752,7 @@ export interface CoreDocumentFoundationSummary {
   readySections: string[];
   missingSections: string[];
   headingAliases?: string[];
+  shadowPaths?: string[];
 }
 
 type HeadingAliasDefinition = {
@@ -992,11 +998,14 @@ function collectHeadingAliases(
   return aliases;
 }
 
-function buildSoulDocumentSummary(document: string | null | undefined): CoreDocumentFoundationSummary {
+function buildSoulDocumentSummary(document: string | null | undefined, shadowPaths: string[] = []): CoreDocumentFoundationSummary {
   const profile = SoulProfile.fromDocument(document ?? '');
   const present = isNonEmptyString(document);
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
   const headingAliases = collectHeadingAliases(document, SOUL_HEADING_ALIAS_DEFINITIONS);
+  const normalizedShadowPaths = Array.isArray(shadowPaths)
+    ? Array.from(new Set(shadowPaths.filter((value): value is string => isNonEmptyString(value))))
+    : [];
   const readySections = structured
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
@@ -1033,6 +1042,7 @@ function buildSoulDocumentSummary(document: string | null | undefined): CoreDocu
     readySections,
     missingSections,
     ...(headingAliases.length > 0 ? { headingAliases } : {}),
+    ...(normalizedShadowPaths.length > 0 ? { shadowPaths: normalizedShadowPaths } : {}),
   };
 }
 
@@ -1108,6 +1118,7 @@ export interface CoreFoundationMaintenanceQueueItem {
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
+  shadowPaths?: string[];
   thinMissingSections?: Record<string, string[]>;
   thinReadySections?: Record<string, string[]>;
   thinReadySectionCounts?: Record<string, number>;
@@ -1151,6 +1162,7 @@ export interface CoreFoundationSummary {
 
 export interface BuildCoreFoundationSummaryOptions {
   soulDocument?: string | null;
+  soulShadowPaths?: string[];
   voiceDocument?: string | null;
   memoryIndex?: {
     root?: string | null;
@@ -1176,6 +1188,7 @@ export interface BuildCoreFoundationSummaryOptions {
 
 export function buildCoreFoundationSummary({
   soulDocument = null,
+  soulShadowPaths = [],
   voiceDocument = null,
   memoryIndex = null,
   skillNames = [],
@@ -1339,7 +1352,7 @@ export function buildCoreFoundationSummary({
       thinTotalSectionCounts: thinSkillTotalSectionCounts,
     } : {}),
   };
-  const soul = buildSoulDocumentSummary(soulDocument);
+  const soul = buildSoulDocumentSummary(soulDocument, soulShadowPaths);
   const voice = buildVoiceDocumentSummary(voiceDocument);
 
   const missingAreas: string[] = [];

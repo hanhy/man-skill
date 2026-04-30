@@ -1971,6 +1971,7 @@ export function buildSummary(rootDir: string) {
   const loader = new FileSystemLoader(rootDir);
   const manifestLoader = new ManifestLoader(rootDir);
   const soulDocument = loader.loadSoul();
+  const soulShadowPaths = fs.existsSync(path.join(rootDir, 'soul', 'README.md')) ? ['soul/README.md'] : [];
   const voiceDocument = loader.loadVoice();
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
@@ -2047,6 +2048,7 @@ export function buildSummary(rootDir: string) {
   }) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,
+    soulShadowPaths,
     voiceDocument,
     memoryIndex,
     skillNames,
