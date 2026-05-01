@@ -1506,6 +1506,9 @@ function buildDeliveryPriority({
     const envTarget = typeof envConfigPath === 'string' && envConfigPath.length > 0 ? envConfigPath : '.env';
     const envSource = typeof envTemplatePath === 'string' && envTemplatePath.length > 0 ? envTemplatePath : '.env.example';
     nextAction = [`bootstrap ${envTarget} from ${envSource}`, ...followUpParts].filter(Boolean).join('; ');
+    followUpCommand = typeof envConfigPopulateCommand === 'string' && envConfigPopulateCommand.length > 0
+      ? envConfigPopulateCommand
+      : null;
   }
 
   if (!command && needsEnvTemplateRepair) {

@@ -2163,6 +2163,10 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.ok(channelsPriority);
     assert.equal(channelsPriority.status, 'queued');
     assert.equal(channelsPriority.command, 'cp .env.example .env');
+    assert.equal(
+      channelsPriority.followUpCommand,
+      "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    );
     assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
     assert.equal(
       channelsPriority.nextAction,
