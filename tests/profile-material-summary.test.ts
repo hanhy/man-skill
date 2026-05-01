@@ -3221,6 +3221,76 @@ test('PromptAssembler keeps hidden imported intake-ready profiles labeled in the
   assert.match(prompt, /\+1 more profile: Harry Han \(harry-han\) \[intake ready\]/);
 });
 
+test('PromptAssembler keeps hidden starter-template and invalid-manifest profile labels actionable in the compact remainder line', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: {
+      profileCount: 4,
+      importedProfileCount: 4,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 4,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      importedIntakeReadyProfileCount: 0,
+      importedStarterIntakeProfileCount: 1,
+      importedIntakeBackfillProfileCount: 0,
+      importedInvalidIntakeManifestProfileCount: 1,
+      invalidMetadataOnlyIntakeManifestProfileCount: 0,
+      supportedImportTypes: ['message', 'text'],
+      allProfileCommands: [
+        {
+          personId: 'jane-doe',
+          label: 'Jane Doe (jane-doe)',
+          materialCount: 1,
+          materialTypes: { message: 1 },
+          intakeReady: false,
+          intakeStatusSummary: 'intake missing — create imports, images, README.md, materials.template.json, sample.txt',
+        },
+        {
+          personId: 'harry-han',
+          label: 'Harry Han (harry-han)',
+          materialCount: 2,
+          materialTypes: { message: 1, text: 1 },
+          intakeReady: true,
+          intakeManifestStatus: 'loaded',
+          intakeStatusSummary: 'ready',
+        },
+        {
+          personId: 'alex-doe',
+          label: 'Alex Doe (alex-doe)',
+          materialCount: 1,
+          materialTypes: { text: 1 },
+          intakeReady: true,
+          intakeManifestStatus: 'starter',
+          intakeStatusSummary: 'intake starter template — add entries before import (templates: message, text)',
+          editPath: 'profiles/alex-doe/imports/materials.template.json',
+        },
+        {
+          personId: 'sam-doe',
+          label: 'Sam Doe (sam-doe)',
+          materialCount: 1,
+          materialTypes: { message: 1 },
+          intakeReady: true,
+          intakeManifestStatus: 'invalid',
+          intakeManifestError: 'invalid JSON',
+          intakeStatusSummary: 'intake invalid manifest — repair materials.template.json (invalid JSON)',
+          editPath: 'profiles/sam-doe/imports/materials.template.json',
+        },
+      ],
+    },
+  }).buildSystemPrompt();
+
+  assert.match(prompt, /\+2 more profiles: Alex Doe \(alex-doe\) \[intake starter template\] -> profiles\/alex-doe\/imports\/materials\.template\.json, Sam Doe \(sam-doe\) \[intake invalid manifest \(invalid JSON\)\] -> profiles\/sam-doe\/imports\/materials\.template\.json/);
+});
+
 test('PromptAssembler falls back to ingestion helperCommands for sample helper lines', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

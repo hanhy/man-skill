@@ -598,6 +598,7 @@ type IngestionProfileCommand = {
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  editPath?: string | null;
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   starterImportCommand?: string | null;
@@ -609,6 +610,8 @@ type IngestionProfileCommand = {
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
   intakeManifestStatus?: 'missing' | 'invalid' | 'starter' | 'loaded' | string;
+  intakeManifestPath?: string | null;
+  intakeManifestError?: string | null;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   intakeManifestEntryTemplateTypes?: string[];
@@ -1977,7 +1980,12 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
 
   if (intakeStatusSummary && intakeStatusSummary !== 'ready') {
     const [statusPrefix] = intakeStatusSummary.split(' — ');
-    return statusPrefix?.trim() || intakeStatusSummary;
+    const compactStatus = (statusPrefix?.trim() || intakeStatusSummary).replace(/^intake\s+/i, '').trim();
+    const normalizedManifestError = normalizeOptionalString(profile?.intakeManifestError);
+    if (compactStatus === 'invalid manifest' && normalizedManifestError) {
+      return `${compactStatus} (${normalizedManifestError})`;
+    }
+    return compactStatus;
   }
 
   if (profile?.intakeReady === true) {
@@ -1987,12 +1995,23 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
   return null;
 }
 
+function formatCompactIngestionEditPath(profile: IngestionProfileCommand | null | undefined): string | null {
+  const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+  if (!compactIntakeStatus || compactIntakeStatus === 'ready') {
+    return null;
+  }
+
+  const editPath = normalizeDraftPath(normalizeOptionalString(profile?.editPath ?? profile?.intakeManifestPath));
+  return editPath ? ` -> ${editPath}` : null;
+}
+
 function formatIngestionProfileLabel(profile: IngestionProfileCommand | null | undefined): string {
   const baseLabel = profile?.label ?? profile?.personId ?? 'unknown-profile';
   const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+  const compactEditPath = formatCompactIngestionEditPath(profile);
 
   return compactIntakeStatus
-    ? `${baseLabel} [intake ${compactIntakeStatus}]`
+    ? `${baseLabel} [intake ${compactIntakeStatus}]${compactEditPath ?? ''}`
     : baseLabel;
 }
 
