@@ -639,6 +639,52 @@ test('CLI import intake --person refreshes foundation drafts when --refresh-foun
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
 });
 
+test('CLI import intake --person accepts UTF-8 BOM-prefixed profile-local manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'),
+    'Metadata Only prefers tight feedback loops.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+        {
+          type: 'message',
+          text: 'Ship the narrow slice first.',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Metadata Only'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['metadata-only']);
+  assert.equal(result.foundationRefresh ?? null, null);
+});
+
 test('CLI direct import message reruns report skipped status and avoid duplicate records', () => {
   const rootDir = makeTempRepo();
 

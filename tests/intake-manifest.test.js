@@ -104,6 +104,35 @@ test('inspectProfileIntakeManifest keeps backslash-normalized relative entry fil
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest accepts UTF-8 BOM-prefixed profile-local manifest files', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'loaded');
+  assert.equal(manifest.error, null);
+  assert.deepEqual(manifest.repairPaths, []);
+});
+
 test('inspectProfileIntakeManifest rejects starter templates whose file paths escape the profile imports directory', () => {
   const rootDir = makeTempRepo();
   const profileDir = path.join(rootDir, 'profiles', 'metadata-only');
