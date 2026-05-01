@@ -306,6 +306,45 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
     };
   }
 
+  try {
+    const realRootDir = fs.realpathSync(rootDir);
+    const realManifestPath = fs.realpathSync(absoluteManifestPath);
+    const relativeManifestPath = path.relative(realRootDir, realManifestPath);
+    if (path.isAbsolute(relativeManifestPath) || relativeManifestPath === '..' || relativeManifestPath.startsWith(`..${path.sep}`)) {
+      return {
+        status: 'invalid',
+        path: manifestPath,
+        error: 'Starter intake manifest resolves outside the repo root',
+        repairPaths: [manifestPath],
+        entryTemplateTypes: [],
+        entryTemplateCount: 0,
+        entryTemplateDetails: emptyEntryTemplateDetails,
+      };
+    }
+
+    if (!fs.statSync(realManifestPath).isFile()) {
+      return {
+        status: 'invalid',
+        path: manifestPath,
+        error: 'Starter intake manifest must be a file',
+        repairPaths: [manifestPath],
+        entryTemplateTypes: [],
+        entryTemplateCount: 0,
+        entryTemplateDetails: emptyEntryTemplateDetails,
+      };
+    }
+  } catch (error) {
+    return {
+      status: 'invalid',
+      path: manifestPath,
+      error: error instanceof Error ? error.message : 'Invalid intake manifest path',
+      repairPaths: [manifestPath],
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
+    };
+  }
+
   let parsedManifest;
   try {
     parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));

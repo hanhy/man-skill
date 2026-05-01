@@ -75,6 +75,40 @@ test('inspectProfileIntakeManifest accepts absolute in-repo files for profile-lo
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest rejects starter manifests whose symlink target escapes the repo root', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-intake-manifest-outside-'));
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(outsideDir, 'outside-manifest.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.symlinkSync(
+    path.join(outsideDir, 'outside-manifest.json'),
+    path.join(importsDir, 'materials.template.json'),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /starter intake manifest resolves outside the repo root/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
 test('inspectProfileIntakeManifest keeps backslash-normalized relative entry files runnable', () => {
   const rootDir = makeTempRepo();
   const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
