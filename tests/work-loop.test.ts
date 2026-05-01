@@ -4813,6 +4813,17 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   assert.equal(summary.workLoop.currentPriority.nextAction, 'refresh stale or incomplete target profiles — starting with Jane Doe (jane-doe) (missing drafts + new materials); evidence memory 1 (message) | voice 1 (message) | soul 0 | skills 0');
   assert.deepEqual(summary.workLoop.currentPriority.refreshReasons, ['missing drafts', 'new materials']);
   assert.deepEqual(summary.workLoop.currentPriority.missingDrafts, ['memory', 'skills', 'soul', 'voice']);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/jane-doe/memory/long-term/foundation.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+    'profiles/harry-han/memory/long-term/foundation.json',
+    'profiles/harry-han/skills/README.md',
+    'profiles/harry-han/soul/README.md',
+    'profiles/harry-han/voice/README.md',
+  ]);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'profiles/jane-doe/memory/long-term/foundation.json',
     'profiles/jane-doe/skills/README.md',
@@ -4828,6 +4839,7 @@ test('buildSummary work loop prioritizes the most incomplete stale foundation pr
   assert.match(summary.promptPreview, /missing drafts: memory, skills, soul, voice/);
   assert.match(summary.promptPreview, /command: \(node src\/index\.js update foundation --person 'jane-doe'\) && \(node src\/index\.js update foundation --person 'harry-han'\)/);
   assert.match(summary.promptPreview, /refresh command: node src\/index\.js update foundation --stale/);
+  assert.match(summary.promptPreview, /edit paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
   assert.match(summary.promptPreview, /paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].generatedDraftCount, 0);
