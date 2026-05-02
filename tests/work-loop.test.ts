@@ -150,6 +150,8 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.equal(summary.recommendedPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.recommendedPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(summary.recommendedPriority?.inspectCommand, summary.actionableReadyPriority?.inspectCommand ?? null);
+  assert.equal(summary.recommendedPriority?.followUpCommand, summary.actionableReadyPriority?.followUpCommand ?? null);
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },

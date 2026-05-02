@@ -1502,16 +1502,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
         ?? null)
-      : (firstImportedStarterIntakeProfile?.personId
-        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)}`
-        : null);
+      : (firstImportedStarterIntakeProfile?.followUpImportIntakeWithoutRefreshCommand
+        ?? null);
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.replayImportedStarterBundle
         ?? helperCommands.importIntakeImportedAndRefresh
         ?? null)
-      : (firstImportedStarterIntakeProfile?.personId
-        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
-        : null);
+      : (firstImportedStarterIntakeProfile?.followUpImportIntakeCommand
+        ?? null);
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);

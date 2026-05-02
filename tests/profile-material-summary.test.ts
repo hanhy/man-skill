@@ -4998,6 +4998,12 @@ test('buildSummary recommends populating imported starter intake manifests once 
     summary.ingestion.recommendedFollowUpCommand,
     "node src/index.js import intake --person 'harry-han' --refresh-foundation",
   );
+  const importedStarterSlice = summary.ingestion.recommendedProfileSlices[0];
+  const importedStarterCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+  assert.equal(summary.ingestion.recommendedInspectCommand, importedStarterSlice?.inspectCommand ?? null);
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, importedStarterSlice?.followUpCommand ?? null);
+  assert.equal(summary.ingestion.recommendedInspectCommand, importedStarterCommand?.followUpImportIntakeWithoutRefreshCommand ?? null);
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, importedStarterCommand?.followUpImportIntakeCommand ?? null);
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
@@ -5064,6 +5070,12 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(summary.ingestion.recommendedIntakeManifestEntryTemplateCount, 4);
   assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  const bomStarterSlice = summary.ingestion.recommendedProfileSlices[0];
+  const bomStarterCommand = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+  assert.equal(summary.ingestion.recommendedInspectCommand, bomStarterSlice?.inspectCommand ?? null);
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, bomStarterSlice?.followUpCommand ?? null);
+  assert.equal(summary.ingestion.recommendedInspectCommand, bomStarterCommand?.followUpImportIntakeWithoutRefreshCommand ?? null);
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, bomStarterCommand?.followUpImportIntakeCommand ?? null);
 });
 
 test('buildSummary accepts UTF-8 BOM-prefixed memory foundation drafts', () => {
