@@ -4697,7 +4697,11 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     scaffoldBundle: "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     scaffoldImportedBundle: null,
     repairInvalidBundle: null,
+    inspectInvalidBundle: null,
+    replayInvalidBundle: null,
     repairImportedInvalidBundle: null,
+    inspectImportedInvalidBundle: null,
+    replayImportedInvalidBundle: null,
     importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
@@ -5463,6 +5467,46 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\) \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'harry-han' \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
 });
 
+test('buildSummary exposes bundled inspect and replay helpers when multiple imported profiles have invalid intake manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  for (const [personId, displayName, summaryText, importText] of [
+    ['harry-han', 'Harry Han', 'Direct operator with a bias for momentum.', 'Ship the first slice before polishing the plan.'],
+    ['jane-doe', 'Jane Doe', 'Fast feedback beats polished drift.', 'Prefer a working loop over a perfect spec.'],
+  ] as const) {
+    runUpdateCommand(rootDir, 'profile', {
+      person: personId,
+      'display-name': displayName,
+      summary: summaryText,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: personId,
+      'display-name': displayName,
+      summary: summaryText,
+    });
+    ingestion.importMessage({
+      personId,
+      text: importText,
+    });
+    runUpdateCommand(rootDir, 'foundation', { person: personId });
+    fs.writeFileSync(path.join(rootDir, 'profiles', personId, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.importedInvalidIntakeManifestProfileCount, 2);
+  assert.match(summary.ingestion.helperCommands?.repairImportedInvalidBundle ?? '', /node src\/index\.js update intake --person 'harry-han'/);
+  assert.match(summary.ingestion.helperCommands?.repairImportedInvalidBundle ?? '', /node src\/index\.js update intake --person 'jane-doe'/);
+  assert.match(summary.ingestion.helperCommands?.inspectImportedInvalidBundle ?? '', /node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.ingestion.helperCommands?.inspectImportedInvalidBundle ?? '', /node src\/index\.js import intake --person 'jane-doe'/);
+  assert.match(summary.ingestion.helperCommands?.replayImportedInvalidBundle ?? '', /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.ingestion.helperCommands?.replayImportedInvalidBundle ?? '', /node src\/index\.js import intake --person 'jane-doe' --refresh-foundation/);
+  assert.match(summary.promptPreview, /helpers: .*repair-imported-invalid-bundle /);
+  assert.match(summary.promptPreview, /helpers: .*inspect-imported-invalid-bundle /);
+  assert.match(summary.promptPreview, /helpers: .*replay-imported-invalid-bundle /);
+});
+
 test('buildSummary treats imported starter manifests with mismatched profile ownership as invalid', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -5582,6 +5626,41 @@ test('buildSummary keeps metadata-only profiles with invalid intake manifests vi
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
   assert.match(summary.promptPreview, /repair-invalid-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
   assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json/);
+});
+
+test('buildSummary exposes bundled inspect and replay helpers when multiple metadata-only profiles have invalid intake manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  for (const [personId, displayName, summaryText] of [
+    ['metadata-only', 'Metadata Only', 'Profile scaffold without imported materials yet.'],
+    ['alex-doe', 'Alex Doe', 'Keep the intake scaffold honest.'],
+  ] as const) {
+    ingestion.updateProfile({
+      personId,
+      displayName,
+      summary: summaryText,
+    });
+    runUpdateCommand(rootDir, 'intake', {
+      person: personId,
+      'display-name': displayName,
+      summary: summaryText,
+    });
+    fs.writeFileSync(path.join(rootDir, 'profiles', personId, 'imports', 'materials.template.json'), '{ invalid json\n');
+  }
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 2);
+  assert.match(summary.ingestion.helperCommands?.repairInvalidBundle ?? '', /node src\/index\.js update intake --person 'metadata-only'/);
+  assert.match(summary.ingestion.helperCommands?.repairInvalidBundle ?? '', /node src\/index\.js update intake --person 'alex-doe'/);
+  assert.match(summary.ingestion.helperCommands?.inspectInvalidBundle ?? '', /node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json'/);
+  assert.match(summary.ingestion.helperCommands?.inspectInvalidBundle ?? '', /node src\/index\.js import manifest --file 'profiles\/alex-doe\/imports\/materials\.template\.json'/);
+  assert.match(summary.ingestion.helperCommands?.replayInvalidBundle ?? '', /node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.ingestion.helperCommands?.replayInvalidBundle ?? '', /node src\/index\.js import manifest --file 'profiles\/alex-doe\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /helpers: .*repair-invalid-bundle /);
+  assert.match(summary.promptPreview, /helpers: .*inspect-invalid-bundle /);
+  assert.match(summary.promptPreview, /helpers: .*replay-invalid-bundle /);
 });
 
 test('buildSummary treats metadata-only intake manifest symlinks that escape the repo root as invalid', () => {
@@ -6100,7 +6179,11 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
       scaffoldBundle: null,
       scaffoldImportedBundle: null,
       repairInvalidBundle: null,
+      inspectInvalidBundle: null,
+      replayInvalidBundle: null,
       repairImportedInvalidBundle: null,
+      inspectImportedInvalidBundle: null,
+      replayImportedInvalidBundle: null,
       importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
       importManifest: 'node src/index.js import manifest --file <manifest.json>',
       importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',

@@ -638,7 +638,11 @@ type IngestionHelperCommands = {
   scaffoldBundle?: string | null;
   scaffoldImportedBundle?: string | null;
   repairInvalidBundle?: string | null;
+  inspectInvalidBundle?: string | null;
+  replayInvalidBundle?: string | null;
   repairImportedInvalidBundle?: string | null;
+  inspectImportedInvalidBundle?: string | null;
+  replayImportedInvalidBundle?: string | null;
   importManifestInspect?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
@@ -2164,7 +2168,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
       pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.inspectInvalidBundle ? `inspect-invalid-bundle ${helperCommands.inspectInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.replayInvalidBundle ? `replay-invalid-bundle ${helperCommands.replayInvalidBundle}` : null);
       pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.inspectImportedInvalidBundle ? `inspect-imported-invalid-bundle ${helperCommands.inspectImportedInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.replayImportedInvalidBundle ? `replay-imported-invalid-bundle ${helperCommands.replayImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.importManifestInspect ? `manifest-inspect ${helperCommands.importManifestInspect}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);

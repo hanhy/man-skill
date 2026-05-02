@@ -1180,6 +1180,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const intakeImportStaleAndRefreshCommand = 'node src/index.js import intake --stale --refresh-foundation';
   const importedIntakeImportCommand = 'node src/index.js import intake --imported';
   const importedIntakeImportAndRefreshCommand = 'node src/index.js import intake --imported --refresh-foundation';
+  const invalidReadyIntakeProfiles = metadataProfileCommands.filter((profile) =>
+    profile?.intakeReady === true
+    && profile?.intakeManifestStatus === 'invalid'
+    && typeof profile?.intakeManifestPath === 'string'
+    && profile.intakeManifestPath.length > 0,
+  );
   const helperCommands = {
     bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
@@ -1198,10 +1204,34 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       metadataInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    inspectInvalidBundle: invalidReadyIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        invalidReadyIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand ?? profile?.importManifestWithoutRefreshCommand),
+      )
+      : null,
+    replayInvalidBundle: invalidReadyIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        invalidReadyIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand ?? profile?.importManifestCommand),
+      )
+      : null,
     repairImportedInvalidBundle: buildCommandBundle(
       importedInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    inspectImportedInvalidBundle: importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(
+        importedInvalidIntakeManifestProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
+      )
+      : null,
+    replayImportedInvalidBundle: importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(
+        importedInvalidIntakeManifestProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand),
+      )
+      : null,
     importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
@@ -1267,12 +1297,6 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const refreshTargets = allProfileCommands.filter((profile) => (profile?.materialCount ?? 0) > 0 && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0));
   const firstRefreshTarget = refreshTargets[0] ?? null;
   const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile) => profile?.intakeReady === false && profile?.updateIntakeCommand) ?? null;
-  const invalidReadyIntakeProfiles = metadataProfileCommands.filter((profile) =>
-    profile?.intakeReady === true
-    && profile?.intakeManifestStatus === 'invalid'
-    && typeof profile?.intakeManifestPath === 'string'
-    && profile.intakeManifestPath.length > 0,
-  );
   const readyIntakeProfiles = metadataProfileCommands.filter((profile) =>
     profile?.intakeReady === true
     && profile?.intakeManifestStatus !== 'invalid'
