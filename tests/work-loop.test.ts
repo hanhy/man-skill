@@ -1961,7 +1961,8 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(metadataOnlyCommand?.intakeManifestStatus, 'invalid');
   assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
   assert.equal(metadataOnlyCommand?.importIntakeCommand, null);
-  assert.equal(metadataOnlyCommand?.importManifestCommand, null);
+  assert.equal(metadataOnlyCommand?.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand?.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand?.importMaterialCommand, null);
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
@@ -1969,6 +1970,8 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.equal(summary.workLoop.currentPriority.summary, '0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only) — missing file: missing-post.txt');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(summary.workLoop.currentPriority.manifestImportCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.match(
     summary.workLoop.currentPriority.updateProfileCommand ?? '',
     /^node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only'(?: --summary '.*')?$/,
@@ -1980,6 +1983,8 @@ test('buildSummary work loop points at fixing an invalid ready intake manifest b
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh, 1 invalid metadata-only intake manifest/);
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for Metadata Only \(metadata-only\) — missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json'/);
+  assert.match(summary.promptPreview, /manifest: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /update profile: node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json/);
 });
@@ -2180,7 +2185,8 @@ test('buildSummary marks profile-local intake manifests invalid when they target
   assert.match(metadataOnlyCommand?.intakeManifestError ?? '', /targets a different profile/i);
   assert.equal(metadataOnlyCommand?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (targets a different profile)');
   assert.equal(metadataOnlyCommand?.importIntakeCommand, null);
-  assert.equal(metadataOnlyCommand?.importManifestCommand, null);
+  assert.equal(metadataOnlyCommand?.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand?.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.ingestion.invalidMetadataOnlyIntakeManifestProfileCount, 1);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'repair the invalid intake manifest for Metadata Only (metadata-only) — targets a different profile');
@@ -2271,8 +2277,8 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
   assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['profiles/harry-han/imports/materials.template.json']);
   assert.equal(summary.workLoop.currentPriority.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'");
-  assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, null);
-  assert.equal(summary.workLoop.currentPriority.manifestImportCommand, null);
+  assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.workLoop.currentPriority.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.workLoop.currentPriority.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
@@ -2282,6 +2288,8 @@ test('buildSummary work loop repairs invalid intake manifests for imported profi
   assert.match(summary.promptPreview, /next action: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
+  assert.match(summary.promptPreview, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(summary.promptPreview, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);

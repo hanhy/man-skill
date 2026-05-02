@@ -793,7 +793,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestPath = intake?.ready
     ? (normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null)
     : null;
-  const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
+  const intakeManifestCommandAvailable = intakeManifest.status === 'loaded'
+    || intakeManifest.status === 'starter'
+    || intakeManifest.status === 'invalid';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
   const intakeImportManifestWithoutRefreshCommand = intakeManifestPath && intakeManifestCommandAvailable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)}`

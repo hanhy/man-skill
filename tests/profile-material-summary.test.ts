@@ -5409,8 +5409,8 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
     summary.ingestion.recommendedRefreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
   );
-  assert.equal(summary.ingestion.recommendedManifestInspectCommand, null);
-  assert.equal(summary.ingestion.recommendedManifestImportCommand, null);
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.ingestion.recommendedFollowUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.deepEqual(summary.ingestion.recommendedProfileSlices, [
@@ -5429,8 +5429,8 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
       updateProfileAndRefreshCommand: harry?.updateProfileAndRefreshCommand ?? null,
       editPath: harry?.intakeManifestPath ?? null,
       editPaths: ['profiles/harry-han/imports/materials.template.json'],
-      manifestInspectCommand: null,
-      manifestImportCommand: null,
+      manifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      manifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
       intakeManifestEntryTemplateTypes: harry?.intakeManifestEntryTemplateTypes ?? [],
       intakeManifestEntryTemplateDetails: harry?.intakeManifestEntryTemplateDetails ?? [],
       intakeManifestEntryTemplateCount: harry?.intakeManifestEntryTemplateCount ?? 0,
@@ -5447,8 +5447,8 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (invalid JSON)');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
-  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter root profiles\/harry-han\/imports; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\)/);
+  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter root profiles\/harry-han\/imports; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\) \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'harry-han' \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
 });
 
 test('buildSummary treats imported starter manifests with mismatched profile ownership as invalid', () => {
@@ -5532,16 +5532,14 @@ test('buildSummary treats starter manifests with missing starter-template files 
   assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
   assert.match(metadataOnly?.intakeManifestError ?? '', /missing file: missing-post\.txt/);
   assert.equal(metadataOnly?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (missing file: missing-post.txt)');
-  assert.equal(metadataOnly?.importManifestWithoutRefreshCommand, null);
-  assert.equal(metadataOnly?.importManifestCommand, null);
+  assert.equal(metadataOnly?.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnly?.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnly?.importMaterialCommand, null);
-  assert.equal(metadataOnly?.helperCommands.importManifestWithoutRefresh, null);
-  assert.equal(metadataOnly?.helperCommands.importManifest, null);
+  assert.equal(metadataOnly?.helperCommands.importManifestWithoutRefresh, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnly?.helperCommands.importManifest, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 starter templates, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\)/);
-  assert.doesNotMatch(summary.promptPreview, /manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json'/);
-  assert.doesNotMatch(summary.promptPreview, /manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\); starter root profiles\/metadata-only\/imports; starter details text missing-post\.txt \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('buildSummary keeps metadata-only profiles with invalid intake manifests visible in the ingestion entrance diagnostics', () => {
@@ -5616,13 +5614,11 @@ test('buildSummary treats metadata-only intake manifest symlinks that escape the
   assert.equal(metadataOnly?.intakeManifestStatus, 'invalid');
   assert.match(metadataOnly?.intakeManifestError ?? '', /outside the repo root/i);
   assert.equal(metadataOnly?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (file outside repo)');
-  assert.equal(metadataOnly?.importManifestWithoutRefreshCommand, null);
-  assert.equal(metadataOnly?.importManifestCommand, null);
+  assert.equal(metadataOnly?.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnly?.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 starter templates, 0 partial, 0 missing/);
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 metadata-only profile queued/);
-  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(file outside repo\)/);
-  assert.doesNotMatch(summary.promptPreview, /manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json'/);
-  assert.doesNotMatch(summary.promptPreview, /manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
+  assert.match(summary.promptPreview, /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(file outside repo\) \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('buildSummary uses matching sample screenshot imports in ingestion profile commands when available', () => {
@@ -5916,17 +5912,18 @@ test('buildSummary suppresses broken intake import shortcuts when a profile-loca
     'profiles/metadata-only/imports/missing-post.txt',
   ]);
   assert.equal(metadataOnlyCommand.importIntakeCommand, null);
-  assert.equal(metadataOnlyCommand.importManifestCommand, null);
+  assert.equal(metadataOnlyCommand.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importMaterialCommand, null);
   assert.equal(metadataOnlyCommand.helperCommands.importIntake, null);
-  assert.equal(metadataOnlyCommand.helperCommands.importManifest, null);
+  assert.equal(metadataOnlyCommand.helperCommands.importManifestWithoutRefresh, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand.helperCommands.importManifest, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.match(
     summary.promptPreview,
-    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\) \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: missing-post\.txt\) \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
   );
   assert.doesNotMatch(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation/);
-  assert.doesNotMatch(summary.promptPreview, /import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('buildSummary treats starter manifests with missing screenshot template files as invalid intake scaffolds', () => {
@@ -5977,18 +5974,19 @@ test('buildSummary treats starter manifests with missing screenshot template fil
     'profiles/metadata-only/imports/images/missing-chat.png',
   ]);
   assert.equal(metadataOnlyCommand.importIntakeCommand, null);
-  assert.equal(metadataOnlyCommand.importManifestCommand, null);
+  assert.equal(metadataOnlyCommand.importManifestWithoutRefreshCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand.importManifestCommand, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(metadataOnlyCommand.importMaterialCommand, null);
   assert.equal(metadataOnlyCommand.helperCommands.importIntake, null);
-  assert.equal(metadataOnlyCommand.helperCommands.importManifest, null);
+  assert.equal(metadataOnlyCommand.helperCommands.importManifestWithoutRefresh, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json'");
+  assert.equal(metadataOnlyCommand.helperCommands.importManifest, "node src/index.js import manifest --file 'profiles/metadata-only/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.ingestion.helperCommands.importIntakeBundle, null);
   assert.match(
     summary.promptPreview,
-    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: images\/missing-chat\.png\); starter root profiles\/metadata-only\/imports; starter details message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
+    /Metadata Only \(metadata-only\): 0 materials \(no typed materials\), intake invalid manifest — repair materials\.template\.json \(missing file: images\/missing-chat\.png\); starter root profiles\/metadata-only\/imports; starter details message <paste a representative short message> \| screenshot images\/missing-chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation \| update node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/,
   );
   assert.doesNotMatch(summary.promptPreview, /starter template — add entries before import/);
   assert.doesNotMatch(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'metadata-only' --refresh-foundation/);
-  assert.doesNotMatch(summary.promptPreview, /import node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
 });
 
 test('buildSummary keeps the ingestion entrance visible for empty repos', () => {
