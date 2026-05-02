@@ -19,7 +19,7 @@ They should be specific enough to be useful and narrow enough to stay maintainab
 ## Default checked-in catalog
 - channels: `channels/feishu`, `channels/slack`, `channels/telegram`, `channels/whatsapp`
 - providers: `providers/anthropic`, `providers/glm`, `providers/kimi`, `providers/minimax`, `providers/openai`, `providers/qwen`
-- utilities: `cron`
+- utilities: `cron`, `foundation-maintenance`
 
 ## Good uses for skills
 - summarization workflows

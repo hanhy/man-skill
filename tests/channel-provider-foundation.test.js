@@ -253,6 +253,46 @@ test('default registries merge delivery overrides without mutating canonical sca
   assert.deepEqual(openaiRecord.models, ['gpt-4.1', 'gpt-4o', 'gpt-5', 'gpt-4.1-mini']);
 });
 
+test('default registries preserve canonical scaffold metadata for shorthand string ids', () => {
+  const channelRegistry = new JsChannelRegistry(['slack', 'custom-channel']);
+  const providerRegistry = new JsModelRegistry(['openai', 'custom-provider']);
+
+  const slackRecord = channelRegistry.summary().channels.find((channel) => channel.id === 'slack');
+  const customChannelRecord = channelRegistry.summary().channels.find((channel) => channel.id === 'custom-channel');
+  const openaiRecord = providerRegistry.summary().providers.find((provider) => provider.id === 'openai');
+  const customProviderRecord = providerRegistry.summary().providers.find((provider) => provider.id === 'custom-provider');
+
+  assert.deepEqual(slackRecord, slackChannelScaffold);
+  assert.deepEqual(openaiRecord, openaiProviderScaffold);
+
+  assert.deepEqual(customChannelRecord, {
+    id: 'custom-channel',
+    name: 'custom-channel',
+    transport: 'chat',
+    direction: ['inbound'],
+    status: 'unknown',
+    capabilities: [],
+    auth: null,
+    deliveryModes: [],
+    inboundPath: null,
+    outboundMode: null,
+    implementationPath: null,
+    nextStep: null,
+  });
+  assert.deepEqual(customProviderRecord, {
+    id: 'custom-provider',
+    name: 'custom-provider',
+    models: [],
+    status: 'unknown',
+    features: [],
+    defaultModel: null,
+    authEnvVar: null,
+    modalities: [],
+    implementationPath: null,
+    nextStep: null,
+  });
+});
+
 test('buildSummary keeps delivery queues aligned with the canonical rollout order', () => {
   const rootDir = makeTempRepo();
   seedMinimalRepo(rootDir);
@@ -676,6 +716,58 @@ test('buildSummary reports fully active delivery readiness even when channel and
   assert.deepEqual(summary.delivery.providerQueue, []);
   assert.match(summary.promptPreview, /runtime implementations: 4\/4 channels, 6\/6 providers ready/);
   assert.match(summary.promptPreview, /auth readiness: 4\/4 channels configured, 6\/6 providers configured/);
+});
+
+test('buildSummary keeps active configured delivery entries queued until runtime implementation files exist', () => {
+  const rootDir = makeTempRepo();
+  seedMinimalRepo(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'channels.json'),
+    JSON.stringify(DEFAULT_CHANNEL_SCAFFOLDS.map((channel) => ({ ...channel, status: 'active' })), null, 2),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'manifests', 'providers.json'),
+    JSON.stringify(DEFAULT_PROVIDER_SCAFFOLDS.map((provider) => ({ ...provider, status: 'active' })), null, 2),
+  );
+  ['slack', 'telegram', 'whatsapp', 'feishu'].forEach((channelId) => {
+    fs.rmSync(path.join(rootDir, 'src', 'channels', `${channelId}.js`), { force: true });
+  });
+  ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen'].forEach((providerId) => {
+    fs.rmSync(path.join(rootDir, 'src', 'models', `${providerId}.js`), { force: true });
+  });
+  fs.writeFileSync(path.join(rootDir, '.env'), [
+    'FEISHU_APP_ID=***',
+    'FEISHU_APP_SECRET=***',
+    'TELEGRAM_BOT_TOKEN=***',
+    'WHATSAPP_ACCESS_TOKEN=***',
+    'WHATSAPP_PHONE_NUMBER_ID=***',
+    'SLACK_BOT_TOKEN=***',
+    'SLACK_SIGNING_SECRET=***',
+    'OPENAI_API_KEY=***',
+    'ANTHROPIC_API_KEY=***',
+    'KIMI_API_KEY=***',
+    'MINIMAX_API_KEY=***',
+    'GLM_API_KEY=***',
+    'QWEN_API_KEY=***',
+    '',
+  ].join('\n'));
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.delivery.configuredChannelCount, 4);
+  assert.equal(summary.delivery.configuredProviderCount, 6);
+  assert.equal(summary.delivery.readyChannelImplementationCount, 0);
+  assert.equal(summary.delivery.readyProviderImplementationCount, 0);
+  assert.equal(summary.delivery.pendingChannelCount, 4);
+  assert.equal(summary.delivery.pendingProviderCount, 6);
+  assert.equal(summary.delivery.channelQueue.length, 4);
+  assert.equal(summary.delivery.providerQueue.length, 6);
+  assert.match(summary.delivery.helperCommands.scaffoldChannelImplementationBundle ?? '', /src\/channels\/feishu\.js/);
+  assert.match(summary.delivery.helperCommands.scaffoldProviderImplementationBundle ?? '', /src\/models\/openai\.js/);
+  assert.match(summary.promptPreview, /runtime implementations: 0\/4 channels, 0\/6 providers ready/);
+  assert.match(summary.promptPreview, /channel queue: 4 pending .*implementations 0\/4 ready/);
+  assert.match(summary.promptPreview, /provider queue: 6 pending .*implementations 0\/6 ready/);
 });
 
 test('buildSummary treats whitespace-only repo-local .env values as missing delivery auth', () => {

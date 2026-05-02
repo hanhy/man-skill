@@ -38,6 +38,16 @@ export class ModelRegistry extends BaseRegistry<string | ProviderRecord> {
 
   normalize(provider: string | ProviderRecord): ProviderRecord {
     if (typeof provider === 'string') {
+      const defaultProvider = DEFAULT_PROVIDER_SCAFFOLDS_BY_ID.get(provider);
+      if (defaultProvider) {
+        return {
+          ...defaultProvider,
+          models: [...defaultProvider.models],
+          features: [...defaultProvider.features],
+          modalities: [...defaultProvider.modalities],
+        };
+      }
+
       return {
         id: provider,
         name: provider,

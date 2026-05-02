@@ -20,6 +20,16 @@ export class ModelRegistry extends BaseRegistry {
 
   normalize(provider) {
     if (typeof provider === 'string') {
+      const defaultProvider = DEFAULT_PROVIDERS_BY_ID.get(provider);
+      if (defaultProvider) {
+        return {
+          ...defaultProvider,
+          models: [...defaultProvider.models],
+          features: [...defaultProvider.features],
+          modalities: [...defaultProvider.modalities],
+        };
+      }
+
       return {
         id: provider,
         name: provider,

@@ -163,6 +163,53 @@ test('direct message and talk imports reject whitespace-only text without writin
   assert.equal(fs.existsSync(materialsDir), false);
 });
 
+test('direct text imports reject files outside the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable directly either.');
+
+  assert.throws(
+    () => ingestion.importTextDocument({
+      personId: 'harry-han',
+      sourceFile: outsideFilePath,
+    }),
+    /outside the repo root/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+});
+
+test('direct screenshot imports reject files outside the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-outside-${Date.now()}.png`);
+  fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
+
+  assert.throws(
+    () => ingestion.importScreenshotSource({
+      personId: 'harry-han',
+      sourceFile: outsideFilePath,
+    }),
+    /outside the repo root/,
+  );
+
+  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+  const materialFiles = fs.existsSync(materialsDir)
+    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+    : [];
+  assert.deepEqual(materialFiles, []);
+  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+});
+
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -594,6 +641,45 @@ test('importManifest supports a single-target shorthand profile and inherits per
     .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
     .filter((name) => name.endsWith('.json'));
   assert.equal(materials.length, 2);
+});
+
+test('importManifest treats whitespace-only entry personId as absent when a shorthand manifest personId is available', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textSourcePath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textSourcePath, 'Move fast, but keep the edges clean.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        personId: 'Harry Han',
+        displayName: 'Harry Han',
+        entries: [
+          {
+            personId: '   ',
+            type: 'text',
+            file: './post.txt',
+            notes: 'blog fragment',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const result = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['harry-han']);
+  assert.equal(result.results[0]?.personId, 'harry-han');
+
+  const profile = JSON.parse(fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json'), 'utf8'));
+  assert.equal(profile.id, 'harry-han');
+  assert.equal(profile.displayName, 'Harry Han');
 });
 
 test('importManifest rejects entries that target profiles not declared in a multi-profile manifest', () => {
@@ -1513,7 +1599,7 @@ test('importProfileIntakeManifest explains how to promote starter templates into
 
   assert.throws(
     () => ingestion.importProfileIntakeManifest({ personId: 'starter-only', refreshFoundation: true }),
-    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
+    /Profile intake manifest still contains only starter templates: starter-only @ profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text; starter root: profiles\/starter-only\/imports; starter details: message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt\); then rerun node src\/index\.js import intake --person 'starter-only' to inspect or node src\/index\.js import intake --person 'starter-only' --refresh-foundation to import and refresh drafts/,
   );
 });
 
@@ -1531,7 +1617,7 @@ test('importManifest explains how to promote starter templates into entries befo
 
   assert.throws(
     () => ingestion.importManifest({ manifestFile: starterManifestPath, refreshFoundation: true }),
-    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
+    /Manifest still contains only starter templates: profiles\/starter-only\/imports\/materials\.template\.json — copy entryTemplates into entries\[\] and fill in real content \(templates: message, screenshot, talk, text; starter root: profiles\/starter-only\/imports; starter details: message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt\); then rerun node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' to inspect or node src\/index\.js import manifest --file 'profiles\/starter-only\/imports\/materials\.template\.json' --refresh-foundation to import and refresh drafts/,
   );
 });
 
@@ -1798,7 +1884,7 @@ test('buildSummary prompt preview keeps starter-only metadata intake templates o
 
   assert.equal(summary.ingestion.metadataProfileCommands[0].importIntakeCommand, null);
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 1 starter template, 0 partial, 0 missing/);
-  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(summary.promptPreview, /Harry Han \(harry-han\): 0 materials \(no typed materials\), intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt \| refresh-intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| import node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
 });
 
 test('buildSummary exposes bundled profile-specific intake scaffold and import commands for metadata-only profiles', () => {
