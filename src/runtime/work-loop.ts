@@ -38,6 +38,8 @@ export type WorkPriority = {
     latestMaterialAt: string | null;
     latestMaterialId: string | null;
     latestMaterialSourcePath: string | null;
+    candidateSignalSummary?: string | null;
+    draftSourcesSummary?: string | null;
     refreshReasons?: string[];
     missingDrafts?: string[];
     draftGapSummary?: string | null;
@@ -140,6 +142,8 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const latestMaterialAt = normalizeOptionalString(slice?.latestMaterialAt) ?? null;
     const latestMaterialId = normalizeOptionalString(slice?.latestMaterialId) ?? null;
     const latestMaterialSourcePath = normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null;
+    const candidateSignalSummary = normalizeOptionalString(slice?.candidateSignalSummary) ?? null;
+    const draftSourcesSummary = normalizeOptionalString(slice?.draftSourcesSummary) ?? null;
     const refreshReasons = normalizeStringArray(slice?.refreshReasons) ?? [];
     const missingDrafts = normalizeStringArray(slice?.missingDrafts) ?? [];
     const draftGapSummary = normalizeOptionalString(slice?.draftGapSummary) ?? null;
@@ -165,6 +169,8 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
       latestMaterialAt,
       latestMaterialId,
       latestMaterialSourcePath,
+      candidateSignalSummary,
+      draftSourcesSummary,
       refreshReasons,
       missingDrafts,
       draftGapSummary,

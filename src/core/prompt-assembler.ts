@@ -562,6 +562,8 @@ type RecommendedStarterProfileSlice = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   refreshReasons?: string[];
   missingDrafts?: string[];
   draftGapSummary?: string | null;
@@ -591,6 +593,8 @@ type IngestionProfileCommand = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   needsRefresh?: boolean;
   refreshReasons?: string[];
   missingDrafts?: string[];
@@ -747,6 +751,8 @@ type IngestionSummary = {
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
   recommendedLatestMaterialSourcePath?: string | null;
+  recommendedCandidateSignalSummary?: string | null;
+  recommendedDraftSourcesSummary?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedRefreshIntakeCommand?: string | null;

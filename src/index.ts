@@ -1230,6 +1230,12 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedLatestMaterialSourcePath = typeof ingestionSummary?.recommendedLatestMaterialSourcePath === 'string' && ingestionSummary.recommendedLatestMaterialSourcePath.length > 0
     ? (normalizeDraftPath(ingestionSummary.recommendedLatestMaterialSourcePath) ?? null)
     : null;
+  const recommendedCandidateSignalSummary = typeof ingestionSummary?.recommendedCandidateSignalSummary === 'string' && ingestionSummary.recommendedCandidateSignalSummary.length > 0
+    ? ingestionSummary.recommendedCandidateSignalSummary
+    : null;
+  const recommendedDraftSourcesSummary = typeof ingestionSummary?.recommendedDraftSourcesSummary === 'string' && ingestionSummary.recommendedDraftSourcesSummary.length > 0
+    ? ingestionSummary.recommendedDraftSourcesSummary
+    : null;
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
@@ -1276,6 +1282,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
       latestMaterialAt: string | null;
       latestMaterialId: string | null;
       latestMaterialSourcePath: string | null;
+      candidateSignalSummary?: string | null;
+      draftSourcesSummary?: string | null;
       refreshReasons?: string[];
       missingDrafts?: string[];
       draftGapSummary?: string | null;
@@ -1330,6 +1338,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     latestMaterialAt: recommendedLatestMaterialAt,
     latestMaterialId: recommendedLatestMaterialId,
     latestMaterialSourcePath: recommendedLatestMaterialSourcePath,
+    candidateSignalSummary: recommendedCandidateSignalSummary,
+    draftSourcesSummary: recommendedDraftSourcesSummary,
     fallbackCommand: recommendedFallbackCommand,
     refreshIntakeCommand: recommendedRefreshIntakeCommand,
     updateProfileCommand: recommendedUpdateProfileCommand,

@@ -44,6 +44,141 @@ function normalizeRelativePath(value) {
   return normalizeDraftPath(typeof value === 'string' ? value : null);
 }
 
+function normalizeOptionalString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeStringArray(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const normalized = [];
+  for (const value of values) {
+    const stringValue = normalizeOptionalString(value);
+    if (!stringValue || seen.has(stringValue)) {
+      continue;
+    }
+    seen.add(stringValue);
+    normalized.push(stringValue);
+  }
+
+  return normalized;
+}
+
+function normalizeMaterialTypes(materialTypes) {
+  if (!materialTypes || typeof materialTypes !== 'object' || Array.isArray(materialTypes)) {
+    return null;
+  }
+
+  const entries = Object.entries(materialTypes)
+    .filter(([key, value]) => normalizeOptionalString(key) && Number.isFinite(value) && Number(value) > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => [key.trim(), Number(value)]);
+
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+function formatCountLabel(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function formatMaterialTypes(materialTypes) {
+  if (!materialTypes) {
+    return null;
+  }
+
+  const entries = Object.entries(materialTypes)
+    .filter(([key, value]) => typeof key === 'string' && key.length > 0 && Number.isFinite(value) && Number(value) > 0)
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  return entries.length > 0
+    ? entries.map(([key, value]) => `${key}:${value}`).join(', ')
+    : null;
+}
+
+function collectCandidateSignalTypes(signal, primarySource = 'sample') {
+  const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
+  const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
+  return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
+}
+
+function buildCandidateSignalSummary(profile) {
+  const readiness = profile?.foundationReadiness ?? {};
+  let hasNonZeroCandidate = false;
+  const segments = ['memory', 'voice', 'soul', 'skills'].map((key) => {
+    const signal = readiness?.[key] ?? {};
+    const candidateCount = Number(signal?.candidateCount ?? 0);
+    const normalizedCount = Number.isFinite(candidateCount) && candidateCount > 0 ? candidateCount : 0;
+    if (normalizedCount > 0) {
+      hasNonZeroCandidate = true;
+    }
+    const types = collectCandidateSignalTypes(signal, key === 'memory' ? 'latest' : 'sample');
+    const typeSuffix = normalizedCount > 0 && types.length > 0
+      ? ` (${types.sort((left, right) => left.localeCompare(right)).join(', ')})`
+      : '';
+    return `${key} ${normalizedCount}${typeSuffix}`;
+  });
+
+  return hasNonZeroCandidate && segments.length > 0 ? segments.join(' | ') : null;
+}
+
+function summarizeDraftSources(profile) {
+  const draftKinds = [
+    { key: 'memory', summary: profile?.foundationDraftSummaries?.memory },
+    { key: 'skills', summary: profile?.foundationDraftSummaries?.skills },
+    { key: 'soul', summary: profile?.foundationDraftSummaries?.soul },
+    { key: 'voice', summary: profile?.foundationDraftSummaries?.voice },
+  ];
+
+  const sourceSummaries = draftKinds
+    .map(({ key, summary }) => {
+      if (!summary) {
+        return null;
+      }
+
+      const summaryPath = normalizeDraftPath(normalizeOptionalString(summary.path));
+      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
+      const sourceCount = Number(summary.sourceCount ?? 0);
+      const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
+      const materialTypes = formatMaterialTypes(normalizeMaterialTypes(summary.materialTypes));
+
+      if (!summaryPath && !latestMaterialSourcePath && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
+        return null;
+      }
+
+      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
+      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
+      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
+      const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
+      const fallbackDetails = [
+        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
+        entryLabel,
+        latestSourceLabel,
+      ].filter((value) => typeof value === 'string' && value.length > 0);
+      const parts = [
+        sourceDetailLabel,
+        entryLabel,
+        latestSourceLabel,
+      ].filter((value) => typeof value === 'string' && value.length > 0);
+
+      if (!sourceLabel && summaryPath) {
+        return fallbackDetails.length > 0 ? `${key} @ ${summaryPath} (${fallbackDetails.join(', ')})` : `${key} @ ${summaryPath}`;
+      }
+
+      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
+    })
+    .filter((value) => typeof value === 'string' && value.length > 0);
+
+  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
+}
+
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
@@ -164,6 +299,12 @@ function buildRecommendedStarterProfileSlice(profile: any) {
     missingDrafts: Array.isArray(profile?.missingDrafts)
       ? profile.missingDrafts.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
       : [],
+    candidateSignalSummary: typeof profile?.candidateSignalSummary === 'string' && profile.candidateSignalSummary.length > 0
+      ? profile.candidateSignalSummary
+      : null,
+    draftSourcesSummary: typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
+      ? profile.draftSourcesSummary
+      : null,
     draftGapSummary: typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
       ? profile.draftGapSummary
       : null,
@@ -843,6 +984,8 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
     ? (intakeManifest as any).entryTemplateCount
     : 0;
+  const candidateSignalSummary = imported ? buildCandidateSignalSummary(profile) : null;
+  const draftSourcesSummary = imported ? summarizeDraftSources(profile) : null;
   const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
@@ -891,6 +1034,8 @@ function buildProfileCommands(profile, options: any = {}) {
       ))
       : [],
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
+    candidateSignalSummary,
+    draftSourcesSummary,
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
@@ -1332,6 +1477,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLatestMaterialAt: string | null = null;
   let recommendedLatestMaterialId: string | null = null;
   let recommendedLatestMaterialSourcePath: string | null = null;
+  let recommendedCandidateSignalSummary: string | null = null;
+  let recommendedDraftSourcesSummary: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
@@ -1351,6 +1498,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     latestMaterialAt: string | null;
     latestMaterialId: string | null;
     latestMaterialSourcePath: string | null;
+    candidateSignalSummary: string | null;
+    draftSourcesSummary: string | null;
     fallbackCommand: string | null;
     refreshIntakeCommand: string | null;
     updateProfileCommand: string | null;
@@ -1375,6 +1524,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialAt = profile?.latestMaterialAt ?? null;
     recommendedLatestMaterialId = profile?.latestMaterialId ?? null;
     recommendedLatestMaterialSourcePath = normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null;
+    recommendedCandidateSignalSummary = typeof profile?.candidateSignalSummary === 'string' && profile.candidateSignalSummary.length > 0
+      ? profile.candidateSignalSummary
+      : null;
+    recommendedDraftSourcesSummary = typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
+      ? profile.draftSourcesSummary
+      : null;
   };
 
   if (safeProfiles.length === 0) {
@@ -1797,6 +1952,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialAt,
     recommendedLatestMaterialId,
     recommendedLatestMaterialSourcePath,
+    recommendedCandidateSignalSummary,
+    recommendedDraftSourcesSummary,
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,

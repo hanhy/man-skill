@@ -5145,6 +5145,8 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
     needsRefresh: false,
     refreshReasons: [],
     missingDrafts: [],
+    candidateSignalSummary: null,
+    draftSourcesSummary: null,
     draftGapSummary: null,
     updateProfileCommand: "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'",
     updateProfileAndRefreshCommand: null,
@@ -5357,6 +5359,8 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.equal(summary.ingestion.recommendedFollowUpCommand, importedStarterSlice?.followUpCommand ?? null);
   assert.equal(summary.ingestion.recommendedInspectCommand, importedStarterCommand?.followUpImportIntakeWithoutRefreshCommand ?? null);
   assert.equal(summary.ingestion.recommendedFollowUpCommand, importedStarterCommand?.followUpImportIntakeCommand ?? null);
+  assert.equal(importedStarterSlice?.candidateSignalSummary ?? null, importedStarterCommand?.candidateSignalSummary ?? null);
+  assert.equal(importedStarterSlice?.draftSourcesSummary ?? null, importedStarterCommand?.draftSourcesSummary ?? null);
   assert.deepEqual(summary.ingestion.recommendedPaths, [
     'profiles/harry-han/imports',
     'profiles/harry-han/imports/images',
@@ -5429,6 +5433,8 @@ test('buildSummary accepts UTF-8 BOM-prefixed imported intake starter manifests'
   assert.equal(summary.ingestion.recommendedFollowUpCommand, bomStarterSlice?.followUpCommand ?? null);
   assert.equal(summary.ingestion.recommendedInspectCommand, bomStarterCommand?.followUpImportIntakeWithoutRefreshCommand ?? null);
   assert.equal(summary.ingestion.recommendedFollowUpCommand, bomStarterCommand?.followUpImportIntakeCommand ?? null);
+  assert.equal(bomStarterSlice?.candidateSignalSummary ?? null, bomStarterCommand?.candidateSignalSummary ?? null);
+  assert.equal(bomStarterSlice?.draftSourcesSummary ?? null, bomStarterCommand?.draftSourcesSummary ?? null);
 });
 
 test('buildSummary accepts UTF-8 BOM-prefixed memory foundation drafts', () => {
@@ -5563,6 +5569,8 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       latestMaterialSourcePath: harryCommand?.latestMaterialSourcePath ?? null,
       refreshReasons: harryCommand?.refreshReasons ?? [],
       missingDrafts: harryCommand?.missingDrafts ?? [],
+      candidateSignalSummary: harryCommand?.candidateSignalSummary ?? null,
+      draftSourcesSummary: harryCommand?.draftSourcesSummary ?? null,
       draftGapSummary: harryCommand?.draftGapSummary ?? null,
       fallbackCommand: harryCommand?.starterImportCommand ?? null,
       refreshIntakeCommand: harryCommand?.updateIntakeCommand ?? null,
@@ -5597,6 +5605,8 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
       latestMaterialSourcePath: janeCommand?.latestMaterialSourcePath ?? null,
       refreshReasons: janeCommand?.refreshReasons ?? [],
       missingDrafts: janeCommand?.missingDrafts ?? [],
+      candidateSignalSummary: janeCommand?.candidateSignalSummary ?? null,
+      draftSourcesSummary: janeCommand?.draftSourcesSummary ?? null,
       draftGapSummary: janeCommand?.draftGapSummary ?? null,
       fallbackCommand: janeCommand?.starterImportCommand ?? null,
       refreshIntakeCommand: janeCommand?.updateIntakeCommand ?? null,
@@ -5787,6 +5797,8 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
       latestMaterialSourcePath: harry?.latestMaterialSourcePath ?? null,
       refreshReasons: harry?.refreshReasons ?? [],
       missingDrafts: harry?.missingDrafts ?? [],
+      candidateSignalSummary: harry?.candidateSignalSummary ?? null,
+      draftSourcesSummary: harry?.draftSourcesSummary ?? null,
       draftGapSummary: harry?.draftGapSummary ?? null,
       fallbackCommand: harry?.starterImportCommand ?? null,
       refreshIntakeCommand: harry?.updateIntakeCommand ?? null,
@@ -6503,6 +6515,8 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedLatestMaterialAt: null,
     recommendedLatestMaterialId: null,
     recommendedLatestMaterialSourcePath: null,
+    recommendedCandidateSignalSummary: null,
+    recommendedDraftSourcesSummary: null,
     recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     recommendedFallbackCommand: null,
     recommendedRefreshIntakeCommand: null,
