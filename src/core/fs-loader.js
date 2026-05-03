@@ -1031,9 +1031,11 @@ export function hasFoundationMemoryDraftMaterialMetadataMismatch(
   const expectedSourceCount = Number.isFinite(materialCount)
     ? materialCount
     : countMaterialTypes(normalizedExpectedMaterialTypes);
-  const draftSourceCount = Number.isFinite(memoryDraft.entryCount)
-    ? memoryDraft.entryCount
-    : countMaterialTypes(normalizedDraftMaterialTypes);
+  const draftSourceCount = Number.isFinite(memoryDraft.sourceCount)
+    ? memoryDraft.sourceCount
+    : (Number.isFinite(memoryDraft.entryCount)
+      ? memoryDraft.entryCount
+      : countMaterialTypes(normalizedDraftMaterialTypes));
 
   const normalizedExpectedMaterialSourcePath = normalizeDraftPath(latestMaterialSourcePath);
   const normalizedDraftMaterialSourcePath = normalizeDraftPath(memoryDraft.latestMaterialSourcePath);
@@ -1182,9 +1184,11 @@ function summarizeLegacyMemoryDraft(memoryDraft) {
         summary[entry.type] = (summary[entry.type] ?? 0) + 1;
         return summary;
       }, {});
-  const sourceCount = Object.keys(materialTypes).length > 0
-    ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
-    : (memoryDraft?.entryCount ?? entries.length ?? 0);
+  const sourceCount = Number.isFinite(memoryDraft?.sourceCount)
+    ? memoryDraft.sourceCount
+    : (Object.keys(materialTypes).length > 0
+      ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
+      : (memoryDraft?.entryCount ?? entries.length ?? 0));
 
   return {
     generatedAt: memoryDraft?.generatedAt ?? null,

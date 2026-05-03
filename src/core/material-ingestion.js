@@ -1920,6 +1920,7 @@ export class MaterialIngestion {
           latestMaterialAt: latestMaterialRecord?.createdAt ?? null,
           latestMaterialId: latestMaterialRecord?.id ?? null,
           latestMaterialSourcePath: latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null,
+          sourceCount: materialRecords.length,
           materialTypes,
           entryCount: memoryEntries.length,
           entries: memoryEntries,

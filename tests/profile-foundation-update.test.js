@@ -138,6 +138,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(memoryDraft.personId, 'harry-han');
   assert.equal(memoryDraft.displayName, 'Harry Han');
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for momentum.');
+  assert.equal(memoryDraft.sourceCount, 3);
   assert.equal(memoryDraft.entryCount, 3);
   assert.deepEqual(memoryDraft.materialTypes, {
     message: 1,
@@ -2276,6 +2277,41 @@ test('refreshStaleFoundationDrafts refreshes profiles when memory draft latest m
 
   const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
   assert.equal(repairedDraft.latestMaterialSourcePath, 'latest-source.txt');
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when memory draft sourceCount provenance drifts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Memory Source Count Drift',
+    text: 'Ship the first slice.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Memory Source Count Drift',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Memory Source Count Drift' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'memory-source-count-drift', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.sourceCount = 1;
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['memory-source-count-drift']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(repairedDraft.sourceCount, 2);
 });
 
 test('refreshStaleFoundationDrafts ignores memory draft latest material source formatting drift', async () => {
