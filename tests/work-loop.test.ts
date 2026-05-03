@@ -234,6 +234,121 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.recommendedPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
 });
 
+test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before exposing current and recommended priorities', () => {
+  const summary = new WorkLoop({
+    priorities: [
+      { id: 'foundation', label: 'Foundation', status: 'ready', summary: 'done', nextAction: null, command: null, paths: [] },
+      {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'ready',
+        summary: 'starter scaffold available',
+        nextAction: 'populate starter manifest',
+        command: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+        editPath: ' .\\profiles\\harry-han//imports\\materials.template.json ',
+        editPaths: [
+          ' .\\profiles\\harry-han//imports\\materials.template.json ',
+          ' .\\profiles\\harry-han//imports\\images\\chat.png ',
+        ],
+        intakeManifestEntryTemplateDetails: [
+          { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+          { type: 'talk', source: 'text', path: null, preview: '  <paste a transcript snippet>  ' },
+        ],
+        intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
+        recommendedProfileSlices: [
+          {
+            personId: 'harry-han',
+            label: 'Harry Han (harry-han)',
+            latestMaterialAt: '2026-04-20T12:00:00.000Z',
+            latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+            latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+            fallbackCommand: null,
+            refreshIntakeCommand: null,
+            updateProfileCommand: null,
+            updateProfileAndRefreshCommand: null,
+            editPath: ' .\\profiles\\harry-han//imports\\materials.template.json ',
+            editPaths: [' .\\profiles\\harry-han//imports\\sample.txt '],
+            manifestInspectCommand: null,
+            manifestImportCommand: null,
+            intakeManifestEntryTemplateTypes: ['screenshot'],
+            intakeManifestEntryTemplateDetails: [
+              { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+            ],
+            intakeManifestEntryTemplateCount: 1,
+            intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
+            inspectCommand: null,
+            followUpCommand: null,
+            paths: [' .\\profiles\\harry-han//imports ', ' .\\profiles\\harry-han//imports\\sample.txt '],
+          },
+        ],
+        paths: [' .\\profiles\\harry-han//imports ', ' .\\profiles\\harry-han//imports\\sample.txt '],
+      },
+      { id: 'channels', label: 'Channels', status: 'blocked', summary: 'blocked on env', nextAction: 'set FEISHU_APP_ID', command: 'cp .env.example .env', paths: ['.env.example', '.env'] },
+    ],
+  }).summary();
+
+  assert.equal(summary.actionableReadyPriority?.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(summary.actionableReadyPriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/images/chat.png',
+  ]);
+  assert.deepEqual(summary.actionableReadyPriority?.intakeManifestEntryTemplateDetails, [
+    { type: 'screenshot', source: 'file', path: 'profiles/harry-han/imports/images/chat.png', preview: null },
+    { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
+  ]);
+  assert.equal(summary.actionableReadyPriority?.intakeManifestEntryTemplateRoot, 'profiles/harry-han/imports');
+  assert.deepEqual(summary.actionableReadyPriority?.paths, [
+    'profiles/harry-han/imports',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+  assert.deepEqual(summary.actionableReadyPriority?.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: '2026-04-20T12:00:00.000Z',
+      latestMaterialId: '2026-04-20T12-00-00-000Z-text',
+      latestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      fallbackCommand: null,
+      refreshIntakeCommand: null,
+      updateProfileCommand: null,
+      updateProfileAndRefreshCommand: null,
+      editPath: 'profiles/harry-han/imports/materials.template.json',
+      editPaths: ['profiles/harry-han/imports/sample.txt'],
+      manifestInspectCommand: null,
+      manifestImportCommand: null,
+      intakeManifestEntryTemplateTypes: ['screenshot'],
+      intakeManifestEntryTemplateDetails: [
+        { type: 'screenshot', source: 'file', path: 'profiles/harry-han/imports/images/chat.png', preview: null },
+      ],
+      intakeManifestEntryTemplateCount: 1,
+      intakeManifestEntryTemplateRoot: 'profiles/harry-han/imports',
+      inspectCommand: null,
+      followUpCommand: null,
+      paths: ['profiles/harry-han/imports', 'profiles/harry-han/imports/sample.txt'],
+    },
+  ]);
+
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: summary as any,
+  }).buildPreview(4000);
+
+  assert.match(prompt, /recommended edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /recommended edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png/);
+  assert.match(prompt, /recommended starter root: profiles\/harry-han\/imports/);
+  assert.match(prompt, /recommended paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(prompt, /runnable edit: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png/);
+  assert.match(prompt, /runnable starter root: profiles\/harry-han\/imports/);
+  assert.match(prompt, /runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /\\/);
+});
+
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {
   const summary = new WorkLoop({
     priorities: [

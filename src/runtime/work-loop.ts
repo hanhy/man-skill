@@ -93,10 +93,56 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizePathArray(values: string[] | null | undefined): string[] | undefined {
+  if (!Array.isArray(values)) {
+    return undefined;
+  }
+
+  return values
+    .map((value) => normalizeDraftPath(value))
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
+
+function normalizeStarterTemplateDetails(
+  details: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> | null | undefined,
+): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> | undefined {
+  if (!Array.isArray(details)) {
+    return undefined;
+  }
+
+  return details.map((detail) => ({
+    ...detail,
+    path: normalizeDraftPath(detail?.path),
+    preview: normalizeOptionalString(detail?.preview) ?? null,
+  }));
+}
+
+function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority['recommendedProfileSlices'] {
+  if (!Array.isArray(priority.recommendedProfileSlices)) {
+    return undefined;
+  }
+
+  return priority.recommendedProfileSlices.map((slice) => ({
+    ...slice,
+    latestMaterialSourcePath: normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null,
+    editPath: normalizeDraftPath(slice?.editPath) ?? null,
+    editPaths: normalizePathArray(slice?.editPaths) ?? [],
+    intakeManifestEntryTemplateDetails: normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [],
+    intakeManifestEntryTemplateRoot: normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null,
+    paths: normalizePathArray(slice?.paths) ?? [],
+  }));
+}
+
 function normalizePriority(priority: WorkPriority): WorkPriority {
   const latestMaterialAt = normalizeOptionalString(priority.latestMaterialAt);
   const latestMaterialId = normalizeOptionalString(priority.latestMaterialId);
   const latestMaterialSourcePath = normalizeDraftPath(priority.latestMaterialSourcePath);
+  const editPath = normalizeDraftPath(priority.editPath);
+  const editPaths = normalizePathArray(priority.editPaths);
+  const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(priority.intakeManifestEntryTemplateDetails);
+  const intakeManifestEntryTemplateRoot = normalizeDraftPath(priority.intakeManifestEntryTemplateRoot);
+  const recommendedProfileSlices = normalizeRecommendedProfileSlices(priority);
+  const paths = normalizePathArray(priority.paths) ?? [];
 
   return {
     ...priority,
@@ -106,6 +152,14 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(!latestMaterialId && priority.latestMaterialId !== undefined ? { latestMaterialId: null } : {}),
     ...(latestMaterialSourcePath ? { latestMaterialSourcePath } : {}),
     ...(!latestMaterialSourcePath && priority.latestMaterialSourcePath !== undefined ? { latestMaterialSourcePath: null } : {}),
+    ...(editPath ? { editPath } : {}),
+    ...(!editPath && priority.editPath !== undefined ? { editPath: null } : {}),
+    ...(editPaths ? { editPaths } : {}),
+    ...(intakeManifestEntryTemplateDetails ? { intakeManifestEntryTemplateDetails } : {}),
+    ...(intakeManifestEntryTemplateRoot ? { intakeManifestEntryTemplateRoot } : {}),
+    ...(!intakeManifestEntryTemplateRoot && priority.intakeManifestEntryTemplateRoot !== undefined ? { intakeManifestEntryTemplateRoot: null } : {}),
+    ...(recommendedProfileSlices ? { recommendedProfileSlices } : {}),
+    paths,
   };
 }
 
