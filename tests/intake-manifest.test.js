@@ -260,3 +260,75 @@ test('inspectProfileIntakeManifest rejects starter templates that target a diffe
   assert.deepEqual(manifest.entryTemplateTypes, ['text']);
   assert.equal(manifest.entryTemplateCount, 1);
 });
+
+test('inspectProfileIntakeManifest rejects loaded manifests whose entry templates escape the profile imports directory', () => {
+  const rootDir = makeTempRepo();
+  const profileDir = path.join(rootDir, 'profiles', 'metadata-only');
+  const importsDir = path.join(profileDir, 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'outside.txt'), 'should stay outside imports\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'message',
+          text: 'real import',
+        },
+      ],
+      entryTemplates: {
+        text: { file: '../outside.txt' },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /outside the profile imports directory/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'text', source: 'file', path: '../outside.txt', preview: null },
+  ]);
+});
+
+test('inspectProfileIntakeManifest rejects loaded manifests whose entry templates target a different expected profile', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'message',
+          text: 'real import',
+        },
+      ],
+      entryTemplates: {
+        text: {
+          file: 'sample.txt',
+          personId: 'jane-doe',
+        },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/harry-han/imports/materials.template.json',
+    expectedPersonId: 'harry-han',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /targets a different profile: expected harry-han/);
+  assert.deepEqual(manifest.entryTemplateTypes, ['text']);
+  assert.equal(manifest.entryTemplateCount, 1);
+});
