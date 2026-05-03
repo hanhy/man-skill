@@ -860,6 +860,29 @@ test('buildCoreFoundationCommand repairs thin voice docs with level-one ATX sect
   );
 });
 
+test('buildCoreFoundationCommand keeps nested voice subheadings inside their canonical section while repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'voice',
+    status: 'thin',
+    paths: ['voice/README.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-voice-nested-subheadings-command-'));
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n### Pacing\n- Keep short sentences unless detail helps.\n\n## Avoid\n- Never pad the answer.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'voice', 'README.md'), 'utf8'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n### Pacing\n- Keep short sentences unless detail helps.\n\n## Signature moves\n- Capture recurring phrasing, structure, or rhetorical habits here.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Note bilingual, dialect, or code-switching habits worth preserving.\n',
+  );
+});
+
 test('buildCoreFoundationCommand normalizes blockquoted legacy voice headings toward openclaw when repairing thin scaffolds', () => {
   const command = buildCoreFoundationCommand({
     area: 'voice',
@@ -1155,6 +1178,28 @@ test('buildCoreFoundationCommand repairs thin soul docs with level-one ATX secti
   assert.equal(
     fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
     '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n## Boundaries\n- Keep claims grounded.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
+  );
+});
+
+test('buildCoreFoundationCommand keeps nested soul subheadings inside their canonical section while repairing thin scaffolds', () => {
+  const command = buildCoreFoundationCommand({
+    area: 'soul',
+    status: 'thin',
+    paths: ['SOUL.md'],
+  });
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-thin-soul-nested-subheadings-command-'));
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n### Examples\n- Preserve the operator\'s repeated priorities.\n\n## Vibe\n- Grounded and direct.\n',
+  );
+
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+  execSync(command ?? '', { cwd: rootDir, shell: '/bin/bash' });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootDir, 'SOUL.md'), 'utf8'),
+    '# Soul\n\n## Core truths\n- Stay faithful to source material.\n\n### Examples\n- Preserve the operator\'s repeated priorities.\n\n## Boundaries\n- Capture what the agent should protect or refuse to compromise.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Note the principles to use when tradeoffs appear.\n',
   );
 });
 
