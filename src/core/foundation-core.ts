@@ -50,6 +50,17 @@ function normalizeShadowPaths(shadowPaths: string[] = []): string[] {
   ));
 }
 
+function collectShadowPathPreviewSources(shadowPaths: string[], limit = 3): {
+  sampleSources: string[];
+  overflowCount: number;
+} {
+  const sampleSources = shadowPaths.slice(0, limit);
+  return {
+    sampleSources,
+    overflowCount: Math.max(shadowPaths.length - sampleSources.length, 0),
+  };
+}
+
 function formatList(values: string[]): string {
   if (values.length <= 1) {
     return values[0] ?? '';
@@ -436,6 +447,12 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
   const shadowPaths = Array.isArray(document.shadowPaths)
     ? document.shadowPaths.filter((value): value is string => isNonEmptyString(value))
     : [];
+  const shadowPathSamplePaths = Array.isArray(document.shadowPathSamplePaths)
+    ? document.shadowPathSamplePaths.filter((value): value is string => isNonEmptyString(value))
+    : shadowPaths.slice(0, 3);
+  const shadowPathOverflowCount = typeof document.shadowPathOverflowCount === 'number'
+    ? document.shadowPathOverflowCount
+    : Math.max(shadowPaths.length - shadowPathSamplePaths.length, 0);
   const headingAliasSummary = summarizeHeadingAliases(document.headingAliases);
   const sectionSummary = document.present && document.lineCount > 0
     && typeof document.readySectionCount === 'number' && typeof document.totalSectionCount === 'number'
@@ -447,7 +464,9 @@ function summarizeDocumentFoundation(document: CoreDocumentFoundationSummary): s
   const missingSectionSummary = document.present && document.lineCount > 0 && missingSections.length > 0
     ? `, missing ${missingSections.join(', ')}`
     : '';
-  const shadowPathSummary = shadowPaths.length > 0 ? `, shadow docs ${shadowPaths.join(', ')}` : '';
+  const shadowPathSummary = shadowPathSamplePaths.length > 0
+    ? `, shadow docs ${shadowPathSamplePaths.join(', ')}${shadowPathOverflowCount > 0 ? `, +${shadowPathOverflowCount} more` : ''}`
+    : '';
   return `${document.present ? 'present' : 'missing'}, ${document.lineCount} lines${sectionSummary}${readySectionSummary}${missingSectionSummary}${shadowPathSummary}${headingAliasSummary}`;
 }
 
@@ -709,6 +728,9 @@ export interface CoreMemoryFoundationSummary {
   rootTotalSectionCount?: number;
   headingAliases?: string[];
   shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   canonicalShortTermBucket: 'daily';
   legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'];
   legacyShortTermSourceCount: number;
@@ -736,6 +758,9 @@ export interface CoreSkillsFoundationSummary {
   rootTotalSectionCount?: number;
   headingAliases?: string[];
   shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   count: number;
   documentedCount: number;
   undocumentedCount: number;
@@ -769,6 +794,9 @@ export interface CoreDocumentFoundationSummary {
   missingSections: string[];
   headingAliases?: string[];
   shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
 }
 
 type HeadingAliasDefinition = {
@@ -1020,6 +1048,7 @@ function buildSoulDocumentSummary(document: string | null | undefined, shadowPat
   const structured = hasStructuredHeading(document, ['core truths', 'core values', 'boundaries', 'vibe', 'continuity', 'decision rules']);
   const headingAliases = collectHeadingAliases(document, SOUL_HEADING_ALIAS_DEFINITIONS);
   const normalizedShadowPaths = normalizeShadowPaths(shadowPaths);
+  const shadowPathPreview = collectShadowPathPreviewSources(normalizedShadowPaths);
   const readySections = structured
     ? [
       profile.coreTruths.length > 0 ? 'core-truths' : null,
@@ -1056,7 +1085,12 @@ function buildSoulDocumentSummary(document: string | null | undefined, shadowPat
     readySections,
     missingSections,
     ...(headingAliases.length > 0 ? { headingAliases } : {}),
-    ...(normalizedShadowPaths.length > 0 ? { shadowPaths: normalizedShadowPaths } : {}),
+    ...(normalizedShadowPaths.length > 0 ? {
+      shadowPaths: normalizedShadowPaths,
+      shadowPathCount: normalizedShadowPaths.length,
+      shadowPathSamplePaths: shadowPathPreview.sampleSources,
+      shadowPathOverflowCount: shadowPathPreview.overflowCount,
+    } : {}),
   };
 }
 
@@ -1073,6 +1107,7 @@ function buildVoiceDocumentSummary(document: string | null | undefined, shadowPa
   ]) || hasStructuredHeadingMatcher(document, isCurrentDefaultVoiceHeading);
   const headingAliases = collectHeadingAliases(document, VOICE_HEADING_ALIAS_DEFINITIONS);
   const normalizedShadowPaths = normalizeShadowPaths(shadowPaths);
+  const shadowPathPreview = collectShadowPathPreviewSources(normalizedShadowPaths);
   const readySections = structured
     ? [
       profile.hasToneGuidance ? 'tone' : null,
@@ -1109,7 +1144,12 @@ function buildVoiceDocumentSummary(document: string | null | undefined, shadowPa
     readySections,
     missingSections,
     ...(headingAliases.length > 0 ? { headingAliases } : {}),
-    ...(normalizedShadowPaths.length > 0 ? { shadowPaths: normalizedShadowPaths } : {}),
+    ...(normalizedShadowPaths.length > 0 ? {
+      shadowPaths: normalizedShadowPaths,
+      shadowPathCount: normalizedShadowPaths.length,
+      shadowPathSamplePaths: shadowPathPreview.sampleSources,
+      shadowPathOverflowCount: shadowPathPreview.overflowCount,
+    } : {}),
   };
 }
 
@@ -1277,6 +1317,7 @@ export function buildCoreFoundationSummary({
     : { readySections: [], missingSections: [] };
   const memoryHeadingAliases = collectHeadingAliases(memoryIndex?.root, MEMORY_ROOT_HEADING_ALIAS_DEFINITIONS);
   const normalizedMemoryShadowPaths = normalizeShadowPaths(memoryShadowPaths);
+  const memoryShadowPathPreview = collectShadowPathPreviewSources(normalizedMemoryShadowPaths);
   const memoryHasStructuredRootSections = memoryRootSections.readySections.length > 0 || memoryRootSections.missingSections.length > 0;
   const memory = {
     hasRootDocument: isNonEmptyString(memoryIndex?.root),
@@ -1289,7 +1330,12 @@ export function buildCoreFoundationSummary({
       rootTotalSectionCount: memoryRootSections.readySections.length + memoryRootSections.missingSections.length,
     } : {}),
     ...(memoryHeadingAliases.length > 0 ? { headingAliases: memoryHeadingAliases } : {}),
-    ...(normalizedMemoryShadowPaths.length > 0 ? { shadowPaths: normalizedMemoryShadowPaths } : {}),
+    ...(normalizedMemoryShadowPaths.length > 0 ? {
+      shadowPaths: normalizedMemoryShadowPaths,
+      shadowPathCount: normalizedMemoryShadowPaths.length,
+      shadowPathSamplePaths: memoryShadowPathPreview.sampleSources,
+      shadowPathOverflowCount: memoryShadowPathPreview.overflowCount,
+    } : {}),
     canonicalShortTermBucket: 'daily' as const,
     legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'] as ['shortTermEntries', 'shortTermPresent'],
     legacyShortTermSourceCount: legacyShortTermSources.length,
@@ -1323,6 +1369,7 @@ export function buildCoreFoundationSummary({
     : { readySections: [], missingSections: [] };
   const skillsHeadingAliases = collectHeadingAliases(skillsRootDocument, SKILLS_ROOT_HEADING_ALIAS_DEFINITIONS);
   const normalizedSkillsShadowPaths = normalizeShadowPaths(skillsShadowPaths);
+  const skillsShadowPathPreview = collectShadowPathPreviewSources(normalizedSkillsShadowPaths);
   const skillsHasStructuredRootSections = skillsRootSections.readySections.length > 0 || skillsRootSections.missingSections.length > 0;
   const skills = {
     hasRootDocument: isNonEmptyString(skillsRootDocument),
@@ -1335,7 +1382,12 @@ export function buildCoreFoundationSummary({
       rootTotalSectionCount: skillsRootSections.readySections.length + skillsRootSections.missingSections.length,
     } : {}),
     ...(skillsHeadingAliases.length > 0 ? { headingAliases: skillsHeadingAliases } : {}),
-    ...(normalizedSkillsShadowPaths.length > 0 ? { shadowPaths: normalizedSkillsShadowPaths } : {}),
+    ...(normalizedSkillsShadowPaths.length > 0 ? {
+      shadowPaths: normalizedSkillsShadowPaths,
+      shadowPathCount: normalizedSkillsShadowPaths.length,
+      shadowPathSamplePaths: skillsShadowPathPreview.sampleSources,
+      shadowPathOverflowCount: skillsShadowPathPreview.overflowCount,
+    } : {}),
     count: safeSkillNames.length,
     documentedCount: documentedSkillNames.length,
     undocumentedCount: undocumentedSkillNames.length,

@@ -352,6 +352,42 @@ test('buildCoreFoundationSummary normalizes and dedupes shadow doc paths before 
   assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
 });
 
+test('buildCoreFoundationSummary exposes compact shadow doc preview metadata for root layers', () => {
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts\n- scratch/: working drafts\n',
+      daily: ['today.md'],
+      longTerm: ['stable.md'],
+      scratch: ['ideas.md'],
+    },
+    memoryShadowPaths: [' .\\MEMORY.md ', './MEMORY.md', 'memory/README.shadow.md', 'docs/memory-shadow.md'],
+    skillNames: ['slack'],
+    skillInventory: {
+      documented: ['slack'],
+      documentedExcerpts: { slack: 'Route thread replies safely.' },
+      root: '# Skills\n\n## What lives here\n- Reusable playbooks.\n\n## Layout\n- One folder per skill.\n',
+    },
+    skillsShadowPaths: [' .\\SKILLS.md ', './SKILLS.md', 'docs/skills-shadow.md', 'notes/skills-shadow.md'],
+    soulDocument: '# Soul\n\nProtect the operator loop.\n\n## Core truths\n- Keep the system inspectable.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Carry durable lessons forward.\n',
+    soulShadowPaths: [' .\\soul\\README.md ', './soul/README.md', 'docs/soul-shadow.md', 'notes/soul-shadow.md'],
+    voiceDocument: '# Voice\n\nStay crisp and direct.\n\n## Tone\n- Warm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+    voiceShadowPaths: [' .\\VOICE.md ', './VOICE.md', 'docs/voice-shadow.md', 'notes/voice-shadow.md'],
+  });
+
+  assert.equal(foundation.memory.shadowPathCount, 3);
+  assert.deepEqual(foundation.memory.shadowPathSamplePaths, ['MEMORY.md', 'memory/README.shadow.md', 'docs/memory-shadow.md']);
+  assert.equal(foundation.memory.shadowPathOverflowCount, 0);
+  assert.equal(foundation.skills.shadowPathCount, 3);
+  assert.deepEqual(foundation.skills.shadowPathSamplePaths, ['SKILLS.md', 'docs/skills-shadow.md', 'notes/skills-shadow.md']);
+  assert.equal(foundation.skills.shadowPathOverflowCount, 0);
+  assert.equal(foundation.soul.shadowPathCount, 3);
+  assert.deepEqual(foundation.soul.shadowPathSamplePaths, ['soul/README.md', 'docs/soul-shadow.md', 'notes/soul-shadow.md']);
+  assert.equal(foundation.soul.shadowPathOverflowCount, 0);
+  assert.equal(foundation.voice.shadowPathCount, 3);
+  assert.deepEqual(foundation.voice.shadowPathSamplePaths, ['VOICE.md', 'docs/voice-shadow.md', 'notes/voice-shadow.md']);
+  assert.equal(foundation.voice.shadowPathOverflowCount, 0);
+});
+
 test('soul and voice parsers accept plus bullets and checklist markers inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nStay faithful.\n\n## Core truths\n+ [ ] Keep the system inspectable.\n+ Prefer narrow, verified diffs.\n\n## Boundaries\n+ [x] Do not bluff certainty.\n\n## Vibe\n+ Grounded and direct.\n\n## Continuity\n+ Carry durable lessons forward.\n`);
   const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n+ [ ] Crisp and grounded.\n\n## Signature moves\n+ [ ] Use concrete examples.\n+ Close with the next step.\n\n## Avoid\n+ [x] Padding the answer.\n\n## Language hints\n+ Preserve bilingual phrasing when the source switches languages.\n`);

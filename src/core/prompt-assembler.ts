@@ -2588,7 +2588,9 @@ function formatShadowPathSummary(
     return null;
   }
 
-  return `${prefix}${normalizedShadowPaths.join(', ')}`;
+  const visibleShadowPaths = normalizedShadowPaths.slice(0, 3);
+  const remainingShadowPathCount = Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0);
+  return `${prefix}${visibleShadowPaths.join(', ')}${remainingShadowPathCount > 0 ? `, +${remainingShadowPathCount} more` : ''}`;
 }
 
 function formatPreviewShadowPathSummary(shadowPaths: string[] | null | undefined): string | null {

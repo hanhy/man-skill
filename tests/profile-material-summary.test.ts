@@ -2371,6 +2371,126 @@ test('PromptAssembler surfaces memory and skills shadow docs across preview bloc
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); shadow docs SKILLS\.md; docs: skills\/slack\/SKILL\.md/);
 });
 
+test('PromptAssembler compacts overflowing shadow docs across preview blocks', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    memorySummary: {
+      dailyEntries: 1,
+      longTermEntries: 1,
+      scratchEntries: 1,
+      totalEntries: 3,
+      dailyPresent: true,
+      longTermPresent: true,
+      scratchPresent: true,
+      canonicalShortTermBucket: 'daily',
+      legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      legacyShortTermSourceCount: 0,
+      legacyShortTermSources: [],
+      legacyShortTermSampleSources: [],
+      legacyShortTermSourceOverflowCount: 0,
+      readyBucketCount: 3,
+      totalBucketCount: 3,
+      populatedBuckets: ['daily', 'long-term', 'scratch'],
+      emptyBuckets: [],
+    },
+    skills: [],
+    skillsSummary: {
+      skillCount: 1,
+      discoveredCount: 1,
+      customCount: 0,
+      skills: [{ name: 'slack', status: 'discovered', description: 'Route thread replies safely.' }],
+    },
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        canonicalShortTermBucket: 'daily',
+        legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 1,
+        readyBucketCount: 3,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term', 'scratch'],
+        emptyBuckets: [],
+        sampleEntries: ['daily/2026-04-20.md'],
+        shadowPaths: [' .\\MEMORY.md ', 'memory/README.shadow.md', 'docs/memory-shadow.md', 'notes/memory-shadow.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here', 'layout'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        count: 1,
+        documentedCount: 1,
+        sample: ['slack'],
+        samplePaths: ['skills/slack/SKILL.md'],
+        shadowPaths: [' .\\SKILLS.md ', 'docs/skills-shadow.md', 'notes/skills-shadow.md', 'archive/skills-shadow.md'],
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        rootPath: 'SOUL.md',
+        lineCount: 8,
+        excerpt: 'Protect the operator loop.',
+        rootExcerpt: 'Protect the operator loop.',
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        shadowPaths: [' .\\soul\\README.md ', 'docs/soul-shadow.md', 'notes/soul-shadow.md', 'archive/soul-shadow.md'],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        rootPath: 'voice/README.md',
+        lineCount: 9,
+        excerpt: 'Stay crisp and direct.',
+        rootExcerpt: 'Stay crisp and direct.',
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        shadowPaths: [' .\\VOICE.md ', 'docs/voice-shadow.md', 'notes/voice-shadow.md', 'archive/voice-shadow.md'],
+      },
+      overview: {
+        readyAreaCount: 4,
+        totalAreaCount: 4,
+        missingAreas: [],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 4,
+        missingAreaCount: 0,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3[\s\S]*- shadow docs: MEMORY\.md, memory\/README\.shadow\.md, docs\/memory-shadow\.md, \+1 more/);
+  assert.match(prompt, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0[\s\S]*- shadow docs: SKILLS\.md, docs\/skills-shadow\.md, notes\/skills-shadow\.md, \+1 more/);
+  assert.match(prompt, /Voice profile:\n- tone: n\/a\n- style: direct[\s\S]*- shadow docs: VOICE\.md, docs\/voice-shadow\.md, notes\/voice-shadow\.md, \+1 more/);
+  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples daily\/2026-04-20\.md, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, shadow docs MEMORY\.md, memory\/README\.shadow\.md, docs\/memory-shadow\.md, \+1 more; skills docs 1\/1 \(slack\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, shadow docs SKILLS\.md, docs\/skills-shadow\.md, notes\/skills-shadow\.md, \+1 more; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, shadow docs soul\/README\.md, docs\/soul-shadow\.md, notes\/soul-shadow\.md, \+1 more; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, shadow docs VOICE\.md, docs\/voice-shadow\.md, notes\/voice-shadow\.md, \+1 more/);
+  assert.doesNotMatch(prompt, /archive\/voice-shadow\.md.*archive\/voice-shadow\.md/);
+});
+
 test('PromptAssembler surfaces soul and voice shadow docs across preview blocks', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
