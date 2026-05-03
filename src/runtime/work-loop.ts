@@ -142,11 +142,20 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const latestMaterialSourcePath = normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null;
     const refreshReasons = normalizeStringArray(slice?.refreshReasons) ?? [];
     const missingDrafts = normalizeStringArray(slice?.missingDrafts) ?? [];
+    const draftGapSummary = normalizeOptionalString(slice?.draftGapSummary) ?? null;
+    const fallbackCommand = normalizeOptionalString(slice?.fallbackCommand) ?? null;
+    const refreshIntakeCommand = normalizeOptionalString(slice?.refreshIntakeCommand) ?? null;
+    const updateProfileCommand = normalizeOptionalString(slice?.updateProfileCommand) ?? null;
+    const updateProfileAndRefreshCommand = normalizeOptionalString(slice?.updateProfileAndRefreshCommand) ?? null;
     const editPath = normalizeDraftPath(slice?.editPath) ?? null;
     const editPaths = normalizePathArray(slice?.editPaths) ?? [];
+    const manifestInspectCommand = normalizeOptionalString(slice?.manifestInspectCommand) ?? null;
+    const manifestImportCommand = normalizeOptionalString(slice?.manifestImportCommand) ?? null;
     const intakeManifestEntryTemplateTypes = normalizeStringArray(slice?.intakeManifestEntryTemplateTypes) ?? [];
     const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [];
     const intakeManifestEntryTemplateRoot = normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null;
+    const inspectCommand = normalizeOptionalString(slice?.inspectCommand) ?? null;
+    const followUpCommand = normalizeOptionalString(slice?.followUpCommand) ?? null;
     const paths = normalizePathArray(slice?.paths) ?? [];
 
     return {
@@ -158,13 +167,20 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
       latestMaterialSourcePath,
       refreshReasons,
       missingDrafts,
+      draftGapSummary,
+      fallbackCommand,
+      refreshIntakeCommand,
+      updateProfileCommand,
+      updateProfileAndRefreshCommand,
       editPath,
       editPaths,
+      manifestInspectCommand,
+      manifestImportCommand,
       intakeManifestEntryTemplateTypes,
       intakeManifestEntryTemplateDetails,
       intakeManifestEntryTemplateRoot,
-      inspectCommand: normalizeOptionalString(slice?.inspectCommand) ?? null,
-      followUpCommand: normalizeOptionalString(slice?.followUpCommand) ?? null,
+      inspectCommand,
+      followUpCommand,
       paths,
     };
   });
@@ -179,11 +195,22 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const rootThinReadySections = normalizeStringArray(priority.rootThinReadySections);
   const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
   const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
+  const candidateSignalSummary = normalizeOptionalString(priority.candidateSignalSummary);
+  const draftSourcesSummary = normalizeOptionalString(priority.draftSourcesSummary);
+  const draftGapSummary = normalizeOptionalString(priority.draftGapSummary);
+  const fallbackCommand = normalizeOptionalString(priority.fallbackCommand);
+  const refreshIntakeCommand = normalizeOptionalString(priority.refreshIntakeCommand);
+  const updateProfileCommand = normalizeOptionalString(priority.updateProfileCommand);
+  const updateProfileAndRefreshCommand = normalizeOptionalString(priority.updateProfileAndRefreshCommand);
   const editPath = normalizeDraftPath(priority.editPath);
   const editPaths = normalizePathArray(priority.editPaths);
+  const manifestInspectCommand = normalizeOptionalString(priority.manifestInspectCommand);
+  const manifestImportCommand = normalizeOptionalString(priority.manifestImportCommand);
   const intakeManifestEntryTemplateTypes = normalizeStringArray(priority.intakeManifestEntryTemplateTypes);
   const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(priority.intakeManifestEntryTemplateDetails);
   const intakeManifestEntryTemplateRoot = normalizeDraftPath(priority.intakeManifestEntryTemplateRoot);
+  const inspectCommand = normalizeOptionalString(priority.inspectCommand);
+  const followUpCommand = normalizeOptionalString(priority.followUpCommand);
   const recommendedProfileSlices = normalizeRecommendedProfileSlices(priority);
   const paths = normalizePathArray(priority.paths) ?? [];
 
@@ -200,13 +227,35 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(rootThinReadySections ? { rootThinReadySections } : {}),
     ...(rootThinMissingSections ? { rootThinMissingSections } : {}),
     ...(rootHeadingAliases ? { rootHeadingAliases } : {}),
+    ...(candidateSignalSummary ? { candidateSignalSummary } : {}),
+    ...(!candidateSignalSummary && priority.candidateSignalSummary !== undefined ? { candidateSignalSummary: null } : {}),
+    ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
+    ...(!draftSourcesSummary && priority.draftSourcesSummary !== undefined ? { draftSourcesSummary: null } : {}),
+    ...(draftGapSummary ? { draftGapSummary } : {}),
+    ...(!draftGapSummary && priority.draftGapSummary !== undefined ? { draftGapSummary: null } : {}),
+    ...(fallbackCommand ? { fallbackCommand } : {}),
+    ...(!fallbackCommand && priority.fallbackCommand !== undefined ? { fallbackCommand: null } : {}),
+    ...(refreshIntakeCommand ? { refreshIntakeCommand } : {}),
+    ...(!refreshIntakeCommand && priority.refreshIntakeCommand !== undefined ? { refreshIntakeCommand: null } : {}),
+    ...(updateProfileCommand ? { updateProfileCommand } : {}),
+    ...(!updateProfileCommand && priority.updateProfileCommand !== undefined ? { updateProfileCommand: null } : {}),
+    ...(updateProfileAndRefreshCommand ? { updateProfileAndRefreshCommand } : {}),
+    ...(!updateProfileAndRefreshCommand && priority.updateProfileAndRefreshCommand !== undefined ? { updateProfileAndRefreshCommand: null } : {}),
     ...(editPath ? { editPath } : {}),
     ...(!editPath && priority.editPath !== undefined ? { editPath: null } : {}),
     ...(editPaths ? { editPaths } : {}),
+    ...(manifestInspectCommand ? { manifestInspectCommand } : {}),
+    ...(!manifestInspectCommand && priority.manifestInspectCommand !== undefined ? { manifestInspectCommand: null } : {}),
+    ...(manifestImportCommand ? { manifestImportCommand } : {}),
+    ...(!manifestImportCommand && priority.manifestImportCommand !== undefined ? { manifestImportCommand: null } : {}),
     ...(intakeManifestEntryTemplateTypes ? { intakeManifestEntryTemplateTypes } : {}),
     ...(intakeManifestEntryTemplateDetails ? { intakeManifestEntryTemplateDetails } : {}),
     ...(intakeManifestEntryTemplateRoot ? { intakeManifestEntryTemplateRoot } : {}),
     ...(!intakeManifestEntryTemplateRoot && priority.intakeManifestEntryTemplateRoot !== undefined ? { intakeManifestEntryTemplateRoot: null } : {}),
+    ...(inspectCommand ? { inspectCommand } : {}),
+    ...(!inspectCommand && priority.inspectCommand !== undefined ? { inspectCommand: null } : {}),
+    ...(followUpCommand ? { followUpCommand } : {}),
+    ...(!followUpCommand && priority.followUpCommand !== undefined ? { followUpCommand: null } : {}),
     ...(recommendedProfileSlices ? { recommendedProfileSlices } : {}),
     paths,
   };

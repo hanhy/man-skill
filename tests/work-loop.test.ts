@@ -221,6 +221,44 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
         latestMaterialAt: ' 2026-04-20T12:00:00.000Z ',
         latestMaterialId: ' 2026-04-20T12-00-00-000Z-text ',
         latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+        candidateSignalSummary: ' memory 3 (message, talk, text) ',
+        draftSourcesSummary: ' voice 3 sources, latest @ samples/harry-post.txt ',
+        draftGapSummary: ' voice missing, 3 candidates ',
+        fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
+        refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
+        updateProfileCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
+        updateProfileAndRefreshCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation ",
+        manifestInspectCommand: " node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' ",
+        manifestImportCommand: " node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation ",
+        inspectCommand: " node src/index.js import intake --person 'harry-han' ",
+        followUpCommand: " node src/index.js import intake --person 'harry-han' --refresh-foundation ",
+        recommendedProfileSlices: [
+          {
+            personId: ' harry-han ',
+            label: ' Harry Han (harry-han) ',
+            latestMaterialAt: ' 2026-04-20T12:00:00.000Z ',
+            latestMaterialId: ' 2026-04-20T12-00-00-000Z-text ',
+            latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+            refreshReasons: [' new materials '],
+            missingDrafts: [' voice '],
+            draftGapSummary: ' voice missing, 3 candidates ',
+            fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
+            refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
+            updateProfileCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
+            updateProfileAndRefreshCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation ",
+            editPath: null,
+            editPaths: [],
+            manifestInspectCommand: " node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' ",
+            manifestImportCommand: " node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation ",
+            intakeManifestEntryTemplateTypes: [],
+            intakeManifestEntryTemplateDetails: [],
+            intakeManifestEntryTemplateCount: 0,
+            intakeManifestEntryTemplateRoot: null,
+            inspectCommand: " node src/index.js import intake --person 'harry-han' ",
+            followUpCommand: " node src/index.js import intake --person 'harry-han' --refresh-foundation ",
+            paths: [],
+          },
+        ],
         paths: [],
       },
     ],
@@ -229,6 +267,26 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
   assert.equal(summary.currentPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.currentPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
+  assert.equal(summary.currentPriority?.candidateSignalSummary, 'memory 3 (message, talk, text)');
+  assert.equal(summary.currentPriority?.draftSourcesSummary, 'voice 3 sources, latest @ samples/harry-post.txt');
+  assert.equal(summary.currentPriority?.draftGapSummary, 'voice missing, 3 candidates');
+  assert.equal(summary.currentPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.currentPriority?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(summary.currentPriority?.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(summary.currentPriority?.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
+  assert.equal(summary.currentPriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.currentPriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.currentPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.currentPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftGapSummary, 'voice missing, 3 candidates');
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.recommendedPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
   assert.equal(summary.recommendedPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.recommendedPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
@@ -327,6 +385,7 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
       latestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
       refreshReasons: ['new materials'],
       missingDrafts: ['voice'],
+      draftGapSummary: null,
       fallbackCommand: null,
       refreshIntakeCommand: null,
       updateProfileCommand: null,
