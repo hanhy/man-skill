@@ -1386,7 +1386,7 @@ export class MaterialIngestion {
       originalPath: sourceFile,
     });
     const normalized = this.ensureProfile(personId);
-    const content = fs.readFileSync(validatedSourceFile, 'utf8');
+    const content = stripLeadingUtf8Bom(fs.readFileSync(validatedSourceFile, 'utf8'));
     const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
       personId: normalized.personId,

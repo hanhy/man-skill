@@ -139,6 +139,42 @@ test('direct screenshot imports skip unchanged reruns before copying duplicate a
   assert.equal(materialRecords.length, 1);
 });
 
+test('direct text imports strip UTF-8 BOMs before deduping and writing material content', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const bomPath = path.join(rootDir, 'bom.txt');
+  const plainPath = path.join(rootDir, 'plain.txt');
+  fs.writeFileSync(bomPath, '\uFEFFShip the thin slice first.');
+  fs.writeFileSync(plainPath, 'Ship the thin slice first.');
+
+  const firstResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: bomPath,
+    notes: 'blog fragment',
+  });
+  const secondResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: plainPath,
+    notes: 'blog fragment',
+    fingerprint: firstResult.fingerprint,
+  });
+
+  assert.equal(firstResult.skipped, false);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+
+  const textRecord = JSON.parse(fs.readFileSync(firstResult.recordPath, 'utf8'));
+  assert.equal(textRecord.content, 'Ship the thin slice first.');
+  assert.equal(textRecord.content.startsWith('\uFEFF'), false);
+});
+
 test('direct message and talk imports reject whitespace-only text without writing records', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
