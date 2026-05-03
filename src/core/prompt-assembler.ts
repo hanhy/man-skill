@@ -2710,11 +2710,9 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
     contextParts.push(rootHeadingAliasSummary);
   }
 
-  const shadowPaths = Array.isArray(area.shadowPaths)
-    ? area.shadowPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
-    : [];
-  if (shadowPaths.length > 0) {
-    contextParts.push(`shadow docs ${shadowPaths.join(', ')}`);
+  const shadowPathSummary = formatShadowPathSummary(area.shadowPaths, 'shadow docs ');
+  if (shadowPathSummary) {
+    contextParts.push(shadowPathSummary);
   }
 
   const thinSectionPaths = new Set<string>([
@@ -2824,10 +2822,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     !readyCoreFoundationDetails && soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}${Array.isArray(soul.shadowPaths) && soul.shadowPaths.length > 0 ? `, shadow docs ${soul.shadowPaths.join(', ')}` : ''}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}`
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}${formatShadowPathSummary(soul.shadowPaths, ', shadow docs ') ?? ''}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}`
       : null,
     !readyCoreFoundationDetails && voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}${Array.isArray(voice.shadowPaths) && voice.shadowPaths.length > 0 ? `, shadow docs ${voice.shadowPaths.join(', ')}` : ''}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}${formatShadowPathSummary(voice.shadowPaths, ', shadow docs ') ?? ''}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`
       : null,
     recommendedActions.length > 0
       ? `- next actions: ${recommendedActions.join(' | ')}`
@@ -3247,7 +3245,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
 function buildSoulPreviewBlock(
   soul: SoulSummary,
-  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!soul) {
     return '- unavailable';
@@ -3280,6 +3278,7 @@ function buildSoulPreviewBlock(
         foundationSoul.totalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationSoul?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationSoul?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
@@ -3451,7 +3450,7 @@ function formatVoicePreviewItems(label: string, values: unknown): string {
 
 function buildVoicePreviewBlock(
   voice: VoiceSummary,
-  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!voice) {
     return '- unavailable';
@@ -3481,6 +3480,7 @@ function buildVoicePreviewBlock(
         foundationVoice.totalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationVoice?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationVoice?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }

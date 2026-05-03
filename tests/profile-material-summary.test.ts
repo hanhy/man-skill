@@ -2141,6 +2141,108 @@ test('PromptAssembler surfaces memory and skills shadow docs across preview bloc
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); shadow docs SKILLS\.md; docs: skills\/slack\/SKILL\.md/);
 });
 
+test('PromptAssembler surfaces soul and voice shadow docs across preview blocks', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    soulProfile: {
+      excerpt: 'Protect the operator loop.',
+      coreTruths: ['Ship the correction while it is still fresh.'],
+      boundaries: ['Do not bury the next step.'],
+      vibe: ['Calm and specific.'],
+      continuity: ['Carry the strongest evidence forward.'],
+    },
+    voice: {
+      style: 'direct',
+      tone: 'calm',
+      constraints: ['Keep updates crisp.'],
+      signatures: ['Lead with the delta.'],
+      languageHints: ['Prefer active voice.'],
+    },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: false,
+        rootPath: 'memory/README.md',
+        rootExcerpt: null,
+        rootReadySections: [],
+        rootMissingSections: ['what-belongs-here', 'buckets'],
+        rootReadySectionCount: 0,
+        rootTotalSectionCount: 2,
+        dailyCount: 0,
+        longTermCount: 0,
+        scratchCount: 0,
+        readyBucketCount: 0,
+        totalBucketCount: 3,
+        populatedBuckets: [],
+        emptyBuckets: ['daily', 'long-term', 'scratch'],
+      },
+      skills: {
+        hasRootDocument: false,
+        rootPath: 'skills/README.md',
+        rootExcerpt: null,
+        rootReadySections: [],
+        rootMissingSections: ['what-lives-here', 'layout'],
+        rootReadySectionCount: 0,
+        rootTotalSectionCount: 2,
+        count: 0,
+        documentedCount: 0,
+        sample: [],
+        samplePaths: [],
+      },
+      soul: {
+        present: true,
+        path: 'SOUL.md',
+        lineCount: 8,
+        excerpt: 'Protect the operator loop.',
+        rootPath: 'SOUL.md',
+        rootExcerpt: 'Protect the operator loop.',
+        readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        missingSections: [],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        shadowPaths: [' .\\soul\\README.md ', './soul/README.md'],
+      },
+      voice: {
+        present: true,
+        path: 'voice/README.md',
+        lineCount: 9,
+        excerpt: 'Stay crisp and direct.',
+        rootPath: 'voice/README.md',
+        rootExcerpt: 'Stay crisp and direct.',
+        readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        missingSections: [],
+        readySectionCount: 4,
+        totalSectionCount: 4,
+        shadowPaths: [' .\\VOICE.md ', './VOICE.md'],
+      },
+      overview: {
+        readyAreaCount: 2,
+        totalAreaCount: 4,
+        missingAreas: ['memory', 'skills'],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 2,
+        missingAreaCount: 2,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /Soul profile:\n- excerpt: Protect the operator loop\.\n- core truths: 1\n- boundaries: 1\n- vibe: 1\n- continuity: 1\n- root: Protect the operator loop\. @ SOUL\.md\n- sections: 4\/4 ready \(core-truths, boundaries, vibe, continuity\)\n- shadow docs: soul\/README\.md/);
+  assert.match(prompt, /Voice profile:\n- tone: calm\n- style: direct\n- constraints: 1 \(Keep updates crisp\.\)\n- signatures: 1 \(Lead with the delta\.\)\n- language hints: 1 \(Prefer active voice\.\)\n- root: Stay crisp and direct\. @ voice\/README\.md\n- sections: 4\/4 ready \(tone, signature-moves, avoid, language-hints\)\n- shadow docs: VOICE\.md/);
+  assert.match(prompt, /soul: present, 8 lines, Protect the operator loop\. @ SOUL\.md, sections 4\/4 ready \(core-truths, boundaries, vibe, continuity\), shadow docs soul\/README\.md/);
+  assert.match(prompt, /voice: present, 9 lines, Stay crisp and direct\. @ voice\/README\.md, sections 4\/4 ready \(tone, signature-moves, avoid, language-hints\), shadow docs VOICE\.md/);
+});
+
 test('PromptAssembler infers canonical daily alias wording from legacy short-term fields when explicit alias metadata is absent', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
