@@ -2541,6 +2541,33 @@ function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | unde
   return summary.replace(/^; aliases /, '- root heading aliases: ');
 }
 
+function formatShadowPathSummary(
+  shadowPaths: string[] | null | undefined,
+  prefix = '; shadow docs ',
+): string | null {
+  const normalizedShadowPaths = Array.isArray(shadowPaths)
+    ? Array.from(new Set(
+      shadowPaths
+        .map((value) => normalizeDraftPath(normalizeOptionalString(value)))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
+    : [];
+  if (normalizedShadowPaths.length === 0) {
+    return null;
+  }
+
+  return `${prefix}${normalizedShadowPaths.join(', ')}`;
+}
+
+function formatPreviewShadowPathSummary(shadowPaths: string[] | null | undefined): string | null {
+  const summary = formatShadowPathSummary(shadowPaths);
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; shadow docs /, '- shadow docs: ');
+}
+
 function formatThinSectionProgress(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -2784,10 +2811,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       : null,
     readyCoreFoundationDetails,
     !readyCoreFoundationDetails && memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memoryDailyCount}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${formatMemoryAliasSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}${formatHeadingAliasSummary(memory.headingAliases) ?? ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memoryDailyCount}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${formatMemoryAliasSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}${formatShadowPathSummary(memory.shadowPaths) ?? ''}${formatHeadingAliasSummary(memory.headingAliases) ?? ''}`
       : null,
     !readyCoreFoundationDetails && skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${formatHeadingAliasSummary(skills.headingAliases) ?? ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${formatShadowPathSummary(skills.shadowPaths) ?? ''}${formatHeadingAliasSummary(skills.headingAliases) ?? ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
         const readySectionCount = skills.thinReadySectionCounts?.[skillName];
@@ -3259,7 +3286,7 @@ function buildSoulPreviewBlock(
 
 function buildMemoryPreviewBlock(
   memory: MemorySummary,
-  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!memory) {
     return '- unavailable';
@@ -3295,13 +3322,14 @@ function buildMemoryPreviewBlock(
         foundationMemory.rootTotalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationMemory?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationMemory?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts' | 'shadowPaths'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -3403,6 +3431,7 @@ function buildSkillsPreviewBlock(
     `- custom: ${skills.customCount ?? 0}`,
     rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
     rootSectionSummary,
+    formatPreviewShadowPathSummary(foundationSkills?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
     foundationStatusSummary,

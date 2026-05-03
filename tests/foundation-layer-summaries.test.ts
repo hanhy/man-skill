@@ -259,6 +259,55 @@ test('buildCoreFoundationSummary keeps canonical voice/README.md while surfacing
   assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
 });
 
+test('buildCoreFoundationSummary keeps canonical memory and skills root docs while surfacing duplicate root docs', () => {
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: [
+        '# Memory',
+        '',
+        'Keep durable notes here.',
+        '',
+        '## What belongs here',
+        '- Durable repo knowledge.',
+        '',
+        '## Buckets',
+        '- daily/',
+        '- long-term/',
+        '- scratch/',
+      ].join('\n'),
+      daily: ['today.md'],
+      legacyShortTerm: [],
+      longTerm: ['stable.md'],
+      scratch: ['draft.md'],
+    },
+    memoryShadowPaths: ['MEMORY.md'],
+    skillNames: ['slack'],
+    skillInventory: {
+      documented: ['slack'],
+      documentedExcerpts: {
+        slack: 'Keep Slack thread replies grounded.',
+      },
+      root: [
+        '# Skills',
+        '',
+        'Keep shared procedures discoverable.',
+        '',
+        '## What lives here',
+        '- Reusable playbooks.',
+        '',
+        '## Layout',
+        '- One folder per skill.',
+      ].join('\n'),
+    },
+    skillsShadowPaths: ['SKILLS.md'],
+  });
+
+  assert.equal(foundation.memory.rootPath, 'memory/README.md');
+  assert.deepEqual(foundation.memory.shadowPaths, ['MEMORY.md']);
+  assert.equal(foundation.skills.rootPath, 'skills/README.md');
+  assert.deepEqual(foundation.skills.shadowPaths, ['SKILLS.md']);
+});
+
 test('buildCoreFoundationSummary normalizes and dedupes shadow doc paths before surfacing them', () => {
   const foundation = buildCoreFoundationSummary({
     soulDocument: [

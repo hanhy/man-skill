@@ -2030,6 +2030,117 @@ test('PromptAssembler preserves root section count summaries when only aggregate
   assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 1\/2 ready \(what-lives-here\), missing layout; docs: skills\/slack\/SKILL\.md/);
 });
 
+test('PromptAssembler surfaces memory and skills shadow docs across preview blocks', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    memorySummary: {
+      dailyEntries: 1,
+      longTermEntries: 1,
+      scratchEntries: 0,
+      totalEntries: 2,
+      dailyPresent: true,
+      longTermPresent: true,
+      scratchPresent: false,
+      canonicalShortTermBucket: 'daily',
+      legacyShortTermAliases: ['shortTermEntries', 'shortTermPresent'],
+      legacyShortTermSourceCount: 0,
+      legacyShortTermSources: [],
+      legacyShortTermSampleSources: [],
+      legacyShortTermSourceOverflowCount: 0,
+      readyBucketCount: 2,
+      totalBucketCount: 3,
+      populatedBuckets: ['daily', 'long-term'],
+      emptyBuckets: ['scratch'],
+    },
+    skills: [],
+    skillsSummary: {
+      skillCount: 1,
+      discoveredCount: 1,
+      customCount: 0,
+      skills: [{ name: 'slack', status: 'discovered', description: 'Route thread replies safely.' }],
+    },
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    foundationCore: {
+      memory: {
+        hasRootDocument: true,
+        rootPath: 'memory/README.md',
+        rootExcerpt: 'Keep durable notes here.',
+        rootReadySections: ['what-belongs-here', 'buckets'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        dailyCount: 1,
+        longTermCount: 1,
+        scratchCount: 0,
+        readyBucketCount: 2,
+        totalBucketCount: 3,
+        populatedBuckets: ['daily', 'long-term'],
+        emptyBuckets: ['scratch'],
+        sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.md'],
+        shadowPaths: [' .\\MEMORY.md ', './MEMORY.md'],
+      },
+      skills: {
+        hasRootDocument: true,
+        rootPath: 'skills/README.md',
+        rootExcerpt: 'Keep shared procedures discoverable.',
+        rootReadySections: ['what-lives-here', 'layout'],
+        rootMissingSections: [],
+        rootReadySectionCount: 2,
+        rootTotalSectionCount: 2,
+        count: 1,
+        documentedCount: 1,
+        sample: ['slack'],
+        samplePaths: ['skills/slack/SKILL.md'],
+        shadowPaths: [' .\\SKILLS.md ', './SKILLS.md'],
+      },
+      soul: {
+        present: false,
+        path: 'SOUL.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      voice: {
+        present: false,
+        path: 'voice/README.md',
+        lineCount: 0,
+        excerpt: null,
+        readySections: [],
+        missingSections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
+        readySectionCount: 0,
+        totalSectionCount: 4,
+      },
+      overview: {
+        readyAreaCount: 2,
+        totalAreaCount: 4,
+        missingAreas: ['soul', 'voice'],
+        thinAreas: [],
+        recommendedActions: [],
+      },
+      maintenance: {
+        areaCount: 4,
+        readyAreaCount: 2,
+        missingAreaCount: 2,
+        thinAreaCount: 0,
+        recommendedPaths: [],
+        helperCommands: {},
+        queuedAreas: [],
+      },
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 0\n- total: 2\n- buckets: 2\/3 ready \(daily, long-term\), missing scratch\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md\n- root sections: 2\/2 ready \(what-belongs-here, buckets\)\n- shadow docs: MEMORY\.md/);
+  assert.match(prompt, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- root: Keep shared procedures discoverable\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- shadow docs: SKILLS\.md\n- top skills: slack \[discovered\]: Route thread replies safely\./);
+  assert.match(prompt, /memory: README yes, daily 1, long-term 1, scratch 0; buckets 2\/3 ready \(daily, long-term\), missing scratch; samples: daily\/2026-04-20\.md, long-term\/operator\.md; root: Keep durable notes here\. @ memory\/README\.md; root sections 2\/2 ready \(what-belongs-here, buckets\); shadow docs MEMORY\.md/);
+  assert.match(prompt, /skills: 1 registered, 1 documented \(slack\); root: Keep shared procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); shadow docs SKILLS\.md; docs: skills\/slack\/SKILL\.md/);
+});
+
 test('PromptAssembler infers canonical daily alias wording from legacy short-term fields when explicit alias metadata is absent', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
