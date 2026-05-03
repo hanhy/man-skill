@@ -14,6 +14,7 @@ import * as promptAssemblerJsShim from '../src/core/prompt-assembler.js';
 import { PromptAssembler, buildProfileSnapshotSummaries } from '../src/core/prompt-assembler.ts';
 import * as promptAssemblerTsModule from '../src/core/prompt-assembler.ts';
 import { buildFoundationRollup } from '../src/core/foundation-rollup.ts';
+import { summarizeFoundationDraftSources } from '../src/core/foundation-draft-source-summary.ts';
 
 function makeTempRepo() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-profile-summary-'));
@@ -229,6 +230,58 @@ test('buildProfileSnapshotSummaries keeps latest material source paths visible e
   assert.equal(snapshot.latestMaterialId, null);
   assert.equal(snapshot.latestMaterialSourcePath, 'profiles/jane-doe/imports/images/chat.png');
   assert.match(snapshot.snapshot, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/images\/chat\.png/);
+});
+
+test('buildProfileSnapshotSummaries keeps mixed fallback draft-source provenance aligned with the shared foundation formatter', () => {
+  const profile = {
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { message: 1 },
+    foundationDraftStatus: {
+      complete: false,
+      needsRefresh: true,
+      missingDrafts: ['memory'],
+    },
+    foundationDraftSummaries: {
+      memory: {
+        path: './profiles/jane-doe/memory/long-term/foundation.json',
+        entryCount: 1,
+        latestMaterialSourcePath: '.\\profiles\\jane-doe\\imports\\call-notes.txt',
+      },
+      skills: {
+        path: 'profiles/jane-doe/skills/README.md',
+      },
+      voice: {
+        path: 'profiles/jane-doe/voice/README.md',
+        materialTypes: { message: 1 },
+        latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      },
+    },
+  };
+  const [snapshot] = buildProfileSnapshotSummaries([profile]);
+
+  assert.deepEqual(snapshot.draftSources, {
+    memory: {
+      path: 'profiles/jane-doe/memory/long-term/foundation.json',
+      generated: false,
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
+      entryCount: 1,
+    },
+    skills: {
+      path: 'profiles/jane-doe/skills/README.md',
+      generated: false,
+    },
+    voice: {
+      path: 'profiles/jane-doe/voice/README.md',
+      generated: false,
+      latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      materialTypes: { message: 1 },
+    },
+  });
+  assert.match(
+    snapshot.snapshot,
+    new RegExp(`draft sources: ${summarizeFoundationDraftSources(profile)?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+  );
 });
 
 test('buildProfileSnapshotSummaries skips empty draft status and zeroed candidate lines when snapshot inputs normalize to nothing', () => {

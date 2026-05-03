@@ -1,5 +1,6 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
 import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
+import { summarizeFoundationDraftSources } from './foundation-draft-source-summary.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
@@ -1202,47 +1203,7 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
 }
 
 function summarizeDraftSources(profile: ProfileSnapshot = {}) {
-  const draftSources = collectDraftSources(profile);
-  const sourceSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
-    .map((key) => {
-      const summary = draftSources[key];
-      if (!summary) {
-        return null;
-      }
-
-      const sourceCount = Number(summary.sourceCount ?? 0);
-      const entryCount = Number(summary.entryCount ?? 0);
-      const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
-      const path = normalizeDraftPath(normalizeOptionalString(summary.path));
-      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !path) {
-        return null;
-      }
-
-      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
-      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
-      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
-      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
-      const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
-      const fallbackDetails = [
-        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-      const parts = [
-        sourceDetailLabel,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-
-      if (!sourceLabel && path) {
-        return fallbackDetails.length > 0 ? `${key} @ ${path} (${fallbackDetails.join(', ')})` : `${key} @ ${path}`;
-      }
-
-      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
-    })
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
-
-  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
+  return summarizeFoundationDraftSources(profile);
 }
 
 function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
