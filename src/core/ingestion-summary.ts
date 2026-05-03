@@ -976,13 +976,17 @@ function collectStarterTemplateEditPaths(profile: any): string[] {
   const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
     .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
     .map((detail) => {
-      if (!manifestDir) {
-        return null;
-      }
-
       const normalizedDetailPath = normalizeDraftPath(detail.path);
       if (!normalizedDetailPath) {
         return null;
+      }
+
+      if (!manifestDir) {
+        return normalizedDetailPath;
+      }
+
+      if (normalizedDetailPath === manifestDir || normalizedDetailPath.startsWith(`${manifestDir}/`)) {
+        return normalizedDetailPath;
       }
 
       const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, normalizedDetailPath));

@@ -2527,6 +2527,26 @@ test('buildSummary work loop treats imported intake starter scaffolds as advisor
     'refresh-foundation': true,
   });
 
+  const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');
+  const sampleTextPath = path.join(importsDir, 'sample.txt');
+  const sampleImagePath = path.join(importsDir, 'images', 'chat.png');
+  const starterManifestPath = path.join(importsDir, 'materials.template.json');
+  const starterManifest = JSON.parse(fs.readFileSync(starterManifestPath, 'utf8'));
+  fs.writeFileSync(starterManifestPath, JSON.stringify({
+    ...starterManifest,
+    entryTemplates: {
+      ...starterManifest.entryTemplates,
+      screenshot: {
+        ...starterManifest.entryTemplates.screenshot,
+        file: sampleImagePath,
+      },
+      text: {
+        ...starterManifest.entryTemplates.text,
+        file: sampleTextPath,
+      },
+    },
+  }, null, 2));
+
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 1);
@@ -2538,12 +2558,24 @@ test('buildSummary work loop treats imported intake starter scaffolds as advisor
   assert.equal(summary.workLoop.actionableReadyPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.actionableReadyPriority?.status, 'ready');
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/images/chat.png',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/images/chat.png',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
   assert.match(summary.workLoop.priorities.find((priority) => priority.id === 'ingestion')?.summary ?? '', /1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(summary.promptPreview, /runnable next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
+  assert.match(summary.promptPreview, /recommended edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(summary.promptPreview, /imports\/profiles\/harry-han\/imports/);
   assert.match(summary.promptPreview, /order: foundation:ready \| ingestion:ready \| channels:ready \| providers:ready/);
   assert.match(summary.promptPreview, /imported intake: 0 ready, 1 starter template, 0 backfills, 0 invalid manifests/);
 });
