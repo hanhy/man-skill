@@ -1646,11 +1646,17 @@ test('buildSummary work loop points first-run ingestion at an invalid checked-in
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
   fs.writeFileSync(
     path.join(rootDir, 'samples', 'harry-materials.json'),
     JSON.stringify({
       personId: 'Harry Han',
+      displayName: 'Harry Han',
       entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
         {
           type: 'text',
           file: 'missing-post.txt',
@@ -1662,14 +1668,17 @@ test('buildSummary work loop points first-run ingestion at an invalid checked-in
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the checked-in sample manifest for first imports — missing file: missing-post.txt');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the checked-in sample manifest for Harry Han (harry-han) — missing file: missing-post.txt');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/missing-post.txt']);
-  assert.match(summary.promptPreview, /next action: fix the checked-in sample manifest for first imports — missing file: missing-post\.txt/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt', 'samples/missing-post.txt']);
+  assert.match(summary.promptPreview, /next action: fix the checked-in sample manifest for Harry Han \(harry-han\) — missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'samples\/harry-materials\.json'/);
-  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/missing-post\.txt/);
+  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/missing-post\.txt/);
   assert.match(summary.promptPreview, /sample manifest invalid: .* @ samples\/harry-materials\.json/);
 });
 

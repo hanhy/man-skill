@@ -452,20 +452,21 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     };
   }
 
+  const profileIds = new Set<string>();
+  const declaredProfileIds = new Set<string>();
+  const materialTypes: Record<string, number> = {};
+  const textFilePersonIds: Record<string, string> = {};
+  const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
+  const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
+  const filePaths: string[] = [];
+  const profileDisplayNames = new Map<string, string>();
+  const pushUniqueFilePath = (value: string) => {
+    if (!filePaths.includes(value)) {
+      filePaths.push(value);
+    }
+  };
+
   try {
-    const profileIds = new Set<string>();
-    const declaredProfileIds = new Set<string>();
-    const materialTypes: Record<string, number> = {};
-    const textFilePersonIds: Record<string, string> = {};
-    const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
-    const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
-    const filePaths: string[] = [];
-    const profileDisplayNames = new Map<string, string>();
-    const pushUniqueFilePath = (value: string) => {
-      if (!filePaths.includes(value)) {
-        filePaths.push(value);
-      }
-    };
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
     const toRepoRelativeRepairPath = (absoluteRepairPath: string): string | null => {
@@ -682,16 +683,18 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const repairPaths = Array.isArray((error as SampleManifestValidationError)?.repairPaths)
       ? (error as SampleManifestValidationError).repairPaths?.filter((value): value is string => typeof value === 'string' && value.length > 0) ?? []
       : [];
+    const partialProfileIds = [...profileIds].sort();
+    const partialProfileLabels = partialProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId)));
     return {
       status: 'invalid',
       entryCount: 0,
-      profileIds: [],
-      profileLabels: [],
+      profileIds: partialProfileIds,
+      profileLabels: partialProfileLabels,
       materialTypes: {},
       textFilePersonIds: {},
       inlineEntries: [],
       fileEntries: [],
-      filePaths: repairPaths,
+      filePaths: Array.from(new Set([...filePaths, ...repairPaths])),
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }

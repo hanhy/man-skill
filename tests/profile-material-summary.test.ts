@@ -7386,7 +7386,7 @@ test('buildSummary reports invalid sample manifests without advertising a broken
   assert.deepEqual(summary.ingestion.sampleManifestMaterialTypes, {});
   assert.equal(typeof summary.ingestion.sampleManifestError, 'string');
   assert.equal(summary.ingestion.sampleStarterCommand, null);
-  assert.equal(summary.ingestion.sampleStarterSource, null);
+  assert.equal(summary.ingestion.sampleStarterSource, 'samples/harry-materials.json');
   assert.equal(summary.ingestion.sampleManifestCommand, null);
   assert.equal(summary.ingestion.sampleTextPath, null);
   assert.equal(summary.ingestion.sampleTextPresent, false);
@@ -7654,8 +7654,9 @@ test('buildSummary treats parseable but semantically invalid sample manifests as
 
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.ingestion.sampleManifestEntryCount, 0);
-  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
-  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, []);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
   assert.equal(summary.ingestion.sampleManifestCommand, null);
   assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 is missing personId/);
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 is missing personId @ samples\/harry-materials\.json/);
@@ -7679,8 +7680,9 @@ test('buildSummary treats sample manifests with undeclared entry targets as inva
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.ingestion.sampleStarterCommand, null);
   assert.equal(summary.ingestion.sampleManifestCommand, null);
-  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, []);
-  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, []);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han', 'jane-doe']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)', 'Jane Doe (jane-doe)']);
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han), Jane Doe (jane-doe)');
   assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 targets undeclared profile: jane-doe/);
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 targets undeclared profile: jane-doe @ samples\/harry-materials\.json/);
   assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
@@ -7713,13 +7715,17 @@ test('buildSummary treats sample manifests with missing referenced files as inva
   const rootDir = makeTempRepo();
   const sampleDir = path.join(rootDir, 'samples');
   fs.mkdirSync(sampleDir, { recursive: true });
+  fs.writeFileSync(path.join(sampleDir, 'harry-post.txt'), 'Ship the thin slice first.\n');
 
   fs.writeFileSync(
     path.join(sampleDir, 'harry-materials.json'),
     JSON.stringify({
       personId: 'Harry Han',
       displayName: 'Harry Han',
-      entries: [{ type: 'text', file: 'missing-post.txt' }],
+      entries: [
+        { type: 'text', file: 'harry-post.txt' },
+        { type: 'text', file: 'missing-post.txt' },
+      ],
     }, null, 2),
   );
 
@@ -7727,15 +7733,19 @@ test('buildSummary treats sample manifests with missing referenced files as inva
 
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
   assert.equal(summary.ingestion.sampleStarterCommand, null);
+  assert.equal(summary.ingestion.sampleStarterSource, 'samples/harry-materials.json');
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
   assert.equal(summary.ingestion.sampleManifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
   assert.equal(summary.ingestion.sampleManifestCommand, null);
   assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
-  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/missing-post.txt']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.deepEqual(summary.ingestion.sampleManifestFilePaths, ['samples/harry-post.txt', 'samples/missing-post.txt']);
   assert.equal(summary.ingestion.sampleTextPersonId, null);
   assert.equal(summary.ingestion.sampleTextCommand, null);
-  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 0 references a missing file: missing-post\.txt/);
-  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 0 references a missing file: missing-post\.txt @ samples\/harry-materials\.json/);
-  assert.match(summary.promptPreview, /next intake: fix the checked-in sample manifest for first imports — missing file: missing-post\.txt; manifest inspect node src\/index\.js import manifest --file 'samples\/harry-materials\.json' @ samples\/harry-materials\.json, samples\/missing-post\.txt/);
+  assert.match(summary.ingestion.sampleManifestError, /Manifest entry 1 references a missing file: missing-post\.txt/);
+  assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 1 references a missing file: missing-post\.txt @ samples\/harry-materials\.json/);
+  assert.match(summary.promptPreview, /next intake: fix the checked-in sample manifest for Harry Han \(harry-han\) — missing file: missing-post\.txt; manifest inspect node src\/index\.js import manifest --file 'samples\/harry-materials\.json' @ samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/missing-post\.txt/);
   assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
 });
 

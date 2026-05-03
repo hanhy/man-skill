@@ -1464,9 +1464,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedManifestImportCommand = exactSampleManifestCommand;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
-      recommendedAction = sampleManifestInvalidReason
-        ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
-        : 'fix the checked-in sample manifest for first imports';
+      const invalidSampleTargetLabel = sampleManifest.starterLabel;
+      recommendedAction = invalidSampleTargetLabel
+        ? `fix the checked-in sample manifest for ${invalidSampleTargetLabel}${sampleManifestInvalidReason ? ` — ${sampleManifestInvalidReason}` : ''}`
+        : (sampleManifestInvalidReason
+          ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
+          : 'fix the checked-in sample manifest for first imports');
       recommendedCommand = null;
       recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
       recommendedPaths = sampleManifestPaths.length > 0 ? sampleManifestPaths : [sampleManifestPath];
@@ -1829,10 +1832,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleStarterCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
       : null,
-    sampleStarterSource: sampleManifestPresent && sampleManifest.status === 'loaded'
+    sampleStarterSource: sampleManifestPresent
       ? sampleManifestPath
       : null,
-    sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
+    sampleStarterLabel: sampleManifestPresent
       ? sampleManifest.starterLabel
       : null,
     sampleManifestInspectCommand: sampleManifestPresent
