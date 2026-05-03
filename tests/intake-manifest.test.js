@@ -75,6 +75,46 @@ test('inspectProfileIntakeManifest accepts absolute in-repo files for profile-lo
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest preserves valid entry template metadata for loaded manifests', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'images');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(path.join(importsDir, 'chat.png'), 'fake image payload\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'message',
+          text: 'real import',
+        },
+      ],
+      entryTemplates: {
+        text: { file: 'sample.txt' },
+        screenshot: { file: 'images/chat.png' },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'loaded');
+  assert.equal(manifest.error, null);
+  assert.deepEqual(manifest.repairPaths, []);
+  assert.deepEqual(manifest.entryTemplateTypes, ['screenshot', 'text']);
+  assert.equal(manifest.entryTemplateCount, 2);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'screenshot', source: 'file', path: 'images/chat.png', preview: null },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
+});
+
 test('inspectProfileIntakeManifest accepts absolute in-repo files for starter template text entries', () => {
   const rootDir = makeTempRepo();
   const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');

@@ -525,8 +525,8 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
     path: manifestPath,
     error: null,
     repairPaths: emptyRepairPaths,
-    entryTemplateTypes: [],
-    entryTemplateCount: 0,
-    entryTemplateDetails: emptyEntryTemplateDetails,
+    entryTemplateTypes,
+    entryTemplateCount,
+    entryTemplateDetails,
   };
 }
