@@ -3599,6 +3599,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
       recommendedLatestMaterialAt: '2026-04-24T12:00:00.000Z',
       recommendedLatestMaterialId: '2026-04-24T12-00-00-000Z-message',
       recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      recommendedCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
       recommendedRefreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
       recommendedIntakeManifestEntryTemplateTypes: [],
       recommendedIntakeManifestEntryTemplateCount: 2,
@@ -3632,7 +3633,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
         status: 'queued',
         summary: '1 imported starter manifest needs edits',
         nextAction: 'populate the imported intake starter manifest for Harry Han (harry-han)',
-        command: null,
+        command: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
         refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
         intakeManifestEntryTemplateTypes: [],
         intakeManifestEntryTemplateCount: 2,
@@ -3658,7 +3659,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
           status: 'queued',
           summary: '1 imported starter manifest needs edits',
           nextAction: 'populate the imported intake starter manifest for Harry Han (harry-han)',
-          command: null,
+          command: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
           refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
           intakeManifestEntryTemplateTypes: [],
           intakeManifestEntryTemplateCount: 2,
@@ -3672,7 +3673,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
     },
   }).buildSystemPrompt();
 
-  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
   assert.match(prompt, /- recommended starter templates: 2 total/);
   assert.match(prompt, /- recommended starter details: message Keep the note tight\. \| text sample\.txt/);
 });
@@ -5173,7 +5174,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   assert.equal(summary.ingestion.recommendedLatestMaterialAt, harry.latestMaterialAt);
   assert.equal(summary.ingestion.recommendedLatestMaterialId, harry.latestMaterialId);
   assert.equal(summary.ingestion.recommendedLatestMaterialSourcePath, harry.latestMaterialSourcePath);
-  assert.equal(summary.ingestion.recommendedCommand, null);
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.ingestion.inspectImportedStarterBundleCommand, null);
   assert.equal(summary.ingestion.replayImportedStarterBundleCommand, null);
   assert.equal(summary.ingestion.starterImportBundleCommand, null);
@@ -5236,7 +5237,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   const expectedLatestMaterialSummary = `latest material ${harry.latestMaterialAt} (${harry.latestMaterialId}) @ ${harry.latestMaterialSourcePath}`;
   assert.ok(
     summary.promptPreview.includes(
-      `next intake: populate the imported intake starter manifest for Harry Han (harry-han); ${expectedLatestMaterialSummary}; edit profiles/harry-han/imports/materials.template.json; edit paths profiles/harry-han/imports/materials.template.json, profiles/harry-han/imports/images/chat.png, profiles/harry-han/imports/sample.txt;`,
+      `next intake: populate the imported intake starter manifest for Harry Han (harry-han); command node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'; ${expectedLatestMaterialSummary}; edit profiles/harry-han/imports/materials.template.json; edit paths profiles/harry-han/imports/materials.template.json, profiles/harry-han/imports/images/chat.png, profiles/harry-han/imports/sample.txt;`,
     ),
   );
   assert.match(
@@ -5395,7 +5396,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
   assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 2);
   assert.equal(summary.ingestion.recommendedProfileId, 'harry-han');
   assert.equal(summary.ingestion.recommendedAction, 'populate imported intake starter manifests — starting with Harry Han (harry-han)');
-  assert.equal(summary.ingestion.recommendedCommand, null);
+  assert.equal(summary.ingestion.recommendedCommand, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
   assert.equal(summary.ingestion.starterImportBundleCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
   assert.equal(summary.ingestion.helperCommands?.starterImportBundle, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
   assert.equal(summary.ingestion.recommendedFallbackCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
@@ -5518,7 +5519,7 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
     'profiles/jane-doe/imports/materials.template.json',
     'profiles/jane-doe/imports/sample.txt',
   ]);
-  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); latest material \d{4}-\d{2}-\d{2}T[^ ]+ \([^)]*\) @ samples\/harry-post\.txt/);
+  assert.match(summary.promptPreview, /next intake: populate imported intake starter manifests — starting with Harry Han \(harry-han\); command \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json'\); latest material \d{4}-\d{2}-\d{2}T[^ ]+ \([^)]*\) @ samples\/harry-post\.txt/);
   assert.match(summary.promptPreview, /starter profiles: Harry Han \(harry-han\) -> profiles\/harry-han\/imports\/materials\.template\.json \| Jane Doe \(jane-doe\) -> profiles\/jane-doe\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /edit paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/jane-doe\/imports\/materials\.template\.json, profiles\/jane-doe\/imports\/images\/chat\.png, profiles\/jane-doe\/imports\/sample\.txt/);
   assert.match(summary.promptPreview, /starter details message Keep the operating note concise\. \| screenshot images\/chat\.png \| talk Ship the correction while it is still fresh\. \| text sample\.txt/);

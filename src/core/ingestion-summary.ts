@@ -1490,7 +1490,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
     setRecommendedLatestMaterial(firstImportedStarterIntakeProfile);
-    recommendedCommand = null;
+    recommendedCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
     recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
       : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
