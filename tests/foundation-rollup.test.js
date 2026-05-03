@@ -1367,7 +1367,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     candidateProfileCount: 2,
     repoStaleProfileCount: 1,
     candidateCount: 2,
-    highlights: ['execution heuristic', 'feedback-loop heuristic'],
+    highlights: ['[talk] execution heuristic', 'feedback-loop heuristic'],
   });
   assert.deepEqual(summary.foundation.maintenance, {
     profileCount: 2,

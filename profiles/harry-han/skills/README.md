@@ -9,7 +9,7 @@ Latest material source: Not set.
 Source materials: 1 (talk:1)
 
 ## Candidate skills
-- voice memo transcript
+- [talk] voice memo transcript
 
 ## Evidence
 - sample: If we can learn it in one run today, that beats polishing a big plan all week.

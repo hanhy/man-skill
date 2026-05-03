@@ -175,7 +175,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
   assert.match(skillsDraft, /Source materials: 1 \(talk:1\)/);
   assert.match(skillsDraft, /## Candidate skills/);
-  assert.match(skillsDraft, /- product execution heuristic/);
+  assert.match(skillsDraft, /- \[talk\] product execution heuristic/);
   assert.match(skillsDraft, /## Evidence/);
   assert.match(skillsDraft, /- sample: Cut the scope, keep the momentum, and fix the rough edges tomorrow\./);
   assert.match(skillsDraft, /## Gaps to validate/);

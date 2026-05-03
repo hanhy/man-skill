@@ -336,9 +336,16 @@ function buildSkillsDraftLines({
   materialTypes,
   skillSignals,
 }) {
-  const candidateSkillLines = skillSignals.length > 0
-    ? skillSignals.map((signal) => `- ${signal.note}`)
-    : ['No explicit procedural skill notes have been captured yet.'];
+  const candidateSkillLines = skillSignals
+    .map((signal) => {
+      const note = typeof signal?.note === 'string' ? signal.note.trim() : '';
+      if (note.length === 0) {
+        return null;
+      }
+      const type = typeof signal?.type === 'string' ? signal.type.trim() : '';
+      return type.length > 0 ? `- [${type}] ${note}` : `- ${note}`;
+    })
+    .filter((line) => typeof line === 'string' && line.length > 0);
   const evidenceLines = skillSignals.flatMap((signal) => (signal.excerpt ? [`- sample: ${signal.excerpt}`] : []));
 
   return [
@@ -352,7 +359,7 @@ function buildSkillsDraftLines({
       materialTypes,
     }),
     '## Candidate skills',
-    ...candidateSkillLines,
+    ...(candidateSkillLines.length > 0 ? candidateSkillLines : ['No explicit procedural skill notes have been captured yet.']),
     '',
     '## Evidence',
     ...(evidenceLines.length > 0 ? evidenceLines : ['No concrete material excerpts are attached to the current procedural notes yet.']),
@@ -1874,6 +1881,7 @@ export class MaterialIngestion {
 
     const skillSignals = skillRecords
       .map((record) => ({
+        type: record.type,
         note: buildExcerpt(record.notes),
         excerpt: buildExcerpt(record.content),
       }))
