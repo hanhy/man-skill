@@ -1698,6 +1698,29 @@ test('loadProfilesIndex trims placeholder latest material source headers instead
   assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, null);
 });
 
+test('loadProfilesIndex trims placeholder summary headers instead of marking markdown foundation drafts stale', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8').replace(
+    /^Summary:\s+Not set\.$/m,
+    'Summary:   Not set.   ',
+  );
+  fs.writeFileSync(voiceDraftPath, voiceDraft);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, []);
+});
+
 test('loadProfilesIndex marks memory foundation drafts stale when the stored personId drifts from the profile id', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

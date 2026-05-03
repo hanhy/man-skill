@@ -726,6 +726,23 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
+function normalizeDraftHeaderValue(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value.trim();
+}
+
+function normalizeDraftPlaceholderValue(value) {
+  const normalized = normalizeDraftHeaderValue(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.toLowerCase() === 'not set.' ? null : normalized;
+}
+
 function parseMaterialTypes(value) {
   if (!isNonEmptyString(value) || value === 'none') {
     return {};
@@ -764,14 +781,14 @@ export function parseDraftMetadata(filePath) {
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
   const latestMaterialSourceMatch = content.match(/^Latest material source:\s+(.+)$/m);
   const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
-  const profileId = profileMatch?.[1] ?? null;
-  const displayName = displayNameMatch?.[1] ?? null;
-  const summary = summaryMatch?.[1] ?? null;
-  const generatedAt = generatedAtMatch?.[1] ?? null;
-  const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
-  const latestMaterialId = latestMaterialMatch?.[2] ?? null;
-  const latestMaterialSourceHeader = latestMaterialSourceMatch?.[1]?.trim() ?? null;
-  const latestMaterialSourcePath = latestMaterialSourceHeader && latestMaterialSourceHeader.toLowerCase() !== 'not set.'
+  const profileId = normalizeDraftHeaderValue(profileMatch?.[1]);
+  const displayName = normalizeDraftHeaderValue(displayNameMatch?.[1]);
+  const summary = normalizeDraftHeaderValue(summaryMatch?.[1]);
+  const generatedAt = normalizeDraftHeaderValue(generatedAtMatch?.[1]);
+  const latestMaterialAt = normalizeDraftHeaderValue(latestMaterialMatch?.[1]);
+  const latestMaterialId = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialSourceHeader = normalizeDraftPlaceholderValue(latestMaterialSourceMatch?.[1]);
+  const latestMaterialSourcePath = latestMaterialSourceHeader
     ? normalizeDraftPath(latestMaterialSourceHeader)
     : null;
   const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
@@ -919,7 +936,7 @@ export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, 
 
   return (draftMetadata.profileId ?? profileId) !== expectedProfileId
     || (draftMetadata.displayName ?? profileId) !== expectedDisplayName
-    || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
+    || normalizeDraftPlaceholderValue(draftMetadata.summary) !== expectedSummary;
 }
 
 function normalizeMaterialTypeCounts(materialTypes = null) {
