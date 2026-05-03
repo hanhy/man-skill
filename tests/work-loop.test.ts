@@ -222,7 +222,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
         latestMaterialId: ' 2026-04-20T12-00-00-000Z-text ',
         latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
         candidateSignalSummary: ' memory 3 (message, talk, text) ',
-        draftSourcesSummary: ' voice 3 sources, latest @ samples/harry-post.txt ',
+        draftSourcesSummary: ' voice @ .\\profiles\\harry-han//voice\\README.md (latest @ .\\profiles\\harry-han//imports\\sample.txt) ',
         draftGapSummary: ' voice missing, 3 candidates ',
         fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
         refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
@@ -242,7 +242,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
             refreshReasons: [' new materials '],
             missingDrafts: [' voice '],
             candidateSignalSummary: ' memory 3 (message, talk, text) ',
-            draftSourcesSummary: ' voice 3 sources, latest @ samples/harry-post.txt ',
+            draftSourcesSummary: ' voice @ .\\profiles\\harry-han//voice\\README.md (latest @ .\\profiles\\harry-han//imports\\sample.txt) ',
             draftGapSummary: ' voice missing, 3 candidates ',
             fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
             refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
@@ -270,7 +270,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.currentPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
   assert.equal(summary.currentPriority?.candidateSignalSummary, 'memory 3 (message, talk, text)');
-  assert.equal(summary.currentPriority?.draftSourcesSummary, 'voice 3 sources, latest @ samples/harry-post.txt');
+  assert.equal(summary.currentPriority?.draftSourcesSummary, 'voice @ profiles/harry-han/voice/README.md (latest @ profiles/harry-han/imports/sample.txt)');
   assert.equal(summary.currentPriority?.draftGapSummary, 'voice missing, 3 candidates');
   assert.equal(summary.currentPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
   assert.equal(summary.currentPriority?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
@@ -290,7 +290,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.candidateSignalSummary ?? null, 'memory 3 (message, talk, text)');
-  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftSourcesSummary ?? null, 'voice 3 sources, latest @ samples/harry-post.txt');
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftSourcesSummary ?? null, 'voice @ profiles/harry-han/voice/README.md (latest @ profiles/harry-han/imports/sample.txt)');
   assert.equal(summary.recommendedPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
   assert.equal(summary.recommendedPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.recommendedPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');

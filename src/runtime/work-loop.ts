@@ -133,6 +133,18 @@ function normalizeStarterTemplateDetails(
   }));
 }
 
+function normalizeDraftSourcesSummary(value: string | null | undefined): string | null {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.replace(/@\s+([^,|)]+?)(?=\s*(?:,|\(|\||\)|$))/g, (_match, rawPath: string) => {
+    const normalizedPath = normalizeDraftPath(rawPath);
+    return normalizedPath ? `@ ${normalizedPath}` : `@ ${rawPath.trim()}`;
+  });
+}
+
 function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority['recommendedProfileSlices'] {
   if (!Array.isArray(priority.recommendedProfileSlices)) {
     return undefined;
@@ -143,7 +155,7 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const latestMaterialId = normalizeOptionalString(slice?.latestMaterialId) ?? null;
     const latestMaterialSourcePath = normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null;
     const candidateSignalSummary = normalizeOptionalString(slice?.candidateSignalSummary) ?? null;
-    const draftSourcesSummary = normalizeOptionalString(slice?.draftSourcesSummary) ?? null;
+    const draftSourcesSummary = normalizeDraftSourcesSummary(slice?.draftSourcesSummary);
     const refreshReasons = normalizeStringArray(slice?.refreshReasons) ?? [];
     const missingDrafts = normalizeStringArray(slice?.missingDrafts) ?? [];
     const draftGapSummary = normalizeOptionalString(slice?.draftGapSummary) ?? null;
@@ -202,7 +214,7 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
   const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
   const candidateSignalSummary = normalizeOptionalString(priority.candidateSignalSummary);
-  const draftSourcesSummary = normalizeOptionalString(priority.draftSourcesSummary);
+  const draftSourcesSummary = normalizeDraftSourcesSummary(priority.draftSourcesSummary);
   const draftGapSummary = normalizeOptionalString(priority.draftGapSummary);
   const fallbackCommand = normalizeOptionalString(priority.fallbackCommand);
   const refreshIntakeCommand = normalizeOptionalString(priority.refreshIntakeCommand);
