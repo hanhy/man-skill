@@ -33,6 +33,7 @@ function normalizeHeadingText(value: string) {
   return value
     .trim()
     .replace(/\s+#+\s*$/, '')
+    .replace(/:\s*$/, '')
     .trim()
     .toLowerCase();
 }

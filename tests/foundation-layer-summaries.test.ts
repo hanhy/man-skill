@@ -1080,6 +1080,27 @@ test('voice profile accepts prose lines inside signature, avoid, and language hi
   });
 });
 
+test('voice profile accepts trailing colons in structured headings', () => {
+  const voiceDocument = `# Voice\n\nStay direct.\n\n## Tone:\nWarm and grounded.\n\n## Signature moves:\n- Use crisp examples.\n\n## Avoid:\n- Never pad the answer.\n\n## Language hints:\n- Preserve bilingual phrasing when the source material switches languages.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.equal(coreFoundation.voice.structured, true);
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, []);
+});
+
 test('voice profile strips numbered list markers inside structured sections', () => {
   const voice = VoiceProfile.fromDocument(`# Voice\n\nStay direct.\n\n## Tone\nWarm and grounded.\n\n## Signature moves\n1. Use crisp examples.\n2) Close with a concrete next step.\n\n## Avoid\n1) Never pad the answer.\n\n## Language hints\n1) Preserve bilingual phrasing when the source material switches languages.\n`);
 

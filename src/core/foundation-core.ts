@@ -920,6 +920,7 @@ function parseMarkdownHeading(line: string | null | undefined): { level: number;
   const normalizedText = match[2]
     .trim()
     .replace(/\s+#+\s*$/, '')
+    .replace(/:\s*$/, '')
     .trim()
     .toLowerCase();
 
