@@ -105,6 +105,18 @@ function normalizePathArray(values: string[] | null | undefined): string[] | und
   ));
 }
 
+function normalizeStringArray(values: string[] | null | undefined): string[] | undefined {
+  if (!Array.isArray(values)) {
+    return undefined;
+  }
+
+  return Array.from(new Set(
+    values
+      .map((value) => normalizeOptionalString(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
 function normalizeStarterTemplateDetails(
   details: Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> | null | undefined,
 ): Array<{ type: string; source: 'file' | 'text'; path: string | null; preview: string | null }> | undefined {
@@ -124,23 +136,52 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     return undefined;
   }
 
-  return priority.recommendedProfileSlices.map((slice) => ({
-    ...slice,
-    latestMaterialSourcePath: normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null,
-    editPath: normalizeDraftPath(slice?.editPath) ?? null,
-    editPaths: normalizePathArray(slice?.editPaths) ?? [],
-    intakeManifestEntryTemplateDetails: normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [],
-    intakeManifestEntryTemplateRoot: normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null,
-    paths: normalizePathArray(slice?.paths) ?? [],
-  }));
+  return priority.recommendedProfileSlices.map((slice) => {
+    const latestMaterialAt = normalizeOptionalString(slice?.latestMaterialAt) ?? null;
+    const latestMaterialId = normalizeOptionalString(slice?.latestMaterialId) ?? null;
+    const latestMaterialSourcePath = normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null;
+    const refreshReasons = normalizeStringArray(slice?.refreshReasons) ?? [];
+    const missingDrafts = normalizeStringArray(slice?.missingDrafts) ?? [];
+    const editPath = normalizeDraftPath(slice?.editPath) ?? null;
+    const editPaths = normalizePathArray(slice?.editPaths) ?? [];
+    const intakeManifestEntryTemplateTypes = normalizeStringArray(slice?.intakeManifestEntryTemplateTypes) ?? [];
+    const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [];
+    const intakeManifestEntryTemplateRoot = normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null;
+    const paths = normalizePathArray(slice?.paths) ?? [];
+
+    return {
+      ...slice,
+      personId: normalizeOptionalString(slice?.personId) ?? null,
+      label: normalizeOptionalString(slice?.label) ?? null,
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      refreshReasons,
+      missingDrafts,
+      editPath,
+      editPaths,
+      intakeManifestEntryTemplateTypes,
+      intakeManifestEntryTemplateDetails,
+      intakeManifestEntryTemplateRoot,
+      inspectCommand: normalizeOptionalString(slice?.inspectCommand) ?? null,
+      followUpCommand: normalizeOptionalString(slice?.followUpCommand) ?? null,
+      paths,
+    };
+  });
 }
 
 function normalizePriority(priority: WorkPriority): WorkPriority {
   const latestMaterialAt = normalizeOptionalString(priority.latestMaterialAt);
   const latestMaterialId = normalizeOptionalString(priority.latestMaterialId);
   const latestMaterialSourcePath = normalizeDraftPath(priority.latestMaterialSourcePath);
+  const refreshReasons = normalizeStringArray(priority.refreshReasons);
+  const missingDrafts = normalizeStringArray(priority.missingDrafts);
+  const rootThinReadySections = normalizeStringArray(priority.rootThinReadySections);
+  const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
+  const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
   const editPath = normalizeDraftPath(priority.editPath);
   const editPaths = normalizePathArray(priority.editPaths);
+  const intakeManifestEntryTemplateTypes = normalizeStringArray(priority.intakeManifestEntryTemplateTypes);
   const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(priority.intakeManifestEntryTemplateDetails);
   const intakeManifestEntryTemplateRoot = normalizeDraftPath(priority.intakeManifestEntryTemplateRoot);
   const recommendedProfileSlices = normalizeRecommendedProfileSlices(priority);
@@ -154,9 +195,15 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(!latestMaterialId && priority.latestMaterialId !== undefined ? { latestMaterialId: null } : {}),
     ...(latestMaterialSourcePath ? { latestMaterialSourcePath } : {}),
     ...(!latestMaterialSourcePath && priority.latestMaterialSourcePath !== undefined ? { latestMaterialSourcePath: null } : {}),
+    ...(refreshReasons ? { refreshReasons } : {}),
+    ...(missingDrafts ? { missingDrafts } : {}),
+    ...(rootThinReadySections ? { rootThinReadySections } : {}),
+    ...(rootThinMissingSections ? { rootThinMissingSections } : {}),
+    ...(rootHeadingAliases ? { rootHeadingAliases } : {}),
     ...(editPath ? { editPath } : {}),
     ...(!editPath && priority.editPath !== undefined ? { editPath: null } : {}),
     ...(editPaths ? { editPaths } : {}),
+    ...(intakeManifestEntryTemplateTypes ? { intakeManifestEntryTemplateTypes } : {}),
     ...(intakeManifestEntryTemplateDetails ? { intakeManifestEntryTemplateDetails } : {}),
     ...(intakeManifestEntryTemplateRoot ? { intakeManifestEntryTemplateRoot } : {}),
     ...(!intakeManifestEntryTemplateRoot && priority.intakeManifestEntryTemplateRoot !== undefined ? { intakeManifestEntryTemplateRoot: null } : {}),
