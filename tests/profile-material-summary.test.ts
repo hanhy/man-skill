@@ -4237,6 +4237,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
       recommendedLatestMaterialId: '2026-04-24T12-00-00-000Z-message',
       recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
       recommendedCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      recommendedManifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
       recommendedRefreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
       recommendedIntakeManifestEntryTemplateTypes: [],
       recommendedIntakeManifestEntryTemplateCount: 2,
@@ -4311,6 +4312,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
   }).buildSystemPrompt();
 
   assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake: .*; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(prompt, /- recommended starter templates: 2 total/);
   assert.match(prompt, /- recommended starter details: message Keep the note tight\. \| text sample\.txt/);
 });
@@ -6222,7 +6224,7 @@ test('buildSummary recommends populating imported starter intake manifests once 
   );
   assert.match(
     summary.promptPreview,
-    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.doesNotMatch(summary.promptPreview, /helpers: .*starter-import-bundle/);
 });
