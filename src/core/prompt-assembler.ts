@@ -735,6 +735,8 @@ type IngestionSummary = {
   staleRefreshCommand?: string | null;
   refreshFoundationBundleCommand?: string | null;
   starterImportBundleCommand?: string | null;
+  inspectImportedStarterBundleCommand?: string | null;
+  replayImportedStarterBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
   updateProfileBundleCommand?: string | null;
@@ -2047,6 +2049,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || helperCommands.refreshFoundationBundle
+      || ingestion?.refreshFoundationBundleCommand
+      || ingestion?.starterImportBundleCommand
+      || ingestion?.inspectImportedStarterBundleCommand
+      || ingestion?.replayImportedStarterBundleCommand
+      || ingestion?.repairInvalidIntakeBundleCommand
+      || ingestion?.repairImportedInvalidIntakeBundleCommand
+      || ingestion?.updateProfileBundleCommand
+      || ingestion?.updateProfileAndRefreshBundleCommand
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
@@ -2167,10 +2177,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
-      pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
+      pushHelperEntry((helperCommands.repairInvalidBundle ?? ingestion.repairInvalidIntakeBundleCommand)
+        ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle ?? ingestion.repairInvalidIntakeBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.inspectInvalidBundle ? `inspect-invalid-bundle ${helperCommands.inspectInvalidBundle}` : null);
       pushHelperEntry(helperCommands.replayInvalidBundle ? `replay-invalid-bundle ${helperCommands.replayInvalidBundle}` : null);
-      pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
+      pushHelperEntry((helperCommands.repairImportedInvalidBundle ?? ingestion.repairImportedInvalidIntakeBundleCommand)
+        ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle ?? ingestion.repairImportedInvalidIntakeBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.inspectImportedInvalidBundle ? `inspect-imported-invalid-bundle ${helperCommands.inspectImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.replayImportedInvalidBundle ? `replay-imported-invalid-bundle ${helperCommands.replayImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.importManifestInspect ? `manifest-inspect ${helperCommands.importManifestInspect}` : null);
@@ -2182,14 +2196,26 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
-      pushHelperEntry(helperCommands.inspectImportedStarterBundle ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle}` : null);
-      pushHelperEntry(helperCommands.replayImportedStarterBundle ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle}` : null);
-      pushHelperEntry(helperCommands.starterImportBundle ? `starter-import-bundle ${helperCommands.starterImportBundle}` : null);
-      pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
-      pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
+      pushHelperEntry((helperCommands.inspectImportedStarterBundle ?? ingestion.inspectImportedStarterBundleCommand)
+        ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle ?? ingestion.inspectImportedStarterBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.replayImportedStarterBundle ?? ingestion.replayImportedStarterBundleCommand)
+        ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle ?? ingestion.replayImportedStarterBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.starterImportBundle ?? ingestion.starterImportBundleCommand)
+        ? `starter-import-bundle ${helperCommands.starterImportBundle ?? ingestion.starterImportBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.updateProfileBundle ?? ingestion.updateProfileBundleCommand)
+        ? `update-bundle ${helperCommands.updateProfileBundle ?? ingestion.updateProfileBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.updateProfileAndRefreshBundle ?? ingestion.updateProfileAndRefreshBundleCommand)
+        ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle ?? ingestion.updateProfileAndRefreshBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null);
       pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
-      pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
+      pushHelperEntry((helperCommands.refreshFoundationBundle ?? ingestion.refreshFoundationBundleCommand)
+        ? `refresh-bundle ${helperCommands.refreshFoundationBundle ?? ingestion.refreshFoundationBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
       pushHelperEntry(helperCommands.sampleManifestInspect ? `sample-manifest-inspect ${helperCommands.sampleManifestInspect}` : null);
       pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
