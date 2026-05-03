@@ -901,9 +901,9 @@ function formatRecommendedStarterProfileSlices(slices: unknown): string | null {
       .filter((slice): slice is RecommendedStarterProfileSlice => Boolean(slice) && typeof slice === 'object' && !Array.isArray(slice))
       .map((slice) => {
         const label = normalizeOptionalString(slice.label) ?? normalizeOptionalString(slice.personId) ?? 'unknown-profile';
-        const editPath = normalizeOptionalString(slice.editPath)
-          ?? normalizeStringArray(slice.editPaths)[0]
-          ?? normalizeStringArray(slice.paths).find((value) => value.endsWith('materials.template.json'))
+        const editPath = normalizeDraftPath(normalizeOptionalString(slice.editPath))
+          ?? normalizeStringArray(slice.editPaths, normalizeDraftPath)[0]
+          ?? normalizeStringArray(slice.paths, normalizeDraftPath).find((value) => value.endsWith('materials.template.json'))
           ?? null;
 
         return editPath ? `${label} -> ${editPath}` : null;
