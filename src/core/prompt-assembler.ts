@@ -1376,6 +1376,29 @@ function collectProfileSnapshotCandidateTypes(signal: ReadinessSignal | undefine
   return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
 }
 
+function hasMeaningfulProfileSnapshotDraftStatus(draftStatus: FoundationDraftStatus = {}) {
+  return normalizeOptionalString(draftStatus.generatedAt) !== null
+    || draftStatus.complete !== undefined
+    || draftStatus.needsRefresh !== undefined
+    || normalizeStringArray(draftStatus.missingDrafts).length > 0
+    || normalizeStringArray(draftStatus.refreshReasons).length > 0;
+}
+
+function hasMeaningfulProfileSnapshotReadiness(readiness: FoundationReadiness = {}) {
+  return (['memory', 'voice', 'soul', 'skills'] as const).some((key) => {
+    const signal = readiness[key];
+    if (!signal) {
+      return false;
+    }
+
+    const candidateCount = Number(signal.candidateCount ?? 0);
+    return candidateCount > 0
+      || collectProfileSnapshotCandidateTypes(signal, key === 'memory' ? 'latest' : 'sample').length > 0
+      || normalizeStringArray(signal.sampleSummaries).length > 0
+      || normalizeStringArray(signal.sampleExcerpts).length > 0;
+  });
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
@@ -1408,11 +1431,11 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  profile summary: ${profileSummary}`);
   }
 
-  if (profile.foundationDraftStatus) {
-    lines.push(`  drafts: ${formatDraftStatus(profile.foundationDraftStatus)}`);
+  if (hasMeaningfulProfileSnapshotDraftStatus(draftStatus)) {
+    lines.push(`  drafts: ${formatDraftStatus(draftStatus)}`);
   }
 
-  if (profile.foundationReadiness) {
+  if (hasMeaningfulProfileSnapshotReadiness(readiness)) {
     lines.push(
       `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.memory, 'latest'))} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.voice, 'sample'))} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.soul, 'sample'))} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.skills, 'sample'))}`,
     );

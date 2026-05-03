@@ -231,6 +231,74 @@ test('buildProfileSnapshotSummaries keeps latest material source paths visible e
   assert.match(snapshot.snapshot, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/images\/chat\.png/);
 });
 
+test('buildProfileSnapshotSummaries skips empty draft status and zeroed candidate lines when snapshot inputs normalize to nothing', () => {
+  const [snapshot] = buildProfileSnapshotSummaries([{
+    id: 'jane-doe',
+    materialCount: 1,
+    materialTypes: { text: 1 },
+    latestMaterialSourcePath: 'profiles/jane-doe/imports/sample.txt',
+    foundationDraftStatus: {
+      generatedAt: '   ',
+    },
+    foundationReadiness: {
+      memory: {
+        candidateCount: 0,
+        latestTypes: ['   '],
+        sampleTypes: [''],
+        sampleSummaries: [''],
+      },
+      voice: {
+        candidateCount: 0,
+        sampleTypes: [''],
+        sampleExcerpts: [''],
+      },
+      soul: {
+        candidateCount: 0,
+        sampleTypes: [''],
+        sampleExcerpts: [''],
+      },
+      skills: {
+        candidateCount: 0,
+        sampleTypes: [''],
+        sampleExcerpts: [''],
+      },
+    },
+  }]);
+
+  assert.deepEqual(snapshot.draftStatus, {
+    generatedAt: null,
+    missingDrafts: [],
+    refreshReasons: [],
+  });
+  assert.deepEqual(snapshot.readiness, {
+    memory: {
+      candidateCount: 0,
+      latestTypes: [],
+      sampleTypes: [],
+      sampleSummaries: [],
+    },
+    voice: {
+      candidateCount: 0,
+      sampleTypes: [],
+      sampleExcerpts: [],
+    },
+    soul: {
+      candidateCount: 0,
+      sampleTypes: [],
+      sampleExcerpts: [],
+    },
+    skills: {
+      candidateCount: 0,
+      sampleTypes: [],
+      sampleExcerpts: [],
+    },
+  });
+  assert.match(snapshot.snapshot, /^- Jane Doe \(jane-doe\): 1 material \(text:1\)/m);
+  assert.match(snapshot.snapshot, /latest material: unknown timestamp @ profiles\/jane-doe\/imports\/sample\.txt/);
+  assert.doesNotMatch(snapshot.snapshot, /\bdrafts:/);
+  assert.doesNotMatch(snapshot.snapshot, /memory candidates: 0 \| voice: 0 \| soul: 0 \| skills: 0/);
+});
+
 test('buildProfileSnapshotSummaries merges latest and sample memory types in candidate signal lines', () => {
   const [snapshot] = buildProfileSnapshotSummaries([{
     id: 'jane-doe',
