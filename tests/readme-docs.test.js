@@ -21,6 +21,9 @@ const harryIntakeReadme = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry
 const harryIntakeManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'materials.template.json'), 'utf8'));
 const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'sample.txt'), 'utf8');
 const harryIntakeScreenshot = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'images', 'chat.png'));
+const harryVoiceDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'voice', 'README.md'), 'utf8');
+const harrySoulDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'soul', 'README.md'), 'utf8');
+const harrySkillsDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'skills', 'README.md'), 'utf8');
 
 function formatMaterialTypes(materialTypes = {}) {
   return Object.entries(materialTypes)
@@ -203,6 +206,22 @@ test('checked-in USER current product direction stays aligned with the default w
     'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
     'report progress in small verified increments',
   ]);
+});
+
+test('checked-in starter profile drafts keep provenance headers aligned with the docs contract', () => {
+  const sampleDraftPathContract = /checked-in sample profile drafts under `profiles\/harry-han\/voice\/README\.md`, `profiles\/harry-han\/soul\/README\.md`, and `profiles\/harry-han\/skills\/README\.md`/i;
+  const draftHeaderContract = /`Generated at`.*`Latest material`.*`Latest material source`.*`Source materials`/i;
+  for (const doc of [profilesDoc, ingestionDoc, architectureDoc]) {
+    assert.match(doc, sampleDraftPathContract);
+    assert.match(doc, draftHeaderContract);
+  }
+
+  for (const draft of [harryVoiceDraft, harrySoulDraft, harrySkillsDraft]) {
+    assert.match(draft, /^Generated at: .+/m);
+    assert.match(draft, /^Latest material: .+/m);
+    assert.match(draft, /^Latest material source: .+/m);
+    assert.match(draft, /^Source materials: \d+ \([^)]+\)$/m);
+  }
 });
 
 test('README keeps the intake replay defaults aligned with the CLI entrance semantics', () => {
