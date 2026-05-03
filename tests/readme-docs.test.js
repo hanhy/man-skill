@@ -575,7 +575,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /top-level `Memory store:` preview.*root heading aliases.*what-lives-here->what-belongs-here.*layout->buckets/i);
   assert.match(readme, /all-green `Core foundation:` `ready details` line.*folded `memory\/short-term\/\.\.\.` provenance visible/i);
   assert.match(readme, /skills\/README\.md.*What lives here.*Layout/i);
-  assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron` and `foundation-maintenance`/i);
+  assert.match(readme, /default checked-in skill catalog stays explicit: 4 channel guides \(`channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`\), 1 profile-ingestion guide \(`profiles\/intake`\), 6 provider guides \(`providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`\), plus `cron` and `foundation-maintenance`/i);
   assert.match(readme, /summary\.skills\.categoryCounts.*summary\.skills\.foundationStatusCounts.*foundation\.core\.skills\.categoryCounts.*foundation\.core\.skills\.documentedCategoryCounts/i);
   assert.match(readme, /top-level `Skill registry:` block now mirrors those readiness counts as `- foundation statuses: \.\.\.` plus the grouped-category lines `- categories: \.\.\.` and `- documented categories: \.\.\.`/i);
   assert.match(readme, /top-level `Skill registry:` block.*root heading aliases.*what-belongs-here->what-lives-here.*buckets->layout/i);
@@ -711,6 +711,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(skillsDoc, /## Default checked-in catalog/);
   assert.match(skillsDoc, /- channels: `channels\/feishu`, `channels\/slack`, `channels\/telegram`, `channels\/whatsapp`/);
   assert.match(skillsDoc, /- providers: `providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`/);
+  assert.match(skillsDoc, /- profiles: `profiles\/intake`/);
   assert.match(skillsDoc, /- utilities: `cron`, `foundation-maintenance`/);
 
   assert.match(soulDoc, /## Core truths/);
@@ -731,11 +732,11 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.deepEqual(summary.foundation.core.memory.rootMissingSections, []);
   assert.deepEqual(summary.foundation.core.skills.rootReadySections, ['what-lives-here', 'layout']);
   assert.deepEqual(summary.foundation.core.skills.rootMissingSections, []);
-  assert.equal(summary.foundation.core.skills.count, 12);
-  assert.deepEqual(summary.skills.categoryCounts, { channels: 4, providers: 6, root: 2 });
-  assert.deepEqual(summary.foundation.core.skills.categoryCounts, { channels: 4, providers: 6, root: 2 });
-  assert.deepEqual(summary.foundation.core.skills.documentedCategoryCounts, { channels: 4, providers: 6, root: 2 });
-  assert.deepEqual(summary.skills.foundationStatusCounts, { ready: 12 });
+  assert.equal(summary.foundation.core.skills.count, 13);
+  assert.deepEqual(summary.skills.categoryCounts, { channels: 4, profiles: 1, providers: 6, root: 2 });
+  assert.deepEqual(summary.foundation.core.skills.categoryCounts, { channels: 4, profiles: 1, providers: 6, root: 2 });
+  assert.deepEqual(summary.foundation.core.skills.documentedCategoryCounts, { channels: 4, profiles: 1, providers: 6, root: 2 });
+  assert.deepEqual(summary.skills.foundationStatusCounts, { ready: 13 });
   assert.deepEqual(summary.skills.skills.map((skill) => skill.id), [
     'channels/feishu',
     'channels/slack',
@@ -743,6 +744,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
     'channels/whatsapp',
     'cron',
     'foundation-maintenance',
+    'profiles/intake',
     'providers/anthropic',
     'providers/glm',
     'providers/kimi',
@@ -765,8 +767,8 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(summary.promptPreview, /Soul profile:\n- excerpt: .*\n- core truths: \d+\n- boundaries: \d+\n- vibe: \d+\n- continuity: \d+\n- root: .* @ SOUL\.md\n- sections: 4\/4 ready \(core-truths, boundaries, vibe, continuity\)\n- shadow docs: soul\/README\.md/);
   assert.match(summary.promptPreview, /Voice profile:\n- tone: .*\n- style: documented\n- constraints: \d+ \(.*\)\n- signatures: \d+ \(.*\)\n- language hints: \d+ \(.*\)\n- root: .* @ voice\/README\.md\n- sections: 4\/4 ready \(tone, signature-moves, avoid, language-hints\)\n- shadow docs: VOICE\.md/);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: This directory stores the agent's durable and working memory in plain files\. @ memory\/README\.md\n- root sections: 2\/2 ready \(what-belongs-here, buckets\)\n- shadow docs: MEMORY\.md/);
-  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, shadow docs MEMORY\.md; skills docs 12\/12 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, shadow docs SKILLS\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, shadow docs soul\/README\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, shadow docs VOICE\.md/);
+  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, shadow docs MEMORY\.md; skills docs 13\/13 \(channels\/feishu, channels\/slack, channels\/telegram, channels\/whatsapp, cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, shadow docs SKILLS\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, shadow docs soul\/README\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, shadow docs VOICE\.md/);
   assert.doesNotMatch(summary.promptPreview, /- memory: README yes, daily 1, long-term 1, scratch 1/);
-  assert.doesNotMatch(summary.promptPreview, /- skills: 12 registered, 12 documented/);
-  assert.match(summary.promptPreview, /Skill registry:\n- total: 12\n- discovered: 12\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- shadow docs: SKILLS\.md\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+9 more\n- foundation statuses: ready 12\n- categories: channels 4, providers 6, root 2\n- documented categories: channels 4, providers 6, root 2/);
+  assert.doesNotMatch(summary.promptPreview, /- skills: 13 registered, 13 documented/);
+  assert.match(summary.promptPreview, /Skill registry:\n- total: 13\n- discovered: 13\n- custom: 0\n- root: Skills are reusable behavior modules that teach the agent how to perform a class of tasks consistently\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- shadow docs: SKILLS\.md\n- top skills: channels\/feishu \[discovered\]: Use when wiring or reviewing the checked-in Feishu channel runtime helper.*; channels\/slack \[discovered\]: Use when wiring or reviewing the checked-in Slack channel runtime helper.*; channels\/telegram \[discovered\]: Use when wiring or reviewing the checked-in Telegram channel runtime helper.*; \+10 more\n- foundation statuses: ready 13\n- categories: channels 4, profiles 1, providers 6, root 2\n- documented categories: channels 4, profiles 1, providers 6, root 2/);
 });
