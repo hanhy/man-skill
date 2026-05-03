@@ -250,20 +250,55 @@ test('direct text imports reject files outside the repo root without writing rec
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-outside-${Date.now()}.txt`);
   fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable directly either.');
 
-  assert.throws(
-    () => ingestion.importTextDocument({
-      personId: 'harry-han',
-      sourceFile: outsideFilePath,
-    }),
-    /outside the repo root/,
-  );
+  try {
+    assert.throws(
+      () => ingestion.importTextDocument({
+        personId: 'harry-han',
+        sourceFile: outsideFilePath,
+      }),
+      /outside the repo root/,
+    );
 
-  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
-  const materialFiles = fs.existsSync(materialsDir)
-    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
-    : [];
-  assert.deepEqual(materialFiles, []);
-  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  } finally {
+    fs.rmSync(outsideFilePath, { force: true });
+  }
+});
+
+test('direct text imports reject symlink targets that escape the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-symlink-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be reachable through a symlink either.');
+
+  const symlinkPath = path.join(rootDir, 'outside-text-link.txt');
+  fs.symlinkSync(outsideFilePath, symlinkPath);
+
+  try {
+    assert.throws(
+      () => ingestion.importTextDocument({
+        personId: 'harry-han',
+        sourceFile: './outside-text-link.txt',
+      }),
+      /outside the repo root/,
+    );
+
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  } finally {
+    fs.rmSync(symlinkPath, { force: true });
+    fs.rmSync(outsideFilePath, { force: true });
+  }
 });
 
 test('direct screenshot imports reject files outside the repo root without writing records', () => {
@@ -273,21 +308,57 @@ test('direct screenshot imports reject files outside the repo root without writi
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-outside-${Date.now()}.png`);
   fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
 
-  assert.throws(
-    () => ingestion.importScreenshotSource({
-      personId: 'harry-han',
-      sourceFile: outsideFilePath,
-    }),
-    /outside the repo root/,
-  );
+  try {
+    assert.throws(
+      () => ingestion.importScreenshotSource({
+        personId: 'harry-han',
+        sourceFile: outsideFilePath,
+      }),
+      /outside the repo root/,
+    );
 
-  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
-  const materialFiles = fs.existsSync(materialsDir)
-    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
-    : [];
-  assert.deepEqual(materialFiles, []);
-  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
-  assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+  } finally {
+    fs.rmSync(outsideFilePath, { force: true });
+  }
+});
+
+test('direct screenshot imports reject symlink targets that escape the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-symlink-outside-${Date.now()}.png`);
+  fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
+
+  const symlinkPath = path.join(rootDir, 'outside-screenshot-link.png');
+  fs.symlinkSync(outsideFilePath, symlinkPath);
+
+  try {
+    assert.throws(
+      () => ingestion.importScreenshotSource({
+        personId: 'harry-han',
+        sourceFile: './outside-screenshot-link.png',
+      }),
+      /outside the repo root/,
+    );
+
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+  } finally {
+    fs.rmSync(symlinkPath, { force: true });
+    fs.rmSync(outsideFilePath, { force: true });
+  }
 });
 
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
