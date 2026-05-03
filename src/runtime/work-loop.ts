@@ -98,9 +98,11 @@ function normalizePathArray(values: string[] | null | undefined): string[] | und
     return undefined;
   }
 
-  return values
-    .map((value) => normalizeDraftPath(value))
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  return Array.from(new Set(
+    values
+      .map((value) => normalizeDraftPath(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
 }
 
 function normalizeStarterTemplateDetails(
