@@ -1438,6 +1438,29 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   });
 });
 
+test('loadProfilesIndex trims placeholder latest material source headers instead of surfacing them as file provenance', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8').replace(
+    /^Latest material source:\s+Not set\.$/m,
+    'Latest material source:   Not set.   ',
+  );
+  fs.writeFileSync(voiceDraftPath, voiceDraft);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, null);
+});
+
 test('loadProfilesIndex marks memory foundation drafts stale when the stored personId drifts from the profile id', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

@@ -2850,7 +2850,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.match(summary.promptPreview, /next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.ok(summary.promptPreview.includes(`latest material: ${currentLatestMaterial}`));
   assert.match(summary.promptPreview, /evidence: memory 1 \(text\) \| voice 1 \(text\) \| soul 1 \(text\) \| skills 0/);
-  assert.match(summary.promptPreview, /draft sources: memory 1 source \(text:1\), 1 entry, latest @ samples\/harry-post\.txt \| skills 1 source \(text:1\), latest @ samples\/harry-post\.txt \| soul 1 source \(text:1\), latest @ samples\/harry-post\.txt \| voice 1 source \(text:1\), latest @ samples\/harry-post\.txt/);
+  assert.match(summary.promptPreview, /draft sources: memory 1 source \(text:1\), 1 entry, latest @ samples\/harry-post\.txt \| skills @ profiles\/harry-han\/skills\/README\.md \(latest @ samples\/harry-post\.txt\) \| soul 1 source \(text:1\), latest @ samples\/harry-post\.txt \| voice 1 source \(text:1\), latest @ samples\/harry-post\.txt/);
   assert.match(summary.promptPreview, /starter templates: message, screenshot, talk, text \(4 total\)/);
   assert.match(summary.promptPreview, /update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);

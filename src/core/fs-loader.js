@@ -770,8 +770,9 @@ export function parseDraftMetadata(filePath) {
   const generatedAt = generatedAtMatch?.[1] ?? null;
   const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
   const latestMaterialId = latestMaterialMatch?.[2] ?? null;
-  const latestMaterialSourcePath = latestMaterialSourceMatch?.[1] && latestMaterialSourceMatch[1] !== 'Not set.'
-    ? normalizeDraftPath(latestMaterialSourceMatch[1])
+  const latestMaterialSourceHeader = latestMaterialSourceMatch?.[1]?.trim() ?? null;
+  const latestMaterialSourcePath = latestMaterialSourceHeader && latestMaterialSourceHeader.toLowerCase() !== 'not set.'
+    ? normalizeDraftPath(latestMaterialSourceHeader)
     : null;
   const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
   const materialTypes = parseMaterialTypes(sourceMaterialsMatch?.[2] ?? null);
