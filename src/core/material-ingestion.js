@@ -1797,9 +1797,10 @@ export class MaterialIngestion {
 
     const relativeManifestPath = path.relative(this.rootDir, resolvedManifestPath);
     const replayedProfileIds = [...new Set(validatedEntries.map((entry) => entry.normalizedPersonId))].sort();
-    const profileIds = refreshFoundation || includeReplayedProfiles
+    const importedProfileIds = [...new Set(results.map((entry) => entry.personId))].sort();
+    const profileIds = refreshFoundation || includeReplayedProfiles || importedProfileIds.length === 0
       ? replayedProfileIds
-      : [...new Set(results.map((entry) => entry.personId))].sort();
+      : importedProfileIds;
     const foundationRefresh = refreshFoundation
       ? {
           profileCount: profileIds.length,

@@ -558,8 +558,9 @@ test('importManifest skips unchanged entries when the same manifest is rerun', (
   assert.equal(secondResult.manifestEntryCount, 3);
   assert.equal(secondResult.skippedEntryCount, 3);
   assert.deepEqual(secondResult.results, []);
-  assert.deepEqual(secondResult.profileIds, []);
-  assert.deepEqual(secondResult.profileSummaries, []);
+  assert.deepEqual(secondResult.profileIds, ['harry-han', 'jane-doe']);
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['harry-han', 'jane-doe']);
+  assert.equal(secondResult.profileSummaries[0]?.importManifestAndRefreshCommand, "node src/index.js import manifest --file 'materials.json' --refresh-foundation");
 
   const harryMaterials = fs
     .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
