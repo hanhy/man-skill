@@ -780,7 +780,7 @@ export function parseDraftMetadata(filePath) {
   const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
   const latestMaterialSourceMatch = content.match(/^Latest material source:\s+(.+)$/m);
-  const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
+  const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)(?:\s+\((.*)\))?$/m);
   const profileId = normalizeDraftHeaderValue(profileMatch?.[1]);
   const displayName = normalizeDraftHeaderValue(displayNameMatch?.[1]);
   const summary = normalizeDraftHeaderValue(summaryMatch?.[1]);

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { FileSystemLoader, hasValidFoundationMarkdownDraft } from '../src/core/fs-loader.js';
+import { FileSystemLoader, hasValidFoundationMarkdownDraft, parseDraftMetadata } from '../src/core/fs-loader.js';
 import { buildSummary, runUpdateCommand } from '../src/index.js';
 import { buildIngestionSummary as buildJsIngestionSummary } from '../src/core/ingestion-summary.js';
 import { buildIngestionSummary as buildTsIngestionSummary } from '../src/core/ingestion-summary.ts';
@@ -1673,6 +1673,54 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     sampleTypes: [],
     sampleExcerpts: [],
   });
+});
+
+test('parseDraftMetadata keeps count-only source material headers valid for markdown foundation drafts', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8').replace(
+    /^Source materials:\s+1\s+\(message:1\)$/m,
+    'Source materials: 1',
+  );
+  fs.writeFileSync(voiceDraftPath, voiceDraft);
+
+  const metadata = parseDraftMetadata(voiceDraftPath);
+
+  assert.equal(metadata?.valid, true);
+  assert.equal(metadata?.sourceCount, 1);
+  assert.deepEqual(metadata?.materialTypes, {});
+});
+
+test('loadProfilesIndex keeps count-only source material headers as stale markdown provenance instead of treating drafts as missing', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8').replace(
+    /^Source materials:\s+1\s+\(message:1\)$/m,
+    'Source materials: 1',
+  );
+  fs.writeFileSync(voiceDraftPath, voiceDraft);
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['draft metadata drift']);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 1);
+  assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {});
+  assert.match(summarizeFoundationDraftSources(profile) ?? '', /\bvoice 1 source\b/);
 });
 
 test('loadProfilesIndex trims placeholder latest material source headers instead of surfacing them as file provenance', () => {
