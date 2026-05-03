@@ -2728,6 +2728,7 @@ test('PromptAssembler keeps compact ready core foundation details when section c
         populatedBuckets: ['daily', 'long-term', 'scratch'],
         emptyBuckets: [],
         sampleEntries: ['daily/2026-04-20.md', 'long-term/operator.json', 'scratch/draft.md'],
+        shadowPaths: [' .\\MEMORY.md ', './MEMORY.md'],
       },
       skills: {
         hasRootDocument: true,
@@ -2739,6 +2740,7 @@ test('PromptAssembler keeps compact ready core foundation details when section c
         documentedCount: 2,
         sample: ['slack', 'telegram'],
         samplePaths: ['skills/slack/SKILL.md', 'skills/telegram/SKILL.md'],
+        shadowPaths: [' .\\SKILLS.md ', './SKILLS.md'],
       },
       soul: {
         present: true,
@@ -2747,6 +2749,7 @@ test('PromptAssembler keeps compact ready core foundation details when section c
         excerpt: 'Stay grounded.',
         readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
         missingSections: [],
+        shadowPaths: [' .\\soul\\README.md ', './soul/README.md'],
       },
       voice: {
         present: true,
@@ -2755,6 +2758,7 @@ test('PromptAssembler keeps compact ready core foundation details when section c
         excerpt: 'Stay direct.',
         readySections: ['tone', 'signature-moves', 'avoid', 'language-hints'],
         missingSections: [],
+        shadowPaths: [' .\\VOICE.md ', './VOICE.md'],
       },
       overview: {
         readyAreaCount: 4,
@@ -2775,8 +2779,9 @@ test('PromptAssembler keeps compact ready core foundation details when section c
     },
   }).buildPreview(4000);
 
-  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 2\/2 \(slack, telegram\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(prompt, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md, shadow docs MEMORY\.md; skills docs 2\/2 \(slack, telegram\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md, shadow docs SKILLS\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md, shadow docs soul\/README\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md, shadow docs VOICE\.md/);
   assert.doesNotMatch(prompt, /memory: README yes, daily 1, long-term 1, scratch 1/);
+  assert.doesNotMatch(prompt, /shadow docs \.\\MEMORY\.md|shadow docs \.\\SKILLS\.md|shadow docs \.\\soul\\README\.md|shadow docs \.\\VOICE\.md/);
 });
 
 test('PromptAssembler preserves thin skill doc section counts when only aggregate counts are available', () => {
