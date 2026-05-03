@@ -175,6 +175,50 @@ test('direct text imports strip UTF-8 BOMs before deduping and writing material 
   assert.equal(textRecord.content.startsWith('\uFEFF'), false);
 });
 
+test('importManifest strips UTF-8 BOMs from text entry fingerprints before deduping and writing material content', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textPath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textPath, '\uFEFFShip the thin slice first.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post.txt',
+          notes: 'blog fragment',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath });
+  fs.writeFileSync(textPath, 'Ship the thin slice first.');
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(firstResult.entryCount, 1);
+  assert.equal(firstResult.skippedEntryCount, 0);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.results, []);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+
+  const textRecord = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'materials', materialRecords[0]), 'utf8'),
+  );
+  assert.equal(textRecord.content, 'Ship the thin slice first.');
+  assert.equal(textRecord.content.startsWith('\uFEFF'), false);
+});
+
 test('direct message and talk imports reject whitespace-only text without writing records', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

@@ -1606,7 +1606,7 @@ export class MaterialIngestion {
           originalPath: entry.file,
         });
         const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
-        const content = fs.readFileSync(sourceFile, 'utf8');
+        const content = stripLeadingUtf8Bom(fs.readFileSync(sourceFile, 'utf8'));
 
         return {
           personId: resolvedPersonId,
