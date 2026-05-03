@@ -69,6 +69,7 @@ function normalizeMaterialTypes(materialTypes: unknown): Record<string, number> 
 
   const entries = Object.entries(materialTypes)
     .filter(([key, value]) => typeof key === 'string' && key.trim().length > 0 && Number.isFinite(value) && Number(value) > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => [key.trim(), Number(value)] as const);
 
   return entries.length > 0 ? Object.fromEntries(entries) : null;
@@ -81,6 +82,7 @@ function formatMaterialTypes(materialTypes: Record<string, number> | null): stri
 
   const parts = Object.entries(materialTypes)
     .filter(([, count]) => Number.isFinite(count) && count > 0)
+    .sort(([left], [right]) => left.localeCompare(right))
     .map(([type, count]) => `${type}:${count}`);
 
   return parts.length > 0 ? parts.join(', ') : null;

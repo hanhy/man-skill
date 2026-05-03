@@ -281,7 +281,7 @@ test('buildFoundationRollup carries stale draft source provenance onto maintenan
           path: 'profiles/jane-doe/memory/long-term/foundation.json',
           latestMaterialSourcePath: 'profiles/jane-doe/imports/call-notes.txt',
           sourceCount: 2,
-          materialTypes: { message: 1, talk: 1 },
+          materialTypes: { talk: 1, message: 1 },
           entryCount: 1,
         },
         skills: {
