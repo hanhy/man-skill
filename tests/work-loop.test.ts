@@ -4991,10 +4991,18 @@ test('buildSummary work loop keeps repo-core foundation ahead of stale profile r
 
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-17.md'), 'Only one bucket seeded.\n');
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'jane-note.txt'), 'Tight loops beat big plans.\n');
 
-  runImportCommand(rootDir, 'message', {
+  runImportCommand(rootDir, 'text', {
     person: 'jane-doe',
-    text: 'Tight loops beat big plans.',
+    file: 'samples/jane-note.txt',
+    'refresh-foundation': true,
+  });
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'jane-doe',
+    'display-name': 'Jane Doe',
+    summary: 'Metadata drift without rebuilding drafts yet.',
   });
 
   const summary = buildSummary(rootDir);
@@ -5004,10 +5012,22 @@ test('buildSummary work loop keeps repo-core foundation ahead of stale profile r
   assert.equal(summary.workLoop.currentPriority.nextAction, 'scaffold missing or thin core foundation areas — starting with create memory/README.md | add at least one entry under memory/long-term and memory/scratch');
   assert.equal(summary.workLoop.currentPriority.command, summary.foundation.core.maintenance.helperCommands.scaffoldAll);
   assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'memory/long-term/notes.md', 'memory/scratch/draft.md', 'skills/starter/SKILL.md', 'SOUL.md', 'voice/README.md']);
-  assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
+  assert.match(summary.workLoop.currentPriority.summary, /core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 0 incomplete/);
   assert.equal(summary.foundation.maintenance.queuedProfiles[0].id, 'jane-doe');
-  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 1 incomplete/);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialAt, summary.foundation.maintenance.queuedProfiles[0].latestMaterialAt);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.foundation.maintenance.queuedProfiles[0].latestMaterialId);
+  assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, summary.foundation.maintenance.queuedProfiles[0].latestMaterialSourcePath);
+  assert.equal(summary.workLoop.currentPriority.candidateSignalSummary, summary.foundation.maintenance.queuedProfiles[0].candidateSignalSummary);
+  assert.equal(summary.workLoop.currentPriority.draftSourcesSummary, summary.foundation.maintenance.queuedProfiles[0].draftSourcesSummary);
+  assert.equal(summary.workLoop.currentPriority.draftGapSummary, summary.foundation.maintenance.queuedProfiles[0].draftGapSummary);
+  assert.deepEqual(summary.workLoop.currentPriority.refreshReasons, summary.foundation.maintenance.queuedProfiles[0].refreshReasons);
+  assert.deepEqual(summary.workLoop.currentPriority.missingDrafts, summary.foundation.maintenance.queuedProfiles[0].missingDrafts);
+  assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 0\/4 ready \(1 thin, 3 missing\); profiles 1 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /next action: scaffold missing or thin core foundation areas — starting with create memory\/README\.md \| add at least one entry under memory\/long-term and memory\/scratch/);
+  assert.ok(summary.promptPreview.includes(`latest material: ${summary.workLoop.currentPriority.latestMaterialAt} (${summary.workLoop.currentPriority.latestMaterialId}) @ ${summary.workLoop.currentPriority.latestMaterialSourcePath}`));
+  assert.ok(summary.promptPreview.includes(`refresh reasons: ${summary.workLoop.currentPriority.refreshReasons.join(' + ')}`));
+  assert.ok(summary.promptPreview.includes(`evidence: ${summary.workLoop.currentPriority.candidateSignalSummary}`));
+  assert.ok(summary.promptPreview.includes(`draft sources: ${summary.workLoop.currentPriority.draftSourcesSummary}`));
   assert.match(summary.promptPreview, /paths: memory\/README\.md, memory\/long-term\/notes\.md, memory\/scratch\/draft\.md, skills\/starter\/SKILL\.md, SOUL\.md, voice\/README\.md/);
 });
 
