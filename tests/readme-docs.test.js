@@ -17,6 +17,7 @@ const soulDoc = fs.readFileSync(path.join(repoRoot, 'SOUL.md'), 'utf8');
 const voiceDoc = fs.readFileSync(path.join(repoRoot, 'voice', 'README.md'), 'utf8');
 const userDoc = fs.readFileSync(path.join(repoRoot, 'USER.md'), 'utf8');
 const profilesDoc = fs.readFileSync(path.join(repoRoot, 'profiles', 'README.md'), 'utf8');
+const repoFoundationNote = fs.readFileSync(path.join(repoRoot, 'memory', 'long-term', 'repo-foundation.md'), 'utf8');
 const harryIntakeReadme = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'README.md'), 'utf8');
 const harryIntakeManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'materials.template.json'), 'utf8'));
 const harryIntakeSample = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'imports', 'sample.txt'), 'utf8');
@@ -206,6 +207,15 @@ test('checked-in USER current product direction stays aligned with the default w
     'add model providers OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen',
     'report progress in small verified increments',
   ]);
+});
+
+test('checked-in repo foundation note keeps long-term memory aligned with the canonical rollout and operating cadence', () => {
+  assert.match(repoFoundationNote, /^# Repo foundation notes/m);
+  assert.match(repoFoundationNote, /four durable identity layers: memory, skills, soul, and voice/i);
+  assert.match(repoFoundationNote, /Target-person ingestion should stay user-facing: bootstrap with `update profile`, add materials with `import \.\.\.` or `import manifest`, then regenerate drafts with `--refresh-foundation` or `update foundation`/i);
+  assert.match(repoFoundationNote, /canonical rollout order: Feishu, Telegram, WhatsApp, and Slack/i);
+  assert.match(repoFoundationNote, /Provider expansion currently targets six model backends: OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen/i);
+  assert.match(repoFoundationNote, /Changes should land in small verified slices so the repo remains reviewable between cron runs/i);
 });
 
 test('checked-in starter profile drafts keep provenance headers aligned with the docs contract', () => {
