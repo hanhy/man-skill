@@ -312,7 +312,7 @@ function buildVoiceCommand(status: string | null): string | null {
       "const AVOID_HINT_PATTERN = /^(?:[-*]\\s*)?(?:avoid\\b|never\\b|do not\\b|don't\\b|dont\\b|should not\\b|must not\\b|cannot\\b|can't\\b|cant\\b|no\\b|without\\b)/u;",
       "const looksLikeLanguageHint = (value) => { const normalized = value.trim().toLowerCase(); return LANGUAGE_HINT_PATTERN.test(normalized) || normalized.includes('中文'); };",
       "const looksLikeAvoidConstraint = (value) => AVOID_HINT_PATTERN.test(value.trim().toLowerCase());",
-      "const isCurrentDefaultHeading = (value) => value === 'current default for manskill' || /^current default for .+$/.test(value);",
+      "const isCurrentDefaultHeading = (value) => value === 'current default' || value === 'current default for manskill' || /^current default for .+$/.test(value);",
       "const aliasMap = new Map([['tone', 'tone'], ['signature moves', 'signature-moves'], ['voice should capture', 'signature-moves'], ['avoid', 'avoid'], ['voice should not capture', 'avoid'], ['language hints', 'language-hints'], ['current default for manskill', 'current-default']]);",
       "const sectionHeadings = { tone: '## Tone', 'signature-moves': '## Signature moves', avoid: '## Avoid', 'language-hints': '## Language hints' };",
       "const sectionOrder = ['tone', 'signature-moves', 'avoid', 'language-hints'];",

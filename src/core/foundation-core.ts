@@ -958,7 +958,9 @@ function hasStructuredHeadingMatcher(
 }
 
 function isCurrentDefaultVoiceHeading(value: string): boolean {
-  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+  return value === 'current default'
+    || value === 'current default for manskill'
+    || /^current default for .+$/.test(value);
 }
 
 function summarizeStructuredSections(

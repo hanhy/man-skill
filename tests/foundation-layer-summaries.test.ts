@@ -1001,6 +1001,27 @@ test('voice profile treats target-specific current default headings as legacy la
   ]);
 });
 
+test('voice profile also treats plain current default headings as legacy language hint aliases', () => {
+  const voiceDocument = `# Voice\n\n## Tone\n- Keep the answer concise.\n\n## Current default\n- Lead with the operating takeaway.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Keep the answer concise.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Lead with the operating takeaway.'],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
+});
+
 test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
   const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Keep the answer concise.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
   const voice = VoiceProfile.fromDocument(voiceDocument);

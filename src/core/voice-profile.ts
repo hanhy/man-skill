@@ -70,7 +70,9 @@ function looksLikeLanguageHint(value: string) {
 }
 
 function isCurrentDefaultHeading(value: string) {
-  return value === 'current default for manskill' || /^current default for .+$/.test(value);
+  return value === 'current default'
+    || value === 'current default for manskill'
+    || /^current default for .+$/.test(value);
 }
 
 function pushUnique(target: string[], value: string) {

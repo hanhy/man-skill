@@ -3591,6 +3591,41 @@ test('buildSummary treats target-specific current default voice headings as stru
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\./);
 });
 
+test('buildSummary treats plain current default voice headings as structured foundation guidance', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Current default\n- Lead with the operating takeaway.\n- preserve 中文 and English switching when the source does\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.voice.structured, true);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, ['avoid']);
+  assert.deepEqual(summary.foundation.core.voice.headingAliases, ['current-default->language-hints']);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 3);
+  assert.equal(summary.foundation.core.maintenance.recommendedArea, 'voice');
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to voice/README.md: avoid');
+  assert.match(summary.promptPreview, /Voice profile:[\s\S]*- sections: 3\/4 ready \(tone, signature-moves, language-hints\), missing avoid/);
+});
+
 test('buildSummary exposes canonical heading alias metadata when legacy soul and voice headings still back the root foundation docs', () => {
   const rootDir = makeTempRepo();
 
