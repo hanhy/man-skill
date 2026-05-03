@@ -871,6 +871,122 @@ test('buildIngestionSummary keeps absolute in-repo starter template file targets
   ]);
 });
 
+test('buildIngestionSummary normalizes recommended starter profile slices for JSON consumers', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: path.join(rootDir, 'profiles', 'harry-han', 'imports', 'sample.txt'),
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [],
+      entryTemplates: {
+        text: { type: 'text', file: ' .\\sample.txt ' },
+        message: { type: 'message', text: ' Ship the thin slice first. ' },
+        duplicateMessage: { type: 'message', text: 'Ship the thin slice first.' },
+      },
+    }, null, 2),
+  );
+
+  const loader = new FileSystemLoader(rootDir);
+  const profiles = loader.loadProfilesIndex();
+  const harry: any = profiles[0] as any;
+  assert.ok(harry);
+  harry.latestMaterialAt = ' 2026-04-20T12:00:00.000Z ';
+  harry.latestMaterialId = ' 2026-04-20T12-00-00-000Z-text ';
+  harry.latestMaterialSourcePath = ' .\\profiles\\harry-han//imports\\sample.txt ';
+  harry.foundationDraftStatus = {
+    ...(harry.foundationDraftStatus ?? {}),
+    complete: true,
+    needsRefresh: false,
+    missingDrafts: [],
+    refreshReasons: [],
+  };
+  harry.foundationReadiness = {
+    memory: { candidateCount: 1, latestTypes: ['text'] },
+    voice: { candidateCount: 1, sampleTypes: ['text'] },
+    soul: { candidateCount: 0 },
+    skills: { candidateCount: 0 },
+  };
+  harry.foundationDraftSummaries = {
+    ...(harry.foundationDraftSummaries ?? {}),
+    memory: {
+      ...(harry.foundationDraftSummaries?.memory ?? {}),
+      generated: true,
+      path: 'profiles/harry-han/memory/long-term/foundation.json',
+      latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+      sourceCount: 1,
+      materialTypes: { text: 1 },
+      entryCount: 1,
+    },
+    voice: {
+      ...(harry.foundationDraftSummaries?.voice ?? {}),
+      generated: true,
+      path: 'profiles/harry-han/voice/README.md',
+      latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+      sourceCount: 1,
+      materialTypes: { text: 1 },
+    },
+    soul: {
+      ...(harry.foundationDraftSummaries?.soul ?? {}),
+      generated: true,
+      path: 'profiles/harry-han/soul/README.md',
+      sourceCount: 0,
+      materialTypes: {},
+    },
+    skills: {
+      ...(harry.foundationDraftSummaries?.skills ?? {}),
+      generated: true,
+      path: 'profiles/harry-han/skills/README.md',
+      sourceCount: 0,
+      materialTypes: {},
+    },
+  };
+
+  const jsSummary = buildJsIngestionSummary(profiles, { rootDir });
+  const tsSummary = buildTsIngestionSummary(profiles, { rootDir });
+  const recommendedSlice: any = tsSummary.recommendedProfileSlices[0] as any;
+
+  assert.deepEqual(jsSummary, tsSummary);
+  assert.ok(recommendedSlice);
+  assert.equal(recommendedSlice.personId, 'harry-han');
+  assert.equal(recommendedSlice.label, 'Harry Han (harry-han)');
+  assert.equal(recommendedSlice.latestMaterialAt, '2026-04-20T12:00:00.000Z');
+  assert.equal(recommendedSlice.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
+  assert.equal(recommendedSlice.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
+  assert.deepEqual(recommendedSlice.refreshReasons, []);
+  assert.deepEqual(recommendedSlice.missingDrafts, []);
+  assert.equal(recommendedSlice.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 0 | skills 0');
+  assert.match(recommendedSlice.draftSourcesSummary ?? '', /memory 1 source \(text:1\), 1 entry, latest @ profiles\/harry-han\/imports\/sample\.txt/);
+  assert.equal(recommendedSlice.draftGapSummary, null);
+  assert.equal(recommendedSlice.editPath, 'profiles/harry-han/imports/materials.template.json');
+  assert.deepEqual(recommendedSlice.editPaths, [
+    'profiles/harry-han/imports/materials.template.json',
+    'profiles/harry-han/imports/sample.txt',
+  ]);
+  assert.equal(recommendedSlice.intakeManifestEntryTemplateRoot, 'profiles/harry-han/imports');
+  assert.deepEqual(recommendedSlice.intakeManifestEntryTemplateTypes, ['message', 'text']);
+  assert.deepEqual(recommendedSlice.intakeManifestEntryTemplateDetails, [
+    { type: 'message', source: 'text', path: null, preview: 'Ship the thin slice first.' },
+    { type: 'text', source: 'file', path: 'sample.txt', preview: null },
+  ]);
+});
+
 test('buildIngestionSummary keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
   const profiles = [
     {

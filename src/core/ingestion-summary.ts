@@ -208,40 +208,30 @@ function buildRecommendedStarterProfileSlice(profile: any) {
   const intakeManifestEntryTemplateRoot = collectStarterTemplateRoot(profile);
 
   return {
-    personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
-    label: typeof profile?.label === 'string' && profile.label.length > 0 ? profile.label : null,
-    latestMaterialAt: typeof profile?.latestMaterialAt === 'string' && profile.latestMaterialAt.length > 0 ? profile.latestMaterialAt : null,
-    latestMaterialId: typeof profile?.latestMaterialId === 'string' && profile.latestMaterialId.length > 0 ? profile.latestMaterialId : null,
+    personId: normalizeOptionalString(profile?.personId),
+    label: normalizeOptionalString(profile?.label),
+    latestMaterialAt: normalizeOptionalString(profile?.latestMaterialAt),
+    latestMaterialId: normalizeOptionalString(profile?.latestMaterialId),
     latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
-    refreshReasons: Array.isArray(profile?.refreshReasons)
-      ? profile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
-      : [],
-    missingDrafts: Array.isArray(profile?.missingDrafts)
-      ? profile.missingDrafts.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
-      : [],
-    candidateSignalSummary: typeof profile?.candidateSignalSummary === 'string' && profile.candidateSignalSummary.length > 0
-      ? profile.candidateSignalSummary
-      : null,
-    draftSourcesSummary: typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
-      ? profile.draftSourcesSummary
-      : null,
-    draftGapSummary: typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
-      ? profile.draftGapSummary
-      : null,
-    fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
-    refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
-    updateProfileCommand: typeof profile?.updateProfileCommand === 'string' && profile.updateProfileCommand.length > 0 ? profile.updateProfileCommand : null,
-    updateProfileAndRefreshCommand: typeof profile?.updateProfileAndRefreshCommand === 'string' && profile.updateProfileAndRefreshCommand.length > 0 ? profile.updateProfileAndRefreshCommand : null,
+    refreshReasons: normalizeStringArray(profile?.refreshReasons),
+    missingDrafts: normalizeStringArray(profile?.missingDrafts),
+    candidateSignalSummary: normalizeOptionalString(profile?.candidateSignalSummary),
+    draftSourcesSummary: normalizeOptionalString(profile?.draftSourcesSummary),
+    draftGapSummary: normalizeOptionalString(profile?.draftGapSummary),
+    fallbackCommand: normalizeOptionalString(profile?.starterImportCommand),
+    refreshIntakeCommand: normalizeOptionalString(profile?.updateIntakeCommand),
+    updateProfileCommand: normalizeOptionalString(profile?.updateProfileCommand),
+    updateProfileAndRefreshCommand: normalizeOptionalString(profile?.updateProfileAndRefreshCommand),
     editPath: intakeManifestPath,
     editPaths: collectStarterTemplateEditPaths(profile),
     intakeManifestEntryTemplateRoot,
-    manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
-    manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
+    manifestInspectCommand: normalizeOptionalString(profile?.importManifestWithoutRefreshCommand),
+    manifestImportCommand: normalizeOptionalString(profile?.importManifestCommand),
     intakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount,
-    inspectCommand: typeof profile?.followUpImportIntakeWithoutRefreshCommand === 'string' && profile.followUpImportIntakeWithoutRefreshCommand.length > 0 ? profile.followUpImportIntakeWithoutRefreshCommand : null,
-    followUpCommand: typeof profile?.followUpImportIntakeCommand === 'string' && profile.followUpImportIntakeCommand.length > 0 ? profile.followUpImportIntakeCommand : null,
+    inspectCommand: normalizeOptionalString(profile?.followUpImportIntakeWithoutRefreshCommand),
+    followUpCommand: normalizeOptionalString(profile?.followUpImportIntakeCommand),
     paths: collectProfileIntakePaths(profile),
   };
 }
