@@ -73,6 +73,25 @@ function normalizeStringArray(values) {
   return normalized;
 }
 
+function normalizePathArray(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const value of values) {
+    const normalizedPath = normalizeDraftPath(typeof value === 'string' ? value : null);
+    if (!normalizedPath || seen.has(normalizedPath)) {
+      continue;
+    }
+    seen.add(normalizedPath);
+    normalized.push(normalizedPath);
+  }
+
+  return normalized;
+}
+
 function collectCandidateSignalTypes(signal, primarySource = 'sample') {
   const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
   const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
@@ -968,18 +987,18 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestEntryTemplateCount,
     intakeManifestEntryTemplateRoot: collectStarterTemplateRoot({ intakeManifestPath: intakeManifest.path }),
     intakePaths: intakeManifest.status === 'invalid'
-      ? Array.from(new Set([
+      ? normalizePathArray([
         intakeManifest.path,
         ...intakeManifestRepairPaths,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : intake ? [
+      ])
+      : normalizePathArray(intake ? [
         intake.importsDir,
         intake.sampleImagesDirPath,
         intake.intakeReadmePath,
         intake.starterManifestPath,
         intake.sampleTextPath,
-      ].filter(Boolean) : [],
-    intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
+      ] : []),
+    intakeMissingPaths: intake ? normalizePathArray(intake.missingPaths ?? []) : [],
     importManifestWithoutRefreshCommand: intakeImportManifestWithoutRefreshCommand,
     importManifestCommand: intakeImportManifestCommand,
     refreshFoundationCommand,
@@ -1003,16 +1022,12 @@ function buildProfileCommands(profile, options: any = {}) {
 }
 
 function collectProfileIntakePaths(profile: any): string[] {
-  const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
-    ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  const missingIntakePaths = normalizePathArray(profile?.intakeMissingPaths);
   if (missingIntakePaths.length > 0) {
     return missingIntakePaths;
   }
 
-  return Array.isArray(profile?.intakePaths)
-    ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  return normalizePathArray(profile?.intakePaths);
 }
 
 function collectStarterTemplateRoot(profile: any): string | null {

@@ -1108,6 +1108,71 @@ test('buildIngestionSummary normalizes recommended starter profile slices for JS
   ]);
 });
 
+test('buildIngestionSummary slash-normalizes per-profile intake paths for starter and missing intake states', () => {
+  const starterProfiles = [{
+    id: 'starter-profile',
+    materialCount: 1,
+    profile: {
+      displayName: 'Starter Profile',
+      summary: 'Needs a starter intake replay.',
+    },
+    intake: {
+      ready: true,
+      completion: 'ready',
+      importsDir: ' .\\profiles\\starter-profile\\imports ',
+      sampleImagesDirPath: './profiles//starter-profile/imports/images',
+      intakeReadmePath: 'profiles/starter-profile/imports/README.md',
+      starterManifestPath: 'profiles/starter-profile/imports/materials.template.json',
+      sampleTextPath: 'profiles/starter-profile/imports/sample.txt',
+      missingPaths: [],
+    },
+  }];
+  const missingProfiles = [{
+    id: 'missing-profile',
+    materialCount: 0,
+    profile: {
+      displayName: 'Missing Profile',
+      summary: 'Needs an intake landing zone.',
+    },
+    intake: {
+      ready: false,
+      completion: 'missing',
+      missingPaths: [
+        ' .\\profiles\\missing-profile\\imports ',
+        'profiles/missing-profile/imports/README.md',
+        './profiles//missing-profile/imports/sample.txt',
+        'profiles/missing-profile/imports/sample.txt',
+        '',
+      ],
+    },
+  }];
+
+  const starterJsSummary = buildJsIngestionSummary(starterProfiles, {});
+  const starterTsSummary = buildTsIngestionSummary(starterProfiles, {});
+  const missingJsSummary = buildJsIngestionSummary(missingProfiles, {});
+  const missingTsSummary = buildTsIngestionSummary(missingProfiles, {});
+
+  assert.deepEqual(starterJsSummary, starterTsSummary);
+  assert.deepEqual(missingJsSummary, missingTsSummary);
+  assert.deepEqual(starterTsSummary.allProfileCommands[0]?.intakePaths, [
+    'profiles/starter-profile/imports',
+    'profiles/starter-profile/imports/images',
+    'profiles/starter-profile/imports/README.md',
+    'profiles/starter-profile/imports/materials.template.json',
+    'profiles/starter-profile/imports/sample.txt',
+  ]);
+  assert.deepEqual(missingTsSummary.profileCommands[0]?.intakeMissingPaths, [
+    'profiles/missing-profile/imports',
+    'profiles/missing-profile/imports/README.md',
+    'profiles/missing-profile/imports/sample.txt',
+  ]);
+  assert.deepEqual(missingTsSummary.recommendedPaths, [
+    'profiles/missing-profile/imports',
+    'profiles/missing-profile/imports/README.md',
+    'profiles/missing-profile/imports/sample.txt',
+  ]);
+});
+
 test('buildIngestionSummary keeps legacy new-material refresh reasons ahead of empty stale reasons', () => {
   const profiles = [
     {
