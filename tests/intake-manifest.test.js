@@ -75,6 +75,39 @@ test('inspectProfileIntakeManifest accepts absolute in-repo files for profile-lo
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest accepts absolute in-repo files for starter template text entries', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  const sampleTextPath = path.join(importsDir, 'sample.txt');
+  fs.writeFileSync(sampleTextPath, 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: {
+          file: sampleTextPath,
+        },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'starter');
+  assert.equal(manifest.error, null);
+  assert.deepEqual(manifest.repairPaths, []);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'text', source: 'file', path: 'profiles/metadata-only/imports/sample.txt', preview: null },
+  ]);
+});
+
 test('inspectProfileIntakeManifest rejects starter manifests whose symlink target escapes the repo root', () => {
   const rootDir = makeTempRepo();
   const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');

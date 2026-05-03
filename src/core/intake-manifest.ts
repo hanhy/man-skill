@@ -62,14 +62,42 @@ function truncateTemplatePreview(value, maxLength = 80) {
   return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }
 
-function normalizeEntryTemplateDetails(entryTemplates) {
+function normalizeTemplateFileDetailPath(rootDir, filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  const trimmedFilePath = filePath.trim();
+  if (!path.isAbsolute(trimmedFilePath)) {
+    return normalizeRelativeRepoPath(trimmedFilePath);
+  }
+
+  if (isNonEmptyString(rootDir)) {
+    try {
+      const realRootDir = fs.realpathSync(rootDir);
+      const absoluteDisplayPath = fs.existsSync(trimmedFilePath)
+        ? fs.realpathSync(trimmedFilePath)
+        : path.resolve(trimmedFilePath);
+      const repoRelativePath = toRepoRelativePath(realRootDir, absoluteDisplayPath);
+      if (repoRelativePath) {
+        return repoRelativePath;
+      }
+    } catch {
+      // Fall through to a slash-normalized absolute display path.
+    }
+  }
+
+  return trimmedFilePath.replace(/\\/g, '/');
+}
+
+function normalizeEntryTemplateDetails(rootDir, entryTemplates) {
   const entryTemplateTypes = normalizeEntryTemplateTypes(entryTemplates);
   return entryTemplateTypes.map((type) => {
     const template = entryTemplates?.[type];
     const filePath = isNonEmptyString(template?.file) ? template.file.trim() : null;
     const textPreview = truncateTemplatePreview(template?.text);
 
-    const normalizedFilePath = normalizeRelativeRepoPath(filePath);
+    const normalizedFilePath = normalizeTemplateFileDetailPath(rootDir, filePath);
 
     return {
       type,
@@ -83,9 +111,10 @@ function normalizeEntryTemplateDetails(entryTemplates) {
 function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
   return entryTemplateTypes.map((type) => {
     const template = manifest?.entryTemplates?.[type] ?? {};
+    const templateFile = isNonEmptyString(template?.file) ? template.file.trim() : null;
     return {
       type,
-      ...(normalizeRelativeRepoPath(template?.file) ? { file: normalizeRelativeRepoPath(template.file) } : {}),
+      ...(templateFile ? { file: templateFile } : {}),
       ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
       ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
     };
@@ -375,7 +404,7 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
 
   const entries = manifest.entries;
   const entryTemplateTypes = normalizeEntryTemplateTypes(manifest.entryTemplates);
-  const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
+  const entryTemplateDetails = normalizeEntryTemplateDetails(rootDir, manifest.entryTemplates);
   const entryTemplateCount = entryTemplateTypes.length;
   const hasStarterTemplates = Array.isArray(entries)
     && entries.length === 0
@@ -429,7 +458,7 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
   }
 
   if (hasStarterTemplates) {
-    const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
+    const entryTemplateDetails = normalizeEntryTemplateDetails(rootDir, manifest.entryTemplates);
     return {
       status: 'starter',
       path: manifestPath,
