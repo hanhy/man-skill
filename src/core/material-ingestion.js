@@ -369,12 +369,34 @@ function buildSkillsDraftLines({
   ];
 }
 
+function normalizeRelativeImportPath(filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  return filePath
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/^\.(?=\/)/, '')
+    .replace(/^\//, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/');
+}
+
 function resolveImportFile(baseDir, filePath) {
   if (!isNonEmptyString(filePath)) {
     return null;
   }
 
-  return path.isAbsolute(filePath) ? filePath : path.resolve(baseDir, filePath);
+  const trimmedFilePath = filePath.trim();
+  if (path.isAbsolute(trimmedFilePath)) {
+    return trimmedFilePath;
+  }
+
+  const normalizedRelativePath = normalizeRelativeImportPath(trimmedFilePath);
+  return normalizedRelativePath ? path.resolve(baseDir, normalizedRelativePath) : null;
 }
 
 function assertFileWithinRoot({ rootDir, filePath, errorLabel, originalPath = filePath }) {

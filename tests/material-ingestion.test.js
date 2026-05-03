@@ -1739,6 +1739,44 @@ test('importProfileIntakeManifest preserves replayed profile summaries on skippe
   assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
 });
 
+test('importProfileIntakeManifest accepts backslash-normalized relative entry files from profile-local manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Windows Ready',
+    displayName: 'Windows Ready',
+    summary: 'Profile-local manifests should stay runnable with backslash-style relative files.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'windows-ready', 'imports', 'sample.txt'), 'Windows manifest sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'windows-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Windows Ready',
+      entries: [{ type: 'text', file: '.\\sample.txt', notes: 'profile-local sample' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importProfileIntakeManifest({ personId: 'windows-ready', refreshFoundation: false });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['windows-ready']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['windows-ready']);
+
+  const materialRecordPath = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'windows-ready', 'materials'))
+    .find((name) => name.endsWith('.json'));
+  assert.equal(typeof materialRecordPath, 'string');
+
+  const materialRecord = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'windows-ready', 'materials', materialRecordPath), 'utf8'),
+  );
+  assert.equal(materialRecord.type, 'text');
+  assert.equal(materialRecord.content, 'Windows manifest sample.\n');
+  assert.equal(materialRecord.sourceFile, 'profiles/windows-ready/imports/sample.txt');
+});
+
 test('importProfileIntakeManifest explains how to promote starter templates into entries before rerunning imported profile intake', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
