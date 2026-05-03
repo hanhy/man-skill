@@ -74,6 +74,27 @@ test('test runner keeps args after -- when delegating to node --test', () => {
   assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
 });
 
+test('safe tmp runner resolves repo-local binaries when they are not already on PATH', () => {
+  const pathSegments = (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter((segment) => segment && segment !== path.join(repoRoot, 'node_modules', '.bin'));
+  const result = spawnSync(
+    process.execPath,
+    ['scripts/run-with-safe-tmp.mjs', 'tsx', '--version'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: pathSegments.join(path.delimiter),
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+  assert.match(result.stdout, /^tsx v/i);
+});
+
 test('npm check and test scripts route through the safe tmp runner', () => {
   assert.equal(packageJson.scripts.check, 'node scripts/run-with-safe-tmp.mjs tsx src/index.ts');
   assert.equal(packageJson.scripts.test, 'node scripts/run-with-safe-tmp.mjs node scripts/run-node-tests.mjs');
