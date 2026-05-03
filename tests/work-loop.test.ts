@@ -2974,6 +2974,150 @@ test('update intake backs up invalid starter manifests before rebuilding the sca
   });
 });
 
+test('update intake backs up parseable starter manifests that target a different profile before rebuilding', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const manifestPath = path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json');
+  const invalidManifest = {
+    personId: 'someone-else',
+    entries: [
+      {
+        type: 'text',
+        file: 'sample.txt',
+      },
+    ],
+  };
+  fs.writeFileSync(manifestPath, JSON.stringify(invalidManifest, null, 2));
+
+  const result = runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  assert.match(result.invalidStarterManifestBackupPath, /^profiles\/metadata-only\/imports\/materials\.template\.json\.invalid-.*\.bak$/);
+  const backupPath = path.join(rootDir, result.invalidStarterManifestBackupPath);
+  assert.deepEqual(JSON.parse(fs.readFileSync(backupPath, 'utf8')), invalidManifest);
+  assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), {
+    personId: 'metadata-only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+    entries: [],
+    entryTemplates: {
+      message: {
+        type: 'message',
+        text: '<paste a representative short message>',
+        notes: 'chat sample',
+      },
+      screenshot: {
+        type: 'screenshot',
+        file: 'images/chat.png',
+        notes: 'chat screenshot',
+      },
+      talk: {
+        type: 'talk',
+        text: '<paste a transcript snippet>',
+        notes: 'voice memo transcript',
+      },
+      text: {
+        type: 'text',
+        file: 'sample.txt',
+        notes: 'long-form writing sample',
+      },
+    },
+  });
+});
+
+test('update intake backs up parseable starter manifests whose files escape the imports directory before rebuilding', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+
+  fs.mkdirSync(path.join(rootDir, 'profiles', 'metadata-only'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'profile.json'),
+    JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      createdAt: '2026-04-17T00:00:00.000Z',
+      updatedAt: '2026-04-17T00:00:00.000Z',
+    }, null, 2),
+  );
+  runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  const manifestPath = path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json');
+  const invalidManifest = {
+    personId: 'metadata-only',
+    entries: [
+      {
+        type: 'text',
+        file: '../outside.txt',
+      },
+    ],
+  };
+  fs.writeFileSync(manifestPath, JSON.stringify(invalidManifest, null, 2));
+
+  const result = runUpdateCommand(rootDir, 'intake', {
+    person: 'metadata-only',
+    'display-name': 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  assert.match(result.invalidStarterManifestBackupPath, /^profiles\/metadata-only\/imports\/materials\.template\.json\.invalid-.*\.bak$/);
+  const backupPath = path.join(rootDir, result.invalidStarterManifestBackupPath);
+  assert.deepEqual(JSON.parse(fs.readFileSync(backupPath, 'utf8')), invalidManifest);
+  assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), {
+    personId: 'metadata-only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+    entries: [],
+    entryTemplates: {
+      message: {
+        type: 'message',
+        text: '<paste a representative short message>',
+        notes: 'chat sample',
+      },
+      screenshot: {
+        type: 'screenshot',
+        file: 'images/chat.png',
+        notes: 'chat screenshot',
+      },
+      talk: {
+        type: 'talk',
+        text: '<paste a transcript snippet>',
+        notes: 'voice memo transcript',
+      },
+      text: {
+        type: 'text',
+        file: 'sample.txt',
+        notes: 'long-form writing sample',
+      },
+    },
+  });
+});
+
 test('update intake does not create invalid-json backups for parseable placeholder manifests', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

@@ -997,11 +997,25 @@ export class MaterialIngestion {
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
     const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
     const existingTemplate = normalizeExistingStarterManifest(existingTemplateState.parsed);
-    const preserveExistingStarterContent = existingStarterManifestTargetsExpectedPersonId(
-      existingTemplateState.parsed,
-      profileUpdate.personId,
-    );
-    const invalidStarterManifestBackupPath = existingTemplateState.parseError
+    const existingTemplateInspection = existingTemplateState.parseError
+      ? null
+      : inspectIntakeManifestState(this.rootDir, intakePaths.starterManifestPath, profileUpdate.personId);
+    const isLegacyArrayStarterManifest = Array.isArray(existingTemplateState.parsed);
+    const preserveExistingStarterContent = isLegacyArrayStarterManifest
+      || (
+        existingTemplateInspection?.status !== 'invalid'
+        && existingStarterManifestTargetsExpectedPersonId(
+          existingTemplateState.parsed,
+          profileUpdate.personId,
+        )
+      );
+    const shouldBackupInvalidStarterManifest = Boolean(existingTemplateState.parseError)
+      || (
+        existingTemplateInspection?.status === 'invalid'
+        && Boolean(existingTemplate)
+        && !isLegacyArrayStarterManifest
+      );
+    const invalidStarterManifestBackupPath = shouldBackupInvalidStarterManifest
       ? backupInvalidJsonFile(starterManifestAbsolutePath)
       : null;
     const starterManifest = buildStarterManifestDocument({
