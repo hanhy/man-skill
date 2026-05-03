@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
+import { summarizeFoundationDraftSources } from './foundation-draft-source-summary.ts';
 import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value: string) {
@@ -72,37 +73,6 @@ function normalizeStringArray(values) {
   return normalized;
 }
 
-function normalizeMaterialTypes(materialTypes) {
-  if (!materialTypes || typeof materialTypes !== 'object' || Array.isArray(materialTypes)) {
-    return null;
-  }
-
-  const entries = Object.entries(materialTypes)
-    .filter(([key, value]) => normalizeOptionalString(key) && Number.isFinite(value) && Number(value) > 0)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => [key.trim(), Number(value)]);
-
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
-}
-
-function formatCountLabel(count, singular, plural = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
-
-function formatMaterialTypes(materialTypes) {
-  if (!materialTypes) {
-    return null;
-  }
-
-  const entries = Object.entries(materialTypes)
-    .filter(([key, value]) => typeof key === 'string' && key.length > 0 && Number.isFinite(value) && Number(value) > 0)
-    .sort(([left], [right]) => left.localeCompare(right));
-
-  return entries.length > 0
-    ? entries.map(([key, value]) => `${key}:${value}`).join(', ')
-    : null;
-}
-
 function collectCandidateSignalTypes(signal, primarySource = 'sample') {
   const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
   const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
@@ -127,56 +97,6 @@ function buildCandidateSignalSummary(profile) {
   });
 
   return hasNonZeroCandidate && segments.length > 0 ? segments.join(' | ') : null;
-}
-
-function summarizeDraftSources(profile) {
-  const draftKinds = [
-    { key: 'memory', summary: profile?.foundationDraftSummaries?.memory },
-    { key: 'skills', summary: profile?.foundationDraftSummaries?.skills },
-    { key: 'soul', summary: profile?.foundationDraftSummaries?.soul },
-    { key: 'voice', summary: profile?.foundationDraftSummaries?.voice },
-  ];
-
-  const sourceSummaries = draftKinds
-    .map(({ key, summary }) => {
-      if (!summary) {
-        return null;
-      }
-
-      const summaryPath = normalizeDraftPath(normalizeOptionalString(summary.path));
-      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
-      const sourceCount = Number(summary.sourceCount ?? 0);
-      const entryCount = key === 'memory' ? Number(summary.entryCount ?? 0) : 0;
-      const materialTypes = formatMaterialTypes(normalizeMaterialTypes(summary.materialTypes));
-
-      if (!summaryPath && !latestMaterialSourcePath && sourceCount <= 0 && entryCount <= 0 && !materialTypes) {
-        return null;
-      }
-
-      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
-      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
-      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
-      const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
-      const fallbackDetails = [
-        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value) => typeof value === 'string' && value.length > 0);
-      const parts = [
-        sourceDetailLabel,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value) => typeof value === 'string' && value.length > 0);
-
-      if (!sourceLabel && summaryPath) {
-        return fallbackDetails.length > 0 ? `${key} @ ${summaryPath} (${fallbackDetails.join(', ')})` : `${key} @ ${summaryPath}`;
-      }
-
-      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
-    })
-    .filter((value) => typeof value === 'string' && value.length > 0);
-
-  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
 }
 
 function shellQuote(value) {
@@ -985,7 +905,7 @@ function buildProfileCommands(profile, options: any = {}) {
     ? (intakeManifest as any).entryTemplateCount
     : 0;
   const candidateSignalSummary = imported ? buildCandidateSignalSummary(profile) : null;
-  const draftSourcesSummary = imported ? summarizeDraftSources(profile) : null;
+  const draftSourcesSummary = imported ? summarizeFoundationDraftSources(profile) : null;
   const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
