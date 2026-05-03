@@ -536,6 +536,15 @@ function sortByNewest(records) {
   );
 }
 
+function buildMemoryDraftEntries(materialRecords) {
+  return sortByNewest(materialRecords).map((record) => ({
+    type: record.type,
+    createdAt: record.createdAt,
+    summary: buildExcerpt(record.content ?? record.notes ?? record.sourceFile),
+    sourceFile: record.sourceFile ?? null,
+  }));
+}
+
 function summarizeFoundationReadiness(materialRecords) {
   const memoryRecords = sortByNewest(materialRecords);
   const voiceRecords = sortByNewest(materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type)));
@@ -601,6 +610,7 @@ function loadMaterialSummaries(materialsDir) {
     latestMaterialAt: newestRecords[0]?.createdAt ?? null,
     latestMaterialId: newestRecords[0]?.id ?? null,
     latestMaterialSourcePath: newestRecords[0]?.sourceFile ?? newestRecords[0]?.assetPath ?? null,
+    memoryEntries: buildMemoryDraftEntries(materialRecords),
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
   };
 }
@@ -959,6 +969,20 @@ export function hasFoundationMemoryDraftProfileMetadataMismatch(memoryDraft = nu
     || (memoryDraft.summary ?? null) !== expectedSummary;
 }
 
+function hasSameMemoryDraftEntries(draftEntries = [], expectedEntries = []) {
+  if (!Array.isArray(draftEntries) || !Array.isArray(expectedEntries) || draftEntries.length !== expectedEntries.length) {
+    return false;
+  }
+
+  return draftEntries.every((entry, index) => {
+    const expectedEntry = expectedEntries[index] ?? null;
+    return (entry?.type ?? null) === (expectedEntry?.type ?? null)
+      && (entry?.createdAt ?? null) === (expectedEntry?.createdAt ?? null)
+      && (entry?.summary ?? null) === (expectedEntry?.summary ?? null)
+      && normalizeDraftPath(entry?.sourceFile ?? null) === normalizeDraftPath(expectedEntry?.sourceFile ?? null);
+  });
+}
+
 export function hasFoundationMemoryDraftMaterialMetadataMismatch(
   memoryDraft = null,
   latestMaterialAt = null,
@@ -966,6 +990,7 @@ export function hasFoundationMemoryDraftMaterialMetadataMismatch(
   latestMaterialSourcePath = null,
   materialCount = null,
   materialTypes = null,
+  expectedEntries = null,
 ) {
   if (!memoryDraft) {
     return false;
@@ -982,15 +1007,29 @@ export function hasFoundationMemoryDraftMaterialMetadataMismatch(
 
   const normalizedExpectedMaterialSourcePath = normalizeDraftPath(latestMaterialSourcePath);
   const normalizedDraftMaterialSourcePath = normalizeDraftPath(memoryDraft.latestMaterialSourcePath);
+  const hasEntryMismatch = Array.isArray(expectedEntries)
+    ? !hasSameMemoryDraftEntries(memoryDraft.entries ?? [], expectedEntries)
+    : false;
 
   return (memoryDraft.latestMaterialAt ?? null) !== (latestMaterialAt ?? null)
     || (memoryDraft.latestMaterialId ?? null) !== (latestMaterialId ?? null)
     || normalizedDraftMaterialSourcePath !== normalizedExpectedMaterialSourcePath
     || draftSourceCount !== expectedSourceCount
-    || !haveSameMaterialTypeCounts(normalizedDraftMaterialTypes, normalizedExpectedMaterialTypes);
+    || !haveSameMaterialTypeCounts(normalizedDraftMaterialTypes, normalizedExpectedMaterialTypes)
+    || hasEntryMismatch;
 }
 
-export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt = null, latestMaterialId = null, latestMaterialSourcePath = null, profileDocument = null, materialCount = null, materialTypes = null) {
+export function loadFoundationDraftStatus(
+  rootDir,
+  profileId,
+  latestMaterialAt = null,
+  latestMaterialId = null,
+  latestMaterialSourcePath = null,
+  profileDocument = null,
+  materialCount = null,
+  materialTypes = null,
+  expectedMemoryEntries = null,
+) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
     voice: path.join(rootDir, 'profiles', profileId, 'voice', 'README.md'),
@@ -1036,6 +1075,7 @@ export function loadFoundationDraftStatus(rootDir, profileId, latestMaterialAt =
     latestMaterialSourcePath,
     materialCount,
     materialTypes,
+    expectedMemoryEntries,
   );
   const hasMarkdownMetadataMismatch = availableMarkdownDrafts
     .some(([, draftMetadata]) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
@@ -1289,6 +1329,7 @@ export class FileSystemLoader {
           profileDocument,
           materialCount,
           profileSummary.materialTypes,
+          profileSummary.memoryEntries,
         ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,

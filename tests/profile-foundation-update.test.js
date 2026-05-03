@@ -254,6 +254,35 @@ test('refreshFoundationDrafts rewrites a memory foundation draft when its stored
   assert.equal(repairedDraft.summary, 'Direct operator with a bias for momentum.');
 });
 
+test('refreshStaleFoundationDrafts refreshes memory foundation drafts when stored entry summaries drift from imported materials', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.entries[0].summary = 'Old summary that no longer matches the imported material.';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const staleRefresh = ingestion.refreshStaleFoundationDrafts();
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(staleRefresh.profileCount, 1);
+  assert.deepEqual(staleRefresh.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(repairedDraft.entries[0].summary, 'Ship the thin slice first.');
+});
+
 test('scaffoldProfileIntake hides imported-profile intake shortcuts until the local manifest has real entries', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
