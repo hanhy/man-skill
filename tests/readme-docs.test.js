@@ -25,6 +25,8 @@ const harryIntakeScreenshot = fs.readFileSync(path.join(repoRoot, 'profiles', 'h
 const harryVoiceDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'voice', 'README.md'), 'utf8');
 const harrySoulDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'soul', 'README.md'), 'utf8');
 const harrySkillsDraft = fs.readFileSync(path.join(repoRoot, 'profiles', 'harry-han', 'skills', 'README.md'), 'utf8');
+const foundationMaintenanceSkill = fs.readFileSync(path.join(repoRoot, 'skills', 'foundation-maintenance', 'SKILL.md'), 'utf8');
+const profileIntakeSkill = fs.readFileSync(path.join(repoRoot, 'skills', 'profiles', 'intake', 'SKILL.md'), 'utf8');
 
 function formatMaterialTypes(materialTypes = {}) {
   return Object.entries(materialTypes)
@@ -713,6 +715,22 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(skillsDoc, /- providers: `providers\/anthropic`, `providers\/glm`, `providers\/kimi`, `providers\/minimax`, `providers\/openai`, `providers\/qwen`/);
   assert.match(skillsDoc, /- profiles: `profiles\/intake`/);
   assert.match(skillsDoc, /- utilities: `cron`, `foundation-maintenance`/);
+
+  assert.match(foundationMaintenanceSkill, /Use this skill when the next step touches the OpenClaw-like foundation in `~\/man-skill`\./);
+  assert.match(foundationMaintenanceSkill, /Run `node src\/index\.js summary --json` and inspect `foundation\.core`, `foundation\.maintenance`, `profileSnapshots`, and `workLoop`\./);
+  assert.match(foundationMaintenanceSkill, /`node src\/index\.js update foundation --person <id>`.*`node src\/index\.js update foundation --stale`.*`node src\/index\.js update foundation --all`/s);
+  assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/foundation-rollup\.test\.js`/);
+  assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/readme-docs\.test\.js`/);
+  assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/work-loop\.test\.ts`/);
+
+  assert.match(profileIntakeSkill, /Use this skill when extending or validating the user-facing ingestion\/update entrance under `profiles\/<person-id>\/imports\/`\./);
+  assert.match(profileIntakeSkill, /`node src\/index\.js update intake --person <id> --display-name "<Display Name>" --summary "<Short summary>"`/);
+  assert.match(profileIntakeSkill, /`node src\/index\.js import intake --person <id>`/);
+  assert.match(profileIntakeSkill, /`node src\/index\.js import intake --person <id> --refresh-foundation`/);
+  assert.match(profileIntakeSkill, /`node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`.*`node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/s);
+  assert.match(profileIntakeSkill, /`node src\/index\.js update profile --person <id> \.\.\.`/);
+  assert.match(profileIntakeSkill, /`node --import tsx --test tests\/material-ingestion\.test\.js tests\/profile-material-summary\.test\.ts tests\/profile-foundation-update\.test\.js tests\/readme-docs\.test\.js`/);
+  assert.match(profileIntakeSkill, /`node --import tsx --test tests\/work-loop\.test\.ts`/);
 
   assert.match(soulDoc, /## Core truths/);
   assert.match(soulDoc, /## Boundaries/);
