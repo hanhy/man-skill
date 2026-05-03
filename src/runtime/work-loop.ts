@@ -1,3 +1,5 @@
+import { normalizeDraftPath } from '../core/foundation-draft-paths.ts';
+
 export type WorkPriority = {
   id: string;
   label: string;
@@ -82,6 +84,31 @@ export interface WorkLoopOptions {
   priorities?: WorkPriority[];
 }
 
+function normalizeOptionalString(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizePriority(priority: WorkPriority): WorkPriority {
+  const latestMaterialAt = normalizeOptionalString(priority.latestMaterialAt);
+  const latestMaterialId = normalizeOptionalString(priority.latestMaterialId);
+  const latestMaterialSourcePath = normalizeDraftPath(priority.latestMaterialSourcePath);
+
+  return {
+    ...priority,
+    ...(latestMaterialAt ? { latestMaterialAt } : {}),
+    ...(!latestMaterialAt && priority.latestMaterialAt !== undefined ? { latestMaterialAt: null } : {}),
+    ...(latestMaterialId ? { latestMaterialId } : {}),
+    ...(!latestMaterialId && priority.latestMaterialId !== undefined ? { latestMaterialId: null } : {}),
+    ...(latestMaterialSourcePath ? { latestMaterialSourcePath } : {}),
+    ...(!latestMaterialSourcePath && priority.latestMaterialSourcePath !== undefined ? { latestMaterialSourcePath: null } : {}),
+  };
+}
+
 function hasActionablePrioritySurface(priority: WorkPriority): boolean {
   return Boolean(
     priority.nextAction
@@ -119,21 +146,22 @@ export class WorkLoop {
   }
 
   summary(): WorkLoopSummary {
-    const readyPriorityCount = this.priorities.filter((priority) => priority.status === 'ready').length;
-    const queuedPriorityCount = this.priorities.filter((priority) => priority.status === 'queued').length;
-    const blockedPriorityCount = this.priorities.filter((priority) => priority.status === 'blocked').length;
-    const leadingPriority = this.priorities[0] ?? null;
-    const currentPriority = this.priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
-    const runnablePriority = this.priorities.find((priority) => isRunnablePriority(priority)) ?? null;
-    const actionableReadyPriority = this.priorities.find((priority) => isActionableReadyPriority(priority)) ?? null;
-    const recommendedPriority = this.priorities.find((priority) => priority.status !== 'ready' || isActionableReadyPriority(priority))
+    const priorities = this.priorities.map((priority) => normalizePriority(priority));
+    const readyPriorityCount = priorities.filter((priority) => priority.status === 'ready').length;
+    const queuedPriorityCount = priorities.filter((priority) => priority.status === 'queued').length;
+    const blockedPriorityCount = priorities.filter((priority) => priority.status === 'blocked').length;
+    const leadingPriority = priorities[0] ?? null;
+    const currentPriority = priorities.find((priority) => priority.status !== 'ready') ?? leadingPriority;
+    const runnablePriority = priorities.find((priority) => isRunnablePriority(priority)) ?? null;
+    const actionableReadyPriority = priorities.find((priority) => isActionableReadyPriority(priority)) ?? null;
+    const recommendedPriority = priorities.find((priority) => priority.status !== 'ready' || isActionableReadyPriority(priority))
       ?? leadingPriority;
 
     return {
       intervalMinutes: this.intervalMinutes,
       objectiveCount: this.objectives.length,
       objectives: this.objectives,
-      priorityCount: this.priorities.length,
+      priorityCount: priorities.length,
       readyPriorityCount,
       queuedPriorityCount,
       blockedPriorityCount,
@@ -142,7 +170,7 @@ export class WorkLoop {
       runnablePriority,
       actionableReadyPriority,
       recommendedPriority,
-      priorities: this.priorities,
+      priorities,
     };
   }
 }

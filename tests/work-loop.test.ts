@@ -205,6 +205,33 @@ test('top-level index export keeps WorkLoop aligned with the runtime shim summar
   assert.deepEqual(topLevelSummary, runtimeSummary);
 });
 
+test('WorkLoop summary trims latest-material metadata before exposing current and recommended priorities', () => {
+  const summary = new WorkLoop({
+    priorities: [
+      { id: 'foundation', label: 'Foundation', status: 'ready', summary: 'done', nextAction: null, command: null, paths: [] },
+      {
+        id: 'ingestion',
+        label: 'Ingestion',
+        status: 'queued',
+        summary: 'starter scaffold available',
+        nextAction: 'populate starter manifest',
+        command: null,
+        latestMaterialAt: ' 2026-04-20T12:00:00.000Z ',
+        latestMaterialId: ' 2026-04-20T12-00-00-000Z-text ',
+        latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
+        paths: [],
+      },
+    ],
+  }).summary();
+
+  assert.equal(summary.currentPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
+  assert.equal(summary.currentPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
+  assert.equal(summary.currentPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
+  assert.equal(summary.recommendedPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
+  assert.equal(summary.recommendedPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
+  assert.equal(summary.recommendedPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
+});
+
 test('WorkLoop summary falls back to the current blocked or queued priority when nothing is runnable', () => {
   const summary = new WorkLoop({
     priorities: [
