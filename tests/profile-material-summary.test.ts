@@ -1375,15 +1375,14 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.voice.path, 'profiles/harry-han/voice/README.md');
   assert.equal(profile.foundationDraftSummaries.voice.generatedAt !== null, true);
-  assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 3);
+  assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 2);
   assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {
     message: 1,
-    screenshot: 1,
     text: 1,
   });
-  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialAt, profile.latestMaterialAt);
-  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialId, profile.latestMaterialId);
-  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, 'chat.png');
+  assert.notEqual(profile.foundationDraftSummaries.voice.latestMaterialAt, profile.latestMaterialAt);
+  assert.match(profile.foundationDraftSummaries.voice.latestMaterialId ?? '', /-message$/);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, null);
   assert.deepEqual(profile.foundationDraftSummaries.voice.highlights.slice().sort(), [
     '- [message] Ship the first slice.',
     '- [text] Direct writing sample.',
@@ -1392,25 +1391,21 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
   assert.equal(profile.foundationDraftSummaries.voice.totalSectionCount, 4);
   assert.deepEqual(profile.foundationDraftSummaries.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.deepEqual(profile.foundationDraftSummaries.voice.missingSections, []);
-  assert.deepEqual(profile.foundationDraftSummaries.soul, {
-    generated: true,
-    path: 'profiles/harry-han/soul/README.md',
-    generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
-    latestMaterialAt: profile.latestMaterialAt,
-    latestMaterialId: profile.latestMaterialId,
-    latestMaterialSourcePath: 'chat.png',
-    sourceCount: 3,
-    materialTypes: {
-      message: 1,
-      screenshot: 1,
-      text: 1,
-    },
-    highlights: ['- [text] Direct writing sample.'],
-    readySectionCount: 4,
-    totalSectionCount: 4,
-    readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
-    missingSections: [],
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+  assert.equal(profile.foundationDraftSummaries.soul.path, 'profiles/harry-han/soul/README.md');
+  assert.equal(profile.foundationDraftSummaries.soul.generatedAt, profile.foundationDraftSummaries.voice.generatedAt);
+  assert.notEqual(profile.foundationDraftSummaries.soul.latestMaterialAt, profile.latestMaterialAt);
+  assert.match(profile.foundationDraftSummaries.soul.latestMaterialId ?? '', /-text$/);
+  assert.equal(profile.foundationDraftSummaries.soul.latestMaterialSourcePath, 'sample.txt');
+  assert.equal(profile.foundationDraftSummaries.soul.sourceCount, 1);
+  assert.deepEqual(profile.foundationDraftSummaries.soul.materialTypes, {
+    text: 1,
   });
+  assert.deepEqual(profile.foundationDraftSummaries.soul.highlights, ['- [text] Direct writing sample.']);
+  assert.equal(profile.foundationDraftSummaries.soul.readySectionCount, 4);
+  assert.equal(profile.foundationDraftSummaries.soul.totalSectionCount, 4);
+  assert.deepEqual(profile.foundationDraftSummaries.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(profile.foundationDraftSummaries.soul.missingSections, []);
   assert.deepEqual(profile.foundationDraftSummaries.skills, {
     generated: true,
     path: 'profiles/harry-han/skills/README.md',
@@ -1418,12 +1413,8 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     latestMaterialAt: profile.latestMaterialAt,
     latestMaterialId: profile.latestMaterialId,
     latestMaterialSourcePath: 'chat.png',
-    sourceCount: 3,
-    materialTypes: {
-      message: 1,
-      screenshot: 1,
-      text: 1,
-    },
+    sourceCount: 0,
+    materialTypes: {},
     highlights: [],
     readySectionCount: 3,
     totalSectionCount: 3,

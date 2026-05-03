@@ -536,6 +536,17 @@ function sortByNewest(records) {
   );
 }
 
+function summarizeMaterialTypes(materialRecords) {
+  return materialRecords.reduce((summary, record) => {
+    if (!isNonEmptyString(record?.type)) {
+      return summary;
+    }
+
+    summary[record.type] = (summary[record.type] ?? 0) + 1;
+    return summary;
+  }, {});
+}
+
 function buildMemoryDraftEntries(materialRecords) {
   return sortByNewest(materialRecords).map((record) => ({
     type: record.type,
@@ -591,6 +602,19 @@ function summarizeFoundationReadiness(materialRecords) {
   };
 }
 
+function summarizeMaterialRecordSet(materialRecords, fallbackLatestRecord = null) {
+  const newestRecords = sortByNewest(materialRecords);
+  const latestRecord = newestRecords[0] ?? fallbackLatestRecord ?? null;
+  const materialTypes = summarizeMaterialTypes(materialRecords);
+  return {
+    latestMaterialAt: latestRecord?.createdAt ?? null,
+    latestMaterialId: latestRecord?.id ?? null,
+    latestMaterialSourcePath: latestRecord?.sourceFile ?? latestRecord?.assetPath ?? null,
+    sourceCount: materialRecords.length,
+    materialTypes,
+  };
+}
+
 function loadMaterialSummaries(materialsDir) {
   const materialFiles = listFilesIfExists(materialsDir)
     .filter((name) => name.endsWith('.json'));
@@ -598,11 +622,11 @@ function loadMaterialSummaries(materialsDir) {
     .map((name) => readJsonIfExists(path.join(materialsDir, name)))
     .filter(Boolean);
   const newestRecords = sortByNewest(materialRecords);
+  const voiceRecords = materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type));
+  const soulRecords = materialRecords.filter((record) => ['text', 'talk'].includes(record.type));
+  const skillRecords = materialRecords.filter((record) => record.type === 'talk' && isNonEmptyString(record.notes));
 
-  const materialTypes = {};
-  for (const record of materialRecords) {
-    materialTypes[record.type] = (materialTypes[record.type] ?? 0) + 1;
-  }
+  const materialTypes = summarizeMaterialTypes(materialRecords);
 
   return {
     materialCount: materialRecords.length,
@@ -612,6 +636,11 @@ function loadMaterialSummaries(materialsDir) {
     latestMaterialSourcePath: newestRecords[0]?.sourceFile ?? newestRecords[0]?.assetPath ?? null,
     memoryEntries: buildMemoryDraftEntries(materialRecords),
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
+    draftExpectations: {
+      voice: summarizeMaterialRecordSet(voiceRecords, newestRecords[0] ?? null),
+      soul: summarizeMaterialRecordSet(soulRecords, newestRecords[0] ?? null),
+      skills: summarizeMaterialRecordSet(skillRecords, newestRecords[0] ?? null),
+    },
   };
 }
 
@@ -1029,6 +1058,7 @@ export function loadFoundationDraftStatus(
   materialCount = null,
   materialTypes = null,
   expectedMemoryEntries = null,
+  draftExpectations = null,
 ) {
   const candidates = {
     memory: path.join(rootDir, 'profiles', profileId, 'memory', 'long-term', 'foundation.json'),
@@ -1079,15 +1109,41 @@ export function loadFoundationDraftStatus(
   );
   const hasMarkdownMetadataMismatch = availableMarkdownDrafts
     .some(([, draftMetadata]) => hasFoundationDraftProfileMetadataMismatch(draftMetadata, profileId, profileDocument));
-  const hasMarkdownMaterialMetadataMismatch = availableMarkdownDrafts
-    .some(([, draftMetadata]) => hasFoundationDraftMaterialMetadataMismatch(
-      draftMetadata,
+  const expectedDraftMetadataByName = {
+    voice: draftExpectations?.voice ?? {
       latestMaterialAt,
       latestMaterialId,
       latestMaterialSourcePath,
-      materialCount,
+      sourceCount: materialCount,
       materialTypes,
-    ));
+    },
+    soul: draftExpectations?.soul ?? {
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      sourceCount: materialCount,
+      materialTypes,
+    },
+    skills: draftExpectations?.skills ?? {
+      latestMaterialAt,
+      latestMaterialId,
+      latestMaterialSourcePath,
+      sourceCount: materialCount,
+      materialTypes,
+    },
+  };
+  const hasMarkdownMaterialMetadataMismatch = availableMarkdownDrafts
+    .some(([draftName, draftMetadata]) => {
+      const expectedDraftMetadata = expectedDraftMetadataByName[draftName] ?? null;
+      return hasFoundationDraftMaterialMetadataMismatch(
+        draftMetadata,
+        expectedDraftMetadata ? expectedDraftMetadata.latestMaterialAt : latestMaterialAt,
+        expectedDraftMetadata ? expectedDraftMetadata.latestMaterialId : latestMaterialId,
+        expectedDraftMetadata ? expectedDraftMetadata.latestMaterialSourcePath : latestMaterialSourcePath,
+        expectedDraftMetadata?.sourceCount ?? materialCount,
+        expectedDraftMetadata?.materialTypes ?? materialTypes,
+      );
+    });
   const hasNewerMaterial = latestMaterialId && memoryDraft?.latestMaterialId
     ? memoryDraft.latestMaterialId !== latestMaterialId
     : Boolean(latestMaterialAt) && (!generatedAt || latestMaterialAt > generatedAt);
@@ -1330,6 +1386,7 @@ export class FileSystemLoader {
           materialCount,
           profileSummary.materialTypes,
           profileSummary.memoryEntries,
+          profileSummary.draftExpectations,
         ),
         foundationDraftSummaries: loadFoundationDraftSummaries(this.rootDir, profileId),
         foundationReadiness: profileSummary.foundationReadiness,

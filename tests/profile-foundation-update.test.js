@@ -117,9 +117,8 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
       latestMaterialAt: result.latestMaterialAt,
       latestMaterialId: result.latestMaterialId,
       latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
-      sourceCount: 3,
+      sourceCount: 2,
       materialTypes: {
-        message: 1,
         talk: 1,
         text: 1,
       },
@@ -130,11 +129,9 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
       latestMaterialAt: result.latestMaterialAt,
       latestMaterialId: result.latestMaterialId,
       latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
-      sourceCount: 3,
+      sourceCount: 1,
       materialTypes: {
-        message: 1,
         talk: 1,
-        text: 1,
       },
     },
   });
@@ -167,6 +164,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(soulDraft, /Source materials: 2 \(talk:1, text:1\)/);
   assert.match(soulDraft, /## Core truths/);
   assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
   assert.match(soulDraft, /## Boundaries/);
@@ -175,6 +173,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.match(skillsDraft, /Source materials: 1 \(talk:1\)/);
   assert.match(skillsDraft, /## Candidate skills/);
   assert.match(skillsDraft, /- product execution heuristic/);
   assert.match(skillsDraft, /## Evidence/);
