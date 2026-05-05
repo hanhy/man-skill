@@ -18,7 +18,7 @@ They should be specific enough to be useful and narrow enough to stay maintainab
 
 ## Default checked-in catalog
 - channels: `channels/feishu`, `channels/slack`, `channels/telegram`, `channels/whatsapp`
-- profiles: `profiles/intake`
+- profiles: `profiles/intake`, `profiles/update`
 - providers: `providers/anthropic`, `providers/glm`, `providers/kimi`, `providers/minimax`, `providers/openai`, `providers/qwen`
 - utilities: `cron`, `foundation-maintenance`
 
