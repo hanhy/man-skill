@@ -288,6 +288,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(profilesDoc, /`importManifestCommand` plus `helperCommands\.importManifestAndRefresh` for `node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /`starterImportCommand` for the checked-in `profiles\/<id>\/imports\/sample\.txt` starter import/i);
   assert.match(profilesDoc, /both `followUpImportIntakeWithoutRefreshCommand` \/ `followUpImportIntakeCommand` and the scaffold-result aliases `importAfterEditingWithoutRefreshCommand` \/ `importAfterEditingCommand`, plus matching `helperCommands\.importAfterEditingWithoutRefresh` \/ `helperCommands\.importAfterEditing`, so the plain `import intake --person <id>` inspection replay and the `--refresh-foundation` replay stay available/i);
+  assert.match(profilesDoc, /generated `profiles\/<id>\/imports\/README\.md` also keeps a top-of-file action bundle for `Refresh intake scaffold:`, `Update profile metadata:`, and `Sync profile metadata \+ drafts:` before the inspect\/import replay bullets, so the user-facing landing zone exposes scaffold repair and metadata sync without forcing operators to scroll into the later helper section/i);
   assert.match(profilesDoc, /generated `profiles\/<id>\/imports\/README\.md` also keeps the manifest helper bullets explicit: `inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'` and `import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/i);
   assert.match(profilesDoc, /the same generated README keeps `Suggested flow:` honest by telling the operator to run the plain inspect command first and only then run the refresh import once the edited starter manifest looks right/i);
   assert.match(profilesDoc, /`manifest inspect:` and `manifest:` inside its `Direct import commands:` block/i);
@@ -308,6 +309,9 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
   assert.match(harryIntakeReadme, /^# Intake scaffold for Harry Han/m);
   assert.match(harryIntakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(harryIntakeReadme, /Sample text placeholder: profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(harryIntakeReadme, /Refresh intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(harryIntakeReadme, /Update profile metadata: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
+  assert.match(harryIntakeReadme, /Sync profile metadata \+ drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
   assert.match(harryIntakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(harryIntakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(harryIntakeReadme, /3\. Run the inspect command above to confirm the edited materials and manifest look right\./);

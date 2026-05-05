@@ -298,7 +298,9 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
 
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
-  assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Refresh intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Update profile metadata: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Sync profile metadata \+ drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
   assert.match(intakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /3\. Run the inspect command above to confirm the edited materials and manifest look right\./);
@@ -350,6 +352,9 @@ test('scaffoldProfileIntake labels loaded manifests as profile-local reruns and 
   const intakeReadme = fs.readFileSync(intakeReadmePath, 'utf8');
 
   assert.match(intakeReadme, /Profile-local manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(intakeReadme, /Refresh intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /Update profile metadata: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /Sync profile metadata \+ drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
   assert.match(intakeReadme, /profile-local intake shortcut without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /profile-local intake shortcut and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);

@@ -5,6 +5,9 @@ Use this folder as the user-facing entrance for collecting target-person materia
 - Starter manifest: profiles/harry-han/imports/materials.template.json
 - Sample text placeholder: profiles/harry-han/imports/sample.txt
 - Starter image folder: profiles/harry-han/imports/images
+- Refresh intake scaffold: node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
+- Update profile metadata: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
+- Sync profile metadata + drafts: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation
 - Inspect after editing: node src/index.js import intake --person 'harry-han'
 - Import after editing: node src/index.js import intake --person 'harry-han' --refresh-foundation
 
