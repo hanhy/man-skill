@@ -2112,7 +2112,7 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft metada
   assert.doesNotMatch(refreshedVoiceDraft, /Summary: Outdated summary\./);
 });
 
-test('refreshStaleFoundationDrafts refreshes profiles when markdown draft material metadata drifts from imported materials', async () => {
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft material metadata drifts from imported materials across voice, soul, and skills', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -2125,13 +2125,29 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft materi
     text: 'Keep the feedback loop short.',
     notes: 'execution heuristic',
   });
+  const textFilePath = path.join(rootDir, 'harry-note.txt');
+  fs.writeFileSync(textFilePath, 'Move fast, but keep the structure inspectable.');
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: textFilePath,
+  });
   const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'skills', 'README.md');
   const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
     .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
     .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)');
+  const staleSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
+    .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+    .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)');
+  const staleSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8')
+    .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+    .replace(/Source materials: .*$/, 'Source materials: 2 (message:1, talk:1)');
   fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+  fs.writeFileSync(soulDraftPath, staleSoulDraft);
+  fs.writeFileSync(skillsDraftPath, staleSkillsDraft);
 
   await new Promise((resolve) => setTimeout(resolve, 15));
 
@@ -2142,9 +2158,19 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft materi
   assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
 
   const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
-  assert.match(refreshedVoiceDraft, /Source materials: 2 \(message:1, talk:1\)/);
+  assert.match(refreshedVoiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
   assert.doesNotMatch(refreshedVoiceDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
   assert.doesNotMatch(refreshedVoiceDraft, /Source materials: 1 \(message:1\)/);
+
+  const refreshedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(refreshedSoulDraft, /Source materials: 2 \(talk:1, text:1\)/);
+  assert.doesNotMatch(refreshedSoulDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
+  assert.doesNotMatch(refreshedSoulDraft, /Source materials: 1 \(message:1\)/);
+
+  const refreshedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.match(refreshedSkillsDraft, /Source materials: 1 \(talk:1\)/);
+  assert.doesNotMatch(refreshedSkillsDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
+  assert.doesNotMatch(refreshedSkillsDraft, /Source materials: 2 \(message:1, talk:1\)/);
 });
 
 test('refreshStaleFoundationDrafts refreshes profiles when markdown draft latest material source provenance drifts', async () => {

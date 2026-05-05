@@ -2159,6 +2159,63 @@ test('loadProfilesIndex accepts openclaw-style soul headings and legacy voice he
   assert.equal(profile.foundationDraftSummaries.soul.headingAliases, undefined);
 });
 
+test('loadProfilesIndex marks valid markdown drafts as stale when their markdown source-material provenance drifts across voice, soul, and skills', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({ personId: 'Harry Han', text: 'Ship the first slice.' });
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: 'Keep the feedback loop short.',
+    notes: 'execution heuristic',
+  });
+  const textFilePath = path.join(rootDir, 'harry-note.txt');
+  fs.writeFileSync(textFilePath, 'Move fast, but keep the structure inspectable.');
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: textFilePath,
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'skills', 'README.md');
+  fs.writeFileSync(
+    voiceDraftPath,
+    fs.readFileSync(voiceDraftPath, 'utf8')
+      .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+      .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)'),
+  );
+  fs.writeFileSync(
+    soulDraftPath,
+    fs.readFileSync(soulDraftPath, 'utf8')
+      .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+      .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)'),
+  );
+  fs.writeFileSync(
+    skillsDraftPath,
+    fs.readFileSync(skillsDraftPath, 'utf8')
+      .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+      .replace(/Source materials: .*$/, 'Source materials: 2 (message:1, talk:1)'),
+  );
+
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.complete, true);
+  assert.equal(profile.foundationDraftStatus.needsRefresh, true);
+  assert.deepEqual(profile.foundationDraftStatus.missingDrafts, []);
+  assert.deepEqual(profile.foundationDraftStatus.refreshReasons, ['draft metadata drift']);
+  assert.equal(profile.foundationDraftSummaries.voice.generated, true);
+  assert.equal(profile.foundationDraftSummaries.soul.generated, true);
+  assert.equal(profile.foundationDraftSummaries.skills.generated, true);
+});
+
 test('loadProfilesIndex marks valid markdown drafts as stale when their target-person metadata drifts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
