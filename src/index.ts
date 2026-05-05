@@ -1044,6 +1044,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreRootHeadingAliases = Array.isArray(queuedArea?.rootHeadingAliases)
     ? queuedArea.rootHeadingAliases.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const coreShadowPaths = Array.isArray(queuedArea?.shadowPaths)
+    ? queuedArea.shadowPaths
+      .map((value: unknown) => typeof value === 'string' ? normalizeDraftPath(value) : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
 
   const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
 
@@ -1064,6 +1069,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,

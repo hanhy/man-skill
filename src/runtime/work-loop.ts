@@ -17,6 +17,7 @@ export type WorkPriority = {
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
+  shadowPaths?: string[];
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -213,6 +214,7 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const rootThinReadySections = normalizeStringArray(priority.rootThinReadySections);
   const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
   const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
+  const shadowPaths = normalizePathArray(priority.shadowPaths);
   const candidateSignalSummary = normalizeOptionalString(priority.candidateSignalSummary);
   const draftSourcesSummary = normalizeDraftSourcesSummary(priority.draftSourcesSummary);
   const draftGapSummary = normalizeOptionalString(priority.draftGapSummary);
@@ -245,6 +247,7 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(rootThinReadySections ? { rootThinReadySections } : {}),
     ...(rootThinMissingSections ? { rootThinMissingSections } : {}),
     ...(rootHeadingAliases ? { rootHeadingAliases } : {}),
+    ...(shadowPaths ? { shadowPaths } : {}),
     ...(candidateSignalSummary ? { candidateSignalSummary } : {}),
     ...(!candidateSignalSummary && priority.candidateSignalSummary !== undefined ? { candidateSignalSummary: null } : {}),
     ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
