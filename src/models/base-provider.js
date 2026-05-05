@@ -163,6 +163,15 @@ export function resolveOpenAICompatibleResponseMessage(response = {}) {
     };
   }
 
+  const outputTextItems = outputItems.filter((item) => item && typeof item === 'object' && (item.type === 'output_text' || item.type === 'text'));
+  if (outputTextItems.length > 0) {
+    return {
+      role: 'assistant',
+      content: outputTextItems,
+      tool_calls: [],
+    };
+  }
+
   return {};
 }
 

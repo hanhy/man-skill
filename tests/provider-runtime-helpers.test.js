@@ -533,3 +533,96 @@ test('openai-compatible provider runtime helpers normalize responses-api output 
   assert.equal(normalizedQwen.toolCalls[0]?.id, 'fc_qwen_1');
   assert.deepEqual(normalizedQwen.usage, { promptTokens: 6, completionTokens: 3, totalTokens: 9 });
 });
+
+test('openai-compatible provider runtime helpers normalize bare responses-api output_text items without wrapped messages', () => {
+  const openaiResponse = {
+    id: 'resp_openai_bare',
+    model: 'gpt-5',
+    status: 'completed',
+    output: [
+      { type: 'output_text', text: 'Ship the verified slice.' },
+      { type: 'output_text', text: { value: 'Then keep the text visible.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_openai_bare',
+        name: 'lookup_profile',
+        arguments: { personId: 'harry-han' },
+      },
+    ],
+    usage: {
+      input_tokens: 5,
+      output_tokens: 4,
+    },
+  };
+  const kimiResponse = {
+    id: 'resp_kimi_bare',
+    model: 'moonshot-v1-32k',
+    status: 'completed',
+    output: [
+      { type: 'text', text: 'Kimi can read' },
+      { type: 'text', text: { value: 'bare output items too.' } },
+      {
+        type: 'function_call',
+        id: 'fc_kimi_bare',
+        name: 'queue_refresh',
+        arguments: { personId: 'jane-doe', refresh: true },
+      },
+    ],
+    usage: {
+      input_tokens: 4,
+      output_tokens: 3,
+    },
+  };
+  const glmResponse = {
+    id: 'resp_glm_bare',
+    model: 'glm-4-plus',
+    status: 'completed',
+    output: [
+      { type: 'output_text', text: 'GLM keeps' },
+      { type: 'text', text: { value: 'bare output readable.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_glm_bare',
+        name: 'lookup_skill',
+        arguments: ['voice'],
+      },
+    ],
+    usage: {
+      input_tokens: 3,
+      output_tokens: 2,
+    },
+  };
+  const qwenResponse = {
+    id: 'resp_qwen_bare',
+    model: 'qwen-max',
+    status: 'completed',
+    output: [
+      { type: 'text', text: 'Qwen keeps' },
+      { type: 'output_text', text: { value: 'these responses legible.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_qwen_bare',
+        name: 'lookup_materials',
+        arguments: { personId: 'ready-pal', kinds: ['talk'] },
+      },
+    ],
+    usage: {
+      input_tokens: 6,
+      output_tokens: 3,
+    },
+  };
+
+  const normalizedOpenAI = normalizeOpenAIChatResponse(openaiResponse);
+  const normalizedKimi = normalizeKimiChatResponse(kimiResponse);
+  const normalizedGLM = normalizeGLMChatResponse(glmResponse);
+  const normalizedQwen = normalizeQwenChatResponse(qwenResponse);
+
+  assert.equal(normalizedOpenAI.text, 'Ship the verified slice. Then keep the text visible.');
+  assert.equal(normalizedOpenAI.toolCalls[0]?.arguments, '{"personId":"harry-han"}');
+  assert.equal(normalizedKimi.text, 'Kimi can read bare output items too.');
+  assert.equal(normalizedKimi.toolCalls[0]?.arguments, '{"personId":"jane-doe","refresh":true}');
+  assert.equal(normalizedGLM.text, 'GLM keeps bare output readable.');
+  assert.equal(normalizedGLM.toolCalls[0]?.arguments, '["voice"]');
+  assert.equal(normalizedQwen.text, 'Qwen keeps these responses legible.');
+  assert.equal(normalizedQwen.toolCalls[0]?.arguments, '{"personId":"ready-pal","kinds":["talk"]}');
+});
