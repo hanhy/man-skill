@@ -2339,40 +2339,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const followUpImportIntakeSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeCommand
         ? ` | replay-after-edit ${profile.followUpImportIntakeCommand}`
         : '';
-      const starterImportCommand = profile.starterImportCommand ?? (() => {
-        if (profile.intakeReady !== true || intakeShortcutCommand || actionLabel === 'import') {
-          return null;
-        }
-
-        if (typeof profile.intakeStatusSummary !== 'string' || !profile.intakeStatusSummary.includes('starter template')) {
-          return null;
-        }
-
-        const directImports = profile.importCommands && typeof profile.importCommands === 'object'
-          ? [
-            profile.importCommands.text,
-            profile.importCommands.screenshot,
-            profile.importCommands.message,
-            profile.importCommands.talk,
-          ]
-          : [];
-        const runnableDirectImport = directImports.find((command): command is string => typeof command === 'string' && command.length > 0 && !command.includes('<')) ?? null;
-        if (runnableDirectImport) {
-          return runnableDirectImport;
-        }
-
-        const sampleTextPath = Array.isArray(profile.intakePaths)
-          ? profile.intakePaths.find((value): value is string => typeof value === 'string' && value.endsWith('sample.txt')) ?? null
-          : null;
-        const personId = typeof profile.personId === 'string' && profile.personId.length > 0 ? profile.personId : null;
-        if (!sampleTextPath || !personId) {
-          return null;
-        }
-
-        const shellQuote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
-        const shellQuoteArgument = (value: string) => /^[A-Za-z0-9._-]+$/.test(value) ? value : shellQuote(value);
-        return `node src/index.js import text --person ${shellQuoteArgument(personId)} --file ${shellQuote(sampleTextPath)} --refresh-foundation`;
-      })();
+      const starterImportCommand = profile.starterImportCommand ?? null;
       const starterImportSegment = starterImportCommand ? ` | import ${starterImportCommand}` : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const updateProfileSegment = profile.updateProfileCommand

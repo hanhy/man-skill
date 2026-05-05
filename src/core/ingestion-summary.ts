@@ -92,6 +92,26 @@ function normalizePathArray(values: unknown): string[] {
   return normalized;
 }
 
+function isUntouchedProfileStarterSampleText(rootDir: string | null, profile: any, sampleTextPath: string | null): boolean {
+  if (!rootDir || !profile?.id || !sampleTextPath) {
+    return false;
+  }
+
+  const normalizedSampleTextPath = normalizeDraftPath(sampleTextPath);
+  const expectedSampleTextPath = `profiles/${profile.id}/imports/sample.txt`;
+  if (!normalizedSampleTextPath || normalizedSampleTextPath !== expectedSampleTextPath) {
+    return false;
+  }
+
+  const absoluteSampleTextPath = path.join(rootDir, normalizedSampleTextPath);
+  if (!fs.existsSync(absoluteSampleTextPath)) {
+    return false;
+  }
+
+  const sampleText = stripLeadingUtf8Bom(fs.readFileSync(absoluteSampleTextPath, 'utf8')).trim();
+  return /^Replace this file with a real writing sample for .+\.$/.test(sampleText);
+}
+
 function collectCandidateSignalTypes(signal, primarySource = 'sample') {
   const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
   const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
@@ -882,6 +902,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const profileStarterTextImportCommand = profileSampleTextPath
     ? `node src/index.js import text --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
+  const profileStarterTextUntouched = imported
+    ? isUntouchedProfileStarterSampleText(typeof options?.rootDir === 'string' ? options.rootDir : null, profile, profileSampleTextPath)
+    : false;
   const sampleDrivenScreenshotImportCommand = runnableScreenshotImportCommand && runnableScreenshotImportCommand !== profileStarterScreenshotImportCommand
     ? runnableScreenshotImportCommand
     : null;
@@ -936,13 +959,8 @@ function buildProfileCommands(profile, options: any = {}) {
     && intakeManifest.status === 'starter'
     && !importIntakeWithoutRefreshCommand
     && !importIntakeCommand
-    ? (
-      profileStarterTextImportCommand
-      ?? runnableTextImportCommand
-      ?? runnableScreenshotImportCommand
-      ?? runnableMessageImportCommand
-      ?? runnableTalkImportCommand
-    )
+    && !profileStarterTextUntouched
+    ? profileStarterTextImportCommand
     : null;
 
   return {
