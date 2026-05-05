@@ -223,7 +223,7 @@ test('checked-in repo foundation note keeps long-term memory aligned with the ca
 test('checked-in starter profile drafts keep provenance headers aligned with the docs contract', () => {
   const sampleDraftPathContract = /checked-in sample profile drafts under `profiles\/harry-han\/voice\/README\.md`, `profiles\/harry-han\/soul\/README\.md`, and `profiles\/harry-han\/skills\/README\.md`/i;
   const draftHeaderContract = /`Generated at`.*`Latest material`.*`Latest material source`.*`Source materials`/i;
-  for (const doc of [profilesDoc, ingestionDoc, architectureDoc]) {
+  for (const doc of [readme, profilesDoc, ingestionDoc, architectureDoc]) {
     assert.match(doc, sampleDraftPathContract);
     assert.match(doc, draftHeaderContract);
   }
