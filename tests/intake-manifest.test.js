@@ -75,6 +75,73 @@ test('inspectProfileIntakeManifest accepts absolute in-repo files for profile-lo
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest accepts absolute in-repo files for starter template text entries', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  const sampleTextPath = path.join(importsDir, 'sample.txt');
+  fs.writeFileSync(sampleTextPath, 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [],
+      entryTemplates: {
+        text: {
+          file: sampleTextPath,
+        },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'starter');
+  assert.equal(manifest.error, null);
+  assert.deepEqual(manifest.repairPaths, []);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'text', source: 'file', path: 'profiles/metadata-only/imports/sample.txt', preview: null },
+  ]);
+});
+
+test('inspectProfileIntakeManifest rejects starter manifests whose symlink target escapes the repo root', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'man-skill-intake-manifest-outside-'));
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(outsideDir, 'outside-manifest.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+      ],
+    }, null, 2),
+  );
+  fs.symlinkSync(
+    path.join(outsideDir, 'outside-manifest.json'),
+    path.join(importsDir, 'materials.template.json'),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /starter intake manifest resolves outside the repo root/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
 test('inspectProfileIntakeManifest keeps backslash-normalized relative entry files runnable', () => {
   const rootDir = makeTempRepo();
   const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
@@ -91,6 +158,35 @@ test('inspectProfileIntakeManifest keeps backslash-normalized relative entry fil
         },
       ],
     }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'loaded');
+  assert.equal(manifest.error, null);
+  assert.deepEqual(manifest.repairPaths, []);
+});
+
+test('inspectProfileIntakeManifest accepts UTF-8 BOM-prefixed profile-local manifest files', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+      ],
+    }, null, 2)}`,
   );
 
   const manifest = inspectProfileIntakeManifest({
@@ -144,6 +240,78 @@ test('inspectProfileIntakeManifest rejects starter templates that target a diffe
     path.join(importsDir, 'materials.template.json'),
     JSON.stringify({
       entries: [],
+      entryTemplates: {
+        text: {
+          file: 'sample.txt',
+          personId: 'jane-doe',
+        },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/harry-han/imports/materials.template.json',
+    expectedPersonId: 'harry-han',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /targets a different profile: expected harry-han/);
+  assert.deepEqual(manifest.entryTemplateTypes, ['text']);
+  assert.equal(manifest.entryTemplateCount, 1);
+});
+
+test('inspectProfileIntakeManifest rejects loaded manifests whose entry templates escape the profile imports directory', () => {
+  const rootDir = makeTempRepo();
+  const profileDir = path.join(rootDir, 'profiles', 'metadata-only');
+  const importsDir = path.join(profileDir, 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'outside.txt'), 'should stay outside imports\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'metadata-only',
+      entries: [
+        {
+          type: 'message',
+          text: 'real import',
+        },
+      ],
+      entryTemplates: {
+        text: { file: '../outside.txt' },
+      },
+    }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /outside the profile imports directory/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+  assert.deepEqual(manifest.entryTemplateDetails, [
+    { type: 'text', source: 'file', path: '../outside.txt', preview: null },
+  ]);
+});
+
+test('inspectProfileIntakeManifest rejects loaded manifests whose entry templates target a different expected profile', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'harry-han', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'sample.txt'), 'sample text\n');
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'message',
+          text: 'real import',
+        },
+      ],
       entryTemplates: {
         text: {
           file: 'sample.txt',

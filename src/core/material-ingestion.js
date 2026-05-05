@@ -460,11 +460,13 @@ function shellQuote(value) {
 const DEFAULT_STARTER_SCREENSHOT_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==';
 
 function buildDirectImportCommands({ personId, sampleTextPath, sampleScreenshotPath }) {
+  const quotedPersonId = shellQuote(personId);
+
   return {
-    text: `node src/index.js import text --person ${personId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
-    message: `node src/index.js import message --person ${personId} --text <message> --refresh-foundation`,
-    talk: `node src/index.js import talk --person ${personId} --text <snippet> --refresh-foundation`,
-    screenshot: `node src/index.js import screenshot --person ${personId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
+    text: `node src/index.js import text --person ${quotedPersonId} --file ${shellQuote(sampleTextPath)} --refresh-foundation`,
+    message: `node src/index.js import message --person ${quotedPersonId} --text <message> --refresh-foundation`,
+    talk: `node src/index.js import talk --person ${quotedPersonId} --text <snippet> --refresh-foundation`,
+    screenshot: `node src/index.js import screenshot --person ${quotedPersonId} --file ${shellQuote(sampleScreenshotPath)} --refresh-foundation`,
   };
 }
 
@@ -995,11 +997,25 @@ export class MaterialIngestion {
     const starterManifestAbsolutePath = this.resolve(intakePaths.starterManifestPath);
     const existingTemplateState = readJsonFileState(starterManifestAbsolutePath);
     const existingTemplate = normalizeExistingStarterManifest(existingTemplateState.parsed);
-    const preserveExistingStarterContent = existingStarterManifestTargetsExpectedPersonId(
-      existingTemplateState.parsed,
-      profileUpdate.personId,
-    );
-    const invalidStarterManifestBackupPath = existingTemplateState.parseError
+    const existingTemplateInspection = existingTemplateState.parseError
+      ? null
+      : inspectIntakeManifestState(this.rootDir, intakePaths.starterManifestPath, profileUpdate.personId);
+    const isLegacyArrayStarterManifest = Array.isArray(existingTemplateState.parsed);
+    const preserveExistingStarterContent = isLegacyArrayStarterManifest
+      || (
+        existingTemplateInspection?.status !== 'invalid'
+        && existingStarterManifestTargetsExpectedPersonId(
+          existingTemplateState.parsed,
+          profileUpdate.personId,
+        )
+      );
+    const shouldBackupInvalidStarterManifest = Boolean(existingTemplateState.parseError)
+      || (
+        existingTemplateInspection?.status === 'invalid'
+        && Boolean(existingTemplate)
+        && !isLegacyArrayStarterManifest
+      );
+    const invalidStarterManifestBackupPath = shouldBackupInvalidStarterManifest
       ? backupInvalidJsonFile(starterManifestAbsolutePath)
       : null;
     const starterManifest = buildStarterManifestDocument({
@@ -1370,7 +1386,7 @@ export class MaterialIngestion {
       originalPath: sourceFile,
     });
     const normalized = this.ensureProfile(personId);
-    const content = fs.readFileSync(validatedSourceFile, 'utf8');
+    const content = stripLeadingUtf8Bom(fs.readFileSync(validatedSourceFile, 'utf8'));
     const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, validatedSourceFile);
     const materialFingerprint = fingerprint ?? buildTextMaterialFingerprint({
       personId: normalized.personId,
@@ -1590,7 +1606,7 @@ export class MaterialIngestion {
           originalPath: entry.file,
         });
         const relativeSourceFile = buildRepoRelativeSourcePath(this.rootDir, sourceFile);
-        const content = fs.readFileSync(sourceFile, 'utf8');
+        const content = stripLeadingUtf8Bom(fs.readFileSync(sourceFile, 'utf8'));
 
         return {
           personId: resolvedPersonId,
@@ -1830,9 +1846,17 @@ export class MaterialIngestion {
     }));
     const latestMaterialRecord = materialRecords[0] ?? null;
     const materialTypes = summarizeMaterialTypes(materialRecords);
+    const voiceRecords = materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type));
+    const soulRecords = materialRecords.filter((record) => ['text', 'talk'].includes(record.type));
+    const skillRecords = materialRecords.filter((record) => record.type === 'talk' && isNonEmptyString(record.notes));
+    const voiceLatestMaterialRecord = voiceRecords[0] ?? latestMaterialRecord;
+    const soulLatestMaterialRecord = soulRecords[0] ?? latestMaterialRecord;
+    const skillsLatestMaterialRecord = skillRecords[0] ?? latestMaterialRecord;
+    const voiceMaterialTypes = summarizeMaterialTypes(voiceRecords);
+    const soulMaterialTypes = summarizeMaterialTypes(soulRecords);
+    const skillsMaterialTypes = summarizeMaterialTypes(skillRecords);
 
-    const voiceSamples = materialRecords
-      .filter((record) => ['text', 'message', 'talk'].includes(record.type))
+    const voiceSamples = voiceRecords
       .map((record) => ({
         type: record.type,
         excerpt: buildExcerpt(record.content),
@@ -1840,8 +1864,7 @@ export class MaterialIngestion {
       .filter((record) => record.excerpt)
       .slice(0, 5);
 
-    const soulSignals = materialRecords
-      .filter((record) => ['text', 'talk'].includes(record.type))
+    const soulSignals = soulRecords
       .map((record) => ({
         type: record.type,
         excerpt: buildExcerpt(record.content),
@@ -1849,8 +1872,7 @@ export class MaterialIngestion {
       .filter((record) => record.excerpt)
       .slice(0, 5);
 
-    const skillSignals = materialRecords
-      .filter((record) => record.type === 'talk' && isNonEmptyString(record.notes))
+    const skillSignals = skillRecords
       .map((record) => ({
         note: buildExcerpt(record.notes),
         excerpt: buildExcerpt(record.content),
@@ -1883,9 +1905,9 @@ export class MaterialIngestion {
         normalizedPersonId: normalized.personId,
         profileDocument,
         generatedAt,
-        latestMaterialRecord,
-        materialCount: materialRecords.length,
-        materialTypes,
+        latestMaterialRecord: voiceLatestMaterialRecord,
+        materialCount: voiceRecords.length,
+        materialTypes: voiceMaterialTypes,
         voiceSamples,
       }).join('\n'),
     );
@@ -1896,9 +1918,9 @@ export class MaterialIngestion {
         normalizedPersonId: normalized.personId,
         profileDocument,
         generatedAt,
-        latestMaterialRecord,
-        materialCount: materialRecords.length,
-        materialTypes,
+        latestMaterialRecord: soulLatestMaterialRecord,
+        materialCount: soulRecords.length,
+        materialTypes: soulMaterialTypes,
         soulSignals,
       }).join('\n'),
     );
@@ -1909,9 +1931,9 @@ export class MaterialIngestion {
         normalizedPersonId: normalized.personId,
         profileDocument,
         generatedAt,
-        latestMaterialRecord,
-        materialCount: materialRecords.length,
-        materialTypes,
+        latestMaterialRecord: skillsLatestMaterialRecord,
+        materialCount: skillRecords.length,
+        materialTypes: skillsMaterialTypes,
         skillSignals,
       }).join('\n'),
     );
@@ -1945,22 +1967,24 @@ export class MaterialIngestion {
     const latestMaterialAt = latestMaterialRecord?.createdAt ?? null;
     const latestMaterialId = latestMaterialRecord?.id ?? null;
     const latestMaterialSourcePath = latestMaterialRecord?.sourceFile ?? latestMaterialRecord?.assetPath ?? null;
-    const sourceCount = materialRecords.length;
-    const makeDraftSource = ({ draftPath, entryCount = null } = {}) => ({
-      path: path.relative(this.rootDir, draftPath),
-      generatedAt,
-      latestMaterialAt,
-      latestMaterialId,
-      latestMaterialSourcePath,
-      sourceCount,
-      materialTypes: { ...materialTypes },
-      ...(Number.isFinite(entryCount) ? { entryCount } : {}),
-    });
+    const makeDraftSource = ({ draftPath, sourceRecords = materialRecords, fallbackLatestRecord = latestMaterialRecord, entryCount = null } = {}) => {
+      const latestSourceRecord = sourceRecords[0] ?? fallbackLatestRecord ?? null;
+      return {
+        path: path.relative(this.rootDir, draftPath),
+        generatedAt,
+        latestMaterialAt: latestSourceRecord?.createdAt ?? null,
+        latestMaterialId: latestSourceRecord?.id ?? null,
+        latestMaterialSourcePath: latestSourceRecord?.sourceFile ?? latestSourceRecord?.assetPath ?? null,
+        sourceCount: sourceRecords.length,
+        materialTypes: summarizeMaterialTypes(sourceRecords),
+        ...(Number.isFinite(entryCount) ? { entryCount } : {}),
+      };
+    };
     const draftSources = {
-      memory: makeDraftSource({ draftPath: memoryDraftPath, entryCount: memoryEntries.length }),
-      voice: makeDraftSource({ draftPath: voiceDraftPath }),
-      soul: makeDraftSource({ draftPath: soulDraftPath }),
-      skills: makeDraftSource({ draftPath: skillsDraftPath }),
+      memory: makeDraftSource({ draftPath: memoryDraftPath, sourceRecords: materialRecords, fallbackLatestRecord: latestMaterialRecord, entryCount: memoryEntries.length }),
+      voice: makeDraftSource({ draftPath: voiceDraftPath, sourceRecords: voiceRecords, fallbackLatestRecord: latestMaterialRecord }),
+      soul: makeDraftSource({ draftPath: soulDraftPath, sourceRecords: soulRecords, fallbackLatestRecord: latestMaterialRecord }),
+      skills: makeDraftSource({ draftPath: skillsDraftPath, sourceRecords: skillRecords, fallbackLatestRecord: latestMaterialRecord }),
     };
 
     return {

@@ -1,13 +1,13 @@
-import { slackChannelScaffold } from './slack.js';
+import { feishuChannelScaffold } from './feishu.js';
 import { telegramChannelScaffold } from './telegram.js';
 import { whatsappChannelScaffold } from './whatsapp.js';
-import { feishuChannelScaffold } from './feishu.js';
+import { slackChannelScaffold } from './slack.js';
 
 export const DEFAULT_CHANNEL_SCAFFOLDS = [
-  slackChannelScaffold,
+  feishuChannelScaffold,
   telegramChannelScaffold,
   whatsappChannelScaffold,
-  feishuChannelScaffold,
+  slackChannelScaffold,
 ];
 
 export const DEFAULT_CHANNEL_SCAFFOLDS_BY_ID = new Map(

@@ -139,6 +139,86 @@ test('direct screenshot imports skip unchanged reruns before copying duplicate a
   assert.equal(materialRecords.length, 1);
 });
 
+test('direct text imports strip UTF-8 BOMs before deduping and writing material content', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const bomPath = path.join(rootDir, 'bom.txt');
+  const plainPath = path.join(rootDir, 'plain.txt');
+  fs.writeFileSync(bomPath, '\uFEFFShip the thin slice first.');
+  fs.writeFileSync(plainPath, 'Ship the thin slice first.');
+
+  const firstResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: bomPath,
+    notes: 'blog fragment',
+  });
+  const secondResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: plainPath,
+    notes: 'blog fragment',
+    fingerprint: firstResult.fingerprint,
+  });
+
+  assert.equal(firstResult.skipped, false);
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+  assert.equal(secondResult.assetPath, null);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+
+  const textRecord = JSON.parse(fs.readFileSync(firstResult.recordPath, 'utf8'));
+  assert.equal(textRecord.content, 'Ship the thin slice first.');
+  assert.equal(textRecord.content.startsWith('\uFEFF'), false);
+});
+
+test('importManifest strips UTF-8 BOMs from text entry fingerprints before deduping and writing material content', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const textPath = path.join(rootDir, 'post.txt');
+  fs.writeFileSync(textPath, '\uFEFFShip the thin slice first.');
+
+  const manifestPath = path.join(rootDir, 'materials.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post.txt',
+          notes: 'blog fragment',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: manifestPath });
+  fs.writeFileSync(textPath, 'Ship the thin slice first.');
+  const secondResult = ingestion.importManifest({ manifestFile: manifestPath });
+
+  assert.equal(firstResult.entryCount, 1);
+  assert.equal(firstResult.skippedEntryCount, 0);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 1);
+  assert.deepEqual(secondResult.results, []);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
+
+  const textRecord = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'harry-han', 'materials', materialRecords[0]), 'utf8'),
+  );
+  assert.equal(textRecord.content, 'Ship the thin slice first.');
+  assert.equal(textRecord.content.startsWith('\uFEFF'), false);
+});
+
 test('direct message and talk imports reject whitespace-only text without writing records', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -170,20 +250,55 @@ test('direct text imports reject files outside the repo root without writing rec
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-outside-${Date.now()}.txt`);
   fs.writeFileSync(outsideFilePath, 'Outside repo content should not be importable directly either.');
 
-  assert.throws(
-    () => ingestion.importTextDocument({
-      personId: 'harry-han',
-      sourceFile: outsideFilePath,
-    }),
-    /outside the repo root/,
-  );
+  try {
+    assert.throws(
+      () => ingestion.importTextDocument({
+        personId: 'harry-han',
+        sourceFile: outsideFilePath,
+      }),
+      /outside the repo root/,
+    );
 
-  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
-  const materialFiles = fs.existsSync(materialsDir)
-    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
-    : [];
-  assert.deepEqual(materialFiles, []);
-  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  } finally {
+    fs.rmSync(outsideFilePath, { force: true });
+  }
+});
+
+test('direct text imports reject symlink targets that escape the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-symlink-outside-${Date.now()}.txt`);
+  fs.writeFileSync(outsideFilePath, 'Outside repo content should not be reachable through a symlink either.');
+
+  const symlinkPath = path.join(rootDir, 'outside-text-link.txt');
+  fs.symlinkSync(outsideFilePath, symlinkPath);
+
+  try {
+    assert.throws(
+      () => ingestion.importTextDocument({
+        personId: 'harry-han',
+        sourceFile: './outside-text-link.txt',
+      }),
+      /outside the repo root/,
+    );
+
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+  } finally {
+    fs.rmSync(symlinkPath, { force: true });
+    fs.rmSync(outsideFilePath, { force: true });
+  }
 });
 
 test('direct screenshot imports reject files outside the repo root without writing records', () => {
@@ -193,21 +308,57 @@ test('direct screenshot imports reject files outside the repo root without writi
   const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-outside-${Date.now()}.png`);
   fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
 
-  assert.throws(
-    () => ingestion.importScreenshotSource({
-      personId: 'harry-han',
-      sourceFile: outsideFilePath,
-    }),
-    /outside the repo root/,
-  );
+  try {
+    assert.throws(
+      () => ingestion.importScreenshotSource({
+        personId: 'harry-han',
+        sourceFile: outsideFilePath,
+      }),
+      /outside the repo root/,
+    );
 
-  const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
-  const materialFiles = fs.existsSync(materialsDir)
-    ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
-    : [];
-  assert.deepEqual(materialFiles, []);
-  assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
-  assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+  } finally {
+    fs.rmSync(outsideFilePath, { force: true });
+  }
+});
+
+test('direct screenshot imports reject symlink targets that escape the repo root without writing records', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const outsideFilePath = path.join(os.tmpdir(), `man-skill-direct-screenshot-symlink-outside-${Date.now()}.png`);
+  fs.writeFileSync(outsideFilePath, 'fake image bytes outside the repo');
+
+  const symlinkPath = path.join(rootDir, 'outside-screenshot-link.png');
+  fs.symlinkSync(outsideFilePath, symlinkPath);
+
+  try {
+    assert.throws(
+      () => ingestion.importScreenshotSource({
+        personId: 'harry-han',
+        sourceFile: './outside-screenshot-link.png',
+      }),
+      /outside the repo root/,
+    );
+
+    const materialsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials');
+    const materialFiles = fs.existsSync(materialsDir)
+      ? fs.readdirSync(materialsDir).filter((name) => name.endsWith('.json'))
+      : [];
+    assert.deepEqual(materialFiles, []);
+    assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'harry-han', 'profile.json')), false);
+    assert.equal(fs.existsSync(path.join(materialsDir, 'screenshots')), false);
+  } finally {
+    fs.rmSync(symlinkPath, { force: true });
+    fs.rmSync(outsideFilePath, { force: true });
+  }
 });
 
 test('importManifest imports mixed material entries across profiles from a JSON manifest', () => {
@@ -1082,10 +1233,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   assert.equal(result.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation");
   assert.equal(result.importManifestCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.deepEqual(result.importCommands, {
-    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+    text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+    talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+    screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.equal(result.importAfterEditingWithoutRefreshCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(result.importAfterEditingCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
@@ -1101,10 +1252,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     directImports: {
-      text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-      message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-      talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+      text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+      talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+      screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
 
@@ -1140,10 +1291,10 @@ test('scaffoldProfileIntake creates starter intake files without importing place
   const intakeReadme = fs.readFileSync(path.join(rootDir, result.intakeReadmePath), 'utf8');
   assert.match(intakeReadme, /Starter image folder: profiles\/harry-han\/imports\/images/);
   assert.match(intakeReadme, /Direct import commands:/);
-  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import message --person harry-han --text <message> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import talk --person harry-han --text <snippet> --refresh-foundation/);
-  assert.match(intakeReadme, /node src\/index\.js import screenshot --person harry-han --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person 'harry-han' --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import message --person 'harry-han' --text <message> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import talk --person 'harry-han' --text <snippet> --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import screenshot --person 'harry-han' --file 'profiles\/harry-han\/imports\/images\/chat\.png' --refresh-foundation/);
   assert.match(intakeReadme, /outside paths or symlinks that escape the repo root are rejected during import/i);
 
   const sampleText = fs.readFileSync(path.join(rootDir, result.sampleTextPath), 'utf8');

@@ -203,6 +203,191 @@ test('foundation layer primitives expose readiness-oriented summary metadata', (
   });
 });
 
+test('buildCoreFoundationSummary keeps canonical SOUL.md while surfacing duplicate soul root docs', () => {
+  const foundation = buildCoreFoundationSummary({
+    soulDocument: [
+      '# Soul',
+      '',
+      'Lead with fidelity.',
+      '',
+      '## Core truths',
+      '- Keep the system inspectable.',
+      '',
+      '## Boundaries',
+      '- Do not bluff certainty.',
+      '',
+      '## Vibe',
+      '- Grounded and direct.',
+      '',
+      '## Continuity',
+      '- Carry durable lessons forward.',
+    ].join('\n'),
+    soulShadowPaths: ['soul/README.md'],
+  });
+
+  assert.equal(foundation.soul.path, 'SOUL.md');
+  assert.equal(foundation.soul.rootPath, 'SOUL.md');
+  assert.deepEqual(foundation.soul.readySections, ['core-truths', 'boundaries', 'vibe', 'continuity']);
+  assert.deepEqual(foundation.soul.shadowPaths, ['soul/README.md']);
+});
+
+test('buildCoreFoundationSummary keeps canonical voice/README.md while surfacing duplicate voice root docs', () => {
+  const foundation = buildCoreFoundationSummary({
+    voiceDocument: [
+      '# Voice',
+      '',
+      'Stay grounded and direct.',
+      '',
+      '## Tone',
+      '- Warm and grounded.',
+      '',
+      '## Signature moves',
+      '- Use crisp examples.',
+      '',
+      '## Avoid',
+      '- Never pad the answer.',
+      '',
+      '## Language hints',
+      '- Preserve bilingual phrasing when the source material switches languages.',
+    ].join('\n'),
+    voiceShadowPaths: ['VOICE.md'],
+  });
+
+  assert.equal(foundation.voice.path, 'voice/README.md');
+  assert.equal(foundation.voice.rootPath, 'voice/README.md');
+  assert.deepEqual(foundation.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
+});
+
+test('buildCoreFoundationSummary keeps canonical memory and skills root docs while surfacing duplicate root docs', () => {
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: [
+        '# Memory',
+        '',
+        'Keep durable notes here.',
+        '',
+        '## What belongs here',
+        '- Durable repo knowledge.',
+        '',
+        '## Buckets',
+        '- daily/',
+        '- long-term/',
+        '- scratch/',
+      ].join('\n'),
+      daily: ['today.md'],
+      legacyShortTerm: [],
+      longTerm: ['stable.md'],
+      scratch: ['draft.md'],
+    },
+    memoryShadowPaths: ['MEMORY.md'],
+    skillNames: ['slack'],
+    skillInventory: {
+      documented: ['slack'],
+      documentedExcerpts: {
+        slack: 'Keep Slack thread replies grounded.',
+      },
+      root: [
+        '# Skills',
+        '',
+        'Keep shared procedures discoverable.',
+        '',
+        '## What lives here',
+        '- Reusable playbooks.',
+        '',
+        '## Layout',
+        '- One folder per skill.',
+      ].join('\n'),
+    },
+    skillsShadowPaths: ['SKILLS.md'],
+  });
+
+  assert.equal(foundation.memory.rootPath, 'memory/README.md');
+  assert.deepEqual(foundation.memory.shadowPaths, ['MEMORY.md']);
+  assert.equal(foundation.skills.rootPath, 'skills/README.md');
+  assert.deepEqual(foundation.skills.shadowPaths, ['SKILLS.md']);
+});
+
+test('buildCoreFoundationSummary normalizes and dedupes shadow doc paths before surfacing them', () => {
+  const foundation = buildCoreFoundationSummary({
+    soulDocument: [
+      '# Soul',
+      '',
+      'Lead with fidelity.',
+      '',
+      '## Core truths',
+      '- Keep the system inspectable.',
+      '',
+      '## Boundaries',
+      '- Do not bluff certainty.',
+      '',
+      '## Vibe',
+      '- Grounded and direct.',
+      '',
+      '## Continuity',
+      '- Carry durable lessons forward.',
+    ].join('\n'),
+    soulShadowPaths: [' .\\soul\\README.md ', 'soul/README.md', './soul/./README.md', '', '   '],
+    voiceDocument: [
+      '# Voice',
+      '',
+      'Stay grounded and direct.',
+      '',
+      '## Tone',
+      '- Warm and grounded.',
+      '',
+      '## Signature moves',
+      '- Use crisp examples.',
+      '',
+      '## Avoid',
+      '- Never pad the answer.',
+      '',
+      '## Language hints',
+      '- Preserve bilingual phrasing when the source material switches languages.',
+    ].join('\n'),
+    voiceShadowPaths: [' .\\VOICE.md ', 'VOICE.md', '././VOICE.md'],
+  });
+
+  assert.deepEqual(foundation.soul.shadowPaths, ['soul/README.md']);
+  assert.deepEqual(foundation.voice.shadowPaths, ['VOICE.md']);
+});
+
+test('buildCoreFoundationSummary exposes compact shadow doc preview metadata for root layers', () => {
+  const foundation = buildCoreFoundationSummary({
+    memoryIndex: {
+      root: '# Memory\n\n## What belongs here\n- Durable repo knowledge.\n\n## Buckets\n- daily/: short-lived run notes\n- long-term/: durable facts\n- scratch/: working drafts\n',
+      daily: ['today.md'],
+      longTerm: ['stable.md'],
+      scratch: ['ideas.md'],
+    },
+    memoryShadowPaths: [' .\\MEMORY.md ', './MEMORY.md', 'memory/README.shadow.md', 'docs/memory-shadow.md'],
+    skillNames: ['slack'],
+    skillInventory: {
+      documented: ['slack'],
+      documentedExcerpts: { slack: 'Route thread replies safely.' },
+      root: '# Skills\n\n## What lives here\n- Reusable playbooks.\n\n## Layout\n- One folder per skill.\n',
+    },
+    skillsShadowPaths: [' .\\SKILLS.md ', './SKILLS.md', 'docs/skills-shadow.md', 'notes/skills-shadow.md'],
+    soulDocument: '# Soul\n\nProtect the operator loop.\n\n## Core truths\n- Keep the system inspectable.\n\n## Boundaries\n- Do not bluff certainty.\n\n## Vibe\n- Grounded and direct.\n\n## Continuity\n- Carry durable lessons forward.\n',
+    soulShadowPaths: [' .\\soul\\README.md ', './soul/README.md', 'docs/soul-shadow.md', 'notes/soul-shadow.md'],
+    voiceDocument: '# Voice\n\nStay crisp and direct.\n\n## Tone\n- Warm and grounded.\n\n## Signature moves\n- Use crisp examples.\n\n## Avoid\n- Never pad the answer.\n\n## Language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+    voiceShadowPaths: [' .\\VOICE.md ', './VOICE.md', 'docs/voice-shadow.md', 'notes/voice-shadow.md'],
+  });
+
+  assert.equal(foundation.memory.shadowPathCount, 3);
+  assert.deepEqual(foundation.memory.shadowPathSamplePaths, ['MEMORY.md', 'memory/README.shadow.md', 'docs/memory-shadow.md']);
+  assert.equal(foundation.memory.shadowPathOverflowCount, 0);
+  assert.equal(foundation.skills.shadowPathCount, 3);
+  assert.deepEqual(foundation.skills.shadowPathSamplePaths, ['SKILLS.md', 'docs/skills-shadow.md', 'notes/skills-shadow.md']);
+  assert.equal(foundation.skills.shadowPathOverflowCount, 0);
+  assert.equal(foundation.soul.shadowPathCount, 3);
+  assert.deepEqual(foundation.soul.shadowPathSamplePaths, ['soul/README.md', 'docs/soul-shadow.md', 'notes/soul-shadow.md']);
+  assert.equal(foundation.soul.shadowPathOverflowCount, 0);
+  assert.equal(foundation.voice.shadowPathCount, 3);
+  assert.deepEqual(foundation.voice.shadowPathSamplePaths, ['VOICE.md', 'docs/voice-shadow.md', 'notes/voice-shadow.md']);
+  assert.equal(foundation.voice.shadowPathOverflowCount, 0);
+});
+
 test('soul and voice parsers accept plus bullets and checklist markers inside structured sections', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nStay faithful.\n\n## Core truths\n+ [ ] Keep the system inspectable.\n+ Prefer narrow, verified diffs.\n\n## Boundaries\n+ [x] Do not bluff certainty.\n\n## Vibe\n+ Grounded and direct.\n\n## Continuity\n+ Carry durable lessons forward.\n`);
   const voice = VoiceProfile.fromDocument(`# Voice\n\n## Tone\n+ [ ] Crisp and grounded.\n\n## Signature moves\n+ [ ] Use concrete examples.\n+ Close with the next step.\n\n## Avoid\n+ [x] Padding the answer.\n\n## Language hints\n+ Preserve bilingual phrasing when the source switches languages.\n`);
@@ -1743,7 +1928,7 @@ test('buildSummary treats blockquoted soul and voice docs as structured foundati
   assert.equal(summary.foundation.core.voice.rootExcerpt, 'Warm and grounded.');
   assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
-  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /- soul: present, 4 lines, Stay faithful\./);
   assert.doesNotMatch(summary.promptPreview, /- voice: present, 4 lines, Warm and grounded\./);
   assert.doesNotMatch(summary.promptPreview, />\s*## Tone/);
@@ -1785,7 +1970,7 @@ test('buildSummary carries compact legacy short-term provenance into ready core 
   assert.equal(summary.foundation.core.memory.legacyShortTermSourceOverflowCount, 1);
   assert.match(
     summary.promptPreview,
-    /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/,
+    /- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent; legacy short-term sources memory\/short-term\/2026-04-01\.md, memory\/short-term\/2026-04-02\.md, memory\/short-term\/2026-04-03\.md, \+1 more, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/,
   );
   assert.doesNotMatch(summary.promptPreview, /memory\/short-term\/2026-04-04\.md/);
 });
@@ -2165,7 +2350,7 @@ test('buildSummary treats blockquoted memory sections and setext skills sections
   assert.equal(summary.foundation.core.skills.rootReadySectionCount, 2);
   assert.equal(summary.foundation.core.skills.rootTotalSectionCount, 2);
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
-  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
 });
 
 test('buildSummary foundation core marks partially structured soul and voice docs as thin with missing sections', () => {

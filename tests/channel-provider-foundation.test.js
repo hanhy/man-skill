@@ -149,10 +149,10 @@ test('manifest loaders accept UTF-8 BOM-prefixed manifest files', () => {
 
 test('default channel and provider scaffold modules stay aligned with the canonical scaffold catalogs and registry metadata', () => {
   const channelScaffolds = [
-    slackChannelScaffold,
+    feishuChannelScaffold,
     telegramChannelScaffold,
     whatsappChannelScaffold,
-    feishuChannelScaffold,
+    slackChannelScaffold,
   ];
   const providerScaffolds = [
     openaiProviderScaffold,
@@ -325,7 +325,7 @@ test('buildSummary keeps delivery queues aligned with the canonical rollout orde
   assert.equal(summary.foundation.core.voice.readySectionCount, 4);
   assert.match(summary.promptPreview, /Memory store:\n- daily: 1\n- long-term: 1\n- scratch: 1\n- total: 3\n- buckets: 3\/3 ready \(daily, long-term, scratch\)\n- aliases: daily canonical via shortTermEntries, shortTermPresent\n- root: Keep durable notes here\. @ memory\/README\.md\n- root sections: 2\/2 ready \(what-belongs-here, buckets\)/);
   assert.match(summary.promptPreview, /Skill registry:\n- total: 1\n- discovered: 1\n- custom: 0\n- root: Shared repo skill guidance\. @ skills\/README\.md\n- root sections: 2\/2 ready \(what-lives-here, layout\)\n- top skills: cron \[discovered\]: Use this skill when validating recurring delivery loops\.\n- foundation statuses: ready 1/);
-  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
+  assert.match(summary.promptPreview, /Core foundation:\n- coverage: 4\/4 ready\n- queue: 4 ready, 0 thin, 0 missing\n- ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(cron\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.deepEqual(summary.channels.channels.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
   assert.deepEqual(summary.models.providers.map((provider) => provider.id), ['openai', 'anthropic', 'kimi', 'minimax', 'glm', 'qwen']);
   assert.deepEqual(summary.delivery.channelQueue.map((channel) => channel.id), ['feishu', 'telegram', 'whatsapp', 'slack']);
@@ -427,10 +427,10 @@ test('buildSummary keeps active delivery integrations in the env repair backlog 
 
 test('checked-in channel and provider manifests stay aligned with scaffold metadata for delivery onboarding', () => {
   const channelScaffolds = [
-    slackChannelScaffold,
+    feishuChannelScaffold,
     telegramChannelScaffold,
     whatsappChannelScaffold,
-    feishuChannelScaffold,
+    slackChannelScaffold,
   ];
   const providerScaffolds = [
     openaiProviderScaffold,
@@ -445,6 +445,8 @@ test('checked-in channel and provider manifests stay aligned with scaffold metad
 
   assert.equal(channelManifest.length, channelScaffolds.length);
   assert.equal(providerManifest.length, providerScaffolds.length);
+  assert.deepEqual(channelManifest.map((channel) => channel.id), channelScaffolds.map((channel) => channel.id));
+  assert.deepEqual(providerManifest.map((provider) => provider.id), providerScaffolds.map((provider) => provider.id));
 
   channelScaffolds.forEach((scaffold) => {
     const manifestRecord = channelManifest.find((channel) => channel.id === scaffold.id);
@@ -2161,6 +2163,10 @@ test('buildSummary exposes a delivery setup queue and prompt preview includes se
     assert.ok(channelsPriority);
     assert.equal(channelsPriority.status, 'queued');
     assert.equal(channelsPriority.command, 'cp .env.example .env');
+    assert.equal(
+      channelsPriority.followUpCommand,
+      "touch '.env' && for key in 'FEISHU_APP_ID' 'FEISHU_APP_SECRET' 'TELEGRAM_BOT_TOKEN' 'WHATSAPP_ACCESS_TOKEN' 'WHATSAPP_PHONE_NUMBER_ID'; do grep -Eq \"^(export[[:space:]]+)?${key}=\" '.env' || printf '%s=\\n' \"$key\" >> '.env'; done",
+    );
     assert.deepEqual(channelsPriority.paths, ['.env.example', '.env']);
     assert.equal(
       channelsPriority.nextAction,

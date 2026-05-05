@@ -62,14 +62,42 @@ function truncateTemplatePreview(value, maxLength = 80) {
   return `${normalized.slice(0, Math.max(maxLength - 1, 0)).trimEnd()}…`;
 }
 
-function normalizeEntryTemplateDetails(entryTemplates) {
+function normalizeTemplateFileDetailPath(rootDir, filePath) {
+  if (!isNonEmptyString(filePath)) {
+    return null;
+  }
+
+  const trimmedFilePath = filePath.trim();
+  if (!path.isAbsolute(trimmedFilePath)) {
+    return normalizeRelativeRepoPath(trimmedFilePath);
+  }
+
+  if (isNonEmptyString(rootDir)) {
+    try {
+      const realRootDir = fs.realpathSync(rootDir);
+      const absoluteDisplayPath = fs.existsSync(trimmedFilePath)
+        ? fs.realpathSync(trimmedFilePath)
+        : path.resolve(trimmedFilePath);
+      const repoRelativePath = toRepoRelativePath(realRootDir, absoluteDisplayPath);
+      if (repoRelativePath) {
+        return repoRelativePath;
+      }
+    } catch {
+      // Fall through to a slash-normalized absolute display path.
+    }
+  }
+
+  return trimmedFilePath.replace(/\\/g, '/');
+}
+
+function normalizeEntryTemplateDetails(rootDir, entryTemplates) {
   const entryTemplateTypes = normalizeEntryTemplateTypes(entryTemplates);
   return entryTemplateTypes.map((type) => {
     const template = entryTemplates?.[type];
     const filePath = isNonEmptyString(template?.file) ? template.file.trim() : null;
     const textPreview = truncateTemplatePreview(template?.text);
 
-    const normalizedFilePath = normalizeRelativeRepoPath(filePath);
+    const normalizedFilePath = normalizeTemplateFileDetailPath(rootDir, filePath);
 
     return {
       type,
@@ -83,9 +111,10 @@ function normalizeEntryTemplateDetails(entryTemplates) {
 function buildStarterTemplateEntries(manifest, entryTemplateTypes) {
   return entryTemplateTypes.map((type) => {
     const template = manifest?.entryTemplates?.[type] ?? {};
+    const templateFile = isNonEmptyString(template?.file) ? template.file.trim() : null;
     return {
       type,
-      ...(normalizeRelativeRepoPath(template?.file) ? { file: normalizeRelativeRepoPath(template.file) } : {}),
+      ...(templateFile ? { file: templateFile } : {}),
       ...(isNonEmptyString(template?.text) ? { text: template.text.trim() } : {}),
       ...(isNonEmptyString(template?.personId) ? { personId: template.personId.trim() } : {}),
     };
@@ -117,6 +146,15 @@ function toRepoRelativePath(realRootDir, absolutePath) {
   }
 
   return relativePath.split(path.sep).join('/');
+}
+
+function pathStaysInsideBase(baseDir, targetPath) {
+  if (!isNonEmptyString(baseDir) || !isNonEmptyString(targetPath)) {
+    return false;
+  }
+
+  const relativePath = path.relative(baseDir, targetPath);
+  return !path.isAbsolute(relativePath) && relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`);
 }
 
 function attachRepairPaths(error, repairPaths = []) {
@@ -200,11 +238,19 @@ function validateProfileLocalManifestOwnership(manifest, expectedPersonId) {
   });
 }
 
-function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, manifest, entries, expectedPersonId = null }) {
+function validateProfileLocalManifestEntries({
+  rootDir,
+  starterManifestPath,
+  manifest,
+  entries,
+  expectedPersonId = null,
+  requireExistingFiles = true,
+}) {
   const absoluteManifestPath = path.join(rootDir, starterManifestPath);
   const manifestDir = path.dirname(absoluteManifestPath);
   const realManifestDir = fs.realpathSync(manifestDir);
   const realRootDir = fs.realpathSync(rootDir);
+  const normalizedRootDir = path.resolve(rootDir);
   const supportedTypes = new Set(['text', 'message', 'talk', 'screenshot']);
   const manifestPersonId = isNonEmptyString(manifest?.personId) ? manifest.personId : null;
   const normalizedManifestPersonId = manifestPersonId ? slugifyPersonId(manifestPersonId) : null;
@@ -241,7 +287,26 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
         throw new Error(`Manifest entry ${index} is missing file for ${type} import`);
       }
 
-      const relativeResolvedFilePath = toRepoRelativePath(realRootDir, resolvedFilePath);
+      const comparisonResolvedFilePath = fs.existsSync(resolvedFilePath)
+        ? fs.realpathSync(resolvedFilePath)
+        : path.resolve(resolvedFilePath);
+      const relativeResolvedFilePath = toRepoRelativePath(realRootDir, comparisonResolvedFilePath)
+        ?? toRepoRelativePath(normalizedRootDir, resolvedFilePath)
+        ?? toRepoRelativePath(normalizedRootDir, comparisonResolvedFilePath);
+      const insideImportsDir = pathStaysInsideBase(realManifestDir, comparisonResolvedFilePath)
+        || pathStaysInsideBase(manifestDir, resolvedFilePath)
+        || pathStaysInsideBase(manifestDir, comparisonResolvedFilePath);
+      if (!insideImportsDir) {
+        throw attachRepairPaths(
+          new Error(`Manifest entry ${index} references a file outside the profile imports directory: ${displayEntryFile}`),
+          [starterManifestPath],
+        );
+      }
+
+      if (!requireExistingFiles) {
+        return;
+      }
+
       if (!fs.existsSync(resolvedFilePath)) {
         throw attachRepairPaths(
           new Error(`Manifest entry ${index} references a missing file: ${displayEntryFile}`),
@@ -262,8 +327,8 @@ function validateProfileLocalManifestEntries({ rootDir, starterManifestPath, man
         throw new Error(`Manifest entry ${index} references a file outside the repo: ${displayEntryFile}`);
       }
 
-      const relativeImportsPath = path.relative(realManifestDir, realFilePath);
-      if (path.isAbsolute(relativeImportsPath) || relativeImportsPath === '..' || relativeImportsPath.startsWith(`..${path.sep}`)) {
+      const relativeRealImportsPath = path.relative(realManifestDir, realFilePath);
+      if (path.isAbsolute(relativeRealImportsPath) || relativeRealImportsPath === '..' || relativeRealImportsPath.startsWith(`..${path.sep}`)) {
         throw attachRepairPaths(
           new Error(`Manifest entry ${index} references a file outside the profile imports directory: ${displayEntryFile}`),
           [starterManifestPath],
@@ -306,6 +371,45 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
     };
   }
 
+  try {
+    const realRootDir = fs.realpathSync(rootDir);
+    const realManifestPath = fs.realpathSync(absoluteManifestPath);
+    const relativeManifestPath = path.relative(realRootDir, realManifestPath);
+    if (path.isAbsolute(relativeManifestPath) || relativeManifestPath === '..' || relativeManifestPath.startsWith(`..${path.sep}`)) {
+      return {
+        status: 'invalid',
+        path: manifestPath,
+        error: 'Starter intake manifest resolves outside the repo root',
+        repairPaths: [manifestPath],
+        entryTemplateTypes: [],
+        entryTemplateCount: 0,
+        entryTemplateDetails: emptyEntryTemplateDetails,
+      };
+    }
+
+    if (!fs.statSync(realManifestPath).isFile()) {
+      return {
+        status: 'invalid',
+        path: manifestPath,
+        error: 'Starter intake manifest must be a file',
+        repairPaths: [manifestPath],
+        entryTemplateTypes: [],
+        entryTemplateCount: 0,
+        entryTemplateDetails: emptyEntryTemplateDetails,
+      };
+    }
+  } catch (error) {
+    return {
+      status: 'invalid',
+      path: manifestPath,
+      error: error instanceof Error ? error.message : 'Invalid intake manifest path',
+      repairPaths: [manifestPath],
+      entryTemplateTypes: [],
+      entryTemplateCount: 0,
+      entryTemplateDetails: emptyEntryTemplateDetails,
+    };
+  }
+
   let parsedManifest;
   try {
     parsedManifest = JSON.parse(stripLeadingUtf8Bom(fs.readFileSync(absoluteManifestPath, 'utf8')));
@@ -336,14 +440,15 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
 
   const entries = manifest.entries;
   const entryTemplateTypes = normalizeEntryTemplateTypes(manifest.entryTemplates);
-  const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
+  const entryTemplateDetails = normalizeEntryTemplateDetails(rootDir, manifest.entryTemplates);
   const entryTemplateCount = entryTemplateTypes.length;
-  const hasStarterTemplates = Array.isArray(entries)
-    && entries.length === 0
-    && manifest.entryTemplates
+  const hasEntryTemplates = manifest.entryTemplates
     && typeof manifest.entryTemplates === 'object'
     && !Array.isArray(manifest.entryTemplates)
     && entryTemplateTypes.length > 0;
+  const hasStarterTemplates = Array.isArray(entries)
+    && entries.length === 0
+    && hasEntryTemplates;
 
   if (!Array.isArray(entries) && !hasStarterTemplates) {
     return {
@@ -368,13 +473,14 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
         expectedPersonId,
       });
     }
-    if (hasStarterTemplates) {
+    if (hasEntryTemplates) {
       validateProfileLocalManifestEntries({
         rootDir,
         starterManifestPath: manifestPath,
         manifest,
         entries: buildStarterTemplateEntries(manifest, entryTemplateTypes),
         expectedPersonId,
+        requireExistingFiles: hasStarterTemplates,
       });
     }
   } catch (error) {
@@ -390,7 +496,7 @@ export function inspectProfileIntakeManifest(options: { rootDir?: string | null;
   }
 
   if (hasStarterTemplates) {
-    const entryTemplateDetails = normalizeEntryTemplateDetails(manifest.entryTemplates);
+    const entryTemplateDetails = normalizeEntryTemplateDetails(rootDir, manifest.entryTemplates);
     return {
       status: 'starter',
       path: manifestPath,

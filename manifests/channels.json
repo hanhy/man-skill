@@ -1,7 +1,7 @@
 [
   {
-    "id": "slack",
-    "name": "Slack",
+    "id": "feishu",
+    "name": "Feishu",
     "transport": "chat",
     "direction": [
       "inbound",
@@ -9,24 +9,24 @@
     ],
     "status": "candidate",
     "capabilities": [
-      "threads",
-      "mentions",
-      "bot-token"
+      "tenant-app",
+      "docs",
+      "bot"
     ],
     "auth": {
-      "type": "bot-token",
+      "type": "tenant-app",
       "envVars": [
-        "SLACK_BOT_TOKEN",
-        "SLACK_SIGNING_SECRET"
+        "FEISHU_APP_ID",
+        "FEISHU_APP_SECRET"
       ]
     },
     "deliveryModes": [
-      "events-api",
-      "web-api"
+      "event-subscription",
+      "webhook"
     ],
-    "inboundPath": "/hooks/slack/events",
-    "outboundMode": "thread-reply",
-    "implementationPath": "src/channels/slack.js",
+    "inboundPath": "/hooks/feishu/events",
+    "outboundMode": "bot-message",
+    "implementationPath": "src/channels/feishu.js",
     "nextStep": null
   },
   {
@@ -89,8 +89,8 @@
     "nextStep": null
   },
   {
-    "id": "feishu",
-    "name": "Feishu",
+    "id": "slack",
+    "name": "Slack",
     "transport": "chat",
     "direction": [
       "inbound",
@@ -98,24 +98,24 @@
     ],
     "status": "candidate",
     "capabilities": [
-      "tenant-app",
-      "docs",
-      "bot"
+      "threads",
+      "mentions",
+      "bot-token"
     ],
     "auth": {
-      "type": "tenant-app",
+      "type": "bot-token",
       "envVars": [
-        "FEISHU_APP_ID",
-        "FEISHU_APP_SECRET"
+        "SLACK_BOT_TOKEN",
+        "SLACK_SIGNING_SECRET"
       ]
     },
     "deliveryModes": [
-      "event-subscription",
-      "webhook"
+      "events-api",
+      "web-api"
     ],
-    "inboundPath": "/hooks/feishu/events",
-    "outboundMode": "bot-message",
-    "implementationPath": "src/channels/feishu.js",
+    "inboundPath": "/hooks/slack/events",
+    "outboundMode": "thread-reply",
+    "implementationPath": "src/channels/slack.js",
     "nextStep": null
   }
 ]

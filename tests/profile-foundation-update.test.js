@@ -117,9 +117,8 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
       latestMaterialAt: result.latestMaterialAt,
       latestMaterialId: result.latestMaterialId,
       latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
-      sourceCount: 3,
+      sourceCount: 2,
       materialTypes: {
-        message: 1,
         talk: 1,
         text: 1,
       },
@@ -130,11 +129,9 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
       latestMaterialAt: result.latestMaterialAt,
       latestMaterialId: result.latestMaterialId,
       latestMaterialSourcePath: memoryDraft.latestMaterialSourcePath,
-      sourceCount: 3,
+      sourceCount: 1,
       materialTypes: {
-        message: 1,
         talk: 1,
-        text: 1,
       },
     },
   });
@@ -167,6 +164,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(voiceDraft, /Preserve bilingual, dialect, or code-switching patterns/i);
 
   const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(soulDraft, /Source materials: 2 \(talk:1, text:1\)/);
   assert.match(soulDraft, /## Core truths/);
   assert.match(soulDraft, /- \[text\] Harry prefers blunt execution over long debate\./);
   assert.match(soulDraft, /## Boundaries/);
@@ -175,6 +173,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(soulDraft, /strongest repeated values and tradeoff language/i);
 
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.match(skillsDraft, /Source materials: 1 \(talk:1\)/);
   assert.match(skillsDraft, /## Candidate skills/);
   assert.match(skillsDraft, /- product execution heuristic/);
   assert.match(skillsDraft, /## Evidence/);
@@ -252,6 +251,35 @@ test('refreshFoundationDrafts rewrites a memory foundation draft when its stored
   assert.equal(repairedDraft.personId, 'harry-han');
   assert.equal(repairedDraft.displayName, 'Harry Han');
   assert.equal(repairedDraft.summary, 'Direct operator with a bias for momentum.');
+});
+
+test('refreshStaleFoundationDrafts refreshes memory foundation drafts when stored entry summaries drift from imported materials', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+    notes: 'short chat sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.entries[0].summary = 'Old summary that no longer matches the imported material.';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const staleRefresh = ingestion.refreshStaleFoundationDrafts();
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+
+  assert.equal(staleRefresh.profileCount, 1);
+  assert.deepEqual(staleRefresh.results.map((entry) => entry.personId), ['harry-han']);
+  assert.equal(repairedDraft.entries[0].summary, 'Ship the thin slice first.');
 });
 
 test('scaffoldProfileIntake hides imported-profile intake shortcuts until the local manifest has real entries', () => {
@@ -637,6 +665,52 @@ test('CLI import intake --person refreshes foundation drafts when --refresh-foun
   assert.equal(result.foundationRefresh.profileCount, 1);
   assert.match(result.foundationRefresh.results[0].memoryDraftPath, /profiles\/metadata-only\/memory\/long-term\/foundation\.json$/);
   assert.equal(fs.existsSync(path.join(rootDir, 'profiles', 'metadata-only', 'voice', 'README.md')), true);
+});
+
+test('CLI import intake --person accepts UTF-8 BOM-prefixed profile-local manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Metadata Only',
+    displayName: 'Metadata Only',
+    summary: 'Profile scaffold without imported materials yet.',
+  });
+
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'sample.txt'),
+    'Metadata Only prefers tight feedback loops.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'metadata-only', 'imports', 'materials.template.json'),
+    `\uFEFF${JSON.stringify({
+      personId: 'Metadata Only',
+      displayName: 'Metadata Only',
+      summary: 'Profile scaffold without imported materials yet.',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+        },
+        {
+          type: 'message',
+          text: 'Ship the narrow slice first.',
+        },
+      ],
+    }, null, 2)}`,
+  );
+
+  const output = execFileSync('node', [cliEntrypoint, 'import', 'intake', '--person', 'Metadata Only'], {
+    cwd: rootDir,
+    encoding: 'utf8',
+  });
+  const result = JSON.parse(output);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.manifestFile, 'profiles/metadata-only/imports/materials.template.json');
+  assert.equal(result.entryCount, 2);
+  assert.deepEqual(result.profileIds, ['metadata-only']);
+  assert.equal(result.foundationRefresh ?? null, null);
 });
 
 test('CLI direct import message reruns report skipped status and avoid duplicate records', () => {
@@ -1186,6 +1260,55 @@ test('CLI command errors print a concise usage hint without a stack trace', () =
       return true;
     },
   );
+});
+
+test('CLI subcommand help prefers command-specific usage and examples for intake and foundation flows', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['import', 'intake', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js import intake --person <person-id> \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js import intake --person 'harry-han' --refresh-foundation/,
+        /node src\/index\.js import intake --stale/,
+      ],
+    },
+    {
+      args: ['update', 'intake', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js update intake --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\] \| --stale \[--refresh-foundation\] \| --imported \[--refresh-foundation\] \| --all \[--refresh-foundation\]/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/,
+        /node src\/index\.js update intake --stale/,
+      ],
+    },
+    {
+      args: ['update', 'foundation', '--help'],
+      expectedUsage: /^Usage: node src\/index\.js update foundation --person <person-id> \| --stale \| --all/m,
+      expectedExamples: [
+        /Examples:/,
+        /node src\/index\.js update foundation --person 'harry-han'/,
+        /node src\/index\.js update foundation --stale/,
+      ],
+    },
+  ];
+
+  cases.forEach(({ args, expectedUsage, expectedExamples }) => {
+    const output = execFileSync('node', [cliEntrypoint, ...args], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    assert.match(output, expectedUsage);
+    expectedExamples.forEach((pattern) => {
+      assert.match(output, pattern);
+    });
+    assert.doesNotMatch(output, /^Usage: node src\/index\.js \[command\] \[subcommand\] \[options\]/m);
+    assert.doesNotMatch(output, /Commands:/);
+  });
 });
 
 test('CLI update intake errors advertise the full usage surface for person, stale, imported, and all modes', () => {
@@ -2396,17 +2519,17 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
     updateProfileAndRefresh: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.' --refresh-foundation",
     refreshFoundation: "node src/index.js update foundation --person 'harry-han'",
     directImports: {
-      text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-      message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-      talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-      screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+      text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+      talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+      screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
     },
   });
   assert.deepEqual(result.importCommands, {
-    text: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
-    message: 'node src/index.js import message --person harry-han --text <message> --refresh-foundation',
-    talk: 'node src/index.js import talk --person harry-han --text <snippet> --refresh-foundation',
-    screenshot: "node src/index.js import screenshot --person harry-han --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
+    text: "node src/index.js import text --person 'harry-han' --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+    message: "node src/index.js import message --person 'harry-han' --text <message> --refresh-foundation",
+    talk: "node src/index.js import talk --person 'harry-han' --text <snippet> --refresh-foundation",
+    screenshot: "node src/index.js import screenshot --person 'harry-han' --file 'profiles/harry-han/imports/images/chat.png' --refresh-foundation",
   });
   assert.match(result.starterManifestPath, /profiles\/harry-han\/imports\/materials\.template\.json$/);
   assert.match(result.intakeReadmePath, /profiles\/harry-han\/imports\/README\.md$/);
@@ -2449,7 +2572,7 @@ test('CLI update intake scaffolds starter manifest files for a target person', (
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
   assert.match(intakeReadme, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
   assert.match(intakeReadme, /Direct import commands:/);
-  assert.match(intakeReadme, /node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.match(intakeReadme, /node src\/index\.js import text --person 'harry-han' --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('CLI update intake preserves existing starter entries and customized entry templates on rerun', () => {

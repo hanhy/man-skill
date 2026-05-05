@@ -1,13 +1,13 @@
-import { createSlackChannel } from './slack.js';
+import { createFeishuChannel } from './feishu.js';
 import { createTelegramChannel } from './telegram.js';
 import { createWhatsAppChannel } from './whatsapp.js';
-import { createFeishuChannel } from './feishu.js';
+import { createSlackChannel } from './slack.js';
 
 export function createDefaultChannels() {
   return [
-    createSlackChannel(),
+    createFeishuChannel(),
     createTelegramChannel(),
     createWhatsAppChannel(),
-    createFeishuChannel(),
+    createSlackChannel(),
   ];
 }

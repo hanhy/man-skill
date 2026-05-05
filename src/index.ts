@@ -1051,19 +1051,19 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     summary: `core ${coreOverview.readyAreaCount ?? 0}/${coreOverview.totalAreaCount ?? 0} ready${coreQueueSummary}; profiles ${refreshProfileCount} queued for refresh, ${incompleteProfileCount} incomplete`,
     nextAction: hasQueuedCoreFoundation ? coreNextAction : profileNextAction,
     command: hasQueuedCoreFoundation ? coreCommand : profileCommand,
-    latestMaterialAt: hasQueuedCoreFoundation ? null : profileLatestMaterialAt,
-    latestMaterialId: hasQueuedCoreFoundation ? null : profileLatestMaterialId,
-    latestMaterialSourcePath: hasQueuedCoreFoundation ? null : profileLatestMaterialSourcePath,
-    refreshReasons: hasQueuedCoreFoundation ? [] : profileRefreshReasons,
-    missingDrafts: hasQueuedCoreFoundation ? [] : profileMissingDrafts,
+    latestMaterialAt: profileLatestMaterialAt,
+    latestMaterialId: profileLatestMaterialId,
+    latestMaterialSourcePath: profileLatestMaterialSourcePath,
+    refreshReasons: profileRefreshReasons,
+    missingDrafts: profileMissingDrafts,
     ...(hasQueuedCoreFoundation && coreRootThinReadySections.length > 0 ? { rootThinReadySections: coreRootThinReadySections } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinMissingSections.length > 0 ? { rootThinMissingSections: coreRootThinMissingSections } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
-    candidateSignalSummary: hasQueuedCoreFoundation ? null : profileCandidateSignalSummary,
-    draftSourcesSummary: hasQueuedCoreFoundation ? null : profileDraftSourcesSummary,
-    draftGapSummary: hasQueuedCoreFoundation ? null : profileDraftGapSummary,
+    candidateSignalSummary: profileCandidateSignalSummary,
+    draftSourcesSummary: profileDraftSourcesSummary,
+    draftGapSummary: profileDraftGapSummary,
     editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
     editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,
     followUpCommand,
@@ -1230,6 +1230,12 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
   const recommendedLatestMaterialSourcePath = typeof ingestionSummary?.recommendedLatestMaterialSourcePath === 'string' && ingestionSummary.recommendedLatestMaterialSourcePath.length > 0
     ? (normalizeDraftPath(ingestionSummary.recommendedLatestMaterialSourcePath) ?? null)
     : null;
+  const recommendedCandidateSignalSummary = typeof ingestionSummary?.recommendedCandidateSignalSummary === 'string' && ingestionSummary.recommendedCandidateSignalSummary.length > 0
+    ? ingestionSummary.recommendedCandidateSignalSummary
+    : null;
+  const recommendedDraftSourcesSummary = typeof ingestionSummary?.recommendedDraftSourcesSummary === 'string' && ingestionSummary.recommendedDraftSourcesSummary.length > 0
+    ? ingestionSummary.recommendedDraftSourcesSummary
+    : null;
   const recommendedCommand = typeof ingestionSummary?.recommendedCommand === 'string' && ingestionSummary.recommendedCommand.length > 0
     ? ingestionSummary.recommendedCommand
     : null;
@@ -1276,6 +1282,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
       latestMaterialAt: string | null;
       latestMaterialId: string | null;
       latestMaterialSourcePath: string | null;
+      candidateSignalSummary?: string | null;
+      draftSourcesSummary?: string | null;
       refreshReasons?: string[];
       missingDrafts?: string[];
       draftGapSummary?: string | null;
@@ -1330,6 +1338,8 @@ function buildIngestionPriority(ingestionSummary: any, _rootDir: string, _profil
     latestMaterialAt: recommendedLatestMaterialAt,
     latestMaterialId: recommendedLatestMaterialId,
     latestMaterialSourcePath: recommendedLatestMaterialSourcePath,
+    candidateSignalSummary: recommendedCandidateSignalSummary,
+    draftSourcesSummary: recommendedDraftSourcesSummary,
     fallbackCommand: recommendedFallbackCommand,
     refreshIntakeCommand: recommendedRefreshIntakeCommand,
     updateProfileCommand: recommendedUpdateProfileCommand,
@@ -1506,6 +1516,9 @@ function buildDeliveryPriority({
     const envTarget = typeof envConfigPath === 'string' && envConfigPath.length > 0 ? envConfigPath : '.env';
     const envSource = typeof envTemplatePath === 'string' && envTemplatePath.length > 0 ? envTemplatePath : '.env.example';
     nextAction = [`bootstrap ${envTarget} from ${envSource}`, ...followUpParts].filter(Boolean).join('; ');
+    followUpCommand = typeof envConfigPopulateCommand === 'string' && envConfigPopulateCommand.length > 0
+      ? envConfigPopulateCommand
+      : null;
   }
 
   if (!command && needsEnvTemplateRepair) {
@@ -1971,7 +1984,11 @@ export function buildSummary(rootDir: string) {
   const loader = new FileSystemLoader(rootDir);
   const manifestLoader = new ManifestLoader(rootDir);
   const soulDocument = loader.loadSoul();
+  const soulShadowPaths = fs.existsSync(path.join(rootDir, 'soul', 'README.md')) ? ['soul/README.md'] : [];
   const voiceDocument = loader.loadVoice();
+  const voiceShadowPaths = fs.existsSync(path.join(rootDir, 'VOICE.md')) ? ['VOICE.md'] : [];
+  const memoryShadowPaths = fs.existsSync(path.join(rootDir, 'MEMORY.md')) ? ['MEMORY.md'] : [];
+  const skillsShadowPaths = fs.existsSync(path.join(rootDir, 'SKILLS.md')) ? ['SKILLS.md'] : [];
   const memoryIndex = loader.loadMemoryIndex();
   const skillInventory = loader.loadSkillInventory();
   const skillNames = skillInventory.names;
@@ -2047,7 +2064,11 @@ export function buildSummary(rootDir: string) {
   }) as any;
   const coreFoundation = buildCoreFoundationSummary({
     soulDocument,
+    soulShadowPaths,
     voiceDocument,
+    voiceShadowPaths,
+    memoryShadowPaths,
+    skillsShadowPaths,
     memoryIndex,
     skillNames,
     skillInventory,
@@ -2339,8 +2360,14 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
   const { command, subcommand, options } = parseArgs(argv);
 
-  if (command === '--help' || command === 'help' || options.help) {
+  if (command === '--help' || command === 'help') {
     console.log(formatCliUsage());
+    return;
+  }
+
+  if (options.help) {
+    const usageHint = buildCommandUsageHint(command, subcommand);
+    console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
     return;
   }
 

@@ -235,6 +235,7 @@ type CoreDocumentFoundationSummary = {
   readySections?: string[];
   missingSections?: string[];
   headingAliases?: string[];
+  shadowPaths?: string[];
 };
 
 type FoundationCoreOverview = {
@@ -262,6 +263,7 @@ type FoundationCoreMaintenanceQueueItem = {
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
+  shadowPaths?: string[];
   command?: string | null;
 };
 
@@ -298,6 +300,7 @@ type FoundationCore = {
     rootReadySectionCount?: number;
     rootTotalSectionCount?: number;
     headingAliases?: string[];
+    shadowPaths?: string[];
     canonicalShortTermBucket?: string;
     legacyShortTermAliases?: string[];
     legacyShortTermSourceCount?: number;
@@ -325,6 +328,7 @@ type FoundationCore = {
     rootReadySectionCount?: number;
     rootTotalSectionCount?: number;
     headingAliases?: string[];
+    shadowPaths?: string[];
     count?: number;
     documentedCount?: number;
     undocumentedCount?: number;
@@ -558,6 +562,8 @@ type RecommendedStarterProfileSlice = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   refreshReasons?: string[];
   missingDrafts?: string[];
   draftGapSummary?: string | null;
@@ -587,6 +593,8 @@ type IngestionProfileCommand = {
   latestMaterialAt?: string | null;
   latestMaterialId?: string | null;
   latestMaterialSourcePath?: string | null;
+  candidateSignalSummary?: string | null;
+  draftSourcesSummary?: string | null;
   needsRefresh?: boolean;
   refreshReasons?: string[];
   missingDrafts?: string[];
@@ -594,6 +602,7 @@ type IngestionProfileCommand = {
   updateProfileCommand?: string | null;
   updateProfileAndRefreshCommand?: string | null;
   updateIntakeCommand?: string | null;
+  editPath?: string | null;
   importIntakeWithoutRefreshCommand?: string | null;
   importIntakeCommand?: string | null;
   starterImportCommand?: string | null;
@@ -605,6 +614,8 @@ type IngestionProfileCommand = {
   intakeCompletion?: 'ready' | 'partial' | 'missing' | string;
   intakeStatusSummary?: string | null;
   intakeManifestStatus?: 'missing' | 'invalid' | 'starter' | 'loaded' | string;
+  intakeManifestPath?: string | null;
+  intakeManifestError?: string | null;
   intakePaths?: string[];
   intakeMissingPaths?: string[];
   intakeManifestEntryTemplateTypes?: string[];
@@ -631,7 +642,11 @@ type IngestionHelperCommands = {
   scaffoldBundle?: string | null;
   scaffoldImportedBundle?: string | null;
   repairInvalidBundle?: string | null;
+  inspectInvalidBundle?: string | null;
+  replayInvalidBundle?: string | null;
   repairImportedInvalidBundle?: string | null;
+  inspectImportedInvalidBundle?: string | null;
+  replayImportedInvalidBundle?: string | null;
   importManifestInspect?: string | null;
   importManifest?: string | null;
   importManifestAndRefresh?: string | null;
@@ -724,6 +739,8 @@ type IngestionSummary = {
   staleRefreshCommand?: string | null;
   refreshFoundationBundleCommand?: string | null;
   starterImportBundleCommand?: string | null;
+  inspectImportedStarterBundleCommand?: string | null;
+  replayImportedStarterBundleCommand?: string | null;
   repairInvalidIntakeBundleCommand?: string | null;
   repairImportedInvalidIntakeBundleCommand?: string | null;
   updateProfileBundleCommand?: string | null;
@@ -734,6 +751,8 @@ type IngestionSummary = {
   recommendedLatestMaterialAt?: string | null;
   recommendedLatestMaterialId?: string | null;
   recommendedLatestMaterialSourcePath?: string | null;
+  recommendedCandidateSignalSummary?: string | null;
+  recommendedDraftSourcesSummary?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedRefreshIntakeCommand?: string | null;
@@ -882,9 +901,9 @@ function formatRecommendedStarterProfileSlices(slices: unknown): string | null {
       .filter((slice): slice is RecommendedStarterProfileSlice => Boolean(slice) && typeof slice === 'object' && !Array.isArray(slice))
       .map((slice) => {
         const label = normalizeOptionalString(slice.label) ?? normalizeOptionalString(slice.personId) ?? 'unknown-profile';
-        const editPath = normalizeOptionalString(slice.editPath)
-          ?? normalizeStringArray(slice.editPaths)[0]
-          ?? normalizeStringArray(slice.paths).find((value) => value.endsWith('materials.template.json'))
+        const editPath = normalizeDraftPath(normalizeOptionalString(slice.editPath))
+          ?? normalizeStringArray(slice.editPaths, normalizeDraftPath)[0]
+          ?? normalizeStringArray(slice.paths, normalizeDraftPath).find((value) => value.endsWith('materials.template.json'))
           ?? null;
 
         return editPath ? `${label} -> ${editPath}` : null;
@@ -1973,7 +1992,12 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
 
   if (intakeStatusSummary && intakeStatusSummary !== 'ready') {
     const [statusPrefix] = intakeStatusSummary.split(' — ');
-    return statusPrefix?.trim() || intakeStatusSummary;
+    const compactStatus = (statusPrefix?.trim() || intakeStatusSummary).replace(/^intake\s+/i, '').trim();
+    const normalizedManifestError = normalizeOptionalString(profile?.intakeManifestError);
+    if (compactStatus === 'invalid manifest' && normalizedManifestError) {
+      return `${compactStatus} (${normalizedManifestError})`;
+    }
+    return compactStatus;
   }
 
   if (profile?.intakeReady === true) {
@@ -1983,12 +2007,23 @@ function summarizeCompactIntakeStatus(profile: IngestionProfileCommand | null | 
   return null;
 }
 
+function formatCompactIngestionEditPath(profile: IngestionProfileCommand | null | undefined): string | null {
+  const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+  if (!compactIntakeStatus || compactIntakeStatus === 'ready') {
+    return null;
+  }
+
+  const editPath = normalizeDraftPath(normalizeOptionalString(profile?.editPath ?? profile?.intakeManifestPath));
+  return editPath ? ` -> ${editPath}` : null;
+}
+
 function formatIngestionProfileLabel(profile: IngestionProfileCommand | null | undefined): string {
   const baseLabel = profile?.label ?? profile?.personId ?? 'unknown-profile';
   const compactIntakeStatus = summarizeCompactIntakeStatus(profile);
+  const compactEditPath = formatCompactIngestionEditPath(profile);
 
   return compactIntakeStatus
-    ? `${baseLabel} [intake ${compactIntakeStatus}]`
+    ? `${baseLabel} [intake ${compactIntakeStatus}]${compactEditPath ?? ''}`
     : baseLabel;
 }
 
@@ -2020,6 +2055,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       || helperCommands.refreshAllFoundation
       || helperCommands.refreshStaleFoundation
       || helperCommands.refreshFoundationBundle
+      || ingestion?.refreshFoundationBundleCommand
+      || ingestion?.starterImportBundleCommand
+      || ingestion?.inspectImportedStarterBundleCommand
+      || ingestion?.replayImportedStarterBundleCommand
+      || ingestion?.repairInvalidIntakeBundleCommand
+      || ingestion?.repairImportedInvalidIntakeBundleCommand
+      || ingestion?.updateProfileBundleCommand
+      || ingestion?.updateProfileAndRefreshBundleCommand
       || (ingestion?.supportedImportTypes?.length ?? 0) > 0,
   );
 
@@ -2140,8 +2183,16 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.scaffoldImported ? `scaffold-imported ${helperCommands.scaffoldImported}` : null);
       pushHelperEntry(helperCommands.scaffoldBundle ? `scaffold-bundle ${helperCommands.scaffoldBundle}` : null);
       pushHelperEntry(helperCommands.scaffoldImportedBundle ? `scaffold-imported-bundle ${helperCommands.scaffoldImportedBundle}` : null);
-      pushHelperEntry(helperCommands.repairInvalidBundle ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle}` : null);
-      pushHelperEntry(helperCommands.repairImportedInvalidBundle ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle}` : null);
+      pushHelperEntry((helperCommands.repairInvalidBundle ?? ingestion.repairInvalidIntakeBundleCommand)
+        ? `repair-invalid-bundle ${helperCommands.repairInvalidBundle ?? ingestion.repairInvalidIntakeBundleCommand}`
+        : null);
+      pushHelperEntry(helperCommands.inspectInvalidBundle ? `inspect-invalid-bundle ${helperCommands.inspectInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.replayInvalidBundle ? `replay-invalid-bundle ${helperCommands.replayInvalidBundle}` : null);
+      pushHelperEntry((helperCommands.repairImportedInvalidBundle ?? ingestion.repairImportedInvalidIntakeBundleCommand)
+        ? `repair-imported-invalid-bundle ${helperCommands.repairImportedInvalidBundle ?? ingestion.repairImportedInvalidIntakeBundleCommand}`
+        : null);
+      pushHelperEntry(helperCommands.inspectImportedInvalidBundle ? `inspect-imported-invalid-bundle ${helperCommands.inspectImportedInvalidBundle}` : null);
+      pushHelperEntry(helperCommands.replayImportedInvalidBundle ? `replay-imported-invalid-bundle ${helperCommands.replayImportedInvalidBundle}` : null);
       pushHelperEntry(helperCommands.importManifestInspect ? `manifest-inspect ${helperCommands.importManifestInspect}` : null);
       pushHelperEntry(helperCommands.importManifestAndRefresh ? `manifest ${helperCommands.importManifestAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeAll ? `import-all ${helperCommands.importIntakeAll}` : null);
@@ -2151,14 +2202,26 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       pushHelperEntry(helperCommands.importIntakeImported ? `import-imported ${helperCommands.importIntakeImported}` : null);
       pushHelperEntry(helperCommands.importIntakeImportedAndRefresh ? `import-imported+refresh ${helperCommands.importIntakeImportedAndRefresh}` : null);
       pushHelperEntry(helperCommands.importIntakeBundle ? `import-bundle ${helperCommands.importIntakeBundle}` : null);
-      pushHelperEntry(helperCommands.inspectImportedStarterBundle ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle}` : null);
-      pushHelperEntry(helperCommands.replayImportedStarterBundle ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle}` : null);
-      pushHelperEntry(helperCommands.starterImportBundle ? `starter-import-bundle ${helperCommands.starterImportBundle}` : null);
-      pushHelperEntry(helperCommands.updateProfileBundle ? `update-bundle ${helperCommands.updateProfileBundle}` : null);
-      pushHelperEntry(helperCommands.updateProfileAndRefreshBundle ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle}` : null);
+      pushHelperEntry((helperCommands.inspectImportedStarterBundle ?? ingestion.inspectImportedStarterBundleCommand)
+        ? `inspect-starter-bundle ${helperCommands.inspectImportedStarterBundle ?? ingestion.inspectImportedStarterBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.replayImportedStarterBundle ?? ingestion.replayImportedStarterBundleCommand)
+        ? `replay-starter-bundle ${helperCommands.replayImportedStarterBundle ?? ingestion.replayImportedStarterBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.starterImportBundle ?? ingestion.starterImportBundleCommand)
+        ? `starter-import-bundle ${helperCommands.starterImportBundle ?? ingestion.starterImportBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.updateProfileBundle ?? ingestion.updateProfileBundleCommand)
+        ? `update-bundle ${helperCommands.updateProfileBundle ?? ingestion.updateProfileBundleCommand}`
+        : null);
+      pushHelperEntry((helperCommands.updateProfileAndRefreshBundle ?? ingestion.updateProfileAndRefreshBundleCommand)
+        ? `sync-bundle ${helperCommands.updateProfileAndRefreshBundle ?? ingestion.updateProfileAndRefreshBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.refreshAllFoundation ? `refresh-all ${helperCommands.refreshAllFoundation}` : null);
       pushHelperEntry(helperCommands.refreshStaleFoundation ? `refresh ${helperCommands.refreshStaleFoundation}` : null);
-      pushHelperEntry(helperCommands.refreshFoundationBundle ? `refresh-bundle ${helperCommands.refreshFoundationBundle}` : null);
+      pushHelperEntry((helperCommands.refreshFoundationBundle ?? ingestion.refreshFoundationBundleCommand)
+        ? `refresh-bundle ${helperCommands.refreshFoundationBundle ?? ingestion.refreshFoundationBundleCommand}`
+        : null);
       pushHelperEntry(helperCommands.sampleStarter ? `sample ${helperCommands.sampleStarter}` : null);
       pushHelperEntry(helperCommands.sampleManifestInspect ? `sample-manifest-inspect ${helperCommands.sampleManifestInspect}` : null);
       pushHelperEntry(helperCommands.sampleManifest ? `sample-manifest ${helperCommands.sampleManifest}` : null);
@@ -2421,6 +2484,22 @@ function formatHeadingAliasSummary(
   return `${prefix}${normalizedAliases.join(', ')}`;
 }
 
+function formatCompactPathPreview(
+  paths: string[] | null | undefined,
+  prefix = '; samples ',
+): string | null {
+  const normalizedPaths = normalizeStringArray(
+    paths,
+    (value) => normalizeDraftPath(normalizeOptionalString(value)),
+  );
+
+  if (normalizedPaths.length === 0) {
+    return null;
+  }
+
+  return `${prefix}${normalizedPaths.join(', ')}`;
+}
+
 function formatRootSectionSummary(
   readySections: string[] | undefined,
   missingSections: string[] | undefined,
@@ -2492,6 +2571,35 @@ function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | unde
   }
 
   return summary.replace(/^; aliases /, '- root heading aliases: ');
+}
+
+function formatShadowPathSummary(
+  shadowPaths: string[] | null | undefined,
+  prefix = '; shadow docs ',
+): string | null {
+  const normalizedShadowPaths = Array.isArray(shadowPaths)
+    ? Array.from(new Set(
+      shadowPaths
+        .map((value) => normalizeDraftPath(normalizeOptionalString(value)))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
+    : [];
+  if (normalizedShadowPaths.length === 0) {
+    return null;
+  }
+
+  const visibleShadowPaths = normalizedShadowPaths.slice(0, 3);
+  const remainingShadowPathCount = Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0);
+  return `${prefix}${visibleShadowPaths.join(', ')}${remainingShadowPathCount > 0 ? `, +${remainingShadowPathCount} more` : ''}`;
+}
+
+function formatPreviewShadowPathSummary(shadowPaths: string[] | null | undefined): string | null {
+  const summary = formatShadowPathSummary(shadowPaths);
+  if (!summary) {
+    return null;
+  }
+
+  return summary.replace(/^; shadow docs /, '- shadow docs: ');
 }
 
 function formatThinSectionProgress(
@@ -2612,9 +2720,10 @@ function buildReadyCoreFoundationDetails(
     label: string,
     progress: { readySectionCount: number; totalSectionCount: number; readySections: string[] },
     path?: string | null,
-  ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}${typeof path === 'string' && path.length > 0 ? ` @ ${path}` : ''}`;
+    shadowPaths?: string[] | null,
+  ) => `${label} ${progress.readySectionCount}/${progress.totalSectionCount}${progress.readySections.length > 0 ? ` (${progress.readySections.join(', ')})` : ''}${typeof path === 'string' && path.length > 0 ? ` @ ${path}` : ''}${formatShadowPathSummary(shadowPaths, ', shadow docs ') ?? ''}`;
 
-  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
+  return `- ready details: memory buckets ${memory.readyBucketCount}/${memory.totalBucketCount}${populatedBuckets.length > 0 ? ` (${populatedBuckets.join(', ')})` : ''}${formatMemoryAliasSummary(memory, ', aliases ') ?? ''}${formatCompactPathPreview(memory.sampleEntries, ', samples ') ?? ''}, ${formatReadySectionSummary('root sections', memoryRootProgress, memory.rootPath, memory.shadowPaths)}${formatHeadingAliasSummary(memory.headingAliases, ', aliases ') ?? ''}; skills docs ${skills.documentedCount}/${skills.count}${skillSample.length > 0 ? ` (${skillSample.join(', ')})` : ''}, ${formatReadySectionSummary('root sections', skillsRootProgress, skills.rootPath, skills.shadowPaths)}${formatHeadingAliasSummary(skills.headingAliases, ', aliases ') ?? ''}; soul ${formatReadySectionSummary('sections', soulProgress, soul.rootPath ?? soul.path, soul.shadowPaths)}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}; voice ${formatReadySectionSummary('sections', voiceProgress, voice.rootPath ?? voice.path, voice.shadowPaths)}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`;
 }
 
 function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem): string {
@@ -2633,6 +2742,11 @@ function formatQueuedAreaSectionContext(area: FoundationCoreMaintenanceQueueItem
   const rootHeadingAliasSummary = formatHeadingAliasSummary(area.rootHeadingAliases, 'root aliases ');
   if (rootHeadingAliasSummary) {
     contextParts.push(rootHeadingAliasSummary);
+  }
+
+  const shadowPathSummary = formatShadowPathSummary(area.shadowPaths, 'shadow docs ');
+  if (shadowPathSummary) {
+    contextParts.push(shadowPathSummary);
   }
 
   const thinSectionPaths = new Set<string>([
@@ -2729,10 +2843,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       : null,
     readyCoreFoundationDetails,
     !readyCoreFoundationDetails && memory
-      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memoryDailyCount}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${formatMemoryAliasSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}${formatHeadingAliasSummary(memory.headingAliases) ?? ''}`
+      ? `- memory: README ${memory.hasRootDocument ? 'yes' : 'no'}, daily ${memoryDailyCount}, long-term ${memory.longTermCount ?? 0}, scratch ${memory.scratchCount ?? 0}${formatMemoryBucketSummary(memory) ?? ''}${formatMemoryAliasSummary(memory) ?? ''}${(memory.sampleEntries ?? []).length > 0 ? `; samples: ${memory.sampleEntries?.join(', ')}` : ''}${memory.rootExcerpt ? `; root: ${memory.rootExcerpt}${memory.rootPath ? ` @ ${memory.rootPath}` : ''}` : ''}${formatRootSectionSummary(memory.rootReadySections, memory.rootMissingSections, memory.rootReadySectionCount, memory.rootTotalSectionCount)}${formatShadowPathSummary(memory.shadowPaths) ?? ''}${formatHeadingAliasSummary(memory.headingAliases) ?? ''}`
       : null,
     !readyCoreFoundationDetails && skills
-      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${formatHeadingAliasSummary(skills.headingAliases) ?? ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
+      ? `- skills: ${skills.count ?? 0} registered, ${skills.documentedCount ?? 0} documented${(skills.sample ?? []).length > 0 ? ` (${skills.sample?.join(', ')})` : ''}${skills.rootExcerpt ? `; root: ${skills.rootExcerpt}${skills.rootPath ? ` @ ${skills.rootPath}` : ''}` : (skills.hasRootDocument === false && skills.rootPath ? `; root missing @ ${skills.rootPath}` : '')}${formatRootSectionSummary(skills.rootReadySections, skills.rootMissingSections, skills.rootReadySectionCount, skills.rootTotalSectionCount)}${formatShadowPathSummary(skills.shadowPaths) ?? ''}${formatHeadingAliasSummary(skills.headingAliases) ?? ''}${(skills.samplePaths ?? []).length > 0 ? `; docs: ${skills.samplePaths?.join(', ')}` : ''}${(skills.sampleExcerpts ?? []).length > 0 ? `; excerpts: ${skills.sampleExcerpts?.join(' | ')}` : ''}${(skills.undocumentedSample ?? []).length > 0 ? `; missing docs: ${skills.undocumentedSample?.join(', ')}${(skills.undocumentedPaths ?? []).length > 0 ? ` @ ${skills.undocumentedPaths?.join(', ')}` : ''}` : ''}${(skills.thinSample ?? []).length > 0 ? `; thin docs: ${skills.thinSample?.map((skillName) => {
         const readySections = skills.thinReadySections?.[skillName] ?? [];
         const missingSections = skills.thinMissingSections?.[skillName] ?? [];
         const readySectionCount = skills.thinReadySectionCounts?.[skillName];
@@ -2742,10 +2856,10 @@ function buildCoreFoundationBlock(foundationCore: FoundationCore = null) {
       }).join(', ')}${(skills.thinPaths ?? []).length > 0 ? ` @ ${skills.thinPaths?.join(', ')}` : ''}` : ''}`
       : null,
     !readyCoreFoundationDetails && soul
-      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}`
+      ? `- soul: ${soul.present ? 'present' : 'missing'}, ${soul.lineCount ?? 0} lines${(soul.rootExcerpt ?? soul.excerpt) ? `, ${soul.rootExcerpt ?? soul.excerpt}` : ''}${(soul.rootPath ?? soul.path) ? ` @ ${soul.rootPath ?? soul.path}` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && typeof soul.readySectionCount === 'number' && typeof soul.totalSectionCount === 'number' ? `, sections ${soul.readySectionCount}/${soul.totalSectionCount} ready` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.readySections ?? []).length > 0 ? ` (${soul.readySections?.join(', ')})` : ''}${soul.present && (soul.lineCount ?? 0) > 0 && (soul.missingSections ?? []).length > 0 ? `, missing ${(soul.missingSections ?? []).join(', ')}` : ''}${formatShadowPathSummary(soul.shadowPaths, ', shadow docs ') ?? ''}${formatHeadingAliasSummary(soul.headingAliases, ', aliases ') ?? ''}`
       : null,
     !readyCoreFoundationDetails && voice
-      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`
+      ? `- voice: ${voice.present ? 'present' : 'missing'}, ${voice.lineCount ?? 0} lines${(voice.rootExcerpt ?? voice.excerpt) ? `, ${voice.rootExcerpt ?? voice.excerpt}` : ''}${(voice.rootPath ?? voice.path) ? ` @ ${voice.rootPath ?? voice.path}` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && typeof voice.readySectionCount === 'number' && typeof voice.totalSectionCount === 'number' ? `, sections ${voice.readySectionCount}/${voice.totalSectionCount} ready` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.readySections ?? []).length > 0 ? ` (${voice.readySections?.join(', ')})` : ''}${voice.present && (voice.lineCount ?? 0) > 0 && (voice.missingSections ?? []).length > 0 ? `, missing ${(voice.missingSections ?? []).join(', ')}` : ''}${formatShadowPathSummary(voice.shadowPaths, ', shadow docs ') ?? ''}${formatHeadingAliasSummary(voice.headingAliases, ', aliases ') ?? ''}`
       : null,
     recommendedActions.length > 0
       ? `- next actions: ${recommendedActions.join(' | ')}`
@@ -3165,7 +3279,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
 
 function buildSoulPreviewBlock(
   soul: SoulSummary,
-  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+  foundationSoul?: Pick<NonNullable<FoundationCore>['soul'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!soul) {
     return '- unavailable';
@@ -3198,13 +3312,14 @@ function buildSoulPreviewBlock(
         foundationSoul.totalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationSoul?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationSoul?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildMemoryPreviewBlock(
   memory: MemorySummary,
-  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases'> | null,
+  foundationMemory?: Pick<NonNullable<FoundationCore>['memory'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!memory) {
     return '- unavailable';
@@ -3240,13 +3355,14 @@ function buildMemoryPreviewBlock(
         foundationMemory.rootTotalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationMemory?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationMemory?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }
 
 function buildSkillsPreviewBlock(
   skills: SkillRegistrySummary,
-  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts'> | null,
+  foundationSkills?: Pick<NonNullable<FoundationCore>['skills'], 'rootExcerpt' | 'rootPath' | 'rootReadySections' | 'rootMissingSections' | 'rootReadySectionCount' | 'rootTotalSectionCount' | 'headingAliases' | 'categoryCounts' | 'documentedCategoryCounts' | 'shadowPaths'> | null,
 ): string {
   if (!skills) {
     return '- unavailable';
@@ -3348,6 +3464,7 @@ function buildSkillsPreviewBlock(
     `- custom: ${skills.customCount ?? 0}`,
     rootExcerpt ? `- root: ${rootExcerpt}${rootPath ? ` @ ${rootPath}` : ''}` : null,
     rootSectionSummary,
+    formatPreviewShadowPathSummary(foundationSkills?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationSkills?.headingAliases),
     `- top skills: ${topSkills}`,
     foundationStatusSummary,
@@ -3367,7 +3484,7 @@ function formatVoicePreviewItems(label: string, values: unknown): string {
 
 function buildVoicePreviewBlock(
   voice: VoiceSummary,
-  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases'> | null,
+  foundationVoice?: Pick<NonNullable<FoundationCore>['voice'], 'rootExcerpt' | 'rootPath' | 'readySections' | 'missingSections' | 'readySectionCount' | 'totalSectionCount' | 'headingAliases' | 'shadowPaths'> | null,
 ): string {
   if (!voice) {
     return '- unavailable';
@@ -3397,6 +3514,7 @@ function buildVoicePreviewBlock(
         foundationVoice.totalSectionCount,
       )
       : null,
+    formatPreviewShadowPathSummary(foundationVoice?.shadowPaths),
     formatPreviewHeadingAliasSummary(foundationVoice?.headingAliases),
   ].filter((line): line is string => typeof line === 'string' && line.length > 0).join('\n');
 }

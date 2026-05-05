@@ -430,6 +430,59 @@ test('WhatsApp channel runtime helpers cover readiness, interactive inbound repl
     },
   );
 
+  assert.deepEqual(
+    channel.normalizeInboundEvent({
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: 'phone-1' },
+                contacts: [
+                  {
+                    wa_id: '15550001',
+                    profile: { name: 'Harry' },
+                  },
+                ],
+                messages: [
+                  {
+                    from: '15550001',
+                    id: 'wamid-2b',
+                    timestamp: '1710000202',
+                    type: 'interactive',
+                    interactive: {
+                      list_reply: {
+                        id: 'list-2',
+                        title: '',
+                        description: 'Needs manual follow-up',
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    {
+      platform: 'whatsapp',
+      eventType: 'interactive',
+      phoneNumberId: 'phone-1',
+      senderId: '15550001',
+      profileName: 'Harry',
+      text: 'Needs manual follow-up',
+      interactiveReplyType: 'list_reply',
+      interactiveReplyId: 'list-2',
+      interactiveReplyTitle: null,
+      interactiveReplyDescription: 'Needs manual follow-up',
+      messageId: 'wamid-2b',
+      contextMessageId: null,
+      timestamp: 1710000202,
+    },
+  );
+
   assert.equal(
     channel.buildWebhookVerificationResponse({
       'hub.mode': 'subscribe',

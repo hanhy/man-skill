@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
+import { summarizeFoundationDraftSources } from './foundation-draft-source-summary.ts';
 import { inspectProfileIntakeManifest as inspectSharedProfileIntakeManifest } from './intake-manifest.js';
 
 function stripLeadingUtf8Bom(value: string) {
@@ -42,6 +43,60 @@ function buildProfileLabel(profile) {
 
 function normalizeRelativePath(value) {
   return normalizeDraftPath(typeof value === 'string' ? value : null);
+}
+
+function normalizeOptionalString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeStringArray(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const normalized = [];
+  for (const value of values) {
+    const stringValue = normalizeOptionalString(value);
+    if (!stringValue || seen.has(stringValue)) {
+      continue;
+    }
+    seen.add(stringValue);
+    normalized.push(stringValue);
+  }
+
+  return normalized;
+}
+
+function collectCandidateSignalTypes(signal, primarySource = 'sample') {
+  const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
+  const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
+  return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
+}
+
+function buildCandidateSignalSummary(profile) {
+  const readiness = profile?.foundationReadiness ?? {};
+  let hasNonZeroCandidate = false;
+  const segments = ['memory', 'voice', 'soul', 'skills'].map((key) => {
+    const signal = readiness?.[key] ?? {};
+    const candidateCount = Number(signal?.candidateCount ?? 0);
+    const normalizedCount = Number.isFinite(candidateCount) && candidateCount > 0 ? candidateCount : 0;
+    if (normalizedCount > 0) {
+      hasNonZeroCandidate = true;
+    }
+    const types = collectCandidateSignalTypes(signal, key === 'memory' ? 'latest' : 'sample');
+    const typeSuffix = normalizedCount > 0 && types.length > 0
+      ? ` (${types.sort((left, right) => left.localeCompare(right)).join(', ')})`
+      : '';
+    return `${key} ${normalizedCount}${typeSuffix}`;
+  });
+
+  return hasNonZeroCandidate && segments.length > 0 ? segments.join(' | ') : null;
 }
 
 function shellQuote(value) {
@@ -153,34 +208,30 @@ function buildRecommendedStarterProfileSlice(profile: any) {
   const intakeManifestEntryTemplateRoot = collectStarterTemplateRoot(profile);
 
   return {
-    personId: typeof profile?.personId === 'string' && profile.personId.length > 0 ? profile.personId : null,
-    label: typeof profile?.label === 'string' && profile.label.length > 0 ? profile.label : null,
-    latestMaterialAt: typeof profile?.latestMaterialAt === 'string' && profile.latestMaterialAt.length > 0 ? profile.latestMaterialAt : null,
-    latestMaterialId: typeof profile?.latestMaterialId === 'string' && profile.latestMaterialId.length > 0 ? profile.latestMaterialId : null,
+    personId: normalizeOptionalString(profile?.personId),
+    label: normalizeOptionalString(profile?.label),
+    latestMaterialAt: normalizeOptionalString(profile?.latestMaterialAt),
+    latestMaterialId: normalizeOptionalString(profile?.latestMaterialId),
     latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
-    refreshReasons: Array.isArray(profile?.refreshReasons)
-      ? profile.refreshReasons.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
-      : [],
-    missingDrafts: Array.isArray(profile?.missingDrafts)
-      ? profile.missingDrafts.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
-      : [],
-    draftGapSummary: typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
-      ? profile.draftGapSummary
-      : null,
-    fallbackCommand: typeof profile?.starterImportCommand === 'string' && profile.starterImportCommand.length > 0 ? profile.starterImportCommand : null,
-    refreshIntakeCommand: typeof profile?.updateIntakeCommand === 'string' && profile.updateIntakeCommand.length > 0 ? profile.updateIntakeCommand : null,
-    updateProfileCommand: typeof profile?.updateProfileCommand === 'string' && profile.updateProfileCommand.length > 0 ? profile.updateProfileCommand : null,
-    updateProfileAndRefreshCommand: typeof profile?.updateProfileAndRefreshCommand === 'string' && profile.updateProfileAndRefreshCommand.length > 0 ? profile.updateProfileAndRefreshCommand : null,
+    refreshReasons: normalizeStringArray(profile?.refreshReasons),
+    missingDrafts: normalizeStringArray(profile?.missingDrafts),
+    candidateSignalSummary: normalizeOptionalString(profile?.candidateSignalSummary),
+    draftSourcesSummary: normalizeOptionalString(profile?.draftSourcesSummary),
+    draftGapSummary: normalizeOptionalString(profile?.draftGapSummary),
+    fallbackCommand: normalizeOptionalString(profile?.starterImportCommand),
+    refreshIntakeCommand: normalizeOptionalString(profile?.updateIntakeCommand),
+    updateProfileCommand: normalizeOptionalString(profile?.updateProfileCommand),
+    updateProfileAndRefreshCommand: normalizeOptionalString(profile?.updateProfileAndRefreshCommand),
     editPath: intakeManifestPath,
     editPaths: collectStarterTemplateEditPaths(profile),
     intakeManifestEntryTemplateRoot,
-    manifestInspectCommand: typeof profile?.importManifestWithoutRefreshCommand === 'string' && profile.importManifestWithoutRefreshCommand.length > 0 ? profile.importManifestWithoutRefreshCommand : null,
-    manifestImportCommand: typeof profile?.importManifestCommand === 'string' && profile.importManifestCommand.length > 0 ? profile.importManifestCommand : null,
+    manifestInspectCommand: normalizeOptionalString(profile?.importManifestWithoutRefreshCommand),
+    manifestImportCommand: normalizeOptionalString(profile?.importManifestCommand),
     intakeManifestEntryTemplateTypes,
     intakeManifestEntryTemplateDetails,
     intakeManifestEntryTemplateCount,
-    inspectCommand: typeof profile?.followUpImportIntakeWithoutRefreshCommand === 'string' && profile.followUpImportIntakeWithoutRefreshCommand.length > 0 ? profile.followUpImportIntakeWithoutRefreshCommand : null,
-    followUpCommand: typeof profile?.followUpImportIntakeCommand === 'string' && profile.followUpImportIntakeCommand.length > 0 ? profile.followUpImportIntakeCommand : null,
+    inspectCommand: normalizeOptionalString(profile?.followUpImportIntakeWithoutRefreshCommand),
+    followUpCommand: normalizeOptionalString(profile?.followUpImportIntakeCommand),
     paths: collectProfileIntakePaths(profile),
   };
 }
@@ -793,7 +844,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestPath = intake?.ready
     ? (normalizeDraftPath(intake?.starterManifestPath ?? null) ?? null)
     : null;
-  const intakeManifestCommandAvailable = intakeManifest.status === 'loaded' || intakeManifest.status === 'starter';
+  const intakeManifestCommandAvailable = intakeManifest.status === 'loaded'
+    || intakeManifest.status === 'starter'
+    || intakeManifest.status === 'invalid';
   const importedIntakeCommandsAvailable = intakeManifest.status === 'loaded';
   const intakeImportManifestWithoutRefreshCommand = intakeManifestPath && intakeManifestCommandAvailable
     ? `node src/index.js import manifest --file ${shellQuote(intakeManifestPath)}`
@@ -841,6 +894,8 @@ function buildProfileCommands(profile, options: any = {}) {
   const intakeManifestEntryTemplateCount = Number.isFinite((intakeManifest as any)?.entryTemplateCount)
     ? (intakeManifest as any).entryTemplateCount
     : 0;
+  const candidateSignalSummary = imported ? buildCandidateSignalSummary(profile) : null;
+  const draftSourcesSummary = imported ? summarizeFoundationDraftSources(profile) : null;
   const importIntakeWithoutRefreshCommand = importedIntakeCommandsAvailable
     ? `node src/index.js import intake --person ${shellQuote(profile.id)}`
     : null;
@@ -889,6 +944,8 @@ function buildProfileCommands(profile, options: any = {}) {
       ))
       : [],
     missingDrafts: imported ? [...(profile.foundationDraftStatus?.missingDrafts ?? [])].sort() : [],
+    candidateSignalSummary,
+    draftSourcesSummary,
     draftGapSummary: imported ? summarizeProfileDraftGaps(profile) : null,
     updateProfileCommand,
     updateProfileAndRefreshCommand,
@@ -974,13 +1031,17 @@ function collectStarterTemplateEditPaths(profile: any): string[] {
   const starterTemplateFilePaths = normalizeStarterTemplateDetails(profile?.intakeManifestEntryTemplateDetails)
     .filter((detail) => detail.source === 'file' && typeof detail.path === 'string' && detail.path.length > 0)
     .map((detail) => {
-      if (!manifestDir) {
-        return null;
-      }
-
       const normalizedDetailPath = normalizeDraftPath(detail.path);
       if (!normalizedDetailPath) {
         return null;
+      }
+
+      if (!manifestDir) {
+        return normalizedDetailPath;
+      }
+
+      if (normalizedDetailPath === manifestDir || normalizedDetailPath.startsWith(`${manifestDir}/`)) {
+        return normalizedDetailPath;
       }
 
       const resolvedPath = path.posix.normalize(path.posix.join(manifestDir, normalizedDetailPath));
@@ -1178,6 +1239,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const intakeImportStaleAndRefreshCommand = 'node src/index.js import intake --stale --refresh-foundation';
   const importedIntakeImportCommand = 'node src/index.js import intake --imported';
   const importedIntakeImportAndRefreshCommand = 'node src/index.js import intake --imported --refresh-foundation';
+  const invalidReadyIntakeProfiles = metadataProfileCommands.filter((profile) =>
+    profile?.intakeReady === true
+    && profile?.intakeManifestStatus === 'invalid'
+    && typeof profile?.intakeManifestPath === 'string'
+    && profile.intakeManifestPath.length > 0,
+  );
   const helperCommands = {
     bootstrap: bootstrapProfileCommand,
     scaffoldAll: 'node src/index.js update intake --all',
@@ -1196,10 +1263,34 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       metadataInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    inspectInvalidBundle: invalidReadyIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        invalidReadyIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand ?? profile?.importManifestWithoutRefreshCommand),
+      )
+      : null,
+    replayInvalidBundle: invalidReadyIntakeProfiles.length > 1
+      ? buildCommandBundle(
+        invalidReadyIntakeProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand ?? profile?.importManifestCommand),
+      )
+      : null,
     repairImportedInvalidBundle: buildCommandBundle(
       importedInvalidIntakeManifestProfiles
         .map((profile) => profile?.updateIntakeCommand),
     ),
+    inspectImportedInvalidBundle: importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(
+        importedInvalidIntakeManifestProfiles
+          .map((profile) => profile?.followUpImportIntakeWithoutRefreshCommand),
+      )
+      : null,
+    replayImportedInvalidBundle: importedInvalidIntakeManifestProfiles.length > 1
+      ? buildCommandBundle(
+        importedInvalidIntakeManifestProfiles
+          .map((profile) => profile?.followUpImportIntakeCommand),
+      )
+      : null,
     importManifestInspect: 'node src/index.js import manifest --file <manifest.json>',
     importManifest: 'node src/index.js import manifest --file <manifest.json>',
     importManifestAndRefresh: 'node src/index.js import manifest --file <manifest.json> --refresh-foundation',
@@ -1265,12 +1356,6 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   const refreshTargets = allProfileCommands.filter((profile) => (profile?.materialCount ?? 0) > 0 && (profile?.needsRefresh || (profile?.missingDrafts?.length ?? 0) > 0));
   const firstRefreshTarget = refreshTargets[0] ?? null;
   const metadataOnlyProfileNeedingScaffold = metadataProfileCommands.find((profile) => profile?.intakeReady === false && profile?.updateIntakeCommand) ?? null;
-  const invalidReadyIntakeProfiles = metadataProfileCommands.filter((profile) =>
-    profile?.intakeReady === true
-    && profile?.intakeManifestStatus === 'invalid'
-    && typeof profile?.intakeManifestPath === 'string'
-    && profile.intakeManifestPath.length > 0,
-  );
   const readyIntakeProfiles = metadataProfileCommands.filter((profile) =>
     profile?.intakeReady === true
     && profile?.intakeManifestStatus !== 'invalid'
@@ -1302,6 +1387,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLatestMaterialAt: string | null = null;
   let recommendedLatestMaterialId: string | null = null;
   let recommendedLatestMaterialSourcePath: string | null = null;
+  let recommendedCandidateSignalSummary: string | null = null;
+  let recommendedDraftSourcesSummary: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
@@ -1321,6 +1408,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     latestMaterialAt: string | null;
     latestMaterialId: string | null;
     latestMaterialSourcePath: string | null;
+    candidateSignalSummary: string | null;
+    draftSourcesSummary: string | null;
     fallbackCommand: string | null;
     refreshIntakeCommand: string | null;
     updateProfileCommand: string | null;
@@ -1345,6 +1434,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialAt = profile?.latestMaterialAt ?? null;
     recommendedLatestMaterialId = profile?.latestMaterialId ?? null;
     recommendedLatestMaterialSourcePath = normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null;
+    recommendedCandidateSignalSummary = typeof profile?.candidateSignalSummary === 'string' && profile.candidateSignalSummary.length > 0
+      ? profile.candidateSignalSummary
+      : null;
+    recommendedDraftSourcesSummary = typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
+      ? profile.draftSourcesSummary
+      : null;
   };
 
   if (safeProfiles.length === 0) {
@@ -1464,7 +1559,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         : `populate the imported intake starter manifest for ${recommendedLabel}`)
       : 'populate imported intake starter manifests';
     setRecommendedLatestMaterial(firstImportedStarterIntakeProfile);
-    recommendedCommand = null;
+    recommendedCommand = importedStarterIntakeProfiles.length > 1
+      ? buildCommandBundle(importedStarterIntakeProfiles.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstImportedStarterIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
     recommendedFallbackCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.starterImportBundle ?? firstImportedStarterIntakeProfile?.starterImportCommand ?? null)
       : (firstImportedStarterIntakeProfile?.starterImportCommand ?? helperCommands.starterImportBundle ?? null);
@@ -1500,16 +1597,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       ? (helperCommands.inspectImportedStarterBundle
         ?? helperCommands.importIntakeImported
         ?? null)
-      : (firstImportedStarterIntakeProfile?.personId
-        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)}`
-        : null);
+      : (firstImportedStarterIntakeProfile?.followUpImportIntakeWithoutRefreshCommand
+        ?? null);
     recommendedFollowUpCommand = importedStarterIntakeProfiles.length > 1
       ? (helperCommands.replayImportedStarterBundle
         ?? helperCommands.importIntakeImportedAndRefresh
         ?? null)
-      : (firstImportedStarterIntakeProfile?.personId
-        ? `node src/index.js import intake --person ${shellQuote(firstImportedStarterIntakeProfile.personId)} --refresh-foundation`
-        : null);
+      : (firstImportedStarterIntakeProfile?.followUpImportIntakeCommand
+        ?? null);
     recommendedPaths = importedStarterIntakeProfiles.length > 1
       ? Array.from(new Set(importedStarterIntakeProfiles.flatMap((profile) => collectProfileIntakePaths(profile))))
       : collectProfileIntakePaths(firstImportedStarterIntakeProfile);
@@ -1767,6 +1862,8 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialAt,
     recommendedLatestMaterialId,
     recommendedLatestMaterialSourcePath,
+    recommendedCandidateSignalSummary,
+    recommendedDraftSourcesSummary,
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,
