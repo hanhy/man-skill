@@ -1523,6 +1523,63 @@ test('scaffoldProfileIntake rebuilds parseable starter manifests that target a d
   });
 });
 
+test('scaffoldProfileIntake backs up invalid starter manifests before rebuilding the scaffold', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const initial = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const templatePath = path.join(rootDir, initial.starterManifestPath);
+  const invalidStarterManifest = '{\n  "personId": "harry-han",\n  "entries": [\n';
+  fs.writeFileSync(templatePath, invalidStarterManifest);
+
+  const rerun = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Forward',
+    summary: 'Direct operator with faster loops.',
+  });
+
+  assert.match(
+    rerun.invalidStarterManifestBackupPath ?? '',
+    /^profiles\/harry-han\/imports\/materials\.template\.json\.invalid-[^/]+\.bak$/,
+  );
+
+  const backupPath = path.join(rootDir, rerun.invalidStarterManifestBackupPath);
+  assert.equal(fs.existsSync(backupPath), true);
+  assert.equal(fs.readFileSync(backupPath, 'utf8'), invalidStarterManifest);
+
+  const rebuiltTemplate = JSON.parse(fs.readFileSync(path.join(rootDir, rerun.starterManifestPath), 'utf8'));
+  assert.equal(rebuiltTemplate.personId, 'harry-han');
+  assert.equal(rebuiltTemplate.displayName, 'Harry Forward');
+  assert.equal(rebuiltTemplate.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(rebuiltTemplate.entries, []);
+  assert.deepEqual(rebuiltTemplate.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: 'images/chat.png',
+      notes: 'chat screenshot',
+    },
+  });
+});
+
 test('scaffoldStaleProfileIntakes refreshes only metadata-only profiles with missing or partial intake scaffolds', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
