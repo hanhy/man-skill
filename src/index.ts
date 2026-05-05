@@ -1049,6 +1049,19 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       .map((value: unknown) => typeof value === 'string' ? normalizeDraftPath(value) : null)
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const coreShadowPathSamplePaths = Array.isArray(queuedArea?.shadowPathSamplePaths)
+    ? queuedArea.shadowPathSamplePaths
+      .map((value: unknown) => typeof value === 'string' ? normalizeDraftPath(value) : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : coreShadowPaths.slice(0, 3);
+  const coreShadowPathCount = typeof queuedArea?.shadowPathCount === 'number'
+    ? queuedArea.shadowPathCount
+    : (coreShadowPaths.length > 0 ? coreShadowPaths.length : null);
+  const coreShadowPathOverflowCount = typeof queuedArea?.shadowPathOverflowCount === 'number'
+    ? queuedArea.shadowPathOverflowCount
+    : ((coreShadowPathCount !== null && coreShadowPathSamplePaths.length > 0)
+      ? Math.max(coreShadowPathCount - coreShadowPathSamplePaths.length, 0)
+      : null);
 
   const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
 
@@ -1070,6 +1083,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathCount !== null ? { shadowPathCount: coreShadowPathCount } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: coreShadowPathSamplePaths } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: coreShadowPathOverflowCount } : {}),
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,

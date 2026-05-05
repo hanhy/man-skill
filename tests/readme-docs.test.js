@@ -599,6 +599,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /foundation\.core\.memory\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `memory\/README\.md` source of truth.*shadow docs like `MEMORY\.md`/i);
   assert.match(readme, /foundation\.core\.skills\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `skills\/README\.md` source of truth.*shadow docs like `SKILLS\.md`/i);
   assert.match(readme, /foundation\.core\.maintenance\.queuedAreas\[\*\]\.rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
+  assert.match(readme, /workLoop\.(?:currentPriority|recommendedPriority)\.shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount/i);
   assert.match(readme, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
   assert.match(readme, /when the queue narrows to a single area, `recommendedArea`, `recommendedStatus`, and `recommendedSummary` carry that same target's detailed context/i);
@@ -633,6 +634,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /foundation\.core\.memory\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `memory\/README\.md` source of truth.*shadow docs like `MEMORY\.md`/i);
   assert.match(architectureDoc, /foundation\.core\.skills\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `skills\/README\.md` source of truth.*shadow docs like `SKILLS\.md`/i);
   assert.match(architectureDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
+  assert.match(architectureDoc, /workLoop\.(?:currentPriority|recommendedPriority)\.shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount/i);
   assert.match(architectureDoc, /single-target-only detail fields \(`recommendedArea`, `recommendedStatus`, `recommendedSummary` when exactly one area is queued\)/i);
   assert.match(architectureDoc, /multiple areas are queued, keep that same canonical `recommended\*` entrance pointed at the aggregate `scaffoldAll\|scaffoldMissing\|scaffoldThin` helper bundle and the union of queued paths, leave `recommendedArea` null/i);
   assert.match(architectureDoc, /mirror those same `foundation\.core\.soul\|voice` root excerpts, section counts, and optional heading aliases into the compact top-level `Soul profile:` \/ `Voice profile:` prompt blocks/i);

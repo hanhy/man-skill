@@ -1426,7 +1426,7 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
-test('buildSummary work loop carries root section progress, heading aliases, and shadow docs for thin core foundation repairs', () => {
+test('buildSummary work loop carries root section progress, heading aliases, and shadow doc previews for thin core foundation repairs', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(
@@ -1445,10 +1445,54 @@ test('buildSummary work loop carries root section progress, heading aliases, and
   assert.equal(summary.workLoop.currentPriority.rootThinTotalSectionCount, 2);
   assert.deepEqual(summary.workLoop.currentPriority.rootHeadingAliases, ['what-lives-here->what-belongs-here']);
   assert.deepEqual(summary.workLoop.currentPriority.shadowPaths, ['MEMORY.md']);
+  assert.equal(summary.workLoop.currentPriority.shadowPathCount, 1);
+  assert.deepEqual(summary.workLoop.currentPriority.shadowPathSamplePaths, ['MEMORY.md']);
+  assert.equal(summary.workLoop.currentPriority.shadowPathOverflowCount, 0);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
   assert.match(summary.promptPreview, /root heading aliases: what-lives-here->what-belongs-here/);
   assert.match(summary.promptPreview, /shadow docs: MEMORY\.md/);
+});
+
+test('PromptAssembler reuses work-loop shadow doc preview metadata when only sampled paths survive', () => {
+  const summary = new WorkLoop({
+    priorities: [{
+      id: 'foundation',
+      label: 'Foundation',
+      status: 'queued',
+      summary: 'core 3/4 ready (1 thin, 0 missing); profiles 0 queued for refresh, 0 incomplete',
+      nextAction: 'repair thin memory root',
+      command: "node -e 'repair memory readme'",
+      rootThinReadySections: ['what-belongs-here'],
+      rootThinMissingSections: ['buckets'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 2,
+      rootHeadingAliases: ['what-lives-here->what-belongs-here'],
+      shadowPathCount: 4,
+      shadowPathSamplePaths: [' .\\MEMORY.md ', '.\\docs\\memory-shadow.md', './notes/memory-shadow.md'],
+      shadowPathOverflowCount: 1,
+      paths: ['memory/README.md'],
+    }],
+  }).summary();
+
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: summary as any,
+  }).buildPreview(4000);
+
+  assert.equal(summary.currentPriority?.shadowPathCount, 4);
+  assert.deepEqual(summary.currentPriority?.shadowPathSamplePaths, ['MEMORY.md', 'docs/memory-shadow.md', 'notes/memory-shadow.md']);
+  assert.equal(summary.currentPriority?.shadowPathOverflowCount, 1);
+  assert.equal(summary.currentPriority?.shadowPaths, undefined);
+  assert.match(prompt, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(prompt, /root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.match(prompt, /root heading aliases: what-lives-here->what-belongs-here/);
+  assert.match(prompt, /shadow docs: MEMORY\.md, docs\/memory-shadow\.md, notes\/memory-shadow\.md, \+1 more/);
 });
 
 test('buildSummary treats nested soul and voice structured headings as ready foundation guidance', () => {

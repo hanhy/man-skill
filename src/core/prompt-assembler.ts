@@ -795,6 +795,9 @@ type WorkLoopPriority = {
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
   shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -2531,6 +2534,9 @@ function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | unde
 function formatShadowPathSummary(
   shadowPaths: string[] | null | undefined,
   prefix = '; shadow docs ',
+  shadowPathSamplePaths?: string[] | null,
+  shadowPathOverflowCount?: number | null,
+  shadowPathCount?: number | null,
 ): string | null {
   const normalizedShadowPaths = Array.isArray(shadowPaths)
     ? Array.from(new Set(
@@ -2539,12 +2545,31 @@ function formatShadowPathSummary(
         .filter((value): value is string => typeof value === 'string' && value.length > 0),
     ))
     : [];
-  if (normalizedShadowPaths.length === 0) {
+  const normalizedShadowPathSamplePaths = Array.isArray(shadowPathSamplePaths)
+    ? Array.from(new Set(
+      shadowPathSamplePaths
+        .map((value) => normalizeDraftPath(normalizeOptionalString(value)))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
+    : [];
+  const visibleShadowPaths = normalizedShadowPaths.length > 0
+    ? normalizedShadowPaths.slice(0, 3)
+    : normalizedShadowPathSamplePaths.slice(0, 3);
+  if (visibleShadowPaths.length === 0) {
     return null;
   }
 
-  const visibleShadowPaths = normalizedShadowPaths.slice(0, 3);
-  const remainingShadowPathCount = Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0);
+  const normalizedShadowPathCount = typeof shadowPathCount === 'number' && Number.isFinite(shadowPathCount) && shadowPathCount >= 0
+    ? Math.trunc(shadowPathCount)
+    : null;
+  const normalizedShadowPathOverflowCount = typeof shadowPathOverflowCount === 'number' && Number.isFinite(shadowPathOverflowCount) && shadowPathOverflowCount >= 0
+    ? Math.trunc(shadowPathOverflowCount)
+    : null;
+  const remainingShadowPathCount = normalizedShadowPathOverflowCount !== null
+    ? normalizedShadowPathOverflowCount
+    : (normalizedShadowPathCount !== null
+      ? Math.max(normalizedShadowPathCount - visibleShadowPaths.length, 0)
+      : Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0));
   return `${prefix}${visibleShadowPaths.join(', ')}${remainingShadowPathCount > 0 ? `, +${remainingShadowPathCount} more` : ''}`;
 }
 
@@ -2973,7 +2998,13 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     return summary ? summary.replace(/^; aliases /, prefix) : null;
   };
   const formatPriorityShadowDocs = (priority?: WorkLoopPriority | null, prefix = '- shadow docs: '): string | null => {
-    const summary = formatShadowPathSummary(Array.isArray(priority?.shadowPaths) ? priority.shadowPaths : undefined);
+    const summary = formatShadowPathSummary(
+      Array.isArray(priority?.shadowPaths) ? priority.shadowPaths : undefined,
+      '; shadow docs ',
+      Array.isArray(priority?.shadowPathSamplePaths) ? priority.shadowPathSamplePaths : undefined,
+      typeof priority?.shadowPathOverflowCount === 'number' ? priority.shadowPathOverflowCount : null,
+      typeof priority?.shadowPathCount === 'number' ? priority.shadowPathCount : null,
+    );
     return summary ? summary.replace(/^; shadow docs /, prefix) : null;
   };
   const formatPriorityStarterProfiles = (priority?: WorkLoopPriority | null, prefix = '- starter profiles: '): string | null => {

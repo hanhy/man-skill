@@ -18,6 +18,9 @@ export type WorkPriority = {
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
   shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -94,6 +97,12 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeOptionalNonNegativeInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? Math.trunc(value)
+    : null;
 }
 
 function normalizePathArray(values: string[] | null | undefined): string[] | undefined {
@@ -215,6 +224,9 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
   const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
   const shadowPaths = normalizePathArray(priority.shadowPaths);
+  const shadowPathCount = normalizeOptionalNonNegativeInteger(priority.shadowPathCount);
+  const shadowPathSamplePaths = normalizePathArray(priority.shadowPathSamplePaths);
+  const shadowPathOverflowCount = normalizeOptionalNonNegativeInteger(priority.shadowPathOverflowCount);
   const candidateSignalSummary = normalizeOptionalString(priority.candidateSignalSummary);
   const draftSourcesSummary = normalizeDraftSourcesSummary(priority.draftSourcesSummary);
   const draftGapSummary = normalizeOptionalString(priority.draftGapSummary);
@@ -248,6 +260,9 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(rootThinMissingSections ? { rootThinMissingSections } : {}),
     ...(rootHeadingAliases ? { rootHeadingAliases } : {}),
     ...(shadowPaths ? { shadowPaths } : {}),
+    ...(shadowPathCount !== null ? { shadowPathCount } : {}),
+    ...(shadowPathSamplePaths ? { shadowPathSamplePaths } : {}),
+    ...(shadowPathOverflowCount !== null ? { shadowPathOverflowCount } : {}),
     ...(candidateSignalSummary ? { candidateSignalSummary } : {}),
     ...(!candidateSignalSummary && priority.candidateSignalSummary !== undefined ? { candidateSignalSummary: null } : {}),
     ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
