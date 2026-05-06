@@ -1063,7 +1063,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
       ? Math.max(coreShadowPathCount - coreShadowPathSamplePaths.length, 0)
       : null);
 
-  const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
+  const followUpCommand = status === 'queued' && hasQueuedCoreFoundation
+    ? 'node src/index.js'
+    : null;
 
   return {
     id: 'foundation',

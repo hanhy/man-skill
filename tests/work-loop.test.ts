@@ -1331,7 +1331,7 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
     'profiles/jane-doe/soul/README.md',
     'profiles/jane-doe/voice/README.md',
   ]);
-  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, null);
   assert.equal(summary.workLoop.currentPriority.latestMaterialAt, summary.foundation.maintenance.recommendedLatestMaterialAt);
   assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.foundation.maintenance.recommendedLatestMaterialId);
   assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, 'samples/jane-post.txt');
@@ -1351,7 +1351,7 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
   assert.match(summary.promptPreview, /draft gaps: memory missing, 1 candidate \(Turn sharp notes into an actual next step\.\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.promptPreview, /edit paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
-  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
+  assert.doesNotMatch(summary.promptPreview, /then run: node src\/index\.js/);
 });
 
 test('buildSummary work loop uses missing-only foundation helper bundles when multiple core areas are absent', () => {
@@ -5666,8 +5666,8 @@ test('buildSummary keeps bulk foundation refresh paths aligned for partially gen
     'profiles/harry-han/soul/README.md',
     'profiles/harry-han/voice/README.md',
   ]);
-  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, null);
   assert.deepEqual(summary.workLoop.priorities[1].paths, summary.workLoop.currentPriority.paths);
-  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
+  assert.doesNotMatch(summary.promptPreview, /then run: node src\/index\.js/);
   assert.match(summary.promptPreview, /paths: profiles\/partial-pal\/memory\/long-term\/foundation\.json, profiles\/partial-pal\/skills\/README\.md, profiles\/partial-pal\/soul\/README\.md, profiles\/partial-pal\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });
