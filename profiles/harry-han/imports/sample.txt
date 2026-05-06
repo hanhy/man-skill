@@ -1,1 +1,1 @@
-Replace this file with a real writing sample for Harry Han.
+Move fast on the first pass, but keep the structure clean enough that the next change is obvious. I care more about a tight feedback loop than a polished first release.

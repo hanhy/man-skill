@@ -183,6 +183,54 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
 });
 
+test('refreshFoundationDrafts dedupes duplicate voice and soul excerpts while keeping source counts intact', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPathA = path.join(rootDir, 'sample-a.txt');
+  const sourceTextPathB = path.join(rootDir, 'sample-b.txt');
+  const repeatedText = 'Move fast on the first pass, but keep the structure clean enough that the next change is obvious.';
+  const repeatedTalk = 'If we can learn it in one run today, that beats polishing a big plan all week.';
+  fs.writeFileSync(sourceTextPathA, repeatedText);
+  fs.writeFileSync(sourceTextPathB, repeatedText);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPathA,
+    notes: 'writing sample A',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPathB,
+    notes: 'writing sample B',
+  });
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: repeatedTalk,
+    notes: 'voice memo transcript',
+  });
+
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(voiceDraft, /Source materials: 3 \(talk:1, text:2\)/);
+  assert.equal((voiceDraft.match(/- \[text\] Move fast on the first pass, but keep the structure clean enough that the next change is obvious\./g) ?? []).length, 1);
+  assert.equal((voiceDraft.match(/- \[talk\] If we can learn it in one run today, that beats polishing a big plan all week\./g) ?? []).length, 1);
+
+  const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(soulDraft, /Source materials: 3 \(talk:1, text:2\)/);
+  assert.equal((soulDraft.match(/- \[text\] Move fast on the first pass, but keep the structure clean enough that the next change is obvious\./g) ?? []).length, 1);
+  assert.equal((soulDraft.match(/- \[talk\] If we can learn it in one run today, that beats polishing a big plan all week\./g) ?? []).length, 1);
+});
+
 test('refreshFoundationDrafts persists latest material source provenance into generated draft artifacts', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

@@ -2,7 +2,7 @@
 
 Use this folder as the user-facing entrance for collecting target-person materials before import.
 
-- Starter manifest: profiles/harry-han/imports/materials.template.json
+- Profile-local manifest: profiles/harry-han/imports/materials.template.json
 - Sample text placeholder: profiles/harry-han/imports/sample.txt
 - Starter image folder: profiles/harry-han/imports/images
 - Refresh intake scaffold: node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
@@ -13,7 +13,7 @@ Use this folder as the user-facing entrance for collecting target-person materia
 
 Suggested flow:
 1. Replace sample.txt with a real writing sample or point the manifest at real files.
-2. Copy the entryTemplates from materials.template.json into entries and fill in real content.
+2. Update materials.template.json entries (and any local assets) when the intake fixture changes.
 3. Run the inspect command above to confirm the edited materials and manifest look right.
 4. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts.
 
@@ -55,8 +55,8 @@ Starter entry examples:
 
 Recommended helper commands:
 - refresh this intake scaffold: node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'
-- after editing, replay the profile-local intake without refreshing drafts: node src/index.js import intake --person 'harry-han'
-- after editing, replay the profile-local intake and refresh drafts: node src/index.js import intake --person 'harry-han' --refresh-foundation
+- import via the profile-local intake shortcut without refreshing drafts: node src/index.js import intake --person 'harry-han'
+- import via the profile-local intake shortcut and refresh drafts: node src/index.js import intake --person 'harry-han' --refresh-foundation
 - inspect the edited manifest without refreshing drafts: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'
 - import the edited manifest and refresh drafts: node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation
 - edit target-profile metadata without refreshing drafts: node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'

@@ -106,6 +106,23 @@ function buildExcerpt(value, maxLength = 160) {
   return `${normalized.slice(0, maxLength - 1)}…`;
 }
 
+function uniqueEntriesBy(values, buildKey) {
+  const seen = new Set();
+  const result = [];
+
+  for (const value of values) {
+    const key = buildKey(value);
+    if (!isNonEmptyString(key) || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(value);
+  }
+
+  return result;
+}
+
 function sortByNewest(records) {
   return [...records].sort(
     (left, right) =>
@@ -1889,29 +1906,35 @@ export class MaterialIngestion {
     const soulMaterialTypes = summarizeMaterialTypes(soulRecords);
     const skillsMaterialTypes = summarizeMaterialTypes(skillRecords);
 
-    const voiceSamples = voiceRecords
-      .map((record) => ({
-        type: record.type,
-        excerpt: buildExcerpt(record.content),
-      }))
-      .filter((record) => record.excerpt)
-      .slice(0, 5);
+    const voiceSamples = uniqueEntriesBy(
+      voiceRecords
+        .map((record) => ({
+          type: record.type,
+          excerpt: buildExcerpt(record.content),
+        }))
+        .filter((record) => record.excerpt),
+      (record) => `${record.type ?? ''}:${record.excerpt ?? ''}`,
+    ).slice(0, 5);
 
-    const soulSignals = soulRecords
-      .map((record) => ({
-        type: record.type,
-        excerpt: buildExcerpt(record.content),
-      }))
-      .filter((record) => record.excerpt)
-      .slice(0, 5);
+    const soulSignals = uniqueEntriesBy(
+      soulRecords
+        .map((record) => ({
+          type: record.type,
+          excerpt: buildExcerpt(record.content),
+        }))
+        .filter((record) => record.excerpt),
+      (record) => `${record.type ?? ''}:${record.excerpt ?? ''}`,
+    ).slice(0, 5);
 
-    const skillSignals = skillRecords
-      .map((record) => ({
-        type: record.type,
-        note: buildExcerpt(record.notes),
-        excerpt: buildExcerpt(record.content),
-      }))
-      .slice(0, 5);
+    const skillSignals = uniqueEntriesBy(
+      skillRecords
+        .map((record) => ({
+          type: record.type,
+          note: buildExcerpt(record.notes),
+          excerpt: buildExcerpt(record.content),
+        })),
+      (record) => `${record.type ?? ''}:${record.note ?? ''}:${record.excerpt ?? ''}`,
+    ).slice(0, 5);
 
     fs.writeFileSync(
       memoryDraftPath,
