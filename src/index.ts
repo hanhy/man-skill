@@ -2273,6 +2273,7 @@ function buildCliUsageLines(): string[] {
     '',
     'Commands:',
     '  node src/index.js                                  Show the repo summary JSON',
+    '  node src/index.js summary [--json]                 Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> [--refresh-foundation] Import a ready profile-local intake manifest',
@@ -2312,6 +2313,10 @@ function formatUsageHint(usage: string, examples: string[] = []): string {
 }
 
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
+  if (command === 'summary') {
+    return 'Usage: node src/index.js summary [--json]';
+  }
+
   if (command === 'import' && subcommand === 'manifest') {
     return 'Usage: node src/index.js import manifest --file <manifest.json> [--refresh-foundation]';
   }
@@ -2382,8 +2387,31 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   return null;
 }
 
+function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
+  if (parsedArgs.command !== 'summary') {
+    return parsedArgs;
+  }
+
+  const options = { ...parsedArgs.options };
+  let subcommand = parsedArgs.subcommand;
+
+  if (typeof subcommand === 'string' && subcommand.startsWith('--')) {
+    const key = subcommand.slice(2);
+    if (!(key in options)) {
+      options[key] = true;
+    }
+    subcommand = undefined;
+  }
+
+  return {
+    command: parsedArgs.command,
+    subcommand,
+    options,
+  };
+}
+
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
-  const { command, subcommand, options } = parseArgs(argv);
+  const { command, subcommand, options } = normalizeSummaryArgs(parseArgs(argv));
 
   if (command === '--help' || command === 'help') {
     console.log(formatCliUsage());

@@ -307,6 +307,8 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
   assert.match(intakeReadme, /4\. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts\./);
   assert.match(intakeReadme, /after editing, replay the profile-local intake without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.doesNotMatch(intakeReadme, /import via the profile-local intake shortcut without refreshing drafts:/);
+  assert.doesNotMatch(intakeReadme, /import via the profile-local intake shortcut and refresh drafts:/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(intakeReadme, /Rerun safety:/);
