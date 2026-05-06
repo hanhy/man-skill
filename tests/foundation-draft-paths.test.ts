@@ -76,6 +76,25 @@ test('buildFoundationDraftPaths removes interior dot segments before deduping ex
   );
 });
 
+test('buildFoundationDraftPaths collapses interior parent-directory segments before deduping refresh targets', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: 'profiles/jane-doe/memory/tmp/../long-term/foundation.json',
+        skills: './profiles/jane-doe/skills/drafts/../README.md',
+        soul: 'profiles/jane-doe/voice/../skills/README.md',
+      },
+      missingDrafts: ['voice'],
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
 test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
   assert.deepEqual(
     collectFoundationDraftPaths([
