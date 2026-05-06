@@ -315,9 +315,11 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
           ' profiles/harry-han/imports/images/chat.png ',
         ],
         intakeManifestEntryTemplateDetails: [
-          { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
-          { type: 'talk', source: 'text', path: null, preview: '  <paste a transcript snippet>  ' },
+          { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+          { type: ' talk ', source: ' text ' as any, path: null, preview: '  <paste a transcript snippet>  ' },
+          { type: '   ', source: 'file' as any, path: ' .\\profiles\\harry-han//imports\\ignore-me.png ', preview: '   ' },
         ],
+        intakeManifestEntryTemplateCount: -4,
         intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
         recommendedProfileSlices: [
           {
@@ -341,9 +343,10 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
             manifestImportCommand: null,
             intakeManifestEntryTemplateTypes: [' screenshot ', 'screenshot', ''],
             intakeManifestEntryTemplateDetails: [
-              { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+              { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+              { type: '  ', source: 'text' as any, path: null, preview: '   ' },
             ],
-            intakeManifestEntryTemplateCount: 1,
+            intakeManifestEntryTemplateCount: -1,
             intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
             inspectCommand: " node src/index.js import intake --person 'harry-han' ",
             followUpCommand: " node src/index.js import intake --person 'harry-han' --refresh-foundation ",
@@ -375,6 +378,7 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
     { type: 'screenshot', source: 'file', path: 'profiles/harry-han/imports/images/chat.png', preview: null },
     { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
   ]);
+  assert.equal(summary.actionableReadyPriority?.intakeManifestEntryTemplateCount, 2);
   assert.equal(summary.actionableReadyPriority?.intakeManifestEntryTemplateRoot, 'profiles/harry-han/imports');
   assert.deepEqual(summary.actionableReadyPriority?.paths, [
     'profiles/harry-han/imports',

@@ -136,11 +136,38 @@ function normalizeStarterTemplateDetails(
     return undefined;
   }
 
-  return details.map((detail) => ({
-    ...detail,
-    path: normalizeDraftPath(detail?.path),
-    preview: normalizeOptionalString(detail?.preview) ?? null,
-  }));
+  return details
+    .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+    .map((detail) => {
+      const type = normalizeOptionalString(detail?.type);
+      if (!type) {
+        return null;
+      }
+
+      const normalizedSource = normalizeOptionalString(detail?.source)?.toLowerCase() === 'file'
+        ? 'file'
+        : 'text';
+
+      return {
+        type,
+        source: normalizedSource,
+        path: normalizeDraftPath(detail?.path),
+        preview: normalizeOptionalString(detail?.preview) ?? null,
+      };
+    })
+    .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail));
+}
+
+function normalizeStarterTemplateCount(
+  value: number | null | undefined,
+  fallbackCount: number,
+): number {
+  const normalizedValue = normalizeOptionalNonNegativeInteger(value);
+  if (normalizedValue !== null) {
+    return normalizedValue;
+  }
+
+  return fallbackCount;
 }
 
 function normalizeDraftSourcesSummary(value: string | null | undefined): string | null {
@@ -179,6 +206,10 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const manifestImportCommand = normalizeOptionalString(slice?.manifestImportCommand) ?? null;
     const intakeManifestEntryTemplateTypes = normalizeStringArray(slice?.intakeManifestEntryTemplateTypes) ?? [];
     const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [];
+    const intakeManifestEntryTemplateCount = normalizeStarterTemplateCount(
+      slice?.intakeManifestEntryTemplateCount,
+      Math.max(intakeManifestEntryTemplateTypes.length, intakeManifestEntryTemplateDetails.length),
+    );
     const intakeManifestEntryTemplateRoot = normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null;
     const inspectCommand = normalizeOptionalString(slice?.inspectCommand) ?? null;
     const followUpCommand = normalizeOptionalString(slice?.followUpCommand) ?? null;
@@ -206,6 +237,7 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
       manifestImportCommand,
       intakeManifestEntryTemplateTypes,
       intakeManifestEntryTemplateDetails,
+      intakeManifestEntryTemplateCount,
       intakeManifestEntryTemplateRoot,
       inspectCommand,
       followUpCommand,
@@ -240,6 +272,10 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const manifestImportCommand = normalizeOptionalString(priority.manifestImportCommand);
   const intakeManifestEntryTemplateTypes = normalizeStringArray(priority.intakeManifestEntryTemplateTypes);
   const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(priority.intakeManifestEntryTemplateDetails);
+  const intakeManifestEntryTemplateCount = normalizeStarterTemplateCount(
+    priority.intakeManifestEntryTemplateCount,
+    Math.max(intakeManifestEntryTemplateTypes?.length ?? 0, intakeManifestEntryTemplateDetails?.length ?? 0),
+  );
   const intakeManifestEntryTemplateRoot = normalizeDraftPath(priority.intakeManifestEntryTemplateRoot);
   const inspectCommand = normalizeOptionalString(priority.inspectCommand);
   const followUpCommand = normalizeOptionalString(priority.followUpCommand);
@@ -286,6 +322,7 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(!manifestImportCommand && priority.manifestImportCommand !== undefined ? { manifestImportCommand: null } : {}),
     ...(intakeManifestEntryTemplateTypes ? { intakeManifestEntryTemplateTypes } : {}),
     ...(intakeManifestEntryTemplateDetails ? { intakeManifestEntryTemplateDetails } : {}),
+    ...(priority.intakeManifestEntryTemplateCount !== undefined ? { intakeManifestEntryTemplateCount } : {}),
     ...(intakeManifestEntryTemplateRoot ? { intakeManifestEntryTemplateRoot } : {}),
     ...(!intakeManifestEntryTemplateRoot && priority.intakeManifestEntryTemplateRoot !== undefined ? { intakeManifestEntryTemplateRoot: null } : {}),
     ...(inspectCommand ? { inspectCommand } : {}),
