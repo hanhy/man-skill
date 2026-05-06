@@ -737,6 +737,10 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(profileIntakeSkill, /`node src\/index\.js import intake --person <id> --refresh-foundation`/);
   assert.match(profileIntakeSkill, /`node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json'`.*`node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/s);
   assert.match(profileIntakeSkill, /`node src\/index\.js update profile --person <id> \.\.\.`/);
+  assert.match(profileIntakeSkill, /top-of-file action bundle.*`Refresh intake scaffold:`.*`Update profile metadata:`.*`Sync profile metadata \+ drafts:`/is);
+  assert.match(profileIntakeSkill, /inspect-first manifest flow.*plain inspect command should stay the first step before the refresh variant/i);
+  assert.match(profileIntakeSkill, /re-running `update intake` preserves starter entries, entry templates, and custom notes/i);
+  assert.match(profileIntakeSkill, /invalid `materials\.template\.json`.*`materials\.template\.json\.invalid-<timestamp>\.bak`/i);
   assert.match(profileIntakeSkill, /`node --import tsx --test tests\/material-ingestion\.test\.js tests\/profile-material-summary\.test\.ts tests\/profile-foundation-update\.test\.js tests\/readme-docs\.test\.js`/);
   assert.match(profileIntakeSkill, /`node --import tsx --test tests\/work-loop\.test\.ts`/);
   assert.match(profileUpdateSkill, /Use this skill when editing or syncing `profiles\/<person-id>\/profile\.json` and the attached foundation refresh follow-ups\./);
