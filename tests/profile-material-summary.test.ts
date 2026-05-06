@@ -4299,7 +4299,9 @@ test('PromptAssembler keeps count-only starter template summaries visible across
       recommendedIntakeManifestEntryTemplateTypes: [],
       recommendedIntakeManifestEntryTemplateCount: 2,
       recommendedIntakeManifestEntryTemplateDetails: [
+        { type: ' message ', source: 'text', path: null, preview: ' Keep the note tight. ' },
         { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+        { type: 'text', source: 'file', path: ' sample.txt ', preview: null },
         { type: 'text', source: 'file', path: 'sample.txt', preview: null },
       ],
       sampleFileCommands: [],
@@ -4333,7 +4335,9 @@ test('PromptAssembler keeps count-only starter template summaries visible across
         intakeManifestEntryTemplateTypes: [],
         intakeManifestEntryTemplateCount: 2,
         intakeManifestEntryTemplateDetails: [
+          { type: ' message ', source: 'text', path: null, preview: ' Keep the note tight. ' },
           { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+          { type: 'text', source: 'file', path: ' sample.txt ', preview: null },
           { type: 'text', source: 'file', path: 'sample.txt', preview: null },
         ],
         paths: ['profiles/harry-han/imports/materials.template.json'],
@@ -4359,7 +4363,9 @@ test('PromptAssembler keeps count-only starter template summaries visible across
           intakeManifestEntryTemplateTypes: [],
           intakeManifestEntryTemplateCount: 2,
           intakeManifestEntryTemplateDetails: [
+            { type: ' message ', source: 'text', path: null, preview: ' Keep the note tight. ' },
             { type: 'message', source: 'text', path: null, preview: 'Keep the note tight.' },
+            { type: 'text', source: 'file', path: ' sample.txt ', preview: null },
             { type: 'text', source: 'file', path: 'sample.txt', preview: null },
           ],
           paths: ['profiles/harry-han/imports/materials.template.json'],
@@ -4369,6 +4375,8 @@ test('PromptAssembler keeps count-only starter template summaries visible across
   }).buildSystemPrompt();
 
   assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.doesNotMatch(prompt, /starter details .*message Keep the note tight\. \| message Keep the note tight\./);
+  assert.doesNotMatch(prompt, /starter details .*text sample\.txt \| text sample\.txt/);
   assert.doesNotMatch(prompt, /next intake: .*; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(prompt, /- recommended starter templates: 2 total/);
   assert.match(prompt, /- recommended starter details: message Keep the note tight\. \| text sample\.txt/);

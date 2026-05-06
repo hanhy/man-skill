@@ -136,26 +136,29 @@ function normalizeStarterTemplateDetails(
     return undefined;
   }
 
-  return details
-    .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
-    .map((detail) => {
-      const type = normalizeOptionalString(detail?.type);
-      if (!type) {
-        return null;
-      }
+  return Array.from(new Map(
+    details
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = normalizeOptionalString(detail?.type);
+        if (!type) {
+          return null;
+        }
 
-      const normalizedSource = normalizeOptionalString(detail?.source)?.toLowerCase() === 'file'
-        ? 'file'
-        : 'text';
+        const normalizedSource = normalizeOptionalString(detail?.source)?.toLowerCase() === 'file'
+          ? 'file'
+          : 'text';
 
-      return {
-        type,
-        source: normalizedSource,
-        path: normalizeDraftPath(detail?.path),
-        preview: normalizeOptionalString(detail?.preview) ?? null,
-      };
-    })
-    .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail));
+        return {
+          type,
+          source: normalizedSource,
+          path: normalizeDraftPath(detail?.path),
+          preview: normalizeOptionalString(detail?.preview) ?? null,
+        };
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+      .map((detail) => [`${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`, detail] as const),
+  ).values());
 }
 
 function normalizeStarterTemplateCount(

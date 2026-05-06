@@ -316,7 +316,9 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
         ],
         intakeManifestEntryTemplateDetails: [
           { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+          { type: 'screenshot', source: 'file' as any, path: ' profiles/harry-han/imports/images/chat.png ', preview: null },
           { type: ' talk ', source: ' text ' as any, path: null, preview: '  <paste a transcript snippet>  ' },
+          { type: 'talk', source: 'text' as any, path: null, preview: '<paste a transcript snippet>' },
           { type: '   ', source: 'file' as any, path: ' .\\profiles\\harry-han//imports\\ignore-me.png ', preview: '   ' },
         ],
         intakeManifestEntryTemplateCount: -4,
@@ -344,6 +346,7 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
             intakeManifestEntryTemplateTypes: [' screenshot ', 'screenshot', ''],
             intakeManifestEntryTemplateDetails: [
               { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+              { type: 'screenshot', source: 'file' as any, path: ' profiles/harry-han/imports/images/chat.png ', preview: null },
               { type: '  ', source: 'text' as any, path: null, preview: '   ' },
             ],
             intakeManifestEntryTemplateCount: -1,
@@ -434,6 +437,8 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
   assert.match(prompt, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png/);
   assert.match(prompt, /runnable starter root: profiles\/harry-han\/imports/);
   assert.match(prompt, /runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /starter details: screenshot profiles\/harry-han\/imports\/images\/chat\.png \| screenshot profiles\/harry-han\/imports\/images\/chat\.png/);
+  assert.doesNotMatch(prompt, /starter details: .*talk <paste a transcript snippet> \| talk <paste a transcript snippet>/);
   assert.doesNotMatch(prompt, /\\/);
 });
 

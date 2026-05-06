@@ -183,10 +183,14 @@ function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string
       .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
     : [];
 
-  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
-    || left.source.localeCompare(right.source)
-    || (left.path ?? '').localeCompare(right.path ?? '')
-    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+  return Array.from(new Map(
+    normalizedDetails
+      .sort((left, right) => left.type.localeCompare(right.type)
+        || left.source.localeCompare(right.source)
+        || (left.path ?? '').localeCompare(right.path ?? '')
+        || (left.preview ?? '').localeCompare(right.preview ?? ''))
+      .map((detail) => [`${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`, detail] as const),
+  ).values());
 }
 
 function collectRecommendedStarterTemplateSummary(
