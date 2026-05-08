@@ -641,6 +641,47 @@ test('buildIngestionSummary preserves sample manifest source paths for legacy te
   assert.match(prompt, /sample text: alpha-ready -> node src\/index\.js import text --person alpha-ready --file 'samples\/alpha-ready\.txt' --refresh-foundation @ samples\/legacy-materials\.json/);
 });
 
+test('PromptAssembler avoids repeating the latest material source path in next-intake path hints', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: {
+      profileCount: 1,
+      importedProfileCount: 1,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 1,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      importedIntakeReadyProfileCount: 1,
+      importedStarterIntakeProfileCount: 0,
+      importedIntakeBackfillProfileCount: 0,
+      importedInvalidIntakeManifestProfileCount: 0,
+      invalidMetadataOnlyIntakeManifestProfileCount: 0,
+      supportedImportTypes: ['text'],
+      recommendedAction: 'import source materials for Harry Han (harry-han)',
+      recommendedCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+      recommendedLatestMaterialAt: '2026-05-06T05:48:06.506Z',
+      recommendedLatestMaterialId: '2026-05-06T05-48-06-506Z-text',
+      recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      recommendedPaths: [
+        'profiles/harry-han/imports/materials.template.json',
+        './profiles/harry-han/imports/sample.txt',
+        '.\\profiles\\harry-han//imports\\sample.txt',
+      ],
+    } as any,
+  }).buildPreview(4000);
+
+  assert.match(prompt, /next intake: import source materials for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt @ profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]*\.\/profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\sample\.txt/);
+});
+
 test('buildIngestionSummary exposes a per-profile foundation refresh bundle for imported stale profiles', () => {
   const summary = buildTsIngestionSummary([
     {

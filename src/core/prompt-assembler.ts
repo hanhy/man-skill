@@ -2073,7 +2073,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
   const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
-    ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    ? Array.from(new Set(
+      ingestion.recommendedPaths
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .map((value) => normalizeDraftPath(value))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
     : [];
   const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
     ? ingestion.recommendedEditPath
@@ -2087,6 +2092,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
   const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath));
+  const filteredRecommendedPaths = recommendedLatestMaterialSourcePath
+    ? recommendedPaths.filter((value) => value !== recommendedLatestMaterialSourcePath)
+    : recommendedPaths;
   const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
@@ -2136,7 +2144,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; manifest inspect ${recommendedManifestInspectCommand}`
     : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? ` @ ${filteredRecommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
