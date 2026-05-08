@@ -2198,6 +2198,58 @@ test('importProfileIntakeManifest rejects a profile-local manifest entry with mi
   assert.deepEqual(materialFiles, []);
 });
 
+test('importProfileIntakeManifest keeps the broken local manifest path attached to invalid JSON failures', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'), '{ invalid json\n');
+
+  let thrownError = null;
+  try {
+    ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true });
+  } catch (error) {
+    thrownError = error;
+  }
+
+  assert.ok(thrownError instanceof Error);
+  assert.match(thrownError.message, /Profile intake manifest is not ready for import: harry-han @ profiles\/harry-han\/imports\/materials\.template\.json — .*JSON/i);
+  assert.deepEqual(thrownError.repairPaths, ['profiles/harry-han/imports/materials.template.json']);
+});
+
+test('importProfileIntakeManifest keeps the broken local manifest path attached to invalid top-level JSON shape failures', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json'),
+    JSON.stringify('not-a-manifest', null, 2),
+  );
+
+  let thrownError = null;
+  try {
+    ingestion.importProfileIntakeManifest({ personId: 'harry-han', refreshFoundation: true });
+  } catch (error) {
+    thrownError = error;
+  }
+
+  assert.ok(thrownError instanceof Error);
+  assert.equal(
+    thrownError.message,
+    'Profile intake manifest is not ready for import: harry-han @ profiles/harry-han/imports/materials.template.json — Manifest must be an array or object',
+  );
+  assert.deepEqual(thrownError.repairPaths, ['profiles/harry-han/imports/materials.template.json']);
+});
+
 test('importProfileIntakeManifest rejects a profile-local manifest entry that references a missing text file', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);

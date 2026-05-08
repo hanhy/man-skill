@@ -1337,7 +1337,12 @@ export class MaterialIngestion {
     if (intakeManifestState.status !== 'loaded') {
       const intakeManifestPath = profile.intake.starterManifestPath;
       const intakeManifestError = intakeManifestState.error || 'manifest validation failed';
-      throw new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
+      const repairPaths = Array.isArray(intakeManifestState.repairPaths) && intakeManifestState.repairPaths.length > 0
+        ? intakeManifestState.repairPaths
+        : [intakeManifestPath];
+      const error = new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
+      Object.assign(error, { repairPaths });
+      throw error;
     }
 
     return this.importManifest({
