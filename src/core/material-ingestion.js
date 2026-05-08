@@ -163,6 +163,15 @@ function buildTextMaterialFingerprint({ personId, notes = null, sourceFile, cont
     personId: slugifyPersonId(personId ?? ''),
     type: 'text',
     notes: normalizeText(notes),
+    contentHash: hashMaterialValue(content),
+  });
+}
+
+function buildLegacyTextMaterialFingerprint({ personId, notes = null, sourceFile, content }) {
+  return buildMaterialFingerprint({
+    personId: slugifyPersonId(personId ?? ''),
+    type: 'text',
+    notes: normalizeText(notes),
     sourceFile: sourceFile ?? null,
     contentHash: hashMaterialValue(content),
   });
@@ -182,36 +191,60 @@ function buildScreenshotMaterialFingerprint({ personId, notes = null, sourceFile
     personId: slugifyPersonId(personId ?? ''),
     type: 'screenshot',
     notes: normalizeText(notes),
+    fileHash: hashMaterialValue(fileBuffer),
+  });
+}
+
+function buildLegacyScreenshotMaterialFingerprint({ personId, notes = null, sourceFile, fileBuffer }) {
+  return buildMaterialFingerprint({
+    personId: slugifyPersonId(personId ?? ''),
+    type: 'screenshot',
+    notes: normalizeText(notes),
     sourceFile: sourceFile ?? null,
     fileHash: hashMaterialValue(fileBuffer),
   });
 }
 
-function deriveMaterialFingerprint(record, rootDir = null) {
-  if (isNonEmptyString(record?.fingerprint)) {
-    return record.fingerprint;
-  }
+function collectMaterialFingerprints(record, rootDir = null) {
+  const fingerprints = new Set();
+  const addFingerprint = (fingerprint) => {
+    if (isNonEmptyString(fingerprint)) {
+      fingerprints.add(fingerprint);
+    }
+  };
+
+  addFingerprint(record?.fingerprint);
 
   if (!isNonEmptyString(record?.type) || !isNonEmptyString(record?.personId)) {
-    return null;
+    return [...fingerprints];
   }
 
   if (record.type === 'text' && isNonEmptyString(record?.content)) {
-    return buildTextMaterialFingerprint({
+    addFingerprint(buildTextMaterialFingerprint({
       personId: record.personId,
       notes: record.notes,
       sourceFile: record.sourceFile ?? null,
       content: record.content,
-    });
+    }));
+    if (isNonEmptyString(record?.sourceFile)) {
+      addFingerprint(buildLegacyTextMaterialFingerprint({
+        personId: record.personId,
+        notes: record.notes,
+        sourceFile: record.sourceFile,
+        content: record.content,
+      }));
+    }
+    return [...fingerprints];
   }
 
   if ((record.type === 'message' || record.type === 'talk') && isNonEmptyString(record?.content)) {
-    return buildMessageMaterialFingerprint({
+    addFingerprint(buildMessageMaterialFingerprint({
       personId: record.personId,
       type: record.type,
       notes: record.notes,
       text: record.content,
-    });
+    }));
+    return [...fingerprints];
   }
 
   if (record.type === 'screenshot' && isNonEmptyString(record?.sourceFile)) {
@@ -227,28 +260,36 @@ function deriveMaterialFingerprint(record, rootDir = null) {
           continue;
         }
         try {
-          return buildScreenshotMaterialFingerprint({
+          const fileBuffer = fs.readFileSync(candidatePath);
+          addFingerprint(buildScreenshotMaterialFingerprint({
             personId: record.personId,
             notes: record.notes,
             sourceFile: record.sourceFile,
-            fileBuffer: fs.readFileSync(candidatePath),
-          });
+            fileBuffer,
+          }));
+          addFingerprint(buildLegacyScreenshotMaterialFingerprint({
+            personId: record.personId,
+            notes: record.notes,
+            sourceFile: record.sourceFile,
+            fileBuffer,
+          }));
+          return [...fingerprints];
         } catch {
           // Try the next candidate path before falling back to the legacy weaker fingerprint below.
         }
       }
     }
 
-    return buildMaterialFingerprint({
+    addFingerprint(buildMaterialFingerprint({
       personId: slugifyPersonId(record.personId),
       type: 'screenshot',
       notes: normalizeText(record.notes),
       sourceFile: record.sourceFile,
       fileHash: relativeAssetPath,
-    });
+    }));
   }
 
-  return null;
+  return [...fingerprints];
 }
 
 function buildDraftHeaderLines({ title, normalizedPersonId, profileDocument, generatedAt, latestMaterialRecord, materialCount, materialTypes }) {
@@ -1377,7 +1418,7 @@ export class MaterialIngestion {
         .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
         .map((entry) => readJsonIfExists(path.join(materialsDir, entry.name)))
         .filter(Boolean)
-        .map((record) => deriveMaterialFingerprint(record, this.rootDir))
+        .flatMap((record) => collectMaterialFingerprints(record, this.rootDir))
         .filter(Boolean),
     );
   }
