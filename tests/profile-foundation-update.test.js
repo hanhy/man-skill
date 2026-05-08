@@ -138,6 +138,7 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   assert.equal(memoryDraft.personId, 'harry-han');
   assert.equal(memoryDraft.displayName, 'Harry Han');
   assert.equal(memoryDraft.summary, 'Direct operator with a bias for momentum.');
+  assert.equal(memoryDraft.sourceCount, 3);
   assert.equal(memoryDraft.entryCount, 3);
   assert.deepEqual(memoryDraft.materialTypes, {
     message: 1,
@@ -175,11 +176,59 @@ test('refreshFoundationDrafts derives memory, voice, soul, and skills drafts for
   const skillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
   assert.match(skillsDraft, /Source materials: 1 \(talk:1\)/);
   assert.match(skillsDraft, /## Candidate skills/);
-  assert.match(skillsDraft, /- product execution heuristic/);
+  assert.match(skillsDraft, /- \[talk\] product execution heuristic/);
   assert.match(skillsDraft, /## Evidence/);
   assert.match(skillsDraft, /- sample: Cut the scope, keep the momentum, and fix the rough edges tomorrow\./);
   assert.match(skillsDraft, /## Gaps to validate/);
   assert.match(skillsDraft, /Promote repeated procedures into reusable skills/i);
+});
+
+test('refreshFoundationDrafts dedupes duplicate voice and soul excerpts while keeping source counts intact', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPathA = path.join(rootDir, 'sample-a.txt');
+  const sourceTextPathB = path.join(rootDir, 'sample-b.txt');
+  const repeatedText = 'Move fast on the first pass, but keep the structure clean enough that the next change is obvious.';
+  const repeatedTalk = 'If we can learn it in one run today, that beats polishing a big plan all week.';
+  fs.writeFileSync(sourceTextPathA, repeatedText);
+  fs.writeFileSync(sourceTextPathB, repeatedText);
+
+  ingestion.updateProfile({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPathA,
+    notes: 'writing sample A',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPathB,
+    notes: 'writing sample B',
+  });
+  ingestion.importTalkSnippet({
+    personId: 'Harry Han',
+    text: repeatedTalk,
+    notes: 'voice memo transcript',
+  });
+
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+
+  const voiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
+  assert.match(voiceDraft, /Source materials: 3 \(talk:1, text:2\)/);
+  assert.equal((voiceDraft.match(/- \[text\] Move fast on the first pass, but keep the structure clean enough that the next change is obvious\./g) ?? []).length, 1);
+  assert.equal((voiceDraft.match(/- \[talk\] If we can learn it in one run today, that beats polishing a big plan all week\./g) ?? []).length, 1);
+
+  const soulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(soulDraft, /Source materials: 3 \(talk:1, text:2\)/);
+  assert.equal((soulDraft.match(/- \[text\] Move fast on the first pass, but keep the structure clean enough that the next change is obvious\./g) ?? []).length, 1);
+  assert.equal((soulDraft.match(/- \[talk\] If we can learn it in one run today, that beats polishing a big plan all week\./g) ?? []).length, 1);
 });
 
 test('refreshFoundationDrafts persists latest material source provenance into generated draft artifacts', () => {
@@ -297,13 +346,17 @@ test('scaffoldProfileIntake hides imported-profile intake shortcuts until the lo
 
   assert.match(intakeReadme, /Recommended helper commands:/);
   assert.match(intakeReadme, /Starter manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
-  assert.match(intakeReadme, /refresh this intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Refresh intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Update profile metadata: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'/);
+  assert.match(intakeReadme, /Sync profile metadata \+ drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --refresh-foundation/);
   assert.match(intakeReadme, /Inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /Import after editing: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /3\. Run the inspect command above to confirm the edited materials and manifest look right\./);
   assert.match(intakeReadme, /4\. Once the inspection looks right, run the import command above to ingest materials and refresh foundation drafts\./);
   assert.match(intakeReadme, /after editing, replay the profile-local intake without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /after editing, replay the profile-local intake and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.doesNotMatch(intakeReadme, /import via the profile-local intake shortcut without refreshing drafts:/);
+  assert.doesNotMatch(intakeReadme, /import via the profile-local intake shortcut and refresh drafts:/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(intakeReadme, /import the edited manifest and refresh drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(intakeReadme, /Rerun safety:/);
@@ -349,6 +402,9 @@ test('scaffoldProfileIntake labels loaded manifests as profile-local reruns and 
   const intakeReadme = fs.readFileSync(intakeReadmePath, 'utf8');
 
   assert.match(intakeReadme, /Profile-local manifest: profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(intakeReadme, /Refresh intake scaffold: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /Update profile metadata: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+  assert.match(intakeReadme, /Sync profile metadata \+ drafts: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.' --refresh-foundation/);
   assert.match(intakeReadme, /profile-local intake shortcut without refreshing drafts: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(intakeReadme, /profile-local intake shortcut and refresh drafts: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(intakeReadme, /inspect the edited manifest without refreshing drafts: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
@@ -2111,7 +2167,7 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft metada
   assert.doesNotMatch(refreshedVoiceDraft, /Summary: Outdated summary\./);
 });
 
-test('refreshStaleFoundationDrafts refreshes profiles when markdown draft material metadata drifts from imported materials', async () => {
+test('refreshStaleFoundationDrafts refreshes profiles when markdown draft material metadata drifts from imported materials across voice, soul, and skills', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -2124,13 +2180,29 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft materi
     text: 'Keep the feedback loop short.',
     notes: 'execution heuristic',
   });
+  const textFilePath = path.join(rootDir, 'harry-note.txt');
+  fs.writeFileSync(textFilePath, 'Move fast, but keep the structure inspectable.');
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: textFilePath,
+  });
   const initial = ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
 
   const voiceDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'skills', 'README.md');
   const staleVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8')
     .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
     .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)');
+  const staleSoulDraft = fs.readFileSync(soulDraftPath, 'utf8')
+    .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+    .replace(/Source materials: .*$/, 'Source materials: 1 (message:1)');
+  const staleSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8')
+    .replace(/Latest material: .*\(.+\)/, 'Latest material: 2026-04-16T00:00:00.000Z (legacy-message)')
+    .replace(/Source materials: .*$/, 'Source materials: 2 (message:1, talk:1)');
   fs.writeFileSync(voiceDraftPath, staleVoiceDraft);
+  fs.writeFileSync(soulDraftPath, staleSoulDraft);
+  fs.writeFileSync(skillsDraftPath, staleSkillsDraft);
 
   await new Promise((resolve) => setTimeout(resolve, 15));
 
@@ -2141,9 +2213,19 @@ test('refreshStaleFoundationDrafts refreshes profiles when markdown draft materi
   assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
 
   const refreshedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
-  assert.match(refreshedVoiceDraft, /Source materials: 2 \(message:1, talk:1\)/);
+  assert.match(refreshedVoiceDraft, /Source materials: 3 \(message:1, talk:1, text:1\)/);
   assert.doesNotMatch(refreshedVoiceDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
   assert.doesNotMatch(refreshedVoiceDraft, /Source materials: 1 \(message:1\)/);
+
+  const refreshedSoulDraft = fs.readFileSync(soulDraftPath, 'utf8');
+  assert.match(refreshedSoulDraft, /Source materials: 2 \(talk:1, text:1\)/);
+  assert.doesNotMatch(refreshedSoulDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
+  assert.doesNotMatch(refreshedSoulDraft, /Source materials: 1 \(message:1\)/);
+
+  const refreshedSkillsDraft = fs.readFileSync(skillsDraftPath, 'utf8');
+  assert.match(refreshedSkillsDraft, /Source materials: 1 \(talk:1\)/);
+  assert.doesNotMatch(refreshedSkillsDraft, /Latest material: 2026-04-16T00:00:00.000Z \(legacy-message\)/);
+  assert.doesNotMatch(refreshedSkillsDraft, /Source materials: 2 \(message:1, talk:1\)/);
 });
 
 test('refreshStaleFoundationDrafts refreshes profiles when markdown draft latest material source provenance drifts', async () => {
@@ -2276,6 +2358,41 @@ test('refreshStaleFoundationDrafts refreshes profiles when memory draft latest m
 
   const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
   assert.equal(repairedDraft.latestMaterialSourcePath, 'latest-source.txt');
+});
+
+test('refreshStaleFoundationDrafts refreshes profiles when memory draft sourceCount provenance drifts', async () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Memory Source Count Drift',
+    text: 'Ship the first slice.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Memory Source Count Drift',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  const initial = ingestion.refreshFoundationDrafts({ personId: 'Memory Source Count Drift' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'memory-source-count-drift', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.sourceCount = 1;
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  const result = ingestion.refreshStaleFoundationDrafts();
+
+  assert.equal(result.profileCount, 1);
+  assert.deepEqual(result.results.map((entry) => entry.personId), ['memory-source-count-drift']);
+  assert.equal(result.results[0].generatedAt > initial.generatedAt, true);
+
+  const repairedDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(repairedDraft.sourceCount, 2);
 });
 
 test('refreshStaleFoundationDrafts ignores memory draft latest material source formatting drift', async () => {

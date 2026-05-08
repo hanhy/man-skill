@@ -73,6 +73,45 @@ function normalizeStringArray(values) {
   return normalized;
 }
 
+function normalizePathArray(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const value of values) {
+    const normalizedPath = normalizeDraftPath(typeof value === 'string' ? value : null);
+    if (!normalizedPath || seen.has(normalizedPath)) {
+      continue;
+    }
+    seen.add(normalizedPath);
+    normalized.push(normalizedPath);
+  }
+
+  return normalized;
+}
+
+function isUntouchedProfileStarterSampleText(rootDir: string | null, profile: any, sampleTextPath: string | null): boolean {
+  if (!rootDir || !profile?.id || !sampleTextPath) {
+    return false;
+  }
+
+  const normalizedSampleTextPath = normalizeDraftPath(sampleTextPath);
+  const expectedSampleTextPath = `profiles/${profile.id}/imports/sample.txt`;
+  if (!normalizedSampleTextPath || normalizedSampleTextPath !== expectedSampleTextPath) {
+    return false;
+  }
+
+  const absoluteSampleTextPath = path.join(rootDir, normalizedSampleTextPath);
+  if (!fs.existsSync(absoluteSampleTextPath)) {
+    return false;
+  }
+
+  const sampleText = stripLeadingUtf8Bom(fs.readFileSync(absoluteSampleTextPath, 'utf8')).trim();
+  return /^Replace this file with a real writing sample for .+\.$/.test(sampleText);
+}
+
 function collectCandidateSignalTypes(signal, primarySource = 'sample') {
   const primaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.latestTypes : signal?.sampleTypes);
   const secondaryTypes = normalizeStringArray(primarySource === 'latest' ? signal?.sampleTypes : signal?.latestTypes);
@@ -144,10 +183,14 @@ function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string
       .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
     : [];
 
-  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
-    || left.source.localeCompare(right.source)
-    || (left.path ?? '').localeCompare(right.path ?? '')
-    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+  return Array.from(new Map(
+    normalizedDetails
+      .sort((left, right) => left.type.localeCompare(right.type)
+        || left.source.localeCompare(right.source)
+        || (left.path ?? '').localeCompare(right.path ?? '')
+        || (left.preview ?? '').localeCompare(right.preview ?? ''))
+      .map((detail) => [`${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`, detail] as const),
+  ).values());
 }
 
 function collectRecommendedStarterTemplateSummary(
@@ -359,12 +402,28 @@ function summarizeMemoryDraftGap(profile): string | null {
   return 'memory missing';
 }
 
+function summarizeStructuredDraftGap(profile, key: 'skills' | 'soul' | 'voice'): string | null {
+  const missingDrafts = normalizeStringArray(profile?.foundationDraftStatus?.missingDrafts);
+  const summary = profile?.foundationDraftSummaries?.[key];
+
+  if (!summary) {
+    return missingDrafts.includes(key) ? `${key} missing` : null;
+  }
+
+  const draftGapSummary = summarizeDraftGap(summary, key);
+  if (draftGapSummary) {
+    return draftGapSummary;
+  }
+
+  return missingDrafts.includes(key) ? `${key} missing` : null;
+}
+
 function summarizeProfileDraftGaps(profile): string | null {
   const gapSummaries = [
     summarizeMemoryDraftGap(profile),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
+    summarizeStructuredDraftGap(profile, 'skills'),
+    summarizeStructuredDraftGap(profile, 'soul'),
+    summarizeStructuredDraftGap(profile, 'voice'),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
@@ -863,6 +922,9 @@ function buildProfileCommands(profile, options: any = {}) {
   const profileStarterTextImportCommand = profileSampleTextPath
     ? `node src/index.js import text --person ${shellQuoteArgument(profile.id)} --file ${shellQuote(profileSampleTextPath)} --refresh-foundation`
     : null;
+  const profileStarterTextUntouched = imported
+    ? isUntouchedProfileStarterSampleText(typeof options?.rootDir === 'string' ? options.rootDir : null, profile, profileSampleTextPath)
+    : false;
   const sampleDrivenScreenshotImportCommand = runnableScreenshotImportCommand && runnableScreenshotImportCommand !== profileStarterScreenshotImportCommand
     ? runnableScreenshotImportCommand
     : null;
@@ -917,13 +979,8 @@ function buildProfileCommands(profile, options: any = {}) {
     && intakeManifest.status === 'starter'
     && !importIntakeWithoutRefreshCommand
     && !importIntakeCommand
-    ? (
-      profileStarterTextImportCommand
-      ?? runnableTextImportCommand
-      ?? runnableScreenshotImportCommand
-      ?? runnableMessageImportCommand
-      ?? runnableTalkImportCommand
-    )
+    && !profileStarterTextUntouched
+    ? profileStarterTextImportCommand
     : null;
 
   return {
@@ -968,18 +1025,18 @@ function buildProfileCommands(profile, options: any = {}) {
     intakeManifestEntryTemplateCount,
     intakeManifestEntryTemplateRoot: collectStarterTemplateRoot({ intakeManifestPath: intakeManifest.path }),
     intakePaths: intakeManifest.status === 'invalid'
-      ? Array.from(new Set([
+      ? normalizePathArray([
         intakeManifest.path,
         ...intakeManifestRepairPaths,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0)))
-      : intake ? [
+      ])
+      : normalizePathArray(intake ? [
         intake.importsDir,
         intake.sampleImagesDirPath,
         intake.intakeReadmePath,
         intake.starterManifestPath,
         intake.sampleTextPath,
-      ].filter(Boolean) : [],
-    intakeMissingPaths: intake ? [...(intake.missingPaths ?? [])] : [],
+      ] : []),
+    intakeMissingPaths: intake ? normalizePathArray(intake.missingPaths ?? []) : [],
     importManifestWithoutRefreshCommand: intakeImportManifestWithoutRefreshCommand,
     importManifestCommand: intakeImportManifestCommand,
     refreshFoundationCommand,
@@ -1003,16 +1060,12 @@ function buildProfileCommands(profile, options: any = {}) {
 }
 
 function collectProfileIntakePaths(profile: any): string[] {
-  const missingIntakePaths = Array.isArray(profile?.intakeMissingPaths)
-    ? profile.intakeMissingPaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  const missingIntakePaths = normalizePathArray(profile?.intakeMissingPaths);
   if (missingIntakePaths.length > 0) {
     return missingIntakePaths;
   }
 
-  return Array.isArray(profile?.intakePaths)
-    ? profile.intakePaths.filter((value: any): value is string => typeof value === 'string' && value.length > 0)
-    : [];
+  return normalizePathArray(profile?.intakePaths);
 }
 
 function collectStarterTemplateRoot(profile: any): string | null {
@@ -1464,9 +1517,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedManifestImportCommand = exactSampleManifestCommand;
       recommendedPaths = sampleManifestPaths;
     } else if (sampleManifestInvalid) {
-      recommendedAction = sampleManifestInvalidReason
-        ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
-        : 'fix the checked-in sample manifest for first imports';
+      const invalidSampleTargetLabel = sampleManifest.starterLabel;
+      recommendedAction = invalidSampleTargetLabel
+        ? `fix the checked-in sample manifest for ${invalidSampleTargetLabel}${sampleManifestInvalidReason ? ` — ${sampleManifestInvalidReason}` : ''}`
+        : (sampleManifestInvalidReason
+          ? `fix the checked-in sample manifest for first imports — ${sampleManifestInvalidReason}`
+          : 'fix the checked-in sample manifest for first imports');
       recommendedCommand = null;
       recommendedManifestInspectCommand = helperCommands.sampleManifestInspect ?? null;
       recommendedPaths = sampleManifestPaths.length > 0 ? sampleManifestPaths : [sampleManifestPath];
@@ -1829,10 +1885,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     sampleStarterCommand: sampleManifestPresent && sampleManifest.status === 'loaded'
       ? 'node src/index.js import sample'
       : null,
-    sampleStarterSource: sampleManifestPresent && sampleManifest.status === 'loaded'
+    sampleStarterSource: sampleManifestPresent
       ? sampleManifestPath
       : null,
-    sampleStarterLabel: sampleManifestPresent && sampleManifest.status === 'loaded'
+    sampleStarterLabel: sampleManifestPresent
       ? sampleManifest.starterLabel
       : null,
     sampleManifestInspectCommand: sampleManifestPresent

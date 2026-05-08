@@ -2,18 +2,31 @@
   "personId": "harry-han",
   "displayName": "Harry Han",
   "summary": "Direct operator with a bias for momentum and fast feedback loops.",
-  "generatedAt": "2026-05-03T08:11:21.935Z",
-  "latestMaterialAt": "2026-04-17T19:03:57.999Z",
-  "latestMaterialId": "2026-04-17T19-03-57-999Z-text",
-  "latestMaterialSourcePath": "samples/harry-post.txt",
+  "generatedAt": "2026-05-06T21:01:08.611Z",
+  "latestMaterialAt": "2026-05-06T05:48:06.506Z",
+  "latestMaterialId": "2026-05-06T05-48-06-506Z-screenshot",
+  "latestMaterialSourcePath": "profiles/harry-han/imports/images/chat.png",
+  "sourceCount": 6,
   "materialTypes": {
-    "text": 1,
+    "screenshot": 2,
+    "text": 2,
     "talk": 1,
-    "screenshot": 1,
     "message": 1
   },
-  "entryCount": 4,
+  "entryCount": 6,
   "entries": [
+    {
+      "type": "screenshot",
+      "createdAt": "2026-05-06T05:48:06.506Z",
+      "summary": "chat screenshot sample",
+      "sourceFile": "profiles/harry-han/imports/images/chat.png"
+    },
+    {
+      "type": "text",
+      "createdAt": "2026-05-06T05:48:06.503Z",
+      "summary": "Move fast on the first pass, but keep the structure clean enough that the next change is obvious. I care more about a tight feedback loop than a polished first…",
+      "sourceFile": "profiles/harry-han/imports/sample.txt"
+    },
     {
       "type": "text",
       "createdAt": "2026-04-17T19:03:57.999Z",

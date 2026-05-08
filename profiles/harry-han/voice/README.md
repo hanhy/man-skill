@@ -3,10 +3,10 @@
 Profile: harry-han
 Display name: Harry Han
 Summary: Direct operator with a bias for momentum and fast feedback loops.
-Generated at: 2026-05-03T08:11:21.935Z
-Latest material: 2026-04-17T19:03:57.999Z (2026-04-17T19-03-57-999Z-text)
-Latest material source: samples/harry-post.txt
-Source materials: 3 (message:1, talk:1, text:1)
+Generated at: 2026-05-06T21:01:08.611Z
+Latest material: 2026-05-06T05:48:06.503Z (2026-05-06T05-48-06-502Z-text)
+Latest material source: profiles/harry-han/imports/sample.txt
+Source materials: 4 (message:1, talk:1, text:2)
 
 ## Tone
 Direct operator with a bias for momentum and fast feedback loops.

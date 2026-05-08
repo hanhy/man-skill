@@ -67,14 +67,16 @@ export function summarizeFoundationDraftSources(profile: any): string | null {
       const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
       const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
       const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
+      const typeLabel = !sourceLabel && materialTypes ? `types ${materialTypes}` : null;
       const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
       const fallbackDetails = [
-        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
+        typeLabel,
         entryLabel,
         latestSourceLabel,
       ].filter((value): value is string => typeof value === 'string' && value.length > 0);
       const parts = [
         sourceDetailLabel,
+        typeLabel,
         entryLabel,
         latestSourceLabel,
       ].filter((value): value is string => typeof value === 'string' && value.length > 0);

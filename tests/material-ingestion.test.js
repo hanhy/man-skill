@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -139,6 +140,61 @@ test('direct screenshot imports skip unchanged reruns before copying duplicate a
   assert.equal(materialRecords.length, 1);
 });
 
+test('direct text and screenshot imports dedupe unchanged file-backed content across different source paths', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const firstTextPath = path.join(rootDir, 'draft.txt');
+  const secondTextPath = path.join(rootDir, 'imports', 'renamed-draft.txt');
+  fs.mkdirSync(path.dirname(secondTextPath), { recursive: true });
+  fs.writeFileSync(firstTextPath, 'Ship the thin slice first.');
+  fs.writeFileSync(secondTextPath, 'Ship the thin slice first.');
+
+  const firstScreenshotPath = path.join(rootDir, 'chat.png');
+  const secondScreenshotPath = path.join(rootDir, 'assets', 'chat-copy.png');
+  fs.mkdirSync(path.dirname(secondScreenshotPath), { recursive: true });
+  fs.writeFileSync(firstScreenshotPath, 'fake image bytes');
+  fs.writeFileSync(secondScreenshotPath, 'fake image bytes');
+
+  const firstTextResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: firstTextPath,
+    notes: 'blog fragment',
+  });
+  const secondTextResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: secondTextPath,
+    notes: 'blog fragment',
+  });
+
+  const firstScreenshotResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: firstScreenshotPath,
+    notes: 'chat screenshot',
+  });
+  const screenshotAssetsDir = path.join(rootDir, 'profiles', 'harry-han', 'materials', 'screenshots');
+  const firstAssetNames = fs.readdirSync(screenshotAssetsDir);
+  const secondScreenshotResult = ingestion.importScreenshotSource({
+    personId: 'harry-han',
+    sourceFile: secondScreenshotPath,
+    notes: 'chat screenshot',
+  });
+
+  assert.equal(firstTextResult.skipped, false);
+  assert.equal(secondTextResult.skipped, true);
+  assert.equal(secondTextResult.recordPath, null);
+
+  assert.equal(firstScreenshotResult.skipped, false);
+  assert.equal(secondScreenshotResult.skipped, true);
+  assert.equal(secondScreenshotResult.recordPath, null);
+  assert.deepEqual(fs.readdirSync(screenshotAssetsDir), firstAssetNames);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 2);
+});
+
 test('direct text imports strip UTF-8 BOMs before deduping and writing material content', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -173,6 +229,47 @@ test('direct text imports strip UTF-8 BOMs before deduping and writing material 
   const textRecord = JSON.parse(fs.readFileSync(firstResult.recordPath, 'utf8'));
   assert.equal(textRecord.content, 'Ship the thin slice first.');
   assert.equal(textRecord.content.startsWith('\uFEFF'), false);
+});
+
+test('direct text imports skip legacy path-sensitive fingerprints after a source file is renamed', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const firstPath = path.join(rootDir, 'draft-a.txt');
+  const secondPath = path.join(rootDir, 'draft-b.txt');
+  const content = 'Ship the thin slice first.';
+  fs.writeFileSync(firstPath, content);
+  fs.writeFileSync(secondPath, content);
+
+  const firstResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: firstPath,
+    notes: 'blog fragment',
+  });
+
+  const legacyRecord = JSON.parse(fs.readFileSync(firstResult.recordPath, 'utf8'));
+  legacyRecord.fingerprint = crypto.createHash('sha256').update(JSON.stringify({
+    personId: 'harry-han',
+    type: 'text',
+    notes: 'blog fragment',
+    sourceFile: legacyRecord.sourceFile,
+    contentHash: crypto.createHash('sha256').update(content).digest('hex'),
+  })).digest('hex');
+  fs.writeFileSync(firstResult.recordPath, JSON.stringify(legacyRecord, null, 2));
+
+  const secondResult = ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: secondPath,
+    notes: 'blog fragment',
+  });
+
+  assert.equal(secondResult.skipped, true);
+  assert.equal(secondResult.recordPath, null);
+
+  const materialRecords = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(materialRecords.length, 1);
 });
 
 test('importManifest strips UTF-8 BOMs from text entry fingerprints before deduping and writing material content', () => {
@@ -558,13 +655,90 @@ test('importManifest skips unchanged entries when the same manifest is rerun', (
   assert.equal(secondResult.manifestEntryCount, 3);
   assert.equal(secondResult.skippedEntryCount, 3);
   assert.deepEqual(secondResult.results, []);
-  assert.deepEqual(secondResult.profileIds, []);
-  assert.deepEqual(secondResult.profileSummaries, []);
+  assert.deepEqual(secondResult.profileIds, ['harry-han', 'jane-doe']);
+  assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['harry-han', 'jane-doe']);
+  assert.equal(secondResult.profileSummaries[0]?.importManifestAndRefreshCommand, "node src/index.js import manifest --file 'materials.json' --refresh-foundation");
 
   const harryMaterials = fs
     .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
     .filter((name) => name.endsWith('.json'));
   assert.equal(harryMaterials.length, 2);
+
+  const janeMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(janeMaterials.length, 1);
+});
+
+test('importManifest dedupes unchanged file-backed text and screenshot entries across different file paths', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const firstTextPath = path.join(rootDir, 'post-a.txt');
+  const secondTextPath = path.join(rootDir, 'post-b.txt');
+  fs.writeFileSync(firstTextPath, 'Move fast, but keep the edges clean.');
+  fs.writeFileSync(secondTextPath, 'Move fast, but keep the edges clean.');
+
+  const firstScreenshotPath = path.join(rootDir, 'chat-a.png');
+  const secondScreenshotPath = path.join(rootDir, 'chat-b.png');
+  fs.writeFileSync(firstScreenshotPath, 'fake image bytes');
+  fs.writeFileSync(secondScreenshotPath, 'fake image bytes');
+
+  const firstManifestPath = path.join(rootDir, 'materials-a.json');
+  fs.writeFileSync(
+    firstManifestPath,
+    JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post-a.txt',
+          notes: 'blog fragment',
+        },
+        {
+          personId: 'Jane Doe',
+          type: 'screenshot',
+          file: './chat-a.png',
+          notes: 'visual chat reference',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const secondManifestPath = path.join(rootDir, 'materials-b.json');
+  fs.writeFileSync(
+    secondManifestPath,
+    JSON.stringify({
+      entries: [
+        {
+          personId: 'Harry Han',
+          type: 'text',
+          file: './post-b.txt',
+          notes: 'blog fragment',
+        },
+        {
+          personId: 'Jane Doe',
+          type: 'screenshot',
+          file: './chat-b.png',
+          notes: 'visual chat reference',
+        },
+      ],
+    }, null, 2),
+  );
+
+  const firstResult = ingestion.importManifest({ manifestFile: firstManifestPath });
+  const secondResult = ingestion.importManifest({ manifestFile: secondManifestPath });
+
+  assert.equal(firstResult.entryCount, 2);
+  assert.equal(firstResult.skippedEntryCount, 0);
+  assert.equal(secondResult.entryCount, 0);
+  assert.equal(secondResult.skippedEntryCount, 2);
+  assert.deepEqual(secondResult.results, []);
+
+  const harryMaterials = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'harry-han', 'materials'))
+    .filter((name) => name.endsWith('.json'));
+  assert.equal(harryMaterials.length, 1);
 
   const janeMaterials = fs
     .readdirSync(path.join(rootDir, 'profiles', 'jane-doe', 'materials'))
@@ -1522,6 +1696,63 @@ test('scaffoldProfileIntake rebuilds parseable starter manifests that target a d
   });
 });
 
+test('scaffoldProfileIntake backs up invalid starter manifests before rebuilding the scaffold', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const initial = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  const templatePath = path.join(rootDir, initial.starterManifestPath);
+  const invalidStarterManifest = '{\n  "personId": "harry-han",\n  "entries": [\n';
+  fs.writeFileSync(templatePath, invalidStarterManifest);
+
+  const rerun = ingestion.scaffoldProfileIntake({
+    personId: 'Harry Han',
+    displayName: 'Harry Forward',
+    summary: 'Direct operator with faster loops.',
+  });
+
+  assert.match(
+    rerun.invalidStarterManifestBackupPath ?? '',
+    /^profiles\/harry-han\/imports\/materials\.template\.json\.invalid-[^/]+\.bak$/,
+  );
+
+  const backupPath = path.join(rootDir, rerun.invalidStarterManifestBackupPath);
+  assert.equal(fs.existsSync(backupPath), true);
+  assert.equal(fs.readFileSync(backupPath, 'utf8'), invalidStarterManifest);
+
+  const rebuiltTemplate = JSON.parse(fs.readFileSync(path.join(rootDir, rerun.starterManifestPath), 'utf8'));
+  assert.equal(rebuiltTemplate.personId, 'harry-han');
+  assert.equal(rebuiltTemplate.displayName, 'Harry Forward');
+  assert.equal(rebuiltTemplate.summary, 'Direct operator with faster loops.');
+  assert.deepEqual(rebuiltTemplate.entries, []);
+  assert.deepEqual(rebuiltTemplate.entryTemplates, {
+    text: {
+      type: 'text',
+      file: 'sample.txt',
+      notes: 'long-form writing sample',
+    },
+    message: {
+      type: 'message',
+      text: '<paste a representative short message>',
+      notes: 'chat sample',
+    },
+    talk: {
+      type: 'talk',
+      text: '<paste a transcript snippet>',
+      notes: 'voice memo transcript',
+    },
+    screenshot: {
+      type: 'screenshot',
+      file: 'images/chat.png',
+      notes: 'chat screenshot',
+    },
+  });
+});
+
 test('scaffoldStaleProfileIntakes refreshes only metadata-only profiles with missing or partial intake scaffolds', () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
@@ -1737,6 +1968,44 @@ test('importProfileIntakeManifest preserves replayed profile summaries on skippe
   assert.deepEqual(secondResult.profileSummaries.map((entry) => entry.personId), ['imported-ready']);
   assert.equal(secondResult.profileSummaries[0].materialCount, 0);
   assert.deepEqual(secondResult.profileSummaries[0].materialTypes, {});
+});
+
+test('importProfileIntakeManifest accepts backslash-normalized relative entry files from profile-local manifests', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  ingestion.scaffoldProfileIntake({
+    personId: 'Windows Ready',
+    displayName: 'Windows Ready',
+    summary: 'Profile-local manifests should stay runnable with backslash-style relative files.',
+  });
+
+  fs.writeFileSync(path.join(rootDir, 'profiles', 'windows-ready', 'imports', 'sample.txt'), 'Windows manifest sample.\n');
+  fs.writeFileSync(
+    path.join(rootDir, 'profiles', 'windows-ready', 'imports', 'materials.template.json'),
+    JSON.stringify({
+      personId: 'Windows Ready',
+      entries: [{ type: 'text', file: '.\\sample.txt', notes: 'profile-local sample' }],
+    }, null, 2),
+  );
+
+  const result = ingestion.importProfileIntakeManifest({ personId: 'windows-ready', refreshFoundation: false });
+
+  assert.equal(result.entryCount, 1);
+  assert.deepEqual(result.profileIds, ['windows-ready']);
+  assert.deepEqual(result.profileSummaries.map((entry) => entry.personId), ['windows-ready']);
+
+  const materialRecordPath = fs
+    .readdirSync(path.join(rootDir, 'profiles', 'windows-ready', 'materials'))
+    .find((name) => name.endsWith('.json'));
+  assert.equal(typeof materialRecordPath, 'string');
+
+  const materialRecord = JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'profiles', 'windows-ready', 'materials', materialRecordPath), 'utf8'),
+  );
+  assert.equal(materialRecord.type, 'text');
+  assert.equal(materialRecord.content, 'Windows manifest sample.\n');
+  assert.equal(materialRecord.sourceFile, 'profiles/windows-ready/imports/sample.txt');
 });
 
 test('importProfileIntakeManifest explains how to promote starter templates into entries before rerunning imported profile intake', () => {

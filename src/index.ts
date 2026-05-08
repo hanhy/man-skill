@@ -452,20 +452,21 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     };
   }
 
+  const profileIds = new Set<string>();
+  const declaredProfileIds = new Set<string>();
+  const materialTypes: Record<string, number> = {};
+  const textFilePersonIds: Record<string, string> = {};
+  const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
+  const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
+  const filePaths: string[] = [];
+  const profileDisplayNames = new Map<string, string>();
+  const pushUniqueFilePath = (value: string) => {
+    if (!filePaths.includes(value)) {
+      filePaths.push(value);
+    }
+  };
+
   try {
-    const profileIds = new Set<string>();
-    const declaredProfileIds = new Set<string>();
-    const materialTypes: Record<string, number> = {};
-    const textFilePersonIds: Record<string, string> = {};
-    const inlineEntries: Array<{ type: 'message' | 'talk'; text: string; personId: string }> = [];
-    const fileEntries: Array<{ type: 'text' | 'screenshot'; filePath: string; personId: string }> = [];
-    const filePaths: string[] = [];
-    const profileDisplayNames = new Map<string, string>();
-    const pushUniqueFilePath = (value: string) => {
-      if (!filePaths.includes(value)) {
-        filePaths.push(value);
-      }
-    };
     const supportedEntryTypes = new Set(['text', 'message', 'talk', 'screenshot']);
     const realRootDir = fs.realpathSync(rootDir);
     const toRepoRelativeRepairPath = (absoluteRepairPath: string): string | null => {
@@ -682,16 +683,18 @@ function readSampleManifestSummary(rootDir: string, relativePath: string | null)
     const repairPaths = Array.isArray((error as SampleManifestValidationError)?.repairPaths)
       ? (error as SampleManifestValidationError).repairPaths?.filter((value): value is string => typeof value === 'string' && value.length > 0) ?? []
       : [];
+    const partialProfileIds = [...profileIds].sort();
+    const partialProfileLabels = partialProfileIds.map((personId) => buildSampleProfileLabel(personId, profileDisplayNames.get(personId)));
     return {
       status: 'invalid',
       entryCount: 0,
-      profileIds: [],
-      profileLabels: [],
+      profileIds: partialProfileIds,
+      profileLabels: partialProfileLabels,
       materialTypes: {},
       textFilePersonIds: {},
       inlineEntries: [],
       fileEntries: [],
-      filePaths: repairPaths,
+      filePaths: Array.from(new Set([...filePaths, ...repairPaths])),
       error: error instanceof Error ? error.message : 'Unable to validate sample manifest',
     };
   }
@@ -1041,8 +1044,28 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const coreRootHeadingAliases = Array.isArray(queuedArea?.rootHeadingAliases)
     ? queuedArea.rootHeadingAliases.filter((value: unknown): value is string => typeof value === 'string' && value.length > 0)
     : [];
+  const coreShadowPaths = Array.isArray(queuedArea?.shadowPaths)
+    ? queuedArea.shadowPaths
+      .map((value: unknown) => typeof value === 'string' ? normalizeDraftPath(value) : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : [];
+  const coreShadowPathSamplePaths = Array.isArray(queuedArea?.shadowPathSamplePaths)
+    ? queuedArea.shadowPathSamplePaths
+      .map((value: unknown) => typeof value === 'string' ? normalizeDraftPath(value) : null)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : coreShadowPaths.slice(0, 3);
+  const coreShadowPathCount = typeof queuedArea?.shadowPathCount === 'number'
+    ? queuedArea.shadowPathCount
+    : (coreShadowPaths.length > 0 ? coreShadowPaths.length : null);
+  const coreShadowPathOverflowCount = typeof queuedArea?.shadowPathOverflowCount === 'number'
+    ? queuedArea.shadowPathOverflowCount
+    : ((coreShadowPathCount !== null && coreShadowPathSamplePaths.length > 0)
+      ? Math.max(coreShadowPathCount - coreShadowPathSamplePaths.length, 0)
+      : null);
 
-  const followUpCommand = status === 'queued' ? 'node src/index.js' : null;
+  const followUpCommand = status === 'queued' && hasQueuedCoreFoundation
+    ? 'node src/index.js'
+    : null;
 
   return {
     id: 'foundation',
@@ -1061,6 +1084,10 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathCount !== null ? { shadowPathCount: coreShadowPathCount } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: coreShadowPathSamplePaths } : {}),
+    ...(hasQueuedCoreFoundation && coreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: coreShadowPathOverflowCount } : {}),
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,
@@ -2248,6 +2275,7 @@ function buildCliUsageLines(): string[] {
     '',
     'Commands:',
     '  node src/index.js                                  Show the repo summary JSON',
+    '  node src/index.js summary [--json]                 Show the repo summary JSON',
     '  node src/index.js --help                           Show this usage guide',
     '  node src/index.js import sample [--file <manifest.json>]  Import the checked-in sample manifest and refresh drafts',
     '  node src/index.js import intake --person <person-id> [--refresh-foundation] Import a ready profile-local intake manifest',
@@ -2287,6 +2315,10 @@ function formatUsageHint(usage: string, examples: string[] = []): string {
 }
 
 function buildCommandUsageHint(command?: string, subcommand?: string): string | null {
+  if (command === 'summary') {
+    return 'Usage: node src/index.js summary [--json]';
+  }
+
   if (command === 'import' && subcommand === 'manifest') {
     return 'Usage: node src/index.js import manifest --file <manifest.json> [--refresh-foundation]';
   }
@@ -2357,8 +2389,31 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   return null;
 }
 
+function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
+  if (parsedArgs.command !== 'summary') {
+    return parsedArgs;
+  }
+
+  const options = { ...parsedArgs.options };
+  let subcommand = parsedArgs.subcommand;
+
+  if (typeof subcommand === 'string' && subcommand.startsWith('--')) {
+    const key = subcommand.slice(2);
+    if (!(key in options)) {
+      options[key] = true;
+    }
+    subcommand = undefined;
+  }
+
+  return {
+    command: parsedArgs.command,
+    subcommand,
+    options,
+  };
+}
+
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
-  const { command, subcommand, options } = parseArgs(argv);
+  const { command, subcommand, options } = normalizeSummaryArgs(parseArgs(argv));
 
   if (command === '--help' || command === 'help') {
     console.log(formatCliUsage());

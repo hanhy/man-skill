@@ -1,5 +1,6 @@
 import { buildCoreFoundationCommand } from './foundation-core-commands.ts';
 import { buildFoundationDraftPaths, normalizeDraftPath } from './foundation-draft-paths.ts';
+import { summarizeFoundationDraftSources } from './foundation-draft-source-summary.ts';
 import { buildProfileLabel as formatProfileLabel } from './profile-label.js';
 
 type MaterialTypes = Record<string, number>;
@@ -793,6 +794,10 @@ type WorkLoopPriority = {
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
+  shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -878,10 +883,14 @@ function normalizeStarterTemplateDetails(details: unknown): Array<{ type: string
       .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
     : [];
 
-  return normalizedDetails.sort((left, right) => left.type.localeCompare(right.type)
-    || left.source.localeCompare(right.source)
-    || (left.path ?? '').localeCompare(right.path ?? '')
-    || (left.preview ?? '').localeCompare(right.preview ?? ''));
+  return Array.from(new Map(
+    normalizedDetails
+      .sort((left, right) => left.type.localeCompare(right.type)
+        || left.source.localeCompare(right.source)
+        || (left.path ?? '').localeCompare(right.path ?? '')
+        || (left.preview ?? '').localeCompare(right.preview ?? ''))
+      .map((detail) => [`${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`, detail] as const),
+  ).values());
 }
 
 function formatStarterTemplateDetailSummary(details: unknown): string | null {
@@ -1202,47 +1211,7 @@ function collectDraftSources(profile: ProfileSnapshot = {}) {
 }
 
 function summarizeDraftSources(profile: ProfileSnapshot = {}) {
-  const draftSources = collectDraftSources(profile);
-  const sourceSummaries = (['memory', 'skills', 'soul', 'voice'] as const)
-    .map((key) => {
-      const summary = draftSources[key];
-      if (!summary) {
-        return null;
-      }
-
-      const sourceCount = Number(summary.sourceCount ?? 0);
-      const entryCount = Number(summary.entryCount ?? 0);
-      const materialTypes = summary.materialTypes ? formatMaterialTypes(summary.materialTypes) : null;
-      const path = normalizeDraftPath(normalizeOptionalString(summary.path));
-      if (sourceCount <= 0 && entryCount <= 0 && !materialTypes && !path) {
-        return null;
-      }
-
-      const sourceLabel = sourceCount > 0 ? formatCountLabel(sourceCount, 'source') : null;
-      const entryLabel = entryCount > 0 ? formatCountLabel(entryCount, 'entry', 'entries') : null;
-      const latestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(summary.latestMaterialSourcePath));
-      const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
-      const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
-      const fallbackDetails = [
-        !sourceLabel && materialTypes ? `types ${materialTypes}` : null,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-      const parts = [
-        sourceDetailLabel,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-
-      if (!sourceLabel && path) {
-        return fallbackDetails.length > 0 ? `${key} @ ${path} (${fallbackDetails.join(', ')})` : `${key} @ ${path}`;
-      }
-
-      return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
-    })
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
-
-  return sourceSummaries.length > 0 ? sourceSummaries.join(' | ') : null;
+  return summarizeFoundationDraftSources(profile);
 }
 
 function buildProfileSnapshotRefreshInfo(profile: ProfileSnapshot = {}, profileId: string): ProfileSnapshotRefreshInfo {
@@ -1376,6 +1345,29 @@ function collectProfileSnapshotCandidateTypes(signal: ReadinessSignal | undefine
   return Array.from(new Set([...primaryTypes, ...secondaryTypes]));
 }
 
+function hasMeaningfulProfileSnapshotDraftStatus(draftStatus: FoundationDraftStatus = {}) {
+  return normalizeOptionalString(draftStatus.generatedAt) !== null
+    || draftStatus.complete !== undefined
+    || draftStatus.needsRefresh !== undefined
+    || normalizeStringArray(draftStatus.missingDrafts).length > 0
+    || normalizeStringArray(draftStatus.refreshReasons).length > 0;
+}
+
+function hasMeaningfulProfileSnapshotReadiness(readiness: FoundationReadiness = {}) {
+  return (['memory', 'voice', 'soul', 'skills'] as const).some((key) => {
+    const signal = readiness[key];
+    if (!signal) {
+      return false;
+    }
+
+    const candidateCount = Number(signal.candidateCount ?? 0);
+    return candidateCount > 0
+      || collectProfileSnapshotCandidateTypes(signal, key === 'memory' ? 'latest' : 'sample').length > 0
+      || normalizeStringArray(signal.sampleSummaries).length > 0
+      || normalizeStringArray(signal.sampleExcerpts).length > 0;
+  });
+}
+
 function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnapshotSummary {
   const displayName = normalizeOptionalString(profile.profile?.displayName);
   const profileId = normalizeOptionalString(profile.id) ?? 'unknown-profile';
@@ -1408,11 +1400,11 @@ function buildProfileSnapshotSummary(profile: ProfileSnapshot = {}): ProfileSnap
     lines.push(`  profile summary: ${profileSummary}`);
   }
 
-  if (profile.foundationDraftStatus) {
-    lines.push(`  drafts: ${formatDraftStatus(profile.foundationDraftStatus)}`);
+  if (hasMeaningfulProfileSnapshotDraftStatus(draftStatus)) {
+    lines.push(`  drafts: ${formatDraftStatus(draftStatus)}`);
   }
 
-  if (profile.foundationReadiness) {
+  if (hasMeaningfulProfileSnapshotReadiness(readiness)) {
     lines.push(
       `  ${formatProfileSnapshotCandidateSignal('memory candidates', readiness.memory?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.memory, 'latest'))} | ${formatProfileSnapshotCandidateSignal('voice', readiness.voice?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.voice, 'sample'))} | ${formatProfileSnapshotCandidateSignal('soul', readiness.soul?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.soul, 'sample'))} | ${formatProfileSnapshotCandidateSignal('skills', readiness.skills?.candidateCount ?? 0, collectProfileSnapshotCandidateTypes(readiness.skills, 'sample'))}`,
     );
@@ -2081,7 +2073,12 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `- +${remainingProfileCommands.length} more profile${remainingProfileCommands.length === 1 ? '' : 's'}: ${remainingProfileCommands.map((profile) => formatIngestionProfileLabel(profile)).join(', ')}`
     : null;
   const recommendedPaths = Array.isArray(ingestion?.recommendedPaths)
-    ? ingestion.recommendedPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    ? Array.from(new Set(
+      ingestion.recommendedPaths
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .map((value) => normalizeDraftPath(value))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
     : [];
   const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
     ? ingestion.recommendedEditPath
@@ -2095,6 +2092,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
   const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath));
+  const filteredRecommendedPaths = recommendedLatestMaterialSourcePath
+    ? recommendedPaths.filter((value) => value !== recommendedLatestMaterialSourcePath)
+    : recommendedPaths;
   const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';
@@ -2140,8 +2140,11 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedManifestImportSegment = recommendedManifestImportCommand && recommendedManifestImportCommand !== recommendedCommand
     ? `; manifest ${recommendedManifestImportCommand}`
     : '';
+  const recommendedManifestInspectSegment = recommendedManifestInspectCommand && recommendedManifestInspectCommand !== recommendedCommand
+    ? `; manifest inspect ${recommendedManifestInspectCommand}`
+    : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectCommand ? `; manifest inspect ${recommendedManifestInspectCommand}` : ''}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${recommendedPaths.length > 0 ? ` @ ${recommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? ` @ ${filteredRecommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2351,40 +2354,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
       const followUpImportIntakeSegment = profile.intakeReady === true && !intakeShortcutCommand && profile.followUpImportIntakeCommand
         ? ` | replay-after-edit ${profile.followUpImportIntakeCommand}`
         : '';
-      const starterImportCommand = profile.starterImportCommand ?? (() => {
-        if (profile.intakeReady !== true || intakeShortcutCommand || actionLabel === 'import') {
-          return null;
-        }
-
-        if (typeof profile.intakeStatusSummary !== 'string' || !profile.intakeStatusSummary.includes('starter template')) {
-          return null;
-        }
-
-        const directImports = profile.importCommands && typeof profile.importCommands === 'object'
-          ? [
-            profile.importCommands.text,
-            profile.importCommands.screenshot,
-            profile.importCommands.message,
-            profile.importCommands.talk,
-          ]
-          : [];
-        const runnableDirectImport = directImports.find((command): command is string => typeof command === 'string' && command.length > 0 && !command.includes('<')) ?? null;
-        if (runnableDirectImport) {
-          return runnableDirectImport;
-        }
-
-        const sampleTextPath = Array.isArray(profile.intakePaths)
-          ? profile.intakePaths.find((value): value is string => typeof value === 'string' && value.endsWith('sample.txt')) ?? null
-          : null;
-        const personId = typeof profile.personId === 'string' && profile.personId.length > 0 ? profile.personId : null;
-        if (!sampleTextPath || !personId) {
-          return null;
-        }
-
-        const shellQuote = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
-        const shellQuoteArgument = (value: string) => /^[A-Za-z0-9._-]+$/.test(value) ? value : shellQuote(value);
-        return `node src/index.js import text --person ${shellQuoteArgument(personId)} --file ${shellQuote(sampleTextPath)} --refresh-foundation`;
-      })();
+      const starterImportCommand = profile.starterImportCommand ?? null;
       const starterImportSegment = starterImportCommand ? ` | import ${starterImportCommand}` : '';
       const actionSegment = actionCommand ? ` | ${actionLabel} ${actionCommand}` : '';
       const updateProfileSegment = profile.updateProfileCommand
@@ -2576,6 +2546,9 @@ function formatPreviewHeadingAliasSummary(headingAliases: string[] | null | unde
 function formatShadowPathSummary(
   shadowPaths: string[] | null | undefined,
   prefix = '; shadow docs ',
+  shadowPathSamplePaths?: string[] | null,
+  shadowPathOverflowCount?: number | null,
+  shadowPathCount?: number | null,
 ): string | null {
   const normalizedShadowPaths = Array.isArray(shadowPaths)
     ? Array.from(new Set(
@@ -2584,12 +2557,31 @@ function formatShadowPathSummary(
         .filter((value): value is string => typeof value === 'string' && value.length > 0),
     ))
     : [];
-  if (normalizedShadowPaths.length === 0) {
+  const normalizedShadowPathSamplePaths = Array.isArray(shadowPathSamplePaths)
+    ? Array.from(new Set(
+      shadowPathSamplePaths
+        .map((value) => normalizeDraftPath(normalizeOptionalString(value)))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ))
+    : [];
+  const visibleShadowPaths = normalizedShadowPaths.length > 0
+    ? normalizedShadowPaths.slice(0, 3)
+    : normalizedShadowPathSamplePaths.slice(0, 3);
+  if (visibleShadowPaths.length === 0) {
     return null;
   }
 
-  const visibleShadowPaths = normalizedShadowPaths.slice(0, 3);
-  const remainingShadowPathCount = Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0);
+  const normalizedShadowPathCount = typeof shadowPathCount === 'number' && Number.isFinite(shadowPathCount) && shadowPathCount >= 0
+    ? Math.trunc(shadowPathCount)
+    : null;
+  const normalizedShadowPathOverflowCount = typeof shadowPathOverflowCount === 'number' && Number.isFinite(shadowPathOverflowCount) && shadowPathOverflowCount >= 0
+    ? Math.trunc(shadowPathOverflowCount)
+    : null;
+  const remainingShadowPathCount = normalizedShadowPathOverflowCount !== null
+    ? normalizedShadowPathOverflowCount
+    : (normalizedShadowPathCount !== null
+      ? Math.max(normalizedShadowPathCount - visibleShadowPaths.length, 0)
+      : Math.max(normalizedShadowPaths.length - visibleShadowPaths.length, 0));
   return `${prefix}${visibleShadowPaths.join(', ')}${remainingShadowPathCount > 0 ? `, +${remainingShadowPathCount} more` : ''}`;
 }
 
@@ -3017,6 +3009,16 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     const summary = formatHeadingAliasSummary(Array.isArray(priority?.rootHeadingAliases) ? priority.rootHeadingAliases : undefined);
     return summary ? summary.replace(/^; aliases /, prefix) : null;
   };
+  const formatPriorityShadowDocs = (priority?: WorkLoopPriority | null, prefix = '- shadow docs: '): string | null => {
+    const summary = formatShadowPathSummary(
+      Array.isArray(priority?.shadowPaths) ? priority.shadowPaths : undefined,
+      '; shadow docs ',
+      Array.isArray(priority?.shadowPathSamplePaths) ? priority.shadowPathSamplePaths : undefined,
+      typeof priority?.shadowPathOverflowCount === 'number' ? priority.shadowPathOverflowCount : null,
+      typeof priority?.shadowPathCount === 'number' ? priority.shadowPathCount : null,
+    );
+    return summary ? summary.replace(/^; shadow docs /, prefix) : null;
+  };
   const formatPriorityStarterProfiles = (priority?: WorkLoopPriority | null, prefix = '- starter profiles: '): string | null => {
     const summary = formatRecommendedStarterProfileSlices(priority?.recommendedProfileSlices);
     return summary ? `${prefix}${summary}` : null;
@@ -3057,6 +3059,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRecommendedPriorityDetails ? formatPriorityDraftGaps(recommendedPriority, '- recommended draft gaps: ') : null,
     showRecommendedPriorityDetails ? formatPriorityRootSections(recommendedPriority, '- recommended root sections: ') : null,
     showRecommendedPriorityDetails ? formatPriorityRootHeadingAliases(recommendedPriority, '- recommended root heading aliases: ') : null,
+    showRecommendedPriorityDetails ? formatPriorityShadowDocs(recommendedPriority, '- recommended shadow docs: ') : null,
     showRecommendedPriorityDetails && recommendedPriority?.fallbackCommand
       ? `- recommended fallback: ${recommendedPriority.fallbackCommand}`
       : null,
@@ -3115,6 +3118,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     formatPriorityDraftGaps(currentPriority),
     formatPriorityRootSections(currentPriority),
     formatPriorityRootHeadingAliases(currentPriority),
+    formatPriorityShadowDocs(currentPriority),
     currentPriority?.fallbackCommand
       ? `- fallback: ${currentPriority.fallbackCommand}`
       : null,
@@ -3173,6 +3177,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showRunnablePriority ? formatPriorityDraftGaps(runnablePriority, '- runnable draft gaps: ') : null,
     showRunnablePriority ? formatPriorityRootSections(runnablePriority, '- runnable root sections: ') : null,
     showRunnablePriority ? formatPriorityRootHeadingAliases(runnablePriority, '- runnable root heading aliases: ') : null,
+    showRunnablePriority ? formatPriorityShadowDocs(runnablePriority, '- runnable shadow docs: ') : null,
     showRunnablePriority && runnablePriority?.fallbackCommand
       ? `- runnable fallback: ${runnablePriority.fallbackCommand}`
       : null,
@@ -3231,6 +3236,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
     showActionableReadyPriority ? formatPriorityDraftGaps(actionableReadyPriority, '- advisory draft gaps: ') : null,
     showActionableReadyPriority ? formatPriorityRootSections(actionableReadyPriority, '- advisory root sections: ') : null,
     showActionableReadyPriority ? formatPriorityRootHeadingAliases(actionableReadyPriority, '- advisory root heading aliases: ') : null,
+    showActionableReadyPriority ? formatPriorityShadowDocs(actionableReadyPriority, '- advisory shadow docs: ') : null,
     showActionableReadyPriority && actionableReadyPriority?.fallbackCommand
       ? `- advisory fallback: ${actionableReadyPriority.fallbackCommand}`
       : null,

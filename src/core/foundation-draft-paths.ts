@@ -24,14 +24,31 @@ export function normalizeDraftPath(value: string | null | undefined): string | n
     return null;
   }
 
-  const normalized = value
+  const segments = value
     .trim()
     .replaceAll('\\', '/')
     .replace(/^(?:\.\/)+/, '')
     .replace(/\/+/g, '/')
     .split('/')
-    .filter((segment) => segment.length > 0 && segment !== '.')
-    .join('/');
+    .filter((segment) => segment.length > 0 && segment !== '.');
+
+  const normalizedSegments = segments.reduce<string[]>((accumulator, segment) => {
+    if (segment !== '..') {
+      accumulator.push(segment);
+      return accumulator;
+    }
+
+    const previousSegment = accumulator[accumulator.length - 1];
+    if (previousSegment && previousSegment !== '..') {
+      accumulator.pop();
+      return accumulator;
+    }
+
+    accumulator.push(segment);
+    return accumulator;
+  }, []);
+
+  const normalized = normalizedSegments.join('/');
   return normalized.length > 0 ? normalized : null;
 }
 

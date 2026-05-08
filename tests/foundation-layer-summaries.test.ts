@@ -1001,6 +1001,27 @@ test('voice profile treats target-specific current default headings as legacy la
   ]);
 });
 
+test('voice profile also treats plain current default headings as legacy language hint aliases', () => {
+  const voiceDocument = `# Voice\n\n## Tone\n- Keep the answer concise.\n\n## Current default\n- Lead with the operating takeaway.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Keep the answer concise.',
+    style: 'documented',
+    constraints: [],
+    signatures: ['Lead with the operating takeaway.'],
+    languageHints: ['Preserve Spanish and Arabic code-switching from the source.'],
+    constraintCount: 0,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, ['avoid']);
+  assert.deepEqual(coreFoundation.voice.headingAliases, ['current-default->language-hints']);
+});
+
 test('voice profile treats named-language code-switching guidance in current-default sections as language hints', () => {
   const voiceDocument = `# Voice\n\n## Current default for ManSkill\n- Keep the answer concise.\n- Preserve Spanish and Arabic code-switching from the source.\n`;
   const voice = VoiceProfile.fromDocument(voiceDocument);
@@ -1057,6 +1078,27 @@ test('voice profile accepts prose lines inside signature, avoid, and language hi
     languageHintCount: 1,
     hasGuidance: true,
   });
+});
+
+test('voice profile accepts trailing colons in structured headings', () => {
+  const voiceDocument = `# Voice\n\nStay direct.\n\n## Tone:\nWarm and grounded.\n\n## Signature moves:\n- Use crisp examples.\n\n## Avoid:\n- Never pad the answer.\n\n## Language hints:\n- Preserve bilingual phrasing when the source material switches languages.\n`;
+  const voice = VoiceProfile.fromDocument(voiceDocument);
+  const coreFoundation = buildCoreFoundationSummary({ voiceDocument });
+
+  assert.deepEqual(voice.summary(), {
+    tone: 'Warm and grounded.',
+    style: 'documented',
+    constraints: ['Never pad the answer.'],
+    signatures: ['Use crisp examples.'],
+    languageHints: ['Preserve bilingual phrasing when the source material switches languages.'],
+    constraintCount: 1,
+    signatureCount: 1,
+    languageHintCount: 1,
+    hasGuidance: true,
+  });
+  assert.equal(coreFoundation.voice.structured, true);
+  assert.deepEqual(coreFoundation.voice.readySections, ['tone', 'signature-moves', 'avoid', 'language-hints']);
+  assert.deepEqual(coreFoundation.voice.missingSections, []);
 });
 
 test('voice profile strips numbered list markers inside structured sections', () => {

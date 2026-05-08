@@ -1,0 +1,11 @@
+{
+  "id": "2026-05-06T05-48-06-502Z-text",
+  "personId": "harry-han",
+  "type": "text",
+  "createdAt": "2026-05-06T05:48:06.503Z",
+  "notes": "short writing sample",
+  "sourceFile": "profiles/harry-han/imports/sample.txt",
+  "assetPath": null,
+  "content": "Move fast on the first pass, but keep the structure clean enough that the next change is obvious. I care more about a tight feedback loop than a polished first release.\n",
+  "fingerprint": "0635e21b943edf88c1df64ba8d52880370e4db2e27294094a85a8fafa973ce44"
+}

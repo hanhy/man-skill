@@ -14,10 +14,13 @@ Use this skill when the next step touches the OpenClaw-like foundation in `~/man
 - keeping the foundation entrance runnable with explicit `update foundation` commands
 
 ## Suggested workflow
-1. Run `node src/index.js summary --format json` and inspect `foundation.core`, `foundation.maintenance`, and `workLoop`.
+1. Run `node src/index.js summary --json` and inspect `foundation.core`, `foundation.maintenance`, `profileSnapshots`, and `workLoop`.
 2. If repo-core guidance is thin or missing, repair the exact memory / skills / soul / voice files the summary points at.
-3. If target-profile drafts are stale, run the narrowest refresh command first (`update foundation --person ...`, then `--stale`, then `--all` only when needed).
-4. Re-run targeted tests for the touched foundation surface before the full suite.
+3. If target-profile drafts are stale, run the narrowest refresh command first (`node src/index.js update foundation --person <id>`, then `node src/index.js update foundation --stale`, then `node src/index.js update foundation --all` only when needed).
+4. Re-run the tightest relevant tests first:
+   - `node --import tsx --test tests/foundation-rollup.test.js`
+   - `node --import tsx --test tests/readme-docs.test.js`
+   - `node --import tsx --test tests/work-loop.test.ts`
 5. Re-run `npm test` and `npm run typecheck` before reporting progress.
 
 ## Notes

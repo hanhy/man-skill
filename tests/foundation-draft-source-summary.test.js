@@ -60,3 +60,41 @@ test('summarizeFoundationDraftSources falls back to normalized draft paths when 
     'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
   );
 });
+
+test('summarizeFoundationDraftSources collapses interior parent-directory segments in draft and source provenance paths', () => {
+  const profile = {
+    foundationDraftSummaries: {
+      memory: {
+        path: 'profiles/jane-doe/memory/tmp/../long-term/foundation.json',
+        entryCount: 1,
+        latestMaterialSourcePath: 'profiles/jane-doe/imports/raw/../call-notes.txt',
+      },
+      voice: {
+        path: 'profiles/jane-doe/voice/drafts/../README.md',
+        materialTypes: { message: 1 },
+        latestMaterialSourcePath: 'profiles/jane-doe/imports/voice/../voice-note.txt',
+      },
+    },
+  };
+
+  assert.equal(
+    summarizeFoundationDraftSources(profile),
+    'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (types message:1, latest @ profiles/jane-doe/imports/voice-note.txt)',
+  );
+});
+
+test('summarizeFoundationDraftSources keeps material types visible when only partial source provenance survives', () => {
+  const profile = {
+    foundationDraftSummaries: {
+      voice: {
+        materialTypes: { message: 1 },
+        latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      },
+    },
+  };
+
+  assert.equal(
+    summarizeFoundationDraftSources(profile),
+    'voice types message:1, latest @ profiles/jane-doe/imports/voice-note.txt',
+  );
+});

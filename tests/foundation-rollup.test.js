@@ -1367,7 +1367,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     candidateProfileCount: 2,
     repoStaleProfileCount: 1,
     candidateCount: 2,
-    highlights: ['execution heuristic', 'feedback-loop heuristic'],
+    highlights: ['[talk] execution heuristic', 'feedback-loop heuristic'],
   });
   assert.deepEqual(summary.foundation.maintenance, {
     profileCount: 2,
@@ -1409,7 +1409,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     recommendedLatestMaterialSourcePath: summary.foundation.maintenance.recommendedLatestMaterialSourcePath,
     recommendedDraftSourcesSummary: summary.foundation.maintenance.recommendedDraftSourcesSummary,
     recommendedCandidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
-    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
+    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills missing | soul missing | voice missing',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
@@ -1439,7 +1439,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
           soul: 4,
           voice: 4,
         },
-        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
+        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills missing | soul missing | voice missing',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
         paths: [
           'profiles/jane-doe/memory/long-term/foundation.json',
@@ -1463,7 +1463,8 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   ]);
   assert.match(summary.profileSnapshots[1].snapshot, /refresh drafts: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.profileSnapshots[1].snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter root profiles\/jane-doe\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| update node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter root profiles\/jane-doe\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills missing \| soul missing \| voice missing \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| update node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /\| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation/);
 });
 
 test('buildSummary omits the foundation rollup block from prompt previews when there are no imported profiles', () => {
@@ -3589,6 +3590,41 @@ test('buildSummary treats target-specific current default voice headings as stru
   assert.equal(summary.foundation.core.maintenance.recommendedAction, null);
   assert.match(summary.promptPreview, /ready details: memory buckets 3\/3 \(daily, long-term, scratch\), aliases daily canonical via shortTermEntries, shortTermPresent, samples [^;]+, root sections 2\/2 \(what-belongs-here, buckets\) @ memory\/README\.md; skills docs 1\/1 \(delivery\), root sections 2\/2 \(what-lives-here, layout\) @ skills\/README\.md; soul sections 4\/4 \(core-truths, boundaries, vibe, continuity\) @ SOUL\.md; voice sections 4\/4 \(tone, signature-moves, avoid, language-hints\) @ voice\/README\.md/);
   assert.doesNotMatch(summary.promptPreview, /voice: present, \d+ lines, Keep replies direct\./);
+});
+
+test('buildSummary treats plain current default voice headings as structured foundation guidance', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What lives here\n- Shared repo guidance for reusable procedures.\n\n## Layout\n- Each skill lives under skills/<name>/SKILL.md.\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\nDeliver concise handoffs.');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What belongs here\n- Keep durable notes here.\n\n## Buckets\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n- legacy memory/short-term/ files are folded into daily/ during repo loading for compatibility with older repos\n');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\n- Keep replies direct.\n\n## Current default\n- Lead with the operating takeaway.\n- preserve 中文 and English switching when the source does\n',
+  );
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.voice.structured, true);
+  assert.deepEqual(summary.foundation.core.voice.readySections, ['tone', 'signature-moves', 'language-hints']);
+  assert.deepEqual(summary.foundation.core.voice.missingSections, ['avoid']);
+  assert.deepEqual(summary.foundation.core.voice.headingAliases, ['current-default->language-hints']);
+  assert.equal(summary.foundation.core.overview.readyAreaCount, 3);
+  assert.equal(summary.foundation.core.maintenance.recommendedArea, 'voice');
+  assert.equal(summary.foundation.core.maintenance.recommendedAction, 'add missing sections to voice/README.md: avoid');
+  assert.match(summary.promptPreview, /Voice profile:[\s\S]*- sections: 3\/4 ready \(tone, signature-moves, language-hints\), missing avoid/);
 });
 
 test('buildSummary exposes canonical heading alias metadata when legacy soul and voice headings still back the root foundation docs', () => {

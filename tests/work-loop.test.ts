@@ -116,7 +116,7 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
         summary: 'starter scaffold available',
         nextAction: 'populate starter manifest',
         command: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
-        fallbackCommand: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+        fallbackCommand: null,
         refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
         updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
         updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation",
@@ -139,7 +139,7 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
   assert.equal(summary.actionableReadyPriority?.id, 'ingestion');
   assert.equal(summary.recommendedPriority?.id, 'ingestion');
   assert.equal(summary.recommendedPriority?.command, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
-  assert.equal(summary.recommendedPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.recommendedPriority?.fallbackCommand, null);
   assert.equal(summary.recommendedPriority?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.recommendedPriority?.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.recommendedPriority?.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
@@ -165,7 +165,7 @@ test('WorkLoop summary prefers runnable work as the recommended priority', () =>
 
   assert.match(prompt, /recommended: Ingestion \[ready\] — populate starter manifest/);
   assert.match(prompt, /recommended command: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
-  assert.match(prompt, /recommended fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(prompt, /recommended fallback:/);
   assert.match(prompt, /recommended refresh intake: node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(prompt, /recommended update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'/);
   assert.match(prompt, /recommended sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation/);
@@ -184,7 +184,7 @@ test('top-level index export keeps WorkLoop aligned with the runtime shim summar
       summary: 'starter scaffold available',
       nextAction: 'populate starter manifest',
       command: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
-      fallbackCommand: "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation",
+      fallbackCommand: null,
       refreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
       updateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
       updateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation",
@@ -222,9 +222,9 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
         latestMaterialId: ' 2026-04-20T12-00-00-000Z-text ',
         latestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\sample.txt ',
         candidateSignalSummary: ' memory 3 (message, talk, text) ',
-        draftSourcesSummary: ' voice 3 sources, latest @ samples/harry-post.txt ',
+        draftSourcesSummary: ' voice @ .\\profiles\\harry-han//voice\\README.md (latest @ .\\profiles\\harry-han//imports\\sample.txt) ',
         draftGapSummary: ' voice missing, 3 candidates ',
-        fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
+        fallbackCommand: null,
         refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
         updateProfileCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
         updateProfileAndRefreshCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation ",
@@ -242,9 +242,9 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
             refreshReasons: [' new materials '],
             missingDrafts: [' voice '],
             candidateSignalSummary: ' memory 3 (message, talk, text) ',
-            draftSourcesSummary: ' voice 3 sources, latest @ samples/harry-post.txt ',
+            draftSourcesSummary: ' voice @ .\\profiles\\harry-han//voice\\README.md (latest @ .\\profiles\\harry-han//imports\\sample.txt) ',
             draftGapSummary: ' voice missing, 3 candidates ',
-            fallbackCommand: " node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation ",
+            fallbackCommand: null,
             refreshIntakeCommand: " node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
             updateProfileCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' ",
             updateProfileAndRefreshCommand: " node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation ",
@@ -270,9 +270,9 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.currentPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
   assert.equal(summary.currentPriority?.candidateSignalSummary, 'memory 3 (message, talk, text)');
-  assert.equal(summary.currentPriority?.draftSourcesSummary, 'voice 3 sources, latest @ samples/harry-post.txt');
+  assert.equal(summary.currentPriority?.draftSourcesSummary, 'voice @ profiles/harry-han/voice/README.md (latest @ profiles/harry-han/imports/sample.txt)');
   assert.equal(summary.currentPriority?.draftGapSummary, 'voice missing, 3 candidates');
-  assert.equal(summary.currentPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.currentPriority?.fallbackCommand, null);
   assert.equal(summary.currentPriority?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.currentPriority?.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.currentPriority?.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
@@ -281,7 +281,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.currentPriority?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftGapSummary, 'voice missing, 3 candidates');
-  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.fallbackCommand, null);
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.refreshIntakeCommand, "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.updateProfileCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.updateProfileAndRefreshCommand, "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation");
@@ -290,7 +290,7 @@ test('WorkLoop summary trims latest-material metadata before exposing current an
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.candidateSignalSummary ?? null, 'memory 3 (message, talk, text)');
-  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftSourcesSummary ?? null, 'voice 3 sources, latest @ samples/harry-post.txt');
+  assert.equal(summary.currentPriority?.recommendedProfileSlices?.[0]?.draftSourcesSummary ?? null, 'voice @ profiles/harry-han/voice/README.md (latest @ profiles/harry-han/imports/sample.txt)');
   assert.equal(summary.recommendedPriority?.latestMaterialAt, '2026-04-20T12:00:00.000Z');
   assert.equal(summary.recommendedPriority?.latestMaterialId, '2026-04-20T12-00-00-000Z-text');
   assert.equal(summary.recommendedPriority?.latestMaterialSourcePath, 'profiles/harry-han/imports/sample.txt');
@@ -315,9 +315,13 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
           ' profiles/harry-han/imports/images/chat.png ',
         ],
         intakeManifestEntryTemplateDetails: [
-          { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
-          { type: 'talk', source: 'text', path: null, preview: '  <paste a transcript snippet>  ' },
+          { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+          { type: 'screenshot', source: 'file' as any, path: ' profiles/harry-han/imports/images/chat.png ', preview: null },
+          { type: ' talk ', source: ' text ' as any, path: null, preview: '  <paste a transcript snippet>  ' },
+          { type: 'talk', source: 'text' as any, path: null, preview: '<paste a transcript snippet>' },
+          { type: '   ', source: 'file' as any, path: ' .\\profiles\\harry-han//imports\\ignore-me.png ', preview: '   ' },
         ],
+        intakeManifestEntryTemplateCount: -4,
         intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
         recommendedProfileSlices: [
           {
@@ -341,9 +345,11 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
             manifestImportCommand: null,
             intakeManifestEntryTemplateTypes: [' screenshot ', 'screenshot', ''],
             intakeManifestEntryTemplateDetails: [
-              { type: 'screenshot', source: 'file', path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+              { type: ' screenshot ', source: ' FILE ' as any, path: ' .\\profiles\\harry-han//imports\\images\\chat.png ', preview: null },
+              { type: 'screenshot', source: 'file' as any, path: ' profiles/harry-han/imports/images/chat.png ', preview: null },
+              { type: '  ', source: 'text' as any, path: null, preview: '   ' },
             ],
-            intakeManifestEntryTemplateCount: 1,
+            intakeManifestEntryTemplateCount: -1,
             intakeManifestEntryTemplateRoot: ' .\\profiles\\harry-han//imports ',
             inspectCommand: " node src/index.js import intake --person 'harry-han' ",
             followUpCommand: " node src/index.js import intake --person 'harry-han' --refresh-foundation ",
@@ -375,6 +381,7 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
     { type: 'screenshot', source: 'file', path: 'profiles/harry-han/imports/images/chat.png', preview: null },
     { type: 'talk', source: 'text', path: null, preview: '<paste a transcript snippet>' },
   ]);
+  assert.equal(summary.actionableReadyPriority?.intakeManifestEntryTemplateCount, 2);
   assert.equal(summary.actionableReadyPriority?.intakeManifestEntryTemplateRoot, 'profiles/harry-han/imports');
   assert.deepEqual(summary.actionableReadyPriority?.paths, [
     'profiles/harry-han/imports',
@@ -430,6 +437,8 @@ test('WorkLoop summary slash-normalizes path-bearing follow-up metadata before e
   assert.match(prompt, /runnable edit paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/images\/chat\.png/);
   assert.match(prompt, /runnable starter root: profiles\/harry-han\/imports/);
   assert.match(prompt, /runnable paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /starter details: screenshot profiles\/harry-han\/imports\/images\/chat\.png \| screenshot profiles\/harry-han\/imports\/images\/chat\.png/);
+  assert.doesNotMatch(prompt, /starter details: .*talk <paste a transcript snippet> \| talk <paste a transcript snippet>/);
   assert.doesNotMatch(prompt, /\\/);
 });
 
@@ -1331,7 +1340,7 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
     'profiles/jane-doe/soul/README.md',
     'profiles/jane-doe/voice/README.md',
   ]);
-  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, null);
   assert.equal(summary.workLoop.currentPriority.latestMaterialAt, summary.foundation.maintenance.recommendedLatestMaterialAt);
   assert.equal(summary.workLoop.currentPriority.latestMaterialId, summary.foundation.maintenance.recommendedLatestMaterialId);
   assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, 'samples/jane-post.txt');
@@ -1351,7 +1360,7 @@ test('buildSummary work loop carries profile draft edit paths when queued founda
   assert.match(summary.promptPreview, /draft gaps: memory missing, 1 candidate \(Turn sharp notes into an actual next step\.\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.promptPreview, /edit paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
-  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
+  assert.doesNotMatch(summary.promptPreview, /then run: node src\/index\.js/);
 });
 
 test('buildSummary work loop uses missing-only foundation helper bundles when multiple core areas are absent', () => {
@@ -1426,13 +1435,14 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
-test('buildSummary work loop carries root section progress and heading aliases for thin core foundation repairs', () => {
+test('buildSummary work loop carries root section progress, heading aliases, and shadow doc previews for thin core foundation repairs', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(
     path.join(rootDir, 'memory', 'README.md'),
     '# Memory\n\n## What lives here\n- Durable repo knowledge and operator context.\n',
   );
+  fs.writeFileSync(path.join(rootDir, 'MEMORY.md'), '# Shadow memory doc\n');
 
   const summary = buildSummary(rootDir);
 
@@ -1443,9 +1453,55 @@ test('buildSummary work loop carries root section progress and heading aliases f
   assert.equal(summary.workLoop.currentPriority.rootThinReadySectionCount, 1);
   assert.equal(summary.workLoop.currentPriority.rootThinTotalSectionCount, 2);
   assert.deepEqual(summary.workLoop.currentPriority.rootHeadingAliases, ['what-lives-here->what-belongs-here']);
+  assert.deepEqual(summary.workLoop.currentPriority.shadowPaths, ['MEMORY.md']);
+  assert.equal(summary.workLoop.currentPriority.shadowPathCount, 1);
+  assert.deepEqual(summary.workLoop.currentPriority.shadowPathSamplePaths, ['MEMORY.md']);
+  assert.equal(summary.workLoop.currentPriority.shadowPathOverflowCount, 0);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
   assert.match(summary.promptPreview, /root heading aliases: what-lives-here->what-belongs-here/);
+  assert.match(summary.promptPreview, /shadow docs: MEMORY\.md/);
+});
+
+test('PromptAssembler reuses work-loop shadow doc preview metadata when only sampled paths survive', () => {
+  const summary = new WorkLoop({
+    priorities: [{
+      id: 'foundation',
+      label: 'Foundation',
+      status: 'queued',
+      summary: 'core 3/4 ready (1 thin, 0 missing); profiles 0 queued for refresh, 0 incomplete',
+      nextAction: 'repair thin memory root',
+      command: "node -e 'repair memory readme'",
+      rootThinReadySections: ['what-belongs-here'],
+      rootThinMissingSections: ['buckets'],
+      rootThinReadySectionCount: 1,
+      rootThinTotalSectionCount: 2,
+      rootHeadingAliases: ['what-lives-here->what-belongs-here'],
+      shadowPathCount: 4,
+      shadowPathSamplePaths: [' .\\MEMORY.md ', '.\\docs\\memory-shadow.md', './notes/memory-shadow.md'],
+      shadowPathOverflowCount: 1,
+      paths: ['memory/README.md'],
+    }],
+  }).summary();
+
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    workLoop: summary as any,
+  }).buildPreview(4000);
+
+  assert.equal(summary.currentPriority?.shadowPathCount, 4);
+  assert.deepEqual(summary.currentPriority?.shadowPathSamplePaths, ['MEMORY.md', 'docs/memory-shadow.md', 'notes/memory-shadow.md']);
+  assert.equal(summary.currentPriority?.shadowPathOverflowCount, 1);
+  assert.equal(summary.currentPriority?.shadowPaths, undefined);
+  assert.match(prompt, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
+  assert.match(prompt, /root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
+  assert.match(prompt, /root heading aliases: what-lives-here->what-belongs-here/);
+  assert.match(prompt, /shadow docs: MEMORY\.md, docs\/memory-shadow\.md, notes\/memory-shadow\.md, \+1 more/);
 });
 
 test('buildSummary treats nested soul and voice structured headings as ready foundation guidance', () => {
@@ -1646,11 +1702,17 @@ test('buildSummary work loop points first-run ingestion at an invalid checked-in
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
   fs.writeFileSync(
     path.join(rootDir, 'samples', 'harry-materials.json'),
     JSON.stringify({
       personId: 'Harry Han',
+      displayName: 'Harry Han',
       entries: [
+        {
+          type: 'text',
+          file: 'harry-post.txt',
+        },
         {
           type: 'text',
           file: 'missing-post.txt',
@@ -1662,14 +1724,17 @@ test('buildSummary work loop points first-run ingestion at an invalid checked-in
   const summary = buildSummary(rootDir);
 
   assert.equal(summary.ingestion.sampleManifestStatus, 'invalid');
+  assert.deepEqual(summary.ingestion.sampleManifestProfileIds, ['harry-han']);
+  assert.deepEqual(summary.ingestion.sampleManifestProfileLabels, ['Harry Han (harry-han)']);
+  assert.equal(summary.ingestion.sampleStarterLabel, 'Harry Han (harry-han)');
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
-  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the checked-in sample manifest for first imports — missing file: missing-post.txt');
+  assert.equal(summary.workLoop.currentPriority.nextAction, 'fix the checked-in sample manifest for Harry Han (harry-han) — missing file: missing-post.txt');
   assert.equal(summary.workLoop.currentPriority.command, null);
   assert.equal(summary.workLoop.currentPriority.manifestInspectCommand, "node src/index.js import manifest --file 'samples/harry-materials.json'");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/missing-post.txt']);
-  assert.match(summary.promptPreview, /next action: fix the checked-in sample manifest for first imports — missing file: missing-post\.txt/);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/harry-materials.json', 'samples/harry-post.txt', 'samples/missing-post.txt']);
+  assert.match(summary.promptPreview, /next action: fix the checked-in sample manifest for Harry Han \(harry-han\) — missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /manifest inspect: node src\/index\.js import manifest --file 'samples\/harry-materials\.json'/);
-  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/missing-post\.txt/);
+  assert.match(summary.promptPreview, /paths: samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/missing-post\.txt/);
   assert.match(summary.promptPreview, /sample manifest invalid: .* @ samples\/harry-materials\.json/);
 });
 
@@ -2719,7 +2784,7 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.equal(summary.workLoop.actionableReadyPriority?.status, 'ready');
   assert.equal(summary.workLoop.recommendedPriority?.id, 'foundation');
   assert.equal(summary.workLoop.actionableReadyPriority?.command, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
-  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, null);
   assert.match(
     summary.workLoop.actionableReadyPriority?.refreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
@@ -2749,7 +2814,7 @@ test('buildSummary work loop keeps imported intake starter follow-up as an advis
   assert.match(summary.promptPreview, /advisory manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /advisory inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /advisory then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(summary.promptPreview, /advisory fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /advisory fallback:/);
   assert.match(summary.promptPreview, /advisory paths: profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 
@@ -2788,7 +2853,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.equal(summary.workLoop.currentPriority.latestMaterialSourcePath, summary.ingestion.recommendedLatestMaterialSourcePath);
   assert.equal(summary.workLoop.currentPriority.candidateSignalSummary ?? null, summary.ingestion.recommendedCandidateSignalSummary ?? null);
   assert.equal(summary.workLoop.currentPriority.draftSourcesSummary ?? null, summary.ingestion.recommendedDraftSourcesSummary ?? null);
-  assert.equal(summary.workLoop.currentPriority.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.currentPriority.fallbackCommand, null);
   assert.match(
     summary.workLoop.currentPriority?.refreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
@@ -2808,7 +2873,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.equal(summary.workLoop.currentPriority.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.workLoop.currentPriority.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.currentPriority.followUpCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
-  assert.equal(summary.workLoop.recommendedPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.recommendedPriority?.fallbackCommand, null);
   assert.match(
     summary.workLoop.recommendedPriority?.refreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
@@ -2859,7 +2924,7 @@ test('buildSummary work loop carries imported starter intake edit and follow-up 
   assert.match(summary.promptPreview, /manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(summary.promptPreview, /fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /fallback:/);
 });
 
 test('buildSummary work loop surfaces imported starter-manifest edits as advisory follow-up work when delivery auth bootstrap is current', () => {
@@ -2893,7 +2958,7 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateCount, 4);
   assert.equal(summary.workLoop.actionableReadyPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
-  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, "node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, null);
   assert.match(
     summary.workLoop.actionableReadyPriority?.refreshIntakeCommand ?? '',
     /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
@@ -2922,7 +2987,7 @@ test('buildSummary work loop surfaces imported starter-manifest edits as advisor
   assert.match(summary.promptPreview, /runnable manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable then run: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
-  assert.match(summary.promptPreview, /runnable fallback: node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
+  assert.doesNotMatch(summary.promptPreview, /runnable fallback:/);
 });
 
 test('buildSummary work loop prefers the profile-local intake shortcut for imported profiles with loaded manifests', () => {
@@ -3037,7 +3102,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   assert.equal(summary.workLoop.actionableReadyPriority?.command, "(node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json') && (node src/index.js import manifest --file 'profiles/jane-doe/imports/materials.template.json')");
   assert.deepEqual(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.workLoop.actionableReadyPriority?.intakeManifestEntryTemplateCount, 4);
-  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
+  assert.equal(summary.workLoop.actionableReadyPriority?.fallbackCommand, null);
   assert.equal(summary.workLoop.actionableReadyPriority?.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
   assert.match(
     summary.workLoop.actionableReadyPriority?.refreshIntakeCommand ?? '',
@@ -3062,7 +3127,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
     'profiles/jane-doe/imports/sample.txt',
   ]);
   assert.equal(summary.workLoop.actionableReadyPriority?.followUpCommand, "(node src/index.js import intake --person 'harry-han' --refresh-foundation) && (node src/index.js import intake --person 'jane-doe' --refresh-foundation)");
-  assert.equal(summary.workLoop.recommendedPriority?.fallbackCommand, "(node src/index.js import text --person harry-han --file 'profiles/harry-han/imports/sample.txt' --refresh-foundation) && (node src/index.js import text --person jane-doe --file 'profiles/jane-doe/imports/sample.txt' --refresh-foundation)");
+  assert.equal(summary.workLoop.recommendedPriority?.fallbackCommand, null);
   assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "(node src/index.js import intake --person 'harry-han') && (node src/index.js import intake --person 'jane-doe')");
   assert.deepEqual(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateTypes, ['message', 'screenshot', 'talk', 'text']);
   assert.equal(summary.workLoop.recommendedPriority?.intakeManifestEntryTemplateCount, 4);
@@ -3114,7 +3179,7 @@ test('buildSummary work loop keeps the imported intake replay bundle advisory wh
   assert.match(summary.promptPreview, /runnable next action: populate imported intake starter manifests — starting with Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: \(node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'\) && \(node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json'\)/);
   assert.match(summary.promptPreview, /recommended starter profiles: Harry Han \(harry-han\) -> profiles\/harry-han\/imports\/materials\.template\.json \| Jane Doe \(jane-doe\) -> profiles\/jane-doe\/imports\/materials\.template\.json/);
-  assert.match(summary.promptPreview, /runnable fallback: \(node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation\) && \(node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation\)/);
+  assert.doesNotMatch(summary.promptPreview, /runnable fallback:/);
   assert.match(summary.promptPreview, /runnable refresh intake: \(node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)/);
   assert.match(summary.promptPreview, /runnable update profile: \(node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?\) && \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')?\)/);
   assert.match(summary.promptPreview, /runnable sync profile: \(node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation\) && \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary '.*')? --refresh-foundation\)/);
@@ -5610,8 +5675,8 @@ test('buildSummary keeps bulk foundation refresh paths aligned for partially gen
     'profiles/harry-han/soul/README.md',
     'profiles/harry-han/voice/README.md',
   ]);
-  assert.equal(summary.workLoop.currentPriority.followUpCommand, 'node src/index.js');
+  assert.equal(summary.workLoop.currentPriority.followUpCommand, null);
   assert.deepEqual(summary.workLoop.priorities[1].paths, summary.workLoop.currentPriority.paths);
-  assert.match(summary.promptPreview, /then run: node src\/index\.js/);
+  assert.doesNotMatch(summary.promptPreview, /then run: node src\/index\.js/);
   assert.match(summary.promptPreview, /paths: profiles\/partial-pal\/memory\/long-term\/foundation\.json, profiles\/partial-pal\/skills\/README\.md, profiles\/partial-pal\/soul\/README\.md, profiles\/partial-pal\/voice\/README\.md, profiles\/harry-han\/memory\/long-term\/foundation\.json, profiles\/harry-han\/skills\/README\.md, profiles\/harry-han\/soul\/README\.md, profiles\/harry-han\/voice\/README\.md/);
 });

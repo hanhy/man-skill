@@ -726,6 +726,23 @@ function readMarkdownHighlights(filePath, limit = 3) {
     .slice(0, limit);
 }
 
+function normalizeDraftHeaderValue(value) {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  return value.trim();
+}
+
+function normalizeDraftPlaceholderValue(value) {
+  const normalized = normalizeDraftHeaderValue(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.toLowerCase() === 'not set.' ? null : normalized;
+}
+
 function parseMaterialTypes(value) {
   if (!isNonEmptyString(value) || value === 'none') {
     return {};
@@ -763,15 +780,15 @@ export function parseDraftMetadata(filePath) {
   const generatedAtMatch = content.match(/^Generated at:\s+(.+)$/m);
   const latestMaterialMatch = content.match(/^Latest material:\s+(.+) \((.+)\)$/m);
   const latestMaterialSourceMatch = content.match(/^Latest material source:\s+(.+)$/m);
-  const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)\s+\((.*)\)$/m);
-  const profileId = profileMatch?.[1] ?? null;
-  const displayName = displayNameMatch?.[1] ?? null;
-  const summary = summaryMatch?.[1] ?? null;
-  const generatedAt = generatedAtMatch?.[1] ?? null;
-  const latestMaterialAt = latestMaterialMatch?.[1] ?? null;
-  const latestMaterialId = latestMaterialMatch?.[2] ?? null;
-  const latestMaterialSourceHeader = latestMaterialSourceMatch?.[1]?.trim() ?? null;
-  const latestMaterialSourcePath = latestMaterialSourceHeader && latestMaterialSourceHeader.toLowerCase() !== 'not set.'
+  const sourceMaterialsMatch = content.match(/^Source materials:\s+(\d+)(?:\s+\((.*)\))?$/m);
+  const profileId = normalizeDraftHeaderValue(profileMatch?.[1]);
+  const displayName = normalizeDraftHeaderValue(displayNameMatch?.[1]);
+  const summary = normalizeDraftHeaderValue(summaryMatch?.[1]);
+  const generatedAt = normalizeDraftHeaderValue(generatedAtMatch?.[1]);
+  const latestMaterialAt = normalizeDraftHeaderValue(latestMaterialMatch?.[1]);
+  const latestMaterialId = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialSourceHeader = normalizeDraftPlaceholderValue(latestMaterialSourceMatch?.[1]);
+  const latestMaterialSourcePath = latestMaterialSourceHeader
     ? normalizeDraftPath(latestMaterialSourceHeader)
     : null;
   const sourceCount = sourceMaterialsMatch ? Number.parseInt(sourceMaterialsMatch[1], 10) : 0;
@@ -919,7 +936,7 @@ export function hasFoundationDraftProfileMetadataMismatch(draftMetadata = null, 
 
   return (draftMetadata.profileId ?? profileId) !== expectedProfileId
     || (draftMetadata.displayName ?? profileId) !== expectedDisplayName
-    || (draftMetadata.summary === 'Not set.' ? null : (draftMetadata.summary ?? null)) !== expectedSummary;
+    || normalizeDraftPlaceholderValue(draftMetadata.summary) !== expectedSummary;
 }
 
 function normalizeMaterialTypeCounts(materialTypes = null) {
@@ -1031,9 +1048,11 @@ export function hasFoundationMemoryDraftMaterialMetadataMismatch(
   const expectedSourceCount = Number.isFinite(materialCount)
     ? materialCount
     : countMaterialTypes(normalizedExpectedMaterialTypes);
-  const draftSourceCount = Number.isFinite(memoryDraft.entryCount)
-    ? memoryDraft.entryCount
-    : countMaterialTypes(normalizedDraftMaterialTypes);
+  const draftSourceCount = Number.isFinite(memoryDraft.sourceCount)
+    ? memoryDraft.sourceCount
+    : (Number.isFinite(memoryDraft.entryCount)
+      ? memoryDraft.entryCount
+      : countMaterialTypes(normalizedDraftMaterialTypes));
 
   const normalizedExpectedMaterialSourcePath = normalizeDraftPath(latestMaterialSourcePath);
   const normalizedDraftMaterialSourcePath = normalizeDraftPath(memoryDraft.latestMaterialSourcePath);
@@ -1182,9 +1201,11 @@ function summarizeLegacyMemoryDraft(memoryDraft) {
         summary[entry.type] = (summary[entry.type] ?? 0) + 1;
         return summary;
       }, {});
-  const sourceCount = Object.keys(materialTypes).length > 0
-    ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
-    : (memoryDraft?.entryCount ?? entries.length ?? 0);
+  const sourceCount = Number.isFinite(memoryDraft?.sourceCount)
+    ? memoryDraft.sourceCount
+    : (Object.keys(materialTypes).length > 0
+      ? Object.values(materialTypes).reduce((total, count) => total + count, 0)
+      : (memoryDraft?.entryCount ?? entries.length ?? 0));
 
   return {
     generatedAt: memoryDraft?.generatedAt ?? null,
@@ -1257,12 +1278,12 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
       : {
           generated: false,
           path: fs.existsSync(voiceDraftPath) ? path.relative(rootDir, voiceDraftPath) : null,
-          generatedAt: null,
-          latestMaterialAt: null,
-          latestMaterialId: null,
-          latestMaterialSourcePath: null,
-          sourceCount: 0,
-          materialTypes: {},
+          generatedAt: voiceMetadata?.generatedAt ?? null,
+          latestMaterialAt: voiceMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: voiceMetadata?.latestMaterialId ?? null,
+          latestMaterialSourcePath: voiceMetadata?.latestMaterialSourcePath ?? null,
+          sourceCount: Number.isFinite(voiceMetadata?.sourceCount) ? voiceMetadata.sourceCount : 0,
+          materialTypes: voiceMetadata?.materialTypes ?? {},
           highlights: [],
           ...(voiceSectionSummary && voiceSectionSummary.missingSections.length > 0 ? voiceSectionSummary : {}),
         },
@@ -1282,12 +1303,12 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
       : {
           generated: false,
           path: fs.existsSync(soulDraftPath) ? path.relative(rootDir, soulDraftPath) : null,
-          generatedAt: null,
-          latestMaterialAt: null,
-          latestMaterialId: null,
-          latestMaterialSourcePath: null,
-          sourceCount: 0,
-          materialTypes: {},
+          generatedAt: soulMetadata?.generatedAt ?? null,
+          latestMaterialAt: soulMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: soulMetadata?.latestMaterialId ?? null,
+          latestMaterialSourcePath: soulMetadata?.latestMaterialSourcePath ?? null,
+          sourceCount: Number.isFinite(soulMetadata?.sourceCount) ? soulMetadata.sourceCount : 0,
+          materialTypes: soulMetadata?.materialTypes ?? {},
           highlights: [],
           ...(soulSectionSummary && soulSectionSummary.missingSections.length > 0 ? soulSectionSummary : {}),
         },
@@ -1307,12 +1328,12 @@ function loadFoundationDraftSummaries(rootDir, profileId) {
       : {
           generated: false,
           path: fs.existsSync(skillsDraftPath) ? path.relative(rootDir, skillsDraftPath) : null,
-          generatedAt: null,
-          latestMaterialAt: null,
-          latestMaterialId: null,
-          latestMaterialSourcePath: null,
-          sourceCount: 0,
-          materialTypes: {},
+          generatedAt: skillsMetadata?.generatedAt ?? null,
+          latestMaterialAt: skillsMetadata?.latestMaterialAt ?? null,
+          latestMaterialId: skillsMetadata?.latestMaterialId ?? null,
+          latestMaterialSourcePath: skillsMetadata?.latestMaterialSourcePath ?? null,
+          sourceCount: Number.isFinite(skillsMetadata?.sourceCount) ? skillsMetadata.sourceCount : 0,
+          materialTypes: skillsMetadata?.materialTypes ?? {},
           highlights: [],
           ...(skillsSectionSummary && skillsSectionSummary.missingSections.length > 0 ? skillsSectionSummary : {}),
         },

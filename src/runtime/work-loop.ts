@@ -17,6 +17,10 @@ export type WorkPriority = {
   rootThinReadySectionCount?: number;
   rootThinTotalSectionCount?: number;
   rootHeadingAliases?: string[];
+  shadowPaths?: string[];
+  shadowPathCount?: number;
+  shadowPathSamplePaths?: string[];
+  shadowPathOverflowCount?: number;
   candidateSignalSummary?: string | null;
   draftSourcesSummary?: string | null;
   draftGapSummary?: string | null;
@@ -95,6 +99,12 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeOptionalNonNegativeInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? Math.trunc(value)
+    : null;
+}
+
 function normalizePathArray(values: string[] | null | undefined): string[] | undefined {
   if (!Array.isArray(values)) {
     return undefined;
@@ -126,11 +136,53 @@ function normalizeStarterTemplateDetails(
     return undefined;
   }
 
-  return details.map((detail) => ({
-    ...detail,
-    path: normalizeDraftPath(detail?.path),
-    preview: normalizeOptionalString(detail?.preview) ?? null,
-  }));
+  return Array.from(new Map(
+    details
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail) && typeof detail === 'object' && !Array.isArray(detail))
+      .map((detail) => {
+        const type = normalizeOptionalString(detail?.type);
+        if (!type) {
+          return null;
+        }
+
+        const normalizedSource = normalizeOptionalString(detail?.source)?.toLowerCase() === 'file'
+          ? 'file'
+          : 'text';
+
+        return {
+          type,
+          source: normalizedSource,
+          path: normalizeDraftPath(detail?.path),
+          preview: normalizeOptionalString(detail?.preview) ?? null,
+        };
+      })
+      .filter((detail): detail is { type: string; source: 'file' | 'text'; path: string | null; preview: string | null } => Boolean(detail))
+      .map((detail) => [`${detail.type}\u0000${detail.source}\u0000${detail.path ?? ''}\u0000${detail.preview ?? ''}`, detail] as const),
+  ).values());
+}
+
+function normalizeStarterTemplateCount(
+  value: number | null | undefined,
+  fallbackCount: number,
+): number {
+  const normalizedValue = normalizeOptionalNonNegativeInteger(value);
+  if (normalizedValue !== null) {
+    return normalizedValue;
+  }
+
+  return fallbackCount;
+}
+
+function normalizeDraftSourcesSummary(value: string | null | undefined): string | null {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.replace(/@\s+([^,|)]+?)(?=\s*(?:,|\(|\||\)|$))/g, (_match, rawPath: string) => {
+    const normalizedPath = normalizeDraftPath(rawPath);
+    return normalizedPath ? `@ ${normalizedPath}` : `@ ${rawPath.trim()}`;
+  });
 }
 
 function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority['recommendedProfileSlices'] {
@@ -143,7 +195,7 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const latestMaterialId = normalizeOptionalString(slice?.latestMaterialId) ?? null;
     const latestMaterialSourcePath = normalizeDraftPath(slice?.latestMaterialSourcePath) ?? null;
     const candidateSignalSummary = normalizeOptionalString(slice?.candidateSignalSummary) ?? null;
-    const draftSourcesSummary = normalizeOptionalString(slice?.draftSourcesSummary) ?? null;
+    const draftSourcesSummary = normalizeDraftSourcesSummary(slice?.draftSourcesSummary);
     const refreshReasons = normalizeStringArray(slice?.refreshReasons) ?? [];
     const missingDrafts = normalizeStringArray(slice?.missingDrafts) ?? [];
     const draftGapSummary = normalizeOptionalString(slice?.draftGapSummary) ?? null;
@@ -157,6 +209,10 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
     const manifestImportCommand = normalizeOptionalString(slice?.manifestImportCommand) ?? null;
     const intakeManifestEntryTemplateTypes = normalizeStringArray(slice?.intakeManifestEntryTemplateTypes) ?? [];
     const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(slice?.intakeManifestEntryTemplateDetails) ?? [];
+    const intakeManifestEntryTemplateCount = normalizeStarterTemplateCount(
+      slice?.intakeManifestEntryTemplateCount,
+      Math.max(intakeManifestEntryTemplateTypes.length, intakeManifestEntryTemplateDetails.length),
+    );
     const intakeManifestEntryTemplateRoot = normalizeDraftPath(slice?.intakeManifestEntryTemplateRoot) ?? null;
     const inspectCommand = normalizeOptionalString(slice?.inspectCommand) ?? null;
     const followUpCommand = normalizeOptionalString(slice?.followUpCommand) ?? null;
@@ -184,6 +240,7 @@ function normalizeRecommendedProfileSlices(priority: WorkPriority): WorkPriority
       manifestImportCommand,
       intakeManifestEntryTemplateTypes,
       intakeManifestEntryTemplateDetails,
+      intakeManifestEntryTemplateCount,
       intakeManifestEntryTemplateRoot,
       inspectCommand,
       followUpCommand,
@@ -201,8 +258,12 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const rootThinReadySections = normalizeStringArray(priority.rootThinReadySections);
   const rootThinMissingSections = normalizeStringArray(priority.rootThinMissingSections);
   const rootHeadingAliases = normalizeStringArray(priority.rootHeadingAliases);
+  const shadowPaths = normalizePathArray(priority.shadowPaths);
+  const shadowPathCount = normalizeOptionalNonNegativeInteger(priority.shadowPathCount);
+  const shadowPathSamplePaths = normalizePathArray(priority.shadowPathSamplePaths);
+  const shadowPathOverflowCount = normalizeOptionalNonNegativeInteger(priority.shadowPathOverflowCount);
   const candidateSignalSummary = normalizeOptionalString(priority.candidateSignalSummary);
-  const draftSourcesSummary = normalizeOptionalString(priority.draftSourcesSummary);
+  const draftSourcesSummary = normalizeDraftSourcesSummary(priority.draftSourcesSummary);
   const draftGapSummary = normalizeOptionalString(priority.draftGapSummary);
   const fallbackCommand = normalizeOptionalString(priority.fallbackCommand);
   const refreshIntakeCommand = normalizeOptionalString(priority.refreshIntakeCommand);
@@ -214,6 +275,10 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
   const manifestImportCommand = normalizeOptionalString(priority.manifestImportCommand);
   const intakeManifestEntryTemplateTypes = normalizeStringArray(priority.intakeManifestEntryTemplateTypes);
   const intakeManifestEntryTemplateDetails = normalizeStarterTemplateDetails(priority.intakeManifestEntryTemplateDetails);
+  const intakeManifestEntryTemplateCount = normalizeStarterTemplateCount(
+    priority.intakeManifestEntryTemplateCount,
+    Math.max(intakeManifestEntryTemplateTypes?.length ?? 0, intakeManifestEntryTemplateDetails?.length ?? 0),
+  );
   const intakeManifestEntryTemplateRoot = normalizeDraftPath(priority.intakeManifestEntryTemplateRoot);
   const inspectCommand = normalizeOptionalString(priority.inspectCommand);
   const followUpCommand = normalizeOptionalString(priority.followUpCommand);
@@ -233,6 +298,10 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(rootThinReadySections ? { rootThinReadySections } : {}),
     ...(rootThinMissingSections ? { rootThinMissingSections } : {}),
     ...(rootHeadingAliases ? { rootHeadingAliases } : {}),
+    ...(shadowPaths ? { shadowPaths } : {}),
+    ...(shadowPathCount !== null ? { shadowPathCount } : {}),
+    ...(shadowPathSamplePaths ? { shadowPathSamplePaths } : {}),
+    ...(shadowPathOverflowCount !== null ? { shadowPathOverflowCount } : {}),
     ...(candidateSignalSummary ? { candidateSignalSummary } : {}),
     ...(!candidateSignalSummary && priority.candidateSignalSummary !== undefined ? { candidateSignalSummary: null } : {}),
     ...(draftSourcesSummary ? { draftSourcesSummary } : {}),
@@ -256,6 +325,7 @@ function normalizePriority(priority: WorkPriority): WorkPriority {
     ...(!manifestImportCommand && priority.manifestImportCommand !== undefined ? { manifestImportCommand: null } : {}),
     ...(intakeManifestEntryTemplateTypes ? { intakeManifestEntryTemplateTypes } : {}),
     ...(intakeManifestEntryTemplateDetails ? { intakeManifestEntryTemplateDetails } : {}),
+    ...(priority.intakeManifestEntryTemplateCount !== undefined ? { intakeManifestEntryTemplateCount } : {}),
     ...(intakeManifestEntryTemplateRoot ? { intakeManifestEntryTemplateRoot } : {}),
     ...(!intakeManifestEntryTemplateRoot && priority.intakeManifestEntryTemplateRoot !== undefined ? { intakeManifestEntryTemplateRoot: null } : {}),
     ...(inspectCommand ? { inspectCommand } : {}),
