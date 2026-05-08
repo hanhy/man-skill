@@ -602,9 +602,9 @@ function summarizeFoundationReadiness(materialRecords) {
   };
 }
 
-function summarizeMaterialRecordSet(materialRecords, fallbackLatestRecord = null) {
+function summarizeMaterialRecordSet(materialRecords) {
   const newestRecords = sortByNewest(materialRecords);
-  const latestRecord = newestRecords[0] ?? fallbackLatestRecord ?? null;
+  const latestRecord = newestRecords[0] ?? null;
   const materialTypes = summarizeMaterialTypes(materialRecords);
   return {
     latestMaterialAt: latestRecord?.createdAt ?? null,
@@ -637,9 +637,9 @@ function loadMaterialSummaries(materialsDir) {
     memoryEntries: buildMemoryDraftEntries(materialRecords),
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
     draftExpectations: {
-      voice: summarizeMaterialRecordSet(voiceRecords, newestRecords[0] ?? null),
-      soul: summarizeMaterialRecordSet(soulRecords, newestRecords[0] ?? null),
-      skills: summarizeMaterialRecordSet(skillRecords, newestRecords[0] ?? null),
+      voice: summarizeMaterialRecordSet(voiceRecords),
+      soul: summarizeMaterialRecordSet(soulRecords),
+      skills: summarizeMaterialRecordSet(skillRecords),
     },
   };
 }
@@ -785,8 +785,11 @@ export function parseDraftMetadata(filePath) {
   const displayName = normalizeDraftHeaderValue(displayNameMatch?.[1]);
   const summary = normalizeDraftHeaderValue(summaryMatch?.[1]);
   const generatedAt = normalizeDraftHeaderValue(generatedAtMatch?.[1]);
-  const latestMaterialAt = normalizeDraftHeaderValue(latestMaterialMatch?.[1]);
-  const latestMaterialId = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialAt = normalizeDraftPlaceholderValue(latestMaterialMatch?.[1]);
+  const latestMaterialIdHeader = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialId = latestMaterialIdHeader && latestMaterialIdHeader.toLowerCase() !== 'none'
+    ? latestMaterialIdHeader
+    : null;
   const latestMaterialSourceHeader = normalizeDraftPlaceholderValue(latestMaterialSourceMatch?.[1]);
   const latestMaterialSourcePath = latestMaterialSourceHeader
     ? normalizeDraftPath(latestMaterialSourceHeader)
@@ -816,8 +819,6 @@ export function parseDraftMetadata(filePath) {
       && isNonEmptyString(displayName)
       && isNonEmptyString(summary)
       && isNonEmptyString(generatedAt)
-      && isNonEmptyString(latestMaterialAt)
-      && isNonEmptyString(latestMaterialId)
     ),
   };
 }
