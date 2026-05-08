@@ -1409,7 +1409,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
     recommendedLatestMaterialSourcePath: summary.foundation.maintenance.recommendedLatestMaterialSourcePath,
     recommendedDraftSourcesSummary: summary.foundation.maintenance.recommendedDraftSourcesSummary,
     recommendedCandidateSignalSummary: 'memory 1 (talk) | voice 1 (talk) | soul 1 (talk) | skills 1 (talk)',
-    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
+    recommendedDraftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills missing | soul missing | voice missing',
     helperCommands: {
       refreshAll: 'node src/index.js update foundation --all',
       refreshStale: 'node src/index.js update foundation --stale',
@@ -1439,7 +1439,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
           soul: 4,
           voice: 4,
         },
-        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.)',
+        draftGapSummary: 'memory missing, 1 candidate (Tight loops beat big plans.) | skills missing | soul missing | voice missing',
         refreshCommand: "node src/index.js update foundation --person 'jane-doe'",
         paths: [
           'profiles/jane-doe/memory/long-term/foundation.json',
@@ -1463,7 +1463,7 @@ test('buildSummary exposes a repository foundation rollup and prompt preview men
   ]);
   assert.match(summary.profileSnapshots[1].snapshot, /refresh drafts: node src\/index\.js update foundation --person 'jane-doe'/);
   assert.match(summary.profileSnapshots[1].snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
-  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter root profiles\/jane-doe\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| update node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
+  assert.match(summary.promptPreview, /Jane Doe \(jane-doe\): 1 material \(talk:1\), latest .*?, intake starter template — add entries before import \(templates: message, screenshot, talk, text\); starter root profiles\/jane-doe\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills missing \| soul missing \| voice missing \| refresh-intake node src\/index\.js update intake --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/jane-doe\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'jane-doe' \| replay-after-edit node src\/index\.js import intake --person 'jane-doe' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'jane-doe' \| update node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? \| sync node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'(?: --summary 'Tight loops beat big plans\.')? --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /\| import node src\/index\.js import text --person jane-doe --file 'profiles\/jane-doe\/imports\/sample\.txt' --refresh-foundation/);
 });
 

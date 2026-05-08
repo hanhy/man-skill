@@ -312,12 +312,28 @@ function summarizeMemoryDraftGap(profile: any): string | null {
   return 'memory missing';
 }
 
+function summarizeStructuredDraftGap(profile: any, key: 'skills' | 'soul' | 'voice'): string | null {
+  const missingDrafts = normalizeStringArray(profile?.foundationDraftStatus?.missingDrafts);
+  const summary = profile?.foundationDraftSummaries?.[key];
+
+  if (!summary) {
+    return missingDrafts.includes(key) ? `${key} missing` : null;
+  }
+
+  const draftGapSummary = summarizeDraftGap(summary, key);
+  if (draftGapSummary) {
+    return draftGapSummary;
+  }
+
+  return missingDrafts.includes(key) ? `${key} missing` : null;
+}
+
 function summarizeProfileDraftGaps(profile: any): string | null {
   const gapSummaries = [
     summarizeMemoryDraftGap(profile),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.skills, 'skills'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.soul, 'soul'),
-    summarizeDraftGap(profile?.foundationDraftSummaries?.voice, 'voice'),
+    summarizeStructuredDraftGap(profile, 'skills'),
+    summarizeStructuredDraftGap(profile, 'soul'),
+    summarizeStructuredDraftGap(profile, 'voice'),
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
   return gapSummaries.length > 0 ? gapSummaries.join(' | ') : null;
