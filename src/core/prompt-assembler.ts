@@ -754,6 +754,7 @@ type IngestionSummary = {
   recommendedLatestMaterialSourcePath?: string | null;
   recommendedCandidateSignalSummary?: string | null;
   recommendedDraftSourcesSummary?: string | null;
+  recommendedDraftGapSummary?: string | null;
   recommendedCommand?: string | null;
   recommendedFallbackCommand?: string | null;
   recommendedRefreshIntakeCommand?: string | null;
@@ -2092,6 +2093,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedLatestMaterialAt = normalizeOptionalString(ingestion?.recommendedLatestMaterialAt);
   const recommendedLatestMaterialId = normalizeOptionalString(ingestion?.recommendedLatestMaterialId);
   const recommendedLatestMaterialSourcePath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedLatestMaterialSourcePath));
+  const recommendedCandidateSignalSummary = normalizeOptionalString(ingestion?.recommendedCandidateSignalSummary);
+  const recommendedDraftSourcesSummary = normalizeOptionalString(ingestion?.recommendedDraftSourcesSummary);
+  const recommendedDraftGapSummary = normalizeOptionalString(ingestion?.recommendedDraftGapSummary);
   const filteredRecommendedPaths = recommendedLatestMaterialSourcePath
     ? recommendedPaths.filter((value) => value !== recommendedLatestMaterialSourcePath)
     : recommendedPaths;
@@ -2144,7 +2148,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
     ? `; manifest inspect ${recommendedManifestInspectCommand}`
     : '';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? `; paths ${filteredRecommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedCandidateSignalSummary ? `; evidence ${recommendedCandidateSignalSummary}` : ''}${recommendedDraftSourcesSummary ? `; draft sources ${recommendedDraftSourcesSummary}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? `; paths ${filteredRecommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [

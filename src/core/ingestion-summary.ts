@@ -1442,6 +1442,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLatestMaterialSourcePath: string | null = null;
   let recommendedCandidateSignalSummary: string | null = null;
   let recommendedDraftSourcesSummary: string | null = null;
+  let recommendedDraftGapSummary: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
@@ -1492,6 +1493,9 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : null;
     recommendedDraftSourcesSummary = typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
       ? profile.draftSourcesSummary
+      : null;
+    recommendedDraftGapSummary = typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+      ? profile.draftGapSummary
       : null;
   };
 
@@ -1920,6 +1924,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialSourcePath,
     recommendedCandidateSignalSummary,
     recommendedDraftSourcesSummary,
+    recommendedDraftGapSummary,
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,
