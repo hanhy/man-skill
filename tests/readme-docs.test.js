@@ -691,8 +691,13 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(skillsDoc, /- utilities: `cron`, `foundation-maintenance`/);
 
   assert.match(foundationMaintenanceSkill, /Use this skill when the next step touches the OpenClaw-like foundation in `~\/man-skill`\./);
-  assert.match(foundationMaintenanceSkill, /Run `node src\/index\.js summary --json` and inspect `foundation\.core`, `foundation\.maintenance`, `profileSnapshots`, and `workLoop`\./);
+  assert.match(foundationMaintenanceSkill, /Run `node src\/index\.js summary --json` and inspect `foundation\.core`, `foundation\.core\.maintenance`, `foundation\.maintenance`, `profileSnapshots`, and `workLoop`\./);
+  assert.match(foundationMaintenanceSkill, /repo-core repairs, check `foundation\.core\.maintenance\.recommendedCommand` \/ `recommendedPaths` first/i);
+  assert.match(foundationMaintenanceSkill, /per-profile refreshes, check `foundation\.maintenance\.recommendedCommand` \/ `recommendedLatestMaterialSourcePath` first/i);
+  assert.match(foundationMaintenanceSkill, /compare `workLoop\.leadingPriority`, `currentPriority`, `runnablePriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or later advisory/i);
   assert.match(foundationMaintenanceSkill, /`node src\/index\.js update foundation --person <id>`.*`node src\/index\.js update foundation --stale`.*`node src\/index\.js update foundation --all`/s);
+  assert.match(foundationMaintenanceSkill, /Keep duplicate-root context aligned too: `shadowPaths` \/ `shadowPathSamplePaths` should stay consistent between `foundation\.core`, `profileSnapshots`, and any surfaced work-loop repair priority\./);
+  assert.match(foundationMaintenanceSkill, /When stale profile refreshes are present, keep `draftSourcesSummary`, `draftGapSummary`, and `latestMaterialSourcePath` visible together so the newest backing artifact and the thinnest draft layer stay inspectable from one summary surface\./);
   assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/foundation-rollup\.test\.js`/);
   assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/readme-docs\.test\.js`/);
   assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/work-loop\.test\.ts`/);
