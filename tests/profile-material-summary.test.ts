@@ -662,7 +662,7 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
       importedInvalidIntakeManifestProfileCount: 0,
       invalidMetadataOnlyIntakeManifestProfileCount: 0,
       supportedImportTypes: ['text'],
-      recommendedAction: 'import source materials for Harry Han (harry-han)',
+      recommendedAction: 'replay imported intake for Harry Han (harry-han)',
       recommendedCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
       recommendedLatestMaterialAt: '2026-05-06T05:48:06.506Z',
       recommendedLatestMaterialId: '2026-05-06T05-48-06-506Z-text',
@@ -675,7 +675,7 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: import source materials for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; paths profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; paths profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);

@@ -3034,7 +3034,7 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
   assert.equal(summary.workLoop.runnablePriority?.id, 'ingestion');
   assert.equal(summary.workLoop.runnablePriority?.status, 'ready');
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
-  assert.equal(summary.workLoop.runnablePriority?.nextAction, 'import source materials for Harry Han (harry-han)');
+  assert.equal(summary.workLoop.runnablePriority?.nextAction, 'replay imported intake for Harry Han (harry-han)');
   assert.equal(summary.workLoop.runnablePriority?.command, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
   assert.equal(summary.workLoop.runnablePriority?.editPath, null);
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
@@ -3043,9 +3043,9 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
     'profiles/harry-han/imports/sample.txt',
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
-  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — import source materials for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
-  assert.match(summary.promptPreview, /runnable next action: import source materials for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /runnable next action: replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });

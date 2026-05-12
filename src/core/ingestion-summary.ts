@@ -1674,11 +1674,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLabel = firstImportedReadyIntakeProfile?.label ?? firstImportedReadyIntakeProfile?.personId ?? null;
     recommendedAction = importedProfilesWithReadyIntake.length > 1
       ? (recommendedLabel
-        ? `import source materials for imported intake replays — starting with ${recommendedLabel}`
-        : 'import source materials for imported intake replays')
+        ? `replay imported intake manifests — starting with ${recommendedLabel}`
+        : 'replay imported intake manifests')
       : (recommendedLabel
-        ? `import source materials for ${recommendedLabel}`
-        : 'import source materials for imported intake replays');
+        ? `replay imported intake for ${recommendedLabel}`
+        : 'replay imported intake manifests');
     setRecommendedLatestMaterial(firstImportedReadyIntakeProfile);
     recommendedCommand = importedProfilesWithReadyIntake.length > 1
       ? (helperCommands.importIntakeImportedAndRefresh
