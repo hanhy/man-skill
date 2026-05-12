@@ -528,6 +528,9 @@ test('buildSummary work loop advances to ingestion when memory and skills root d
 
   assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
   assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.deepEqual(summary.workLoop.leadingPriority?.paths, ['memory/README.md', 'skills/README.md', 'SOUL.md', 'voice/README.md']);
+  assert.equal(summary.workLoop.leadingPriority?.editPath, 'memory/README.md');
+  assert.deepEqual(summary.workLoop.leadingPriority?.editPaths, ['memory/README.md', 'skills/README.md', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
@@ -555,6 +558,9 @@ test('buildSummary work loop advances to ingestion when soul and voice docs use 
 
   assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
   assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.deepEqual(summary.workLoop.leadingPriority?.paths, ['memory/README.md', 'skills/README.md', 'SOUL.md', 'voice/README.md']);
+  assert.equal(summary.workLoop.leadingPriority?.editPath, 'memory/README.md');
+  assert.deepEqual(summary.workLoop.leadingPriority?.editPaths, ['memory/README.md', 'skills/README.md', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.status, 'queued');
   assert.deepEqual(summary.foundation.core.overview.thinAreas, []);
@@ -4215,7 +4221,7 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, null);
   assert.equal(summary.workLoop.currentPriority.command, null);
-  assert.deepEqual(summary.workLoop.currentPriority.paths, []);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'skills/README.md', 'SOUL.md', 'voice/README.md']);
   assert.equal(summary.workLoop.runnablePriority?.id, 'ingestion');
   assert.equal(summary.workLoop.runnablePriority?.command, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.workLoop.actionableReadyPriority?.id, 'ingestion');
@@ -4227,7 +4233,9 @@ test('buildSummary work loop stays on the leading ready priority once every prio
   assert.doesNotMatch(summary.promptPreview, /lead: Foundation \[ready\]/);
   assert.doesNotMatch(workLoopBlock, /- next action:/);
   assert.doesNotMatch(workLoopBlock, /- command:/);
-  assert.doesNotMatch(workLoopBlock, /- paths:/);
+  assert.match(workLoopBlock, /- edit: memory\/README\.md/);
+  assert.match(workLoopBlock, /- edit paths: memory\/README\.md, skills\/README\.md, SOUL\.md, voice\/README\.md/);
+  assert.match(workLoopBlock, /- paths: memory\/README\.md, skills\/README\.md, SOUL\.md, voice\/README\.md/);
   assert.match(workLoopBlock, /- runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake starter scaffold available/);
   assert.match(workLoopBlock, /- runnable next action: populate the imported intake starter manifest for Harry Han \(harry-han\)/);
   assert.match(workLoopBlock, /- runnable command: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);

@@ -355,7 +355,22 @@ function hasActionablePrioritySurface(priority: WorkPriority): boolean {
 }
 
 function isActionableReadyPriority(priority: WorkPriority): boolean {
-  return priority.status === 'ready' && hasActionablePrioritySurface(priority);
+  if (priority.status !== 'ready') {
+    return false;
+  }
+
+  return Boolean(
+    priority.nextAction
+      || priority.command
+      || priority.fallbackCommand
+      || priority.refreshIntakeCommand
+      || priority.updateProfileCommand
+      || priority.updateProfileAndRefreshCommand
+      || priority.manifestInspectCommand
+      || priority.manifestImportCommand
+      || priority.inspectCommand
+      || priority.followUpCommand,
+  );
 }
 
 function isRunnablePriority(priority: WorkPriority): boolean {

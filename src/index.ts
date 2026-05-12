@@ -833,6 +833,21 @@ function buildFoundationRefreshLabel(
     : refreshLabel}${candidateSignalSummary ? `; evidence ${candidateSignalSummary}` : ''}`;
 }
 
+function collectReadyCoreFoundationPaths(coreFoundation: any): string[] {
+  const candidatePaths = [
+    coreFoundation?.memory?.rootPath,
+    coreFoundation?.skills?.rootPath,
+    coreFoundation?.soul?.rootPath ?? coreFoundation?.soul?.path,
+    coreFoundation?.voice?.rootPath ?? coreFoundation?.voice?.path,
+  ];
+
+  return Array.from(new Set(
+    candidatePaths
+      .map((value) => normalizeDraftPath(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
@@ -1062,6 +1077,11 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     : ((coreShadowPathCount !== null && coreShadowPathSamplePaths.length > 0)
       ? Math.max(coreShadowPathCount - coreShadowPathSamplePaths.length, 0)
       : null);
+  const readyCorePaths = status === 'ready'
+    ? collectReadyCoreFoundationPaths(coreFoundation)
+    : [];
+  const readyCoreEditPaths: string[] = Array.from(new Set(readyCorePaths));
+  const readyCoreEditPath: string | null = readyCoreEditPaths[0] ?? null;
 
   const followUpCommand = status === 'queued' && hasQueuedCoreFoundation
     ? 'node src/index.js'
@@ -1091,10 +1111,16 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,
-    editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
-    editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,
+    editPath: hasQueuedCoreFoundation
+      ? coreEditPath
+      : (status === 'ready' ? readyCoreEditPath : profileEditPath),
+    editPaths: hasQueuedCoreFoundation
+      ? coreEditPaths
+      : (status === 'ready' ? readyCoreEditPaths : profileEditPaths),
     followUpCommand,
-    paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
+    paths: hasQueuedCoreFoundation
+      ? corePaths
+      : (status === 'ready' ? readyCorePaths : profilePaths),
   };
 }
 
