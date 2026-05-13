@@ -1691,6 +1691,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ?? firstImportedReadyIntakeProfile?.importMaterialCommand
         ?? helperCommands.importIntakeImportedAndRefresh
         ?? null);
+    recommendedUpdateProfileCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.updateProfileCommand ?? null);
+    recommendedUpdateProfileAndRefreshCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.updateProfileAndRefreshCommand ?? null);
     recommendedPaths = importedProfilesWithReadyIntake.length > 1
       ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
       : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir);

@@ -3036,6 +3036,22 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
   assert.equal(summary.workLoop.recommendedPriority?.id, 'ingestion');
   assert.equal(summary.workLoop.runnablePriority?.nextAction, 'replay imported intake for Harry Han (harry-han)');
   assert.equal(summary.workLoop.runnablePriority?.command, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.match(
+    summary.workLoop.runnablePriority?.updateProfileCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.match(
+    summary.workLoop.runnablePriority?.updateProfileAndRefreshCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
+  );
+  assert.match(
+    summary.workLoop.recommendedPriority?.updateProfileCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.match(
+    summary.workLoop.recommendedPriority?.updateProfileAndRefreshCommand ?? '',
+    /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
+  );
   assert.equal(summary.workLoop.runnablePriority?.editPath, null);
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
@@ -3044,9 +3060,13 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — replay imported intake for Harry Han \(harry-han\)/);
+  assert.match(summary.promptPreview, /recommended update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
+  assert.match(summary.promptPreview, /recommended sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
   assert.match(summary.promptPreview, /runnable next action: replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
+  assert.match(summary.promptPreview, /runnable sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
 });
 

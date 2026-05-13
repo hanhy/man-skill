@@ -667,6 +667,8 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
       recommendedLatestMaterialAt: '2026-05-06T05:48:06.506Z',
       recommendedLatestMaterialId: '2026-05-06T05-48-06-506Z-text',
       recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      recommendedUpdateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
+      recommendedUpdateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation",
       recommendedPaths: [
         'profiles/harry-han/imports/materials.template.json',
         './profiles/harry-han/imports/sample.txt',
@@ -675,7 +677,7 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; paths profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; paths profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);

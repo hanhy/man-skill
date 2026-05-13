@@ -511,6 +511,8 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     assert.equal(harryCommand.followUpImportIntakeCommand, null);
     assert.equal(harryCommand.helperCommands.importIntakeWithoutRefresh, harryCommand.importIntakeWithoutRefreshCommand);
     assert.equal(harryCommand.helperCommands.importIntake, harryCommand.importIntakeCommand);
+    assert.equal(summary.ingestion.recommendedUpdateProfileCommand, harryCommand.updateProfileCommand);
+    assert.equal(summary.ingestion.recommendedUpdateProfileAndRefreshCommand, harryCommand.updateProfileAndRefreshCommand);
     assert.match(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   } else {
     const recommendedStarterSlice = summary.ingestion.recommendedProfileSlices[0];
