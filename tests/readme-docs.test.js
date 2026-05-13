@@ -76,8 +76,8 @@ function formatDraftSourcesLine(draftSources = {}) {
         latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null,
       ].filter(Boolean);
 
-      if (detailParts.length === 0 && sourcePath) {
-        return latestMaterialSourcePath ? `${key} @ ${sourcePath} (latest @ ${latestMaterialSourcePath})` : `${key} @ ${sourcePath}`;
+      if (sourcePath) {
+        return detailParts.length > 0 ? `${key} @ ${sourcePath} (${detailParts.join(', ')})` : `${key} @ ${sourcePath}`;
       }
 
       return detailParts.length > 0 ? `${key} ${detailParts.join(', ')}` : null;
@@ -624,7 +624,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /human `draft files:` line mirrors `draftFiles` in canonical memory \/ skills \/ soul \/ voice order so operators can jump straight to the generated or stale artifacts before reading highlights/i);
   assert.match(readme, /`draftSections` keeps the structured section readiness for voice \/ soul \/ skills .* optional `headingAliases`/i);
   assert.match(readme, /human `draft sections:` line now mirrors partially ready voice \/ soul \/ skills drafts with their `missingSections` and accepted `headingAliases`(?:,)? instead of only listing fully ready layers/i);
-  assert.match(readme, /human `draft sources:` line can append `latest @ <source-path>` provenance when counts stay available while still falling back to compact `memory @ profiles\/\.\.\.`-style path summaries when a stale draft only exposes its artifact path/i);
+  assert.match(readme, /human `draft sources:` line keeps .*draft artifact path visible even when count-based provenance is present, can append `latest @ <source-path>` when counts stay available, and still falls back to compact `memory @ profiles\/\.\.\.`-style path summaries when a stale draft only exposes its artifact path/i);
   assert.match(readme, /shared `buildFoundationDraftPaths\(\.\.\.\)` \/ `collectFoundationDraftPaths\(\.\.\.\)` helper keeps `profileSnapshots\[\*\]\.refreshPaths`, `foundation\.maintenance\.queuedProfiles\[\*\]\.paths`, and work-loop refresh `paths` aligned in one canonical memory → skills → soul → voice order/i);
   assert.match(readme, /shared `normalizeDraftPath\(\.\.\.\)` helper keeps those draft\/source path surfaces slash-normalized/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.paths/i);
@@ -633,19 +633,19 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.draftGapCount.*queuedProfiles\[\*\]\.draftGapCounts.*queuedProfiles\[\*\]\.paths/i);
   assert.match(architectureDoc, /queuedProfiles\[\*\]\.latestMaterialSourcePath/i);
   assert.match(architectureDoc, /top-level `buildSummary\(\.\.\.\)\.profileSnapshots\[\]` records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `draftGapCount`, `draftGapCounts`, `draftGapSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
-  assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata.*optional `latestMaterialSourcePath` provenance beside the draft artifact path/i);
+  assert.match(architectureDoc, /`draftSources` preserve each layer's draft `path` alongside provenance metadata.*keeps `latestMaterialSourcePath` beside the draft artifact path/i);
   assert.match(architectureDoc, /human `draft files:` snapshot line mirrors `draftFiles` in canonical memory → skills → soul → voice order so operators can open the generated or stale artifacts before inspecting highlights or draft gaps/i);
   assert.match(architectureDoc, /reuse shared `normalizeDraftPath\(\.\.\.\)` path cleanup across draft-path and source-provenance surfaces/i);
   assert.match(architectureDoc, /`draftSections` keep the structured section counts plus `readySections`, `missingSections`, and optional `headingAliases`/i);
   assert.match(architectureDoc, /human `draft sections:` snapshot line now keeps partially ready voice \/ soul \/ skills drafts visible with their missing sections and accepted heading aliases, not just fully ready layers/i);
-  assert.match(architectureDoc, /prompt-side `draft sources:` snapshot line can append `latest @ <source-path>` provenance when counts stay available while still falling back to compact `memory @ profiles\/\.\.\.` path summaries when stale drafts no longer carry source counts yet/i);
+  assert.match(architectureDoc, /prompt-side `draft sources:` snapshot line .*keeps .*path visible.*`latest @ <source-path>`.*compact `memory @ profiles\/\.\.\.` path summaries/i);
   assert.match(architectureDoc, /shared `buildFoundationDraftPaths\(\.\.\.\)` \/ `collectFoundationDraftPaths\(\.\.\.\)` helpers.*canonical memory → skills → soul → voice order.*prefer generated draft files when present.*fall back to missing-draft scaffold targets/i);
   assert.match(ingestionDoc, /`buildSummary\(\.\.\.\)\.profileSnapshots\[\]` mirrors the compact operator-facing profile foundation snapshot surface as machine-readable records \(`id`, `label`, `snapshot`, `lines`, `materialCount`, `materialTypes`, `latestMaterialAt`, `latestMaterialId`, `latestMaterialSourcePath`, `profileSummary`, `draftGapCount`, `draftGapCounts`, `draftGapSummary`, `refreshCommand`, `refreshPaths`, `draftStatus`, `readiness`, `draftFiles`, `draftSources`, `draftSections`, `draftGaps`, `highlights`\)/i);
   assert.match(ingestionDoc, /`draftSources` keeps the concrete draft `path` for each memory \/ skills \/ soul \/ voice layer together with provenance metadata(?:, including optional `latestMaterialSourcePath` when the newest draft-driving material came from a concrete file)?(?:,)? so stale profile snapshots stay inspectable even when the prompt omits the human `draft files:` line/i);
   assert.match(ingestionDoc, /human `draft files:` snapshot line mirrors `draftFiles` in canonical memory \/ skills \/ soul \/ voice order so operators can inspect the generated or stale artifacts without reopening raw summary JSON first/i);
   assert.match(ingestionDoc, /`foundationDraftSummaries\.voice\|soul\|skills` top markdown bullet highlights from generated drafts; when a markdown draft exists but is structurally thin, those summaries also surface `readySectionCount`, `totalSectionCount`, `missingSections`, and optional `headingAliases`/i);
   assert.match(ingestionDoc, /human `draft sections:` snapshot line keeps partially ready voice \/ soul \/ skills drafts visible with their missing sections and accepted heading aliases, so stale profile snapshots do not hide thin-but-generated markdown layers/i);
-  assert.match(ingestionDoc, /prompt-side `draft sources:` fallback can append `latest @ <source-path>` provenance when counts stay available while still rendering `memory @ profiles\/\.\.\.`-style path-only summaries when counts are unavailable/i);
+  assert.match(ingestionDoc, /prompt-side `draft sources:` fallback .*keeps .*path visible.*`latest @ <source-path>`.*`memory @ profiles\/\.\.\.`-style path-only summaries/i);
   assert.match(ingestionDoc, /shared `buildFoundationDraftPaths\(\.\.\.\)` \/ `collectFoundationDraftPaths\(\.\.\.\)` helpers keep `profileSnapshots\[\*\]\.refreshPaths`, `foundation\.maintenance\.queuedProfiles\[\*\]\.paths`, and work-loop refresh `paths` aligned to the same canonical memory \/ skills \/ soul \/ voice order/i);
   assert.match(ingestionDoc, /shared `normalizeDraftPath\(\.\.\.\)` helper keeps those draft\/source paths slash-normalized/i);
   assert.match(ingestionDoc, /queuedProfiles\[\*\]\.paths/i);

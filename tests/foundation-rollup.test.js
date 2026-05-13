@@ -315,7 +315,7 @@ test('buildFoundationRollup carries stale draft source provenance onto maintenan
     },
   ]);
 
-  const expectedDraftSourcesSummary = 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt';
+  const expectedDraftSourcesSummary = 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt)';
 
   assert.equal(rollup.maintenance.recommendedDraftSourcesSummary, expectedDraftSourcesSummary);
   assert.equal(rollup.maintenance.queuedProfiles[0]?.draftSourcesSummary, expectedDraftSourcesSummary);
@@ -931,7 +931,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       currentPriority: {
@@ -941,7 +941,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       runnablePriority: {
@@ -951,7 +951,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       actionableReadyPriority: {
@@ -961,7 +961,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: '1 imported starter template still needs edits',
         nextAction: 'finish the starter manifest edits',
         command: null,
-        draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        draftSourcesSummary: 'voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
         editPath: 'profiles/jane-doe/imports/materials.template.json',
         paths: ['profiles/jane-doe/imports/materials.template.json'],
       },
@@ -972,7 +972,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       priorities: [
@@ -983,7 +983,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
           summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
           nextAction: 'refresh Jane Doe (jane-doe)',
           command: "node src/index.js update foundation --person 'jane-doe'",
-          draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+          draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
           paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
         },
         {
@@ -993,7 +993,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
           summary: '1 imported starter template still needs edits',
           nextAction: 'finish the starter manifest edits',
           command: null,
-          draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+          draftSourcesSummary: 'voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
           editPath: 'profiles/jane-doe/imports/materials.template.json',
           paths: ['profiles/jane-doe/imports/materials.template.json'],
         },
@@ -1001,9 +1001,9 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
     },
   }).buildPreview(4000);
 
-  assert.match(preview, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.match(preview, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\)/);
   assert.doesNotMatch(preview, /runnable draft sources:/);
-  assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /advisory draft sources: voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
 });
 
 test('PromptAssembler work loop trims and slash-normalizes latest-material fields before rendering current and advisory follow-ups', () => {
@@ -1270,7 +1270,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         recommendedLatestMaterialAt: '2026-04-20T12:00:00.000Z',
         recommendedLatestMaterialId: '2026-04-20T12-00-00-000Z-text',
         recommendedLatestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
-        recommendedDraftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        recommendedDraftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
         recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
         staleRefreshCommand: "node src/index.js update foundation --stale",
         helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
@@ -1286,7 +1286,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
             latestMaterialId: '2026-04-20T12-00-00-000Z-text',
             latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
             candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
-            draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+            draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
           },
         ],
       },
@@ -1298,8 +1298,8 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
   assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
-  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
-  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
+  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
 });
 
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {

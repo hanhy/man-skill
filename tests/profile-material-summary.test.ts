@@ -253,6 +253,7 @@ test('buildProfileSnapshotSummaries keeps mixed fallback draft-source provenance
       },
       voice: {
         path: 'profiles/jane-doe/voice/README.md',
+        sourceCount: 1,
         materialTypes: { message: 1 },
         latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
       },
@@ -275,12 +276,17 @@ test('buildProfileSnapshotSummaries keeps mixed fallback draft-source provenance
       path: 'profiles/jane-doe/voice/README.md',
       generated: false,
       latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      sourceCount: 1,
       materialTypes: { message: 1 },
     },
   });
   assert.match(
     snapshot.snapshot,
-    new RegExp(`draft sources: ${summarizeFoundationDraftSources(profile)?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+    /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/,
+  );
+  assert.equal(
+    summarizeFoundationDraftSources(profile),
+    'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
   );
 });
 
@@ -1138,7 +1144,7 @@ test('buildIngestionSummary normalizes recommended starter profile slices for JS
   assert.deepEqual(recommendedSlice.refreshReasons, []);
   assert.deepEqual(recommendedSlice.missingDrafts, []);
   assert.equal(recommendedSlice.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 0 | skills 0');
-  assert.match(recommendedSlice.draftSourcesSummary ?? '', /memory 1 source \(text:1\), 1 entry, latest @ profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(recommendedSlice.draftSourcesSummary ?? '', /memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \(1 source \(text:1\), 1 entry, latest @ profiles\/harry-han\/imports\/sample\.txt\)/);
   assert.equal(recommendedSlice.draftGapSummary, null);
   assert.equal(recommendedSlice.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(recommendedSlice.editPaths, [
@@ -1830,7 +1836,7 @@ test('loadProfilesIndex keeps count-only source material headers as stale markdo
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 1);
   assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {});
-  assert.match(summarizeFoundationDraftSources(profile) ?? '', /\bvoice 1 source\b/);
+  assert.match(summarizeFoundationDraftSources(profile) ?? '', /voice @ profiles\/harry-han\/voice\/README\.md \(1 source\)/);
 });
 
 test('loadProfilesIndex trims placeholder latest material source headers instead of surfacing them as file provenance', () => {
@@ -4342,7 +4348,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
       recommendedManifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
       recommendedRefreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
       recommendedCandidateSignalSummary: 'memory 2 (message, text) | voice 1 (message) | soul 1 (text) | skills 0',
-      recommendedDraftSourcesSummary: 'memory 2 sources (message:1, text:1), latest @ profiles/harry-han/imports/sample.txt',
+      recommendedDraftSourcesSummary: 'memory @ profiles/harry-han/memory/long-term/foundation.json (2 sources (message:1, text:1), latest @ profiles/harry-han/imports/sample.txt)',
       recommendedDraftGapSummary: 'skills missing | voice missing',
       recommendedIntakeManifestEntryTemplateTypes: [],
       recommendedIntakeManifestEntryTemplateCount: 2,
@@ -4422,7 +4428,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
     },
   }).buildSystemPrompt();
 
-  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; evidence memory 2 \(message, text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 0; draft sources memory 2 sources \(message:1, text:1\), latest @ profiles\/harry-han\/imports\/sample\.txt; gaps skills missing \| voice missing; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; evidence memory 2 \(message, text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 0; draft sources memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \(2 sources \(message:1, text:1\), latest @ profiles\/harry-han\/imports\/sample\.txt\)/);
   assert.doesNotMatch(prompt, /starter details .*message Keep the note tight\. \| message Keep the note tight\./);
   assert.doesNotMatch(prompt, /starter details .*text sample\.txt \| text sample\.txt/);
   assert.doesNotMatch(prompt, /next intake: .*; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
@@ -5259,7 +5265,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
   assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
   assert.match(
     snapshot.snapshot,
-    /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 2 sources \(message:1, talk:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/,
+    /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(2 sources \(message:1, talk:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/,
   );
   assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths/);

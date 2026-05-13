@@ -69,11 +69,6 @@ export function summarizeFoundationDraftSources(profile: any): string | null {
       const latestSourceLabel = latestMaterialSourcePath ? `latest @ ${latestMaterialSourcePath}` : null;
       const typeLabel = !sourceLabel && materialTypes ? `types ${materialTypes}` : null;
       const sourceDetailLabel = sourceLabel ? `${sourceLabel}${materialTypes ? ` (${materialTypes})` : ''}` : null;
-      const fallbackDetails = [
-        typeLabel,
-        entryLabel,
-        latestSourceLabel,
-      ].filter((value): value is string => typeof value === 'string' && value.length > 0);
       const parts = [
         sourceDetailLabel,
         typeLabel,
@@ -81,8 +76,8 @@ export function summarizeFoundationDraftSources(profile: any): string | null {
         latestSourceLabel,
       ].filter((value): value is string => typeof value === 'string' && value.length > 0);
 
-      if (!sourceLabel && summaryPath) {
-        return fallbackDetails.length > 0 ? `${key} @ ${summaryPath} (${fallbackDetails.join(', ')})` : `${key} @ ${summaryPath}`;
+      if (summaryPath) {
+        return parts.length > 0 ? `${key} @ ${summaryPath} (${parts.join(', ')})` : `${key} @ ${summaryPath}`;
       }
 
       return parts.length > 0 ? `${key} ${parts.join(', ')}` : null;
