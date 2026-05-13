@@ -1212,7 +1212,7 @@ function summarizeLegacyMemoryDraft(memoryDraft) {
     generatedAt: memoryDraft?.generatedAt ?? null,
     latestMaterialAt: memoryDraft?.latestMaterialAt ?? null,
     latestMaterialId: memoryDraft?.latestMaterialId ?? null,
-    latestMaterialSourcePath: memoryDraft?.latestMaterialSourcePath ?? null,
+    latestMaterialSourcePath: normalizeDraftPath(memoryDraft?.latestMaterialSourcePath) ?? null,
     sourceCount,
     materialTypes,
   };

@@ -2355,6 +2355,36 @@ test('refreshStaleFoundationDrafts ignores markdown draft latest material source
   assert.match(unrepairedVoiceDraft, /Latest material source: \.\\latest-source\.txt/);
 });
 
+test('loadProfilesIndex normalizes equivalent memory draft latest material source paths', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.latestMaterialSourcePath = '.\\latest-source.txt';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const loader = new FileSystemLoader(rootDir);
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, 'latest-source.txt');
+});
+
 test('refreshStaleFoundationDrafts refreshes profiles when markdown drafts lose the latest material source header even if the expected source path is not set', async () => {
   const rootDir = makeTempRepo();
   const ingestion = new MaterialIngestion(rootDir);
