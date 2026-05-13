@@ -3053,7 +3053,10 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
     /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
   );
   assert.equal(summary.workLoop.runnablePriority?.editPath, null);
+  assert.equal(summary.workLoop.runnablePriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
+  assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, null);
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
@@ -3062,9 +3065,11 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /recommended update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /recommended sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
+  assert.match(summary.promptPreview, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
   assert.match(summary.promptPreview, /runnable next action: replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /runnable sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
