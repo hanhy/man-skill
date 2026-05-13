@@ -1078,6 +1078,31 @@ function collectStarterTemplateRoot(profile: any): string | null {
   return manifestDir && manifestDir !== '.' ? manifestDir : null;
 }
 
+function collectProfileMetadataEditPath(profile: any): string | null {
+  const profileId = normalizeOptionalString(profile?.personId ?? profile?.id);
+  if (!profileId) {
+    return null;
+  }
+
+  return `profiles/${profileId}/profile.json`;
+}
+
+function collectProfileMetadataEditPaths(profiles: any[]): string[] {
+  return Array.from(new Set(
+    (Array.isArray(profiles) ? profiles : [])
+      .map((profile) => collectProfileMetadataEditPath(profile))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
+function mergeUniquePaths(...pathGroups: Array<Array<string> | null | undefined>): string[] {
+  return Array.from(new Set(
+    pathGroups.flatMap((group) => Array.isArray(group)
+      ? group.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : []),
+  ));
+}
+
 function collectStarterTemplateEditPaths(profile: any): string[] {
   const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
   const manifestDir = collectStarterTemplateRoot(profile);
@@ -1704,9 +1729,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedUpdateProfileAndRefreshCommand = importedProfilesWithReadyIntake.length > 1
       ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
       : (firstImportedReadyIntakeProfile?.updateProfileAndRefreshCommand ?? null);
-    recommendedPaths = importedProfilesWithReadyIntake.length > 1
-      ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
-      : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir);
+    recommendedEditPaths = collectProfileMetadataEditPaths(importedProfilesWithReadyIntake);
+    recommendedEditPath = recommendedEditPaths[0] ?? null;
+    recommendedPaths = mergeUniquePaths(
+      importedProfilesWithReadyIntake.length > 1
+        ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+        : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir),
+      recommendedEditPaths,
+    );
   } else if (metadataOnlyProfileCount > 0) {
     if (metadataOnlyProfileNeedingScaffold) {
       recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;
@@ -1791,9 +1821,14 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedCommand = readyIntakeProfiles.length > 1
         ? (helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? firstReadyIntakeProfile?.importIntakeCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? null)
         : (firstReadyIntakeProfile?.importMaterialCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? firstReadyIntakeProfile?.importIntakeCommand ?? helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? null);
-      recommendedPaths = readyIntakeProfiles.length > 1
-        ? readyIntakeProfiles.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
-        : collectReadyIntakeImportPaths(firstReadyIntakeProfile, rootDir);
+      recommendedEditPaths = collectProfileMetadataEditPaths(readyIntakeProfiles);
+      recommendedEditPath = recommendedEditPaths[0] ?? null;
+      recommendedPaths = mergeUniquePaths(
+        readyIntakeProfiles.length > 1
+          ? readyIntakeProfiles.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+          : collectReadyIntakeImportPaths(firstReadyIntakeProfile, rootDir),
+        recommendedEditPaths,
+      );
     } else if (runnableImportCommand) {
       recommendedProfileId = metadataOnlyProfile?.personId ?? null;
       recommendedLabel = metadataOnlyProfile?.label ?? metadataOnlyProfile?.personId ?? null;

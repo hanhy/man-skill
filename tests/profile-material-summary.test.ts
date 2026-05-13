@@ -676,15 +676,18 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
       recommendedInspectCommand: "node src/index.js import intake --person 'harry-han'",
       recommendedUpdateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
       recommendedUpdateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation",
+      recommendedEditPath: 'profiles/harry-han/profile.json',
+      recommendedEditPaths: ['profiles/harry-han/profile.json'],
       recommendedPaths: [
         'profiles/harry-han/imports/materials.template.json',
         './profiles/harry-han/imports/sample.txt',
         '.\\profiles\\harry-han//imports\\sample.txt',
+        'profiles/harry-han/profile.json',
       ],
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/profile\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);

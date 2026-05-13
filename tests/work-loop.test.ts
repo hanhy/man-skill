@@ -2058,10 +2058,11 @@ test('buildSummary work loop prefers a customized profile-local intake manifest 
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
     'profiles/metadata-only/imports/local-note.txt',
+    'profiles/metadata-only/profile.json',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import manifest --file 'profiles\/metadata-only\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/local-note\.txt/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/local-note\.txt, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop still scaffolds intake before inline sample talk imports become runnable', () => {
@@ -3052,27 +3053,33 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
     summary.workLoop.recommendedPriority?.updateProfileAndRefreshCommand ?? '',
     /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
   );
-  assert.equal(summary.workLoop.runnablePriority?.editPath, null);
+  assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/profile.json');
+  assert.deepEqual(summary.workLoop.runnablePriority?.editPaths, ['profiles/harry-han/profile.json']);
   assert.equal(summary.workLoop.runnablePriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
+  assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/profile.json');
+  assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/profile.json']);
   assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, null);
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
+    'profiles/harry-han/profile.json',
   ]);
   assert.match(summary.promptPreview, /current: Foundation \[ready\] — core 4\/4 ready; profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /recommended: Ingestion \[ready\] — replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /recommended update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /recommended sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
+  assert.match(summary.promptPreview, /recommended edit: profiles\/harry-han\/profile\.json/);
   assert.match(summary.promptPreview, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
   assert.match(summary.promptPreview, /runnable next action: replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
+  assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/profile\.json/);
   assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /runnable sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
-  assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
 });
 
 test('buildSummary work loop keeps the imported intake replay bundle advisory when multiple starter manifests need edits', () => {
@@ -3615,8 +3622,9 @@ test('buildSummary work loop includes manifest-backed file assets when a ready i
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
     'profiles/metadata-only/imports/metadata-shot.png',
+    'profiles/metadata-only/profile.json',
   ]);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop accepts BOM-prefixed ready intake manifests when collecting manifest-backed file assets', () => {
@@ -3662,8 +3670,9 @@ test('buildSummary work loop accepts BOM-prefixed ready intake manifests when co
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
     'profiles/metadata-only/imports/metadata-shot.png',
+    'profiles/metadata-only/profile.json',
   ]);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/metadata-shot\.png, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop slash-normalizes ready intake manifest file assets before collecting manifest-backed paths', () => {
@@ -3709,8 +3718,9 @@ test('buildSummary work loop slash-normalizes ready intake manifest file assets 
     'profiles/metadata-only/imports/materials.template.json',
     'profiles/metadata-only/imports/sample.txt',
     'profiles/metadata-only/imports/images/metadata-shot.png',
+    'profiles/metadata-only/profile.json',
   ]);
-  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/images\/metadata-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/metadata-only\/imports\/materials\.template\.json, profiles\/metadata-only\/imports\/sample\.txt, profiles\/metadata-only\/imports\/images\/metadata-shot\.png, profiles\/metadata-only\/profile\.json/);
   assert.doesNotMatch(summary.promptPreview, /\\metadata-shot\.png/);
 });
 
@@ -3769,13 +3779,14 @@ test('buildSummary work loop prefers the exact ready-intake bundle when multiple
     'profiles/beta-ready/imports/materials.template.json',
     'profiles/beta-ready/imports/sample.txt',
     'profiles/beta-ready/imports/beta-shot.png',
+    'profiles/beta-ready/profile.json',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for Beta Ready \(beta-ready\)/);
   assert.match(
     summary.promptPreview,
     /command: node src\/index\.js import manifest --file 'profiles\/beta-ready\/imports\/materials\.template\.json' --refresh-foundation/,
   );
-  assert.match(summary.promptPreview, /paths: profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png/);
+  assert.match(summary.promptPreview, /paths: profiles\/beta-ready\/imports\/materials\.template\.json, profiles\/beta-ready\/imports\/sample\.txt, profiles\/beta-ready\/imports\/beta-shot\.png, profiles\/beta-ready\/profile\.json/);
 });
 
 test('buildSummary work loop repairs the env template before channel scaffolding when leader credentials are missing', () => {
