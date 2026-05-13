@@ -98,18 +98,14 @@ export function buildFoundationDraftPaths({
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
   ));
 
+  const canonicalPathSet = new Set(Object.values(canonicalPaths));
   const hasOnlyCanonicalExplicitPaths = Array.from(explicitPathKeys).every((draftKey) => {
     const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
-    return explicitPath === canonicalPaths[draftKey];
+    return explicitPath ? canonicalPathSet.has(explicitPath) : false;
   });
 
   if (missingDraftSet.size === 0 && hasOnlyCanonicalExplicitPaths && explicitPathKeys.size > 0 && explicitPathKeys.size < FOUNDATION_DRAFT_KEYS.length) {
-    return Array.from(new Set(
-      FOUNDATION_DRAFT_KEYS.map((draftKey) => {
-        const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
-        return explicitPath ?? canonicalPaths[draftKey];
-      }),
-    ));
+    return FOUNDATION_DRAFT_KEYS.map((draftKey) => canonicalPaths[draftKey]);
   }
 
   return orderedPaths.length > 0

@@ -21,7 +21,7 @@ test('buildFoundationDraftPaths trims profile ids, draft file paths, and missing
   );
 });
 
-test('buildFoundationDraftPaths normalizes Windows-style draft paths and dedupes repeated explicit targets within one profile', () => {
+test('buildFoundationDraftPaths backfills canonical draft targets when partial explicit metadata only points at a subset of canonical files under repeated keys', () => {
   assert.deepEqual(
     buildFoundationDraftPaths({
       profileId: 'jane-doe',
@@ -33,7 +33,9 @@ test('buildFoundationDraftPaths normalizes Windows-style draft paths and dedupes
     }),
     [
       'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
       'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
     ],
   );
 });
