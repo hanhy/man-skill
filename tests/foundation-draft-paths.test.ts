@@ -95,6 +95,23 @@ test('buildFoundationDraftPaths collapses interior parent-directory segments bef
   );
 });
 
+test('buildFoundationDraftPaths falls back to canonical missing foundation targets when stale metadata only records a partial explicit draft set', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
 test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
   assert.deepEqual(
     collectFoundationDraftPaths([

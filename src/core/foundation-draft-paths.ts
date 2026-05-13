@@ -83,11 +83,13 @@ export function buildFoundationDraftPaths({
 
   const canonicalPaths = buildFoundationDraftPathMap(normalizedProfileId);
   const missingDraftSet = normalizeMissingDraftSet(missingDrafts);
+  const explicitPathKeys = new Set<FoundationDraftKey>();
   const orderedPaths = Array.from(new Set(
     FOUNDATION_DRAFT_KEYS
       .map((draftKey) => {
         const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
         if (explicitPath) {
+          explicitPathKeys.add(draftKey);
           return explicitPath;
         }
 
@@ -95,6 +97,13 @@ export function buildFoundationDraftPaths({
       })
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
   ));
+
+  if (missingDraftSet.size === 0 && orderedPaths.length === 1 && explicitPathKeys.size === 1) {
+    return FOUNDATION_DRAFT_KEYS.map((draftKey) => {
+      const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
+      return explicitPath ?? canonicalPaths[draftKey];
+    });
+  }
 
   return orderedPaths.length > 0
     ? orderedPaths
