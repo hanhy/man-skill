@@ -626,3 +626,91 @@ test('openai-compatible provider runtime helpers normalize bare responses-api ou
   assert.equal(normalizedQwen.text, 'Qwen keeps these responses legible.');
   assert.equal(normalizedQwen.toolCalls[0]?.arguments, '{"personId":"ready-pal","kinds":["talk"]}');
 });
+
+test('openai-compatible provider runtime helpers preserve bare output_text items when wrapped messages have no visible text', () => {
+  const openaiResponse = {
+    id: 'resp_openai_mixed',
+    model: 'gpt-5',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'reasoning', summary: 'skip me' }],
+      },
+      { type: 'output_text', text: 'Ship the verified slice.' },
+      { type: 'output_text', text: { value: 'Keep the follow-up visible.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_openai_mixed',
+        name: 'lookup_profile',
+        arguments: { personId: 'harry-han' },
+      },
+    ],
+  };
+  const kimiResponse = {
+    id: 'resp_kimi_mixed',
+    model: 'moonshot-v1-32k',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'image', image_url: 'https://example.com/shot.png' }],
+      },
+      { type: 'text', text: 'Kimi keeps' },
+      { type: 'text', text: { value: 'mixed outputs readable.' } },
+      {
+        type: 'function_call',
+        id: 'fc_kimi_mixed',
+        name: 'queue_refresh',
+        arguments: { personId: 'jane-doe' },
+      },
+    ],
+  };
+  const glmResponse = {
+    id: 'resp_glm_mixed',
+    model: 'glm-4-plus',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'image_url', image_url: { url: 'https://example.com/glm.png' } }],
+      },
+      { type: 'output_text', text: 'GLM still keeps' },
+      { type: 'text', text: { value: 'the bare text fallback.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_glm_mixed',
+        name: 'lookup_skill',
+        arguments: ['voice', 'soul'],
+      },
+    ],
+  };
+  const qwenResponse = {
+    id: 'resp_qwen_mixed',
+    model: 'qwen-max',
+    status: 'completed',
+    output: [
+      {
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'image_url', image_url: { url: 'https://example.com/qwen.png' } }],
+      },
+      { type: 'text', text: 'Qwen keeps' },
+      { type: 'output_text', text: { value: 'mixed fallback text readable.' } },
+      {
+        type: 'function_call',
+        call_id: 'fc_qwen_mixed',
+        name: 'lookup_materials',
+        arguments: { personId: 'ready-pal' },
+      },
+    ],
+  };
+
+  assert.equal(normalizeOpenAIChatResponse(openaiResponse).text, 'Ship the verified slice. Keep the follow-up visible.');
+  assert.equal(normalizeKimiChatResponse(kimiResponse).text, 'Kimi keeps mixed outputs readable.');
+  assert.equal(normalizeGLMChatResponse(glmResponse).text, 'GLM still keeps the bare text fallback.');
+  assert.equal(normalizeQwenChatResponse(qwenResponse).text, 'Qwen keeps mixed fallback text readable.');
+});
