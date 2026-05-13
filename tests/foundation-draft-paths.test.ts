@@ -112,6 +112,24 @@ test('buildFoundationDraftPaths falls back to canonical missing foundation targe
   );
 });
 
+test('buildFoundationDraftPaths backfills canonical targets when stale metadata only records multiple explicit draft files', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: 'profiles/jane-doe/memory/long-term/foundation.json',
+        soul: 'profiles/jane-doe/soul/README.md',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
 test('collectFoundationDraftPaths trims and dedupes shared refresh paths across profiles', () => {
   assert.deepEqual(
     collectFoundationDraftPaths([
