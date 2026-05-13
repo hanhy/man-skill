@@ -19,13 +19,21 @@ function normalizeProfileId(profileId: string | null | undefined): string | null
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isAbsoluteOrUncPath(value: string): boolean {
+  return /^([a-zA-Z]:[\\/]|[\\/]{1,2})/.test(value);
+}
+
 export function normalizeDraftPath(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }
 
-  const segments = value
-    .trim()
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || isAbsoluteOrUncPath(trimmed)) {
+    return null;
+  }
+
+  const segments = trimmed
     .replaceAll('\\', '/')
     .replace(/^(?:\.\/)+/, '')
     .replace(/\/+/g, '/')
@@ -47,6 +55,10 @@ export function normalizeDraftPath(value: string | null | undefined): string | n
     accumulator.push(segment);
     return accumulator;
   }, []);
+
+  if (normalizedSegments[0] === '..') {
+    return null;
+  }
 
   const normalized = normalizedSegments.join('/');
   return normalized.length > 0 ? normalized : null;

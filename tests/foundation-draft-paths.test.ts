@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildFoundationDraftPaths, collectFoundationDraftPaths } from '../src/core/foundation-draft-paths.ts';
+import { buildFoundationDraftPaths, collectFoundationDraftPaths, normalizeDraftPath } from '../src/core/foundation-draft-paths.ts';
 
 test('buildFoundationDraftPaths trims profile ids, draft file paths, and missing draft names before building refresh paths', () => {
   assert.deepEqual(
@@ -121,6 +121,34 @@ test('buildFoundationDraftPaths backfills canonical targets when stale metadata 
       draftFiles: {
         memory: 'profiles/jane-doe/memory/long-term/foundation.json',
         soul: 'profiles/jane-doe/soul/README.md',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
+test('normalizeDraftPath rejects absolute and repo-escaping paths instead of misreporting them as repo-relative', () => {
+  assert.equal(normalizeDraftPath('/tmp/foundation.json'), null);
+  assert.equal(normalizeDraftPath('C:\\drafts\\voice\\README.md'), null);
+  assert.equal(normalizeDraftPath('\\\\server\\share\\skills\\README.md'), null);
+  assert.equal(normalizeDraftPath('../profiles/jane-doe/voice/README.md'), null);
+  assert.equal(normalizeDraftPath('profiles/jane-doe/../voice/README.md'), 'profiles/voice/README.md');
+});
+
+test('buildFoundationDraftPaths ignores absolute and repo-escaping stale draft metadata and falls back to canonical refresh targets', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: '/tmp/foundation.json',
+        skills: 'C:\\drafts\\skills\\README.md',
+        soul: '../profiles/jane-doe/soul/README.md',
+        voice: '\\\\server\\share\\voice\\README.md',
       },
     }),
     [
