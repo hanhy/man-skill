@@ -4981,6 +4981,53 @@ test('PromptAssembler slash-normalizes recommended starter profile edit paths be
   assert.doesNotMatch(prompt, /\\materials\.template\.json/);
 });
 
+test('PromptAssembler slash-normalizes top-level recommended intake edit paths before rendering the ingestion entrance', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: {
+      profileCount: 1,
+      importedProfileCount: 1,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 1,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakeStarterProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      importedIntakeReadyProfileCount: 1,
+      importedStarterIntakeProfileCount: 0,
+      importedIntakeBackfillProfileCount: 0,
+      importedInvalidIntakeManifestProfileCount: 0,
+      invalidMetadataOnlyIntakeManifestProfileCount: 0,
+      supportedImportTypes: ['message'],
+      recommendedAction: 'replay imported intake for Harry Han (harry-han)',
+      recommendedCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+      recommendedLatestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\images\\chat.png ',
+      recommendedEditPath: ' .\\profiles\\harry-han//profile.json ',
+      recommendedEditPaths: [
+        ' .\\profiles\\harry-han//imports\\materials.template.json ',
+        'profiles/harry-han/profile.json',
+        ' .\\profiles\\harry-han//profile.json ',
+      ],
+      recommendedPaths: [
+        ' .\\profiles\\harry-han//imports\\images\\chat.png ',
+        ' .\\profiles\\harry-han//imports\\sample.txt ',
+        'profiles/harry-han/profile.json ',
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material unknown timestamp @ profiles\/harry-han\/imports\/images\/chat\.png; edit profiles\/harry-han\/profile\.json; edit paths profiles\/harry-han\/profile\.json, profiles\/harry-han\/imports\/materials\.template\.json; paths profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+  assert.doesNotMatch(prompt, /\\profiles\\harry-han/);
+  assert.doesNotMatch(prompt, /edit paths .*profiles\/harry-han\/profile\.json, profiles\/harry-han\/profile\.json/);
+});
+
 test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },

@@ -2081,12 +2081,14 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
         .filter((value): value is string => typeof value === 'string' && value.length > 0),
     ))
     : [];
-  const recommendedEditPath = typeof ingestion?.recommendedEditPath === 'string' && ingestion.recommendedEditPath.length > 0
-    ? ingestion.recommendedEditPath
-    : null;
-  const recommendedEditPaths = Array.isArray(ingestion?.recommendedEditPaths)
-    ? ingestion.recommendedEditPaths.filter((value): value is string => typeof value === 'string' && value.length > 0)
-    : (recommendedEditPath ? [recommendedEditPath] : []);
+  const recommendedEditPath = normalizeDraftPath(normalizeOptionalString(ingestion?.recommendedEditPath));
+  const recommendedEditPaths = normalizeStringArray(
+    [
+      recommendedEditPath,
+      ...(Array.isArray(ingestion?.recommendedEditPaths) ? ingestion.recommendedEditPaths : []),
+    ],
+    normalizeDraftPath,
+  );
   const recommendedInspectCommand = typeof ingestion?.recommendedInspectCommand === 'string' && ingestion.recommendedInspectCommand.length > 0
     ? ingestion.recommendedInspectCommand
     : null;
