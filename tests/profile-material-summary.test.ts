@@ -7109,6 +7109,16 @@ test('buildSummary uses matching sample screenshot imports in ingestion profile 
   const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
 
   assert.equal(summary.ingestion.sampleTextPath, null);
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedUpdateProfileCommand, "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.ingestion.recommendedUpdateProfileAndRefreshCommand, null);
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/metadata-only/profile.json');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, ['profiles/metadata-only/profile.json']);
+  assert.deepEqual(summary.ingestion.recommendedPaths, [
+    'samples/metadata-only-materials.json',
+    'samples/metadata-only-chat.png',
+    'profiles/metadata-only/profile.json',
+  ]);
   assert.deepEqual(summary.ingestion.sampleFileCommands, [
     {
       type: 'screenshot',

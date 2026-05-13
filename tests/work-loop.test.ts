@@ -1900,14 +1900,22 @@ test('buildSummary work loop targets metadata-only profiles with their direct im
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import text --person metadata-only --file 'samples/metadata-only.txt' --refresh-foundation");
+  assert.equal(summary.workLoop.currentPriority.updateProfileCommand, "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.workLoop.currentPriority.updateProfileAndRefreshCommand, null);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/metadata-only/profile.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['profiles/metadata-only/profile.json']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'samples/metadata-only-materials.json',
     'samples/metadata-only.txt',
+    'profiles/metadata-only/profile.json',
   ]);
   assert.match(summary.promptPreview, /current: Ingestion \[queued\] — 0 imported, 1 metadata-only, drafts 0 ready, 0 queued for refresh/);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import text --person metadata-only --file 'samples\/metadata-only\.txt' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only\.txt/);
+  assert.match(summary.promptPreview, /update profile: node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.doesNotMatch(summary.promptPreview, /sync profile: node src\/index\.js update profile --person 'metadata-only'/);
+  assert.match(summary.promptPreview, /edit: profiles\/metadata-only\/profile\.json/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only\.txt, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop prefers a matching sample screenshot import when no direct sample text is available', () => {
@@ -1949,13 +1957,19 @@ test('buildSummary work loop prefers a matching sample screenshot import when no
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
+  assert.equal(summary.workLoop.currentPriority.updateProfileCommand, "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/metadata-only/profile.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['profiles/metadata-only/profile.json']);
   assert.deepEqual(summary.workLoop.currentPriority.paths, [
     'samples/metadata-only-materials.json',
     'samples/metadata-only-chat.png',
+    'profiles/metadata-only/profile.json',
   ]);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import screenshot --person metadata-only --file 'samples\/metadata-only-chat\.png' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only-chat\.png/);
+  assert.match(summary.promptPreview, /update profile: node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /edit: profiles\/metadata-only\/profile\.json/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, samples\/metadata-only-chat\.png, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop keeps the sample manifest path visible for matching inline message imports', () => {
@@ -1996,10 +2010,15 @@ test('buildSummary work loop keeps the sample manifest path visible for matching
   assert.equal(summary.workLoop.currentPriority.id, 'ingestion');
   assert.equal(summary.workLoop.currentPriority.nextAction, 'import source materials for Metadata Only (metadata-only)');
   assert.equal(summary.workLoop.currentPriority.command, "node src/index.js import message --person metadata-only --text 'Ship the first useful reply, then expand from real usage.' --refresh-foundation");
-  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only-materials.json']);
+  assert.equal(summary.workLoop.currentPriority.updateProfileCommand, "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.workLoop.currentPriority.editPath, 'profiles/metadata-only/profile.json');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['profiles/metadata-only/profile.json']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['samples/metadata-only-materials.json', 'profiles/metadata-only/profile.json']);
   assert.match(summary.promptPreview, /next action: import source materials for Metadata Only \(metadata-only\)/);
   assert.match(summary.promptPreview, /command: node src\/index\.js import message --person metadata-only --text 'Ship the first useful reply, then expand from real usage\.' --refresh-foundation/);
-  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json/);
+  assert.match(summary.promptPreview, /update profile: node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'/);
+  assert.match(summary.promptPreview, /edit: profiles\/metadata-only\/profile\.json/);
+  assert.match(summary.promptPreview, /paths: samples\/metadata-only-materials\.json, profiles\/metadata-only\/profile\.json/);
 });
 
 test('buildSummary work loop prefers a customized profile-local intake manifest over matching checked-in sample imports', () => {
