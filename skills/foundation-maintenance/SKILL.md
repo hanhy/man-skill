@@ -17,7 +17,7 @@ Use this skill when the next step touches the OpenClaw-like foundation in `~/man
 1. Run `node src/index.js summary --json` and inspect `foundation.core`, `foundation.core.maintenance`, `foundation.maintenance`, `profileSnapshots`, and `workLoop`.
 2. For repo-core repairs, check `foundation.core.maintenance.recommendedCommand` / `recommendedPaths` first so the next memory / skills / soul / voice edit comes from the canonical repair entrance instead of only the prompt wording.
 3. For per-profile refreshes, check `foundation.maintenance.recommendedCommand` / `recommendedLatestMaterialSourcePath` first so the refresh step and its newest backing artifact stay coupled in one machine-readable place.
-4. Compare `workLoop.leadingPriority`, `currentPriority`, `runnablePriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or later advisory.
+4. Compare `workLoop.leadingPriority`, `currentPriority`, `runnablePriority`, `actionableReadyPriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or a ready advisory that should happen before the current blocker.
 5. If repo-core guidance is thin or missing, repair the exact memory / skills / soul / voice files the summary points at.
 6. If target-profile drafts are stale, run the narrowest refresh command first (`node src/index.js update foundation --person <id>`, then `node src/index.js update foundation --stale`, then `node src/index.js update foundation --all` only when needed).
 7. Re-run the tightest relevant tests first:

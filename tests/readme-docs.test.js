@@ -694,7 +694,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(foundationMaintenanceSkill, /Run `node src\/index\.js summary --json` and inspect `foundation\.core`, `foundation\.core\.maintenance`, `foundation\.maintenance`, `profileSnapshots`, and `workLoop`\./);
   assert.match(foundationMaintenanceSkill, /repo-core repairs, check `foundation\.core\.maintenance\.recommendedCommand` \/ `recommendedPaths` first/i);
   assert.match(foundationMaintenanceSkill, /per-profile refreshes, check `foundation\.maintenance\.recommendedCommand` \/ `recommendedLatestMaterialSourcePath` first/i);
-  assert.match(foundationMaintenanceSkill, /compare `workLoop\.leadingPriority`, `currentPriority`, `runnablePriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or later advisory/i);
+  assert.match(foundationMaintenanceSkill, /compare `workLoop\.leadingPriority`, `currentPriority`, `runnablePriority`, `actionableReadyPriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or a ready advisory that should happen before the current blocker/i);
   assert.match(foundationMaintenanceSkill, /`node src\/index\.js update foundation --person <id>`.*`node src\/index\.js update foundation --stale`.*`node src\/index\.js update foundation --all`/s);
   assert.match(foundationMaintenanceSkill, /Keep duplicate-root context aligned too: `shadowPaths` \/ `shadowPathSamplePaths` should stay consistent between `foundation\.core`, `profileSnapshots`, and any surfaced work-loop repair priority\./);
   assert.match(foundationMaintenanceSkill, /When stale profile refreshes are present, keep `draftSourcesSummary`, `draftGapSummary`, and `latestMaterialSourcePath` visible together so the newest backing artifact and the thinnest draft layer stay inspectable from one summary surface\./);
@@ -710,6 +710,10 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(profileIntakeSkill, /`node src\/index\.js update profile --person <id> \.\.\.`/);
   assert.match(profileIntakeSkill, /top-of-file action bundle.*`Refresh intake scaffold:`.*`Update profile metadata:`.*`Sync profile metadata \+ drafts:`/is);
   assert.match(profileIntakeSkill, /inspect-first manifest flow.*plain inspect command should stay the first step before the refresh variant/i);
+  assert.match(profileIntakeSkill, /`recommendedProfileSlices` should preserve which queued profile owns each manifest\/edit path when more than one imported starter manifest is active/i);
+  assert.match(profileIntakeSkill, /`recommendedEditPaths` should keep manifest\/file-backed placeholders like `images\/chat\.png` visible beside the primary edit path/i);
+  assert.match(profileIntakeSkill, /`recommendedIntakeManifestEntryTemplateRoot` should stay in sync with prompt lines like `starter root profiles\/<id>\/imports`/i);
+  assert.match(profileIntakeSkill, /`workLoop\.actionableReadyPriority` and `workLoop\.recommendedPriority` should mirror the same inspect-first follow-ups when the current blocker is elsewhere/i);
   assert.match(profileIntakeSkill, /re-running `update intake` preserves starter entries, entry templates, and custom notes/i);
   assert.match(profileIntakeSkill, /invalid `materials\.template\.json`.*`materials\.template\.json\.invalid-<timestamp>\.bak`/i);
   assert.match(profileIntakeSkill, /`node --import tsx --test tests\/material-ingestion\.test\.js tests\/profile-material-summary\.test\.ts tests\/profile-foundation-update\.test\.js tests\/readme-docs\.test\.js`/);

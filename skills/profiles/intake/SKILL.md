@@ -25,7 +25,12 @@ Use this skill when extending or validating the user-facing ingestion/update ent
    - `node src/index.js import intake --person <id> --refresh-foundation`
 4. Preserve the inspect-first manifest flow before any draft regeneration. Starter-manifest helpers should keep both `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'` and `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation` visible beside direct `import text|message|talk|screenshot` commands, and the plain inspect command should stay the first step before the refresh variant.
 5. Check metadata-edit follow-ups (`node src/index.js update profile --person <id> ...`, `node src/index.js update intake --person <id> ...`, refresh-sync reruns) stay attached to the same target profile and landing-zone paths.
-6. Keep rerun safety explicit in the skill and generated README: re-running `update intake` preserves starter entries, entry templates, and custom notes, while invalid `materials.template.json` is backed up to `materials.template.json.invalid-<timestamp>.bak` before the scaffold is rebuilt.
-7. Run focused ingestion/docs tests before the broader suite:
+6. When the best next step is still edit-first, keep the machine-readable helper bundle and prompt/work-loop aliases aligned too:
+   - `recommendedProfileSlices` should preserve which queued profile owns each manifest/edit path when more than one imported starter manifest is active
+   - `recommendedEditPaths` should keep manifest/file-backed placeholders like `images/chat.png` visible beside the primary edit path
+   - `recommendedIntakeManifestEntryTemplateRoot` should stay in sync with prompt lines like `starter root profiles/<id>/imports`
+   - `workLoop.actionableReadyPriority` and `workLoop.recommendedPriority` should mirror the same inspect-first follow-ups when the current blocker is elsewhere
+7. Keep rerun safety explicit in the skill and generated README: re-running `update intake` preserves starter entries, entry templates, and custom notes, while invalid `materials.template.json` is backed up to `materials.template.json.invalid-<timestamp>.bak` before the scaffold is rebuilt.
+8. Run focused ingestion/docs tests before the broader suite:
    - `node --import tsx --test tests/material-ingestion.test.js tests/profile-material-summary.test.ts tests/profile-foundation-update.test.js tests/readme-docs.test.js`
    - `node --import tsx --test tests/work-loop.test.ts`
