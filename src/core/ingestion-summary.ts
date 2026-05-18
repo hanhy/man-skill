@@ -1750,6 +1750,12 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       : (firstImportedReadyIntakeProfile?.importIntakeWithoutRefreshCommand
         ?? helperCommands.importIntakeImported
         ?? null);
+    recommendedManifestInspectCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
+    recommendedManifestImportCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.importManifestCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.importManifestCommand ?? null);
     recommendedUpdateProfileCommand = importedProfilesWithReadyIntake.length > 1
       ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileCommand ?? null))
       : (firstImportedReadyIntakeProfile?.updateProfileCommand ?? null);
