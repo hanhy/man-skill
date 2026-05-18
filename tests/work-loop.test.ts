@@ -1474,6 +1474,45 @@ test('buildSummary work loop carries root section progress, heading aliases, sha
   assert.match(summary.promptPreview, /paths: memory\/README\.md, MEMORY\.md/);
 });
 
+test('buildSummary keeps ready foundation shadow docs attached to the leading work-loop priority', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(path.join(rootDir, 'MEMORY.md'), '# Shadow memory doc\n');
+  fs.writeFileSync(path.join(rootDir, 'SKILLS.md'), '# Shadow skills doc\n');
+  fs.mkdirSync(path.join(rootDir, 'soul'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'soul', 'README.md'), '# Shadow soul doc\n');
+  fs.writeFileSync(path.join(rootDir, 'VOICE.md'), '# Shadow voice doc\n');
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.deepEqual(summary.workLoop.leadingPriority?.shadowPaths, ['MEMORY.md', 'SKILLS.md', 'soul/README.md', 'VOICE.md']);
+  assert.equal(summary.workLoop.leadingPriority?.shadowPathCount, 4);
+  assert.deepEqual(summary.workLoop.leadingPriority?.shadowPathSamplePaths, ['MEMORY.md', 'SKILLS.md', 'soul/README.md']);
+  assert.equal(summary.workLoop.leadingPriority?.shadowPathOverflowCount, 1);
+  assert.deepEqual(summary.workLoop.leadingPriority?.editPaths, [
+    'memory/README.md',
+    'MEMORY.md',
+    'skills/README.md',
+    'SKILLS.md',
+    'SOUL.md',
+    'soul/README.md',
+    'voice/README.md',
+    'VOICE.md',
+  ]);
+  assert.deepEqual(summary.workLoop.leadingPriority?.paths, [
+    'memory/README.md',
+    'MEMORY.md',
+    'skills/README.md',
+    'SKILLS.md',
+    'SOUL.md',
+    'soul/README.md',
+    'voice/README.md',
+    'VOICE.md',
+  ]);
+});
+
 test('PromptAssembler reuses work-loop shadow doc preview metadata when only sampled paths survive', () => {
   const summary = new WorkLoop({
     priorities: [{

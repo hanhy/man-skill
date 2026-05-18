@@ -833,12 +833,31 @@ function buildFoundationRefreshLabel(
     : refreshLabel}${candidateSignalSummary ? `; evidence ${candidateSignalSummary}` : ''}`;
 }
 
+function collectReadyCoreFoundationShadowPaths(coreFoundation: any): string[] {
+  const candidatePaths = [
+    ...(Array.isArray(coreFoundation?.memory?.shadowPaths) ? coreFoundation.memory.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.skills?.shadowPaths) ? coreFoundation.skills.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.soul?.shadowPaths) ? coreFoundation.soul.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.voice?.shadowPaths) ? coreFoundation.voice.shadowPaths : []),
+  ];
+
+  return Array.from(new Set(
+    candidatePaths
+      .map((value) => normalizeDraftPath(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
 function collectReadyCoreFoundationPaths(coreFoundation: any): string[] {
   const candidatePaths = [
     coreFoundation?.memory?.rootPath,
+    ...((Array.isArray(coreFoundation?.memory?.shadowPaths) ? coreFoundation.memory.shadowPaths : [])),
     coreFoundation?.skills?.rootPath,
+    ...((Array.isArray(coreFoundation?.skills?.shadowPaths) ? coreFoundation.skills.shadowPaths : [])),
     coreFoundation?.soul?.rootPath ?? coreFoundation?.soul?.path,
+    ...((Array.isArray(coreFoundation?.soul?.shadowPaths) ? coreFoundation.soul.shadowPaths : [])),
     coreFoundation?.voice?.rootPath ?? coreFoundation?.voice?.path,
+    ...((Array.isArray(coreFoundation?.voice?.shadowPaths) ? coreFoundation.voice.shadowPaths : [])),
   ];
 
   return Array.from(new Set(
@@ -1080,6 +1099,14 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const readyCorePaths = status === 'ready'
     ? collectReadyCoreFoundationPaths(coreFoundation)
     : [];
+  const readyCoreShadowPaths = status === 'ready'
+    ? collectReadyCoreFoundationShadowPaths(coreFoundation)
+    : [];
+  const readyCoreShadowPathSamplePaths = readyCoreShadowPaths.slice(0, 3);
+  const readyCoreShadowPathCount = readyCoreShadowPaths.length > 0 ? readyCoreShadowPaths.length : null;
+  const readyCoreShadowPathOverflowCount = readyCoreShadowPathCount !== null
+    ? Math.max(readyCoreShadowPathCount - readyCoreShadowPathSamplePaths.length, 0)
+    : null;
   const readyCoreEditPaths: string[] = Array.from(new Set(readyCorePaths));
   const readyCoreEditPath: string | null = readyCoreEditPaths[0] ?? null;
 
@@ -1105,9 +1132,13 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPaths.length > 0 ? { shadowPaths: readyCoreShadowPaths } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathCount !== null ? { shadowPathCount: coreShadowPathCount } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathCount !== null ? { shadowPathCount: readyCoreShadowPathCount } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: coreShadowPathSamplePaths } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: readyCoreShadowPathSamplePaths } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: coreShadowPathOverflowCount } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: readyCoreShadowPathOverflowCount } : {}),
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,
