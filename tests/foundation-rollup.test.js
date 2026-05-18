@@ -1905,6 +1905,69 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.doesNotMatch(summary.promptPreview, /root: >/);
 });
 
+test('buildSummary tolerates leading blank lines before root frontmatter descriptions', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    ['', '---', 'description: >', '  Keep durable repo knowledge organized', '  without leaking raw YAML metadata.', '---', '', '# Memory', '', 'Buckets live below.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    ['', '---', 'description: >', '  Build a faithful operator core', '  without leaking raw YAML metadata.', '---', '', '# Soul', '', '## Core truths', '- Build a faithful operator core.', '', '## Boundaries', '- Do not bluff certainty.', '', '## Vibe', '- Grounded and direct.', '', '## Continuity', '- Preserve clear priorities.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge organized without leaking raw YAML metadata.');
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Build a faithful operator core without leaking raw YAML metadata.');
+  assert.match(summary.promptPreview, /root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md/);
+  assert.match(summary.promptPreview, /root: Build a faithful operator core without leaking raw YAML metadata\. @ SOUL\.md/);
+  assert.doesNotMatch(summary.promptPreview, /root: description:/);
+  assert.doesNotMatch(summary.promptPreview, /root: >/);
+});
+
+test('buildSummary does not treat yaml document-end markers as root frontmatter openers after leading blank lines', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    ['', '...', 'Intro should stay visible.', '', '---', '', '## What belongs here', '- Daily notes stay visible.', '', '## Buckets', '- daily/: short-lived run notes and the canonical checked-in short-term bucket', '- long-term/: durable facts and conventions', '- scratch/: in-flight ideas to refine or promote'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Intro should stay visible.');
+  assert.match(summary.promptPreview, /root: Intro should stay visible\. @ memory\/README\.md/);
+});
+
 test('buildSummary accepts BOM-prefixed frontmatter descriptions for root foundation docs', () => {
   const rootDir = makeTempRepo();
 

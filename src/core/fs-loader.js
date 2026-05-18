@@ -81,101 +81,19 @@ function listSkillDirectoriesIfExists(skillsRootDir, relativeDir = '') {
   return Array.from(new Set(skillNames)).sort();
 }
 
-function stripWrappingQuotes(value) {
-  if (!isNonEmptyString(value)) {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed;
-}
-
 function isFrontmatterBoundaryLine(line) {
   return /^(?:---|\.\.\.)\s*$/.test(line.trim());
 }
 
-function normalizeYamlDescriptionBlock(blockLines, scalarStyle) {
-  const normalizedLines = blockLines.map((line) => line.trim());
-  if (scalarStyle === 'literal') {
-    const literalDescription = normalizedLines.join('\n').trim();
-    return isNonEmptyString(literalDescription) ? literalDescription : null;
-  }
-
-  const paragraphs = [];
-  let currentParagraph = [];
-
-  for (const line of normalizedLines) {
-    if (line.length === 0) {
-      if (currentParagraph.length > 0) {
-        paragraphs.push(currentParagraph.join(' '));
-        currentParagraph = [];
-      }
-      continue;
-    }
-
-    currentParagraph.push(line);
-  }
-
-  if (currentParagraph.length > 0) {
-    paragraphs.push(currentParagraph.join(' '));
-  }
-
-  const foldedDescription = paragraphs.join('\n\n').trim();
-  return isNonEmptyString(foldedDescription) ? foldedDescription : null;
+function findFrontmatterOpeningIndex(lines) {
+  return lines.findIndex((line, index) => (
+    line.trim() === '---'
+    && lines.slice(0, index).every((candidate) => candidate.trim().length === 0)
+  ));
 }
 
-function extractFrontmatterDescription(document) {
-  const normalizedDocument = normalizeDocument(document);
-  if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
-    return null;
-  }
-
-  const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
-  if (closingIndex < 0) {
-    return null;
-  }
-
-  const frontmatterLines = lines.slice(1, closingIndex + 1);
-  for (let index = 0; index < frontmatterLines.length; index += 1) {
-    const line = frontmatterLines[index];
-    const match = line.match(/^description\s*:\s*(.*)$/i);
-    if (!match) {
-      continue;
-    }
-
-    const rawValue = match[1].trim();
-    if (/^[>|][0-9+-]*$/.test(rawValue)) {
-      const scalarStyle = rawValue.startsWith('|') ? 'literal' : 'folded';
-      const blockLines = [];
-      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
-        const nestedLine = frontmatterLines[nestedIndex];
-        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
-          break;
-        }
-
-        blockLines.push(nestedLine.trim());
-      }
-
-      const description = normalizeYamlDescriptionBlock(blockLines, scalarStyle);
-      if (isNonEmptyString(description)) {
-        return description;
-      }
-
-      continue;
-    }
-
-    const description = stripWrappingQuotes(rawValue);
-    if (isNonEmptyString(description)) {
-      return description;
-    }
-  }
-
-  return null;
+function findFrontmatterClosingIndex(lines, openingIndex) {
+  return lines.slice(openingIndex + 1).findIndex((line) => isFrontmatterBoundaryLine(line));
 }
 
 function parseMarkdownHeading(line) {
@@ -296,12 +214,17 @@ function extractDocumentBodyLines(document) {
   }
 
   const lines = document.split(/\r?\n/);
-  if (!document.startsWith('---')) {
+  const openingIndex = findFrontmatterOpeningIndex(lines);
+  if (openingIndex < 0) {
     return lines;
   }
 
-  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
-  return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+  const closingIndex = findFrontmatterClosingIndex(lines, openingIndex);
+  if (closingIndex < 0) {
+    return lines;
+  }
+
+  return lines.slice(openingIndex + closingIndex + 2);
 }
 
 function extractVisibleDocumentBodyLines(document) {
@@ -320,7 +243,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 function hasMeaningfulDocumentBody(document) {
   return extractVisibleDocumentBodyLines(document)
     .map((line) => normalizeAdmonitionLine(line.trim()))
-    .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
+    .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---' && line !== '...');
 }
 
 const SKILL_SECTION_DEFINITIONS = [

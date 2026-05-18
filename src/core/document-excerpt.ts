@@ -15,8 +15,15 @@ function isFrontmatterBoundaryLine(line: string): boolean {
   return /^(?:---|\.\.\.)\s*$/.test(line.trim());
 }
 
-function findFrontmatterClosingIndex(lines: string[]): number {
-  return lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
+function findFrontmatterOpeningIndex(lines: string[]): number {
+  return lines.findIndex((line, index) => (
+    line.trim() === '---'
+    && lines.slice(0, index).every((candidate) => candidate.trim().length === 0)
+  ));
+}
+
+function findFrontmatterClosingIndex(lines: string[], openingIndex: number): number {
+  return lines.slice(openingIndex + 1).findIndex((line) => isFrontmatterBoundaryLine(line));
 }
 
 function normalizeYamlDescriptionBlock(blockLines: string[], scalarStyle: 'folded' | 'literal'): string | null {
@@ -59,17 +66,18 @@ export function normalizeDocument(document: unknown): string {
 
 export function extractFrontmatterDescription(document: unknown): string | null {
   const normalizedDocument = normalizeDocument(document);
-  if (!normalizedDocument.startsWith('---')) {
+  const lines = normalizedDocument.split(/\r?\n/);
+  const openingIndex = findFrontmatterOpeningIndex(lines);
+  if (openingIndex < 0) {
     return null;
   }
 
-  const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = findFrontmatterClosingIndex(lines);
+  const closingIndex = findFrontmatterClosingIndex(lines, openingIndex);
   if (closingIndex < 0) {
     return null;
   }
 
-  const frontmatterLines = lines.slice(1, closingIndex + 1);
+  const frontmatterLines = lines.slice(openingIndex + 1, openingIndex + 1 + closingIndex);
   for (let index = 0; index < frontmatterLines.length; index += 1) {
     const line = frontmatterLines[index];
     const match = line.match(/^description\s*:\s*(.*)$/i);
@@ -247,7 +255,7 @@ export function normalizeAdmonitionLine(line: string): string {
 }
 
 function isMeaningfulExcerptLine(line: string): boolean {
-  return line.length > 0 && !line.startsWith('#') && line !== '---';
+  return line.length > 0 && !line.startsWith('#') && line !== '---' && line !== '...';
 }
 
 export function collectVisibleDocumentLines(document: unknown): string[] {
@@ -269,10 +277,11 @@ export function findDocumentExcerpt(document: unknown): string | null {
   }
 
   const lines = normalizedDocument.split(/\r?\n/);
-  const body = normalizedDocument.startsWith('---')
+  const openingIndex = findFrontmatterOpeningIndex(lines);
+  const body = openingIndex >= 0
     ? (() => {
-        const closingIndex = findFrontmatterClosingIndex(lines);
-        return closingIndex >= 0 ? lines.slice(closingIndex + 2).join('\n') : normalizedDocument;
+        const closingIndex = findFrontmatterClosingIndex(lines, openingIndex);
+        return closingIndex >= 0 ? lines.slice(openingIndex + closingIndex + 2).join('\n') : normalizedDocument;
       })()
     : normalizedDocument;
 
