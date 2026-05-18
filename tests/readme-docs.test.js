@@ -734,6 +734,9 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(profileUpdateSkill, /`node src\/index\.js update profile --person <id> --summary "<Short summary>" --refresh-foundation`/);
   assert.match(profileUpdateSkill, /`node src\/index\.js update foundation --person <id>`/);
   assert.match(profileUpdateSkill, /`node src\/index\.js import manifest --file 'profiles\/<id>\/imports\/materials\.template\.json' --refresh-foundation`/);
+  assert.match(profileUpdateSkill, /ready imported or metadata-only replay lanes, keep `recommendedEditPath` \/ work-loop `editPath` anchored on `profiles\/<id>\/profile\.json`/i);
+  assert.match(profileUpdateSkill, /carry the plain inspect-first replay `node src\/index\.js import intake --person <id>` beside the refresh replay `node src\/index\.js import intake --person <id> --refresh-foundation`/i);
+  assert.match(profileUpdateSkill, /`recommendedUpdateProfileCommand`, `recommendedUpdateProfileAndRefreshCommand`, and `recommendedInspectCommand` should stay aligned with the same target profile and ready-lane `paths` bundle/i);
   assert.match(profileUpdateSkill, /`node --import tsx --test tests\/profile-foundation-update\.test\.js tests\/profile-material-summary\.test\.ts tests\/readme-docs\.test\.js`/);
   assert.match(profileUpdateSkill, /`node --import tsx --test tests\/work-loop\.test\.ts`/);
 

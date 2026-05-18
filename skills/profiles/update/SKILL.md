@@ -20,6 +20,9 @@ Keep this skill handy when the next change touches checked-in target-profile met
 2. Then validate the refresh-sync variant stays aligned with the same target profile: `node src/index.js update profile --person <id> --summary "<Short summary>" --refresh-foundation`.
 3. Confirm the direct draft-refresh helper still matches the same target profile: `node src/index.js update foundation --person <id>`.
 4. Check the profile-local intake follow-up still points at the same landing zone and stays available beside metadata edits: `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation`.
-5. Run focused metadata/ingestion/docs coverage before the broader suite:
+5. For ready imported or metadata-only replay lanes, keep `recommendedEditPath` / work-loop `editPath` anchored on `profiles/<id>/profile.json` so metadata maintenance stays visible even when the primary replay command is already runnable.
+6. Carry the plain inspect-first replay `node src/index.js import intake --person <id>` beside the refresh replay `node src/index.js import intake --person <id> --refresh-foundation` whenever the same recommendation also advertises profile metadata helpers.
+7. `recommendedUpdateProfileCommand`, `recommendedUpdateProfileAndRefreshCommand`, and `recommendedInspectCommand` should stay aligned with the same target profile and ready-lane `paths` bundle; if the work loop exposes metadata edits, include `profiles/<id>/profile.json` in that surfaced path set instead of leaving the edit target implicit.
+8. Run focused metadata/ingestion/docs coverage before the broader suite:
    - `node --import tsx --test tests/profile-foundation-update.test.js tests/profile-material-summary.test.ts tests/readme-docs.test.js`
    - `node --import tsx --test tests/work-loop.test.ts`
