@@ -2480,6 +2480,16 @@ function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
     subcommand = undefined;
   }
 
+  if (typeof subcommand === 'string' && subcommand.trim().length > 0) {
+    throw new Error(`Unsupported summary argument: ${subcommand}`);
+  }
+
+  const supportedSummaryOptions = ['json', 'help'];
+  const unsupportedOption = Object.keys(options).find((key) => !supportedSummaryOptions.includes(key));
+  if (unsupportedOption) {
+    throw new Error(`Unsupported summary option: --${unsupportedOption}`);
+  }
+
   return {
     command: parsedArgs.command,
     subcommand,
@@ -2488,20 +2498,29 @@ function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
 }
 
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
-  const { command, subcommand, options } = normalizeSummaryArgs(parseArgs(argv));
-
-  if (command === '--help' || command === 'help') {
-    console.log(formatCliUsage());
-    return;
-  }
-
-  if (options.help) {
-    const usageHint = buildCommandUsageHint(command, subcommand);
-    console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
-    return;
-  }
+  let command: string | undefined;
+  let subcommand: string | undefined;
+  let options: ParsedOptions = {};
 
   try {
+    const parsedArgs = parseArgs(argv);
+    command = parsedArgs.command;
+    subcommand = parsedArgs.subcommand;
+    options = { ...parsedArgs.options };
+
+    ({ command, subcommand, options } = normalizeSummaryArgs(parsedArgs));
+
+    if (command === '--help' || command === 'help') {
+      console.log(formatCliUsage());
+      return;
+    }
+
+    if (options.help) {
+      const usageHint = buildCommandUsageHint(command, subcommand);
+      console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
+      return;
+    }
+
     if (command === 'import') {
       const result = runImportCommand(rootDir, subcommand, options);
       console.log(JSON.stringify({ ok: true, ...result }, null, 2));
