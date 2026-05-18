@@ -2098,9 +2098,7 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedCandidateSignalSummary = normalizeOptionalString(ingestion?.recommendedCandidateSignalSummary);
   const recommendedDraftSourcesSummary = normalizeOptionalString(ingestion?.recommendedDraftSourcesSummary);
   const recommendedDraftGapSummary = normalizeOptionalString(ingestion?.recommendedDraftGapSummary);
-  const filteredRecommendedPaths = recommendedLatestMaterialSourcePath
-    ? recommendedPaths.filter((value) => value !== recommendedLatestMaterialSourcePath)
-    : recommendedPaths;
+  const filteredRecommendedPaths = recommendedPaths;
   const recommendedLatestMaterialSegment = recommendedLatestMaterialAt || recommendedLatestMaterialId || recommendedLatestMaterialSourcePath
     ? `; latest material ${recommendedLatestMaterialAt ?? 'unknown timestamp'}${recommendedLatestMaterialId ? ` (${recommendedLatestMaterialId})` : ''}${recommendedLatestMaterialSourcePath ? ` @ ${recommendedLatestMaterialSourcePath}` : ''}`
     : '';

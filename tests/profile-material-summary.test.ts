@@ -647,7 +647,7 @@ test('buildIngestionSummary preserves sample manifest source paths for legacy te
   assert.match(prompt, /sample text: alpha-ready -> node src\/index\.js import text --person alpha-ready --file 'samples\/alpha-ready\.txt' --refresh-foundation @ samples\/legacy-materials\.json/);
 });
 
-test('PromptAssembler avoids repeating the latest material source path in next-intake path hints', () => {
+test('PromptAssembler keeps latest material source paths visible in next-intake path hints without duplicating aliases', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },
@@ -687,9 +687,8 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/profile\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
-  assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\/profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\sample\.txt/);
@@ -5023,7 +5022,7 @@ test('PromptAssembler slash-normalizes top-level recommended intake edit paths b
     },
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material unknown timestamp @ profiles\/harry-han\/imports\/images\/chat\.png; edit profiles\/harry-han\/profile\.json; edit paths profiles\/harry-han\/profile\.json, profiles\/harry-han\/imports\/materials\.template\.json; paths profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material unknown timestamp @ profiles\/harry-han\/imports\/images\/chat\.png; edit profiles\/harry-han\/profile\.json; edit paths profiles\/harry-han\/profile\.json, profiles\/harry-han\/imports\/materials\.template\.json; paths profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
   assert.doesNotMatch(prompt, /\\profiles\\harry-han/);
   assert.doesNotMatch(prompt, /edit paths .*profiles\/harry-han\/profile\.json, profiles\/harry-han\/profile\.json/);
 });

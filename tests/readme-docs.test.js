@@ -521,6 +521,7 @@ test('checked-in intake scaffold stays aligned with the repo-level starter ingre
     assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, harryCommand.importIntakeWithoutRefreshCommand);
     assert.match(summary.promptPreview, /shortcut node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
     assert.match(summary.promptPreview, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+    assert.match(summary.promptPreview, /next intake: [^\n]*paths [^\n]*profiles\/harry-han\/imports\/images\/chat\.png/);
   } else {
     const recommendedStarterSlice = summary.ingestion.recommendedProfileSlices[0];
     assert.ok(recommendedStarterSlice);
