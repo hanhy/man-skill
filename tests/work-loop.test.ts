@@ -1513,6 +1513,43 @@ test('buildSummary keeps ready foundation shadow docs attached to the leading wo
   ]);
 });
 
+test('buildSummary keeps ready foundation heading aliases attached to the leading work-loop priority', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    '# Memory\n\n## What lives here\n- Durable repo knowledge and operator context.\n\n## Layout\n- daily/: short-lived run notes and the canonical checked-in short-term bucket\n- long-term/: durable facts and conventions\n- scratch/: in-flight ideas to refine or promote\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'README.md'),
+    '# Skills\n\n## What belongs here\n- Shared repo skill guidance.\n\n## Buckets\n- skills/<name>/SKILL.md documents a reusable workflow.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    '# Soul\n\n## Core values\n- Stay faithful to the source material.\n\n## Boundaries\n- Do not bluff or overspeculate.\n\n## Vibe\n- Keep the tone grounded and direct.\n\n## Decision rules\n- Preserve durable lessons across runs.\n',
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'voice', 'README.md'),
+    '# Voice\n\n## Tone\nWarm and grounded.\n\n## Voice should capture\n- Use crisp examples.\n\n## Voice should not capture\n- Never pad the answer.\n\n## Current default for language hints\n- Preserve bilingual phrasing when the source material switches languages.\n',
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.workLoop.leadingPriority?.id, 'foundation');
+  assert.equal(summary.workLoop.leadingPriority?.status, 'ready');
+  assert.deepEqual(summary.workLoop.leadingPriority?.rootHeadingAliases, [
+    'what-lives-here->what-belongs-here',
+    'layout->buckets',
+    'what-belongs-here->what-lives-here',
+    'buckets->layout',
+    'core-values->core-truths',
+    'decision-rules->continuity',
+    'voice-should-capture->signature-moves',
+    'voice-should-not-capture->avoid',
+    'current-default->language-hints',
+  ]);
+});
+
 test('PromptAssembler reuses work-loop shadow doc preview metadata when only sampled paths survive', () => {
   const summary = new WorkLoop({
     priorities: [{

@@ -833,6 +833,20 @@ function buildFoundationRefreshLabel(
     : refreshLabel}${candidateSignalSummary ? `; evidence ${candidateSignalSummary}` : ''}`;
 }
 
+function collectReadyCoreFoundationHeadingAliases(coreFoundation: any): string[] {
+  const candidateAliases = [
+    ...(Array.isArray(coreFoundation?.memory?.headingAliases) ? coreFoundation.memory.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.skills?.headingAliases) ? coreFoundation.skills.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.soul?.headingAliases) ? coreFoundation.soul.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.voice?.headingAliases) ? coreFoundation.voice.headingAliases : []),
+  ];
+
+  return Array.from(new Set(
+    candidateAliases
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
 function collectReadyCoreFoundationShadowPaths(coreFoundation: any): string[] {
   const candidatePaths = [
     ...(Array.isArray(coreFoundation?.memory?.shadowPaths) ? coreFoundation.memory.shadowPaths : []),
@@ -1099,6 +1113,9 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
   const readyCorePaths = status === 'ready'
     ? collectReadyCoreFoundationPaths(coreFoundation)
     : [];
+  const readyCoreRootHeadingAliases = status === 'ready'
+    ? collectReadyCoreFoundationHeadingAliases(coreFoundation)
+    : [];
   const readyCoreShadowPaths = status === 'ready'
     ? collectReadyCoreFoundationShadowPaths(coreFoundation)
     : [];
@@ -1131,6 +1148,7 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreRootHeadingAliases.length > 0 ? { rootHeadingAliases: readyCoreRootHeadingAliases } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
     ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPaths.length > 0 ? { shadowPaths: readyCoreShadowPaths } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathCount !== null ? { shadowPathCount: coreShadowPathCount } : {}),

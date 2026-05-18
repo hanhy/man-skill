@@ -580,6 +580,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(readme, /foundation\.core\.memory\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `memory\/README\.md` source of truth.*shadow docs like `MEMORY\.md`/i);
   assert.match(readme, /foundation\.core\.skills\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `skills\/README\.md` source of truth.*shadow docs like `SKILLS\.md`/i);
   assert.match(readme, /foundation\.core\.maintenance\.queuedAreas\[\*\]\.rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
+  assert.match(readme, /workLoop\.leadingPriority\.rootHeadingAliases.*memory \/ skills \/ soul \/ voice compatibility labels/i);
   assert.match(readme, /workLoop\.(?:currentPriority|recommendedPriority)\.shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount/i);
   assert.match(readme, /memory\/daily\/\$\(date \+%F\)\.md.*memory\/long-term\/notes\.md.*memory\/scratch\/draft\.md/i);
   assert.match(readme, /foundation\.core\.maintenance\.recommendedArea.*recommendedAction.*recommendedCommand.*recommendedPaths/i);
@@ -612,6 +613,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(architectureDoc, /foundation\.core\.voice.*readySections.*missingSections.*readySectionCount.*totalSectionCount.*headingAliases/i);
   assert.match(architectureDoc, /voice-should-capture->signature-moves.*voice-should-not-capture->avoid.*current-default->language-hints/i);
   assert.match(architectureDoc, /foundation\.core\.voice\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `voice\/README\.md` source of truth.*shadow docs like `VOICE\.md`/i);
+  assert.match(architectureDoc, /workLoop\.leadingPriority\.rootHeadingAliases.*aggregated memory \/ skills \/ soul \/ voice compatibility labels/i);
   assert.match(architectureDoc, /foundation\.core\.memory\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `memory\/README\.md` source of truth.*shadow docs like `MEMORY\.md`/i);
   assert.match(architectureDoc, /foundation\.core\.skills\.shadowPaths.*shadowPathCount.*shadowPathSamplePaths.*shadowPathOverflowCount.*canonical `skills\/README\.md` source of truth.*shadow docs like `SKILLS\.md`/i);
   assert.match(architectureDoc, /foundation\.core\.maintenance.*rootThinReadySections.*rootThinMissingSections.*rootThinReadySectionCount.*rootThinTotalSectionCount/i);
@@ -707,6 +709,7 @@ test('repo memory, skills, soul, and voice docs stay aligned with the structured
   assert.match(foundationMaintenanceSkill, /compare `workLoop\.leadingPriority`, `currentPriority`, `runnablePriority`, `actionableReadyPriority`, and `recommendedPriority` before choosing whether the next slice is a repo-core repair, stale-profile refresh, or a ready advisory that should happen before the current blocker/i);
   assert.match(foundationMaintenanceSkill, /`node src\/index\.js update foundation --person <id>`.*`node src\/index\.js update foundation --stale`.*`node src\/index\.js update foundation --all`/s);
   assert.match(foundationMaintenanceSkill, /Keep duplicate-root context aligned too: `shadowPaths` \/ `shadowPathSamplePaths` should stay consistent between `foundation\.core`, `profileSnapshots`, and any surfaced work-loop priority\./);
+  assert.match(foundationMaintenanceSkill, /Even when foundation is already `ready`, keep the same root-heading compatibility metadata visible on `workLoop\.leadingPriority`: preserve aggregated `rootHeadingAliases` from memory \/ skills \/ soul \/ voice so legacy root headings stay inspectable even before a repo-core repair is queued\./);
   assert.match(foundationMaintenanceSkill, /Even when foundation is already `ready`, keep the same shadow-doc metadata visible on `workLoop\.leadingPriority`: expose `shadowPaths`, `shadowPathCount`, `shadowPathSamplePaths`, and `shadowPathOverflowCount`, and make sure ready-state `editPaths` \/ `paths` still include the canonical root docs plus any shadow docs in stable order\./);
   assert.match(foundationMaintenanceSkill, /When stale profile refreshes are present, keep `draftSourcesSummary`, `draftGapSummary`, and `latestMaterialSourcePath` visible together so the newest backing artifact and the thinnest draft layer stay inspectable from one summary surface\./);
   assert.match(foundationMaintenanceSkill, /`node --import tsx --test tests\/foundation-rollup\.test\.js`/);
