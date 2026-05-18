@@ -2657,7 +2657,7 @@ test('buildSummary surfaces soul and voice section context on thin document queu
   assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
 });
 
-test('buildSummary surfaces root heading alias context on thin memory and skills queue items', () => {
+test('buildSummary surfaces root heading alias context and shadow repair paths on thin memory and skills queue items', () => {
   const rootDir = makeTempRepo();
 
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -2666,10 +2666,12 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What lives here\n- Keep durable notes here.\n');
+  fs.writeFileSync(path.join(rootDir, 'MEMORY.md'), '# Shadow memory doc\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What belongs here\n- Keep reusable operator procedures here.\n');
+  fs.writeFileSync(path.join(rootDir, 'SKILLS.md'), '# Shadow skills doc\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
@@ -2682,17 +2684,18 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
       status: 'thin',
       summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets, aliases what-lives-here->what-belongs-here',
       action: 'add missing sections to memory/README.md: buckets',
-      paths: ['memory/README.md'],
+      paths: ['memory/README.md', 'MEMORY.md'],
       thinPaths: ['memory/README.md'],
       rootThinMissingSections: ['buckets'],
       rootThinReadySections: ['what-belongs-here'],
       rootThinReadySectionCount: 1,
       rootThinTotalSectionCount: 2,
       rootHeadingAliases: ['what-lives-here->what-belongs-here'],
+      shadowPaths: ['MEMORY.md'],
       command: buildCoreFoundationCommand({
         area: 'memory',
         status: 'thin',
-        paths: ['memory/README.md'],
+        paths: ['memory/README.md', 'MEMORY.md'],
         thinPaths: ['memory/README.md'],
       }),
     },
@@ -2701,23 +2704,24 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
       status: 'thin',
       summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout, aliases what-belongs-here->what-lives-here',
       action: 'add missing sections to skills/README.md: layout',
-      paths: ['skills/README.md'],
+      paths: ['skills/README.md', 'SKILLS.md'],
       thinPaths: ['skills/README.md'],
       rootThinMissingSections: ['layout'],
       rootThinReadySections: ['what-lives-here'],
       rootThinReadySectionCount: 1,
       rootThinTotalSectionCount: 2,
       rootHeadingAliases: ['what-belongs-here->what-lives-here'],
+      shadowPaths: ['SKILLS.md'],
       command: buildCoreFoundationCommand({
         area: 'skills',
         status: 'thin',
-        paths: ['skills/README.md'],
+        paths: ['skills/README.md', 'SKILLS.md'],
         thinPaths: ['skills/README.md'],
       }),
     },
   ]);
-  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets \| root aliases what-lives-here->what-belongs-here; command /);
-  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout \| root aliases what-belongs-here->what-lives-here; command /);
+  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md, MEMORY\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets \| root aliases what-lives-here->what-belongs-here \| shadow docs MEMORY\.md; command /);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md, SKILLS\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout \| root aliases what-belongs-here->what-lives-here \| shadow docs SKILLS\.md; command /);
 });
 
 test('buildSummary surfaces root heading alias context on thin soul and voice queue items', () => {

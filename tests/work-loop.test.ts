@@ -1441,7 +1441,7 @@ test('buildSummary work loop keeps foundation current when memory README is stru
   assert.match(summary.promptPreview, /paths: memory\/README\.md/);
 });
 
-test('buildSummary work loop carries root section progress, heading aliases, and shadow doc previews for thin core foundation repairs', () => {
+test('buildSummary work loop carries root section progress, heading aliases, shadow doc previews, and shadow repair paths for thin core foundation repairs', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);
   fs.writeFileSync(
@@ -1463,10 +1463,15 @@ test('buildSummary work loop carries root section progress, heading aliases, and
   assert.equal(summary.workLoop.currentPriority.shadowPathCount, 1);
   assert.deepEqual(summary.workLoop.currentPriority.shadowPathSamplePaths, ['MEMORY.md']);
   assert.equal(summary.workLoop.currentPriority.shadowPathOverflowCount, 0);
+  assert.equal(summary.workLoop.currentPriority.editPath, 'memory/README.md');
+  assert.deepEqual(summary.workLoop.currentPriority.editPaths, ['memory/README.md', 'MEMORY.md']);
+  assert.deepEqual(summary.workLoop.currentPriority.paths, ['memory/README.md', 'MEMORY.md']);
   assert.match(summary.promptPreview, /current: Foundation \[queued\] — core 3\/4 ready \(1 thin, 0 missing\); profiles 0 queued for refresh, 0 incomplete/);
   assert.match(summary.promptPreview, /root sections: 1\/2 ready \(what-belongs-here\), missing buckets/);
   assert.match(summary.promptPreview, /root heading aliases: what-lives-here->what-belongs-here/);
   assert.match(summary.promptPreview, /shadow docs: MEMORY\.md/);
+  assert.match(summary.promptPreview, /edit paths: memory\/README\.md, MEMORY\.md/);
+  assert.match(summary.promptPreview, /paths: memory\/README\.md, MEMORY\.md/);
 });
 
 test('PromptAssembler reuses work-loop shadow doc preview metadata when only sampled paths survive', () => {

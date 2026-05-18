@@ -30,5 +30,6 @@ Use this skill when the next step touches the OpenClaw-like foundation in `~/man
 - Prefer the machine-readable summary fields over re-parsing prompt text when both are available.
 - Keep draft provenance visible: `latestMaterialAt`, `latestMaterialId`, and `latestMaterialSourcePath` should stay aligned across summaries, work-loop priorities, and generated drafts.
 - Keep duplicate-root context aligned too: `shadowPaths` / `shadowPathSamplePaths` should stay consistent between `foundation.core`, `profileSnapshots`, and any surfaced work-loop repair priority.
+- When a repo-core repair is queued, keep the inspectable shadow docs attached to the same actionable surfaces too: `recommendedPaths`, queued-area `paths`, and work-loop `editPaths` / `paths` should append the relevant shadow docs after the canonical root file instead of hiding them in a separate field.
 - When stale profile refreshes are present, keep `draftSourcesSummary`, `draftGapSummary`, and `latestMaterialSourcePath` visible together so the newest backing artifact and the thinnest draft layer stay inspectable from one summary surface.
 - Treat `memory`, `skills`, `soul`, and `voice` as separate layers; do not collapse repairs across them without checking the reported gaps.
