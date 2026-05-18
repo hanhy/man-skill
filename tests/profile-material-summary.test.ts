@@ -6718,6 +6718,93 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
   assert.doesNotMatch(summary.promptPreview, /helpers: .*starter-import-bundle/);
 });
 
+test('buildSummary exposes imported intake replay slices and refresh-intake helpers after a profile becomes ready', () => {
+  const rootDir = makeTempRepo();
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  const ingestion = new MaterialIngestion(rootDir);
+  ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: path.join(rootDir, 'samples', 'harry-post.txt'),
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
+
+  const intakeManifestPath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json');
+  fs.writeFileSync(
+    intakeManifestPath,
+    `${JSON.stringify({
+      version: 1,
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'Keep the loop tight.',
+        },
+      ],
+    }, null, 2)}\n`,
+  );
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.ok(harry);
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 1);
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
+  assert.equal(summary.ingestion.recommendedAction, 'replay imported intake for Harry Han (harry-han)');
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.match(
+    summary.ingestion.recommendedRefreshIntakeCommand ?? '',
+    /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/profile.json');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, ['profiles/harry-han/profile.json']);
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, null);
+  assert.deepEqual(summary.ingestion.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: harry?.latestMaterialAt ?? null,
+      latestMaterialId: harry?.latestMaterialId ?? null,
+      latestMaterialSourcePath: harry?.latestMaterialSourcePath ?? null,
+      refreshReasons: harry?.refreshReasons ?? [],
+      missingDrafts: harry?.missingDrafts ?? [],
+      candidateSignalSummary: harry?.candidateSignalSummary ?? null,
+      draftSourcesSummary: harry?.draftSourcesSummary ?? null,
+      draftGapSummary: harry?.draftGapSummary ?? null,
+      fallbackCommand: harry?.starterImportCommand ?? null,
+      refreshIntakeCommand: harry?.updateIntakeCommand ?? null,
+      updateProfileCommand: harry?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: harry?.updateProfileAndRefreshCommand ?? null,
+      editPath: 'profiles/harry-han/profile.json',
+      editPaths: ['profiles/harry-han/profile.json'],
+      manifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      manifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+      intakeManifestEntryTemplateTypes: [],
+      intakeManifestEntryTemplateDetails: [],
+      intakeManifestEntryTemplateCount: 0,
+      intakeManifestEntryTemplateRoot: null,
+      inspectCommand: "node src/index.js import intake --person 'harry-han'",
+      followUpCommand: null,
+      paths: [
+        'profiles/harry-han/imports/materials.template.json',
+        'profiles/harry-han/imports/sample.txt',
+        'profiles/harry-han/profile.json',
+      ],
+    },
+  ]);
+  assert.match(summary.promptPreview, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material \d{4}-\d{2}-\d{2}T[^;]+; evidence memory 1 \(text\) \| voice 1 \(text\) \| soul 1 \(text\) \| skills 0; draft sources [^\n;]+; edit profiles\/harry-han\/profile\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+});
+
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
   const rootDir = makeTempRepo();
 

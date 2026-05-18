@@ -3146,6 +3146,10 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
     /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
   );
   assert.match(
+    summary.workLoop.runnablePriority?.refreshIntakeCommand ?? '',
+    /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.match(
     summary.workLoop.recommendedPriority?.updateProfileCommand ?? '',
     /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
   );
@@ -3153,18 +3157,57 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
     summary.workLoop.recommendedPriority?.updateProfileAndRefreshCommand ?? '',
     /^node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation$/,
   );
+  assert.match(
+    summary.workLoop.recommendedPriority?.refreshIntakeCommand ?? '',
+    /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
   assert.equal(summary.workLoop.runnablePriority?.editPath, 'profiles/harry-han/profile.json');
   assert.deepEqual(summary.workLoop.runnablePriority?.editPaths, ['profiles/harry-han/profile.json']);
   assert.equal(summary.workLoop.runnablePriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.workLoop.runnablePriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.workLoop.runnablePriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.runnablePriority?.followUpCommand, null);
+  const readyReplaySlice = summary.workLoop.runnablePriority?.recommendedProfileSlices?.[0];
+  assert.deepEqual(summary.workLoop.runnablePriority?.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: readyReplaySlice?.latestMaterialAt ?? null,
+      latestMaterialId: readyReplaySlice?.latestMaterialId ?? null,
+      latestMaterialSourcePath: readyReplaySlice?.latestMaterialSourcePath ?? null,
+      refreshReasons: [],
+      missingDrafts: [],
+      candidateSignalSummary: readyReplaySlice?.candidateSignalSummary ?? null,
+      draftSourcesSummary: readyReplaySlice?.draftSourcesSummary ?? null,
+      draftGapSummary: null,
+      fallbackCommand: null,
+      refreshIntakeCommand: summary.workLoop.runnablePriority?.refreshIntakeCommand ?? null,
+      updateProfileCommand: summary.workLoop.runnablePriority?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: summary.workLoop.runnablePriority?.updateProfileAndRefreshCommand ?? null,
+      editPath: 'profiles/harry-han/profile.json',
+      editPaths: ['profiles/harry-han/profile.json'],
+      manifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      manifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+      intakeManifestEntryTemplateTypes: [],
+      intakeManifestEntryTemplateDetails: [],
+      intakeManifestEntryTemplateCount: 0,
+      intakeManifestEntryTemplateRoot: null,
+      inspectCommand: "node src/index.js import intake --person 'harry-han'",
+      followUpCommand: null,
+      paths: [
+        'profiles/harry-han/imports/materials.template.json',
+        'profiles/harry-han/imports/sample.txt',
+        'profiles/harry-han/profile.json',
+      ],
+    },
+  ]);
   assert.equal(summary.workLoop.recommendedPriority?.editPath, 'profiles/harry-han/profile.json');
   assert.deepEqual(summary.workLoop.recommendedPriority?.editPaths, ['profiles/harry-han/profile.json']);
   assert.equal(summary.workLoop.recommendedPriority?.manifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
   assert.equal(summary.workLoop.recommendedPriority?.manifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
   assert.equal(summary.workLoop.recommendedPriority?.inspectCommand, "node src/index.js import intake --person 'harry-han'");
   assert.equal(summary.workLoop.recommendedPriority?.followUpCommand, null);
+  assert.deepEqual(summary.workLoop.recommendedPriority?.recommendedProfileSlices, summary.workLoop.runnablePriority?.recommendedProfileSlices);
   assert.deepEqual(summary.workLoop.runnablePriority?.paths, [
     'profiles/harry-han/imports/materials.template.json',
     'profiles/harry-han/imports/sample.txt',
