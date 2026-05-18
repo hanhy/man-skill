@@ -736,6 +736,78 @@ test('buildFoundationRollup keeps maintenance refresh paths aligned with concret
   assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
 });
 
+test('buildFoundationRollup ignores foreign-profile and non-foundation draft metadata when deriving refresh paths', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-24T10:00:00.000Z',
+      latestMaterialId: '2026-04-24T10-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-24T10-00-00-000Z-talk.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['voice'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/other-person/memory/long-term/foundation.json',
+          entryCount: 1,
+          latestSummaries: ['Stay profile-scoped.'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/imports/sample.txt',
+          highlights: ['- ignore non-foundation imports'],
+          readySectionCount: 3,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/materials/2026-04-24T10-00-00-000Z-talk.json',
+          highlights: ['- ignore source materials'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+          missingSections: [],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Stay profile-scoped.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['ignore non-foundation imports'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['ignore source materials'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the next step direct.'] },
+      },
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Tight loops beat big plans.',
+      },
+    },
+  ]);
+
+  const expectedPaths = [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ];
+
+  assert.deepEqual(rollup.maintenance.recommendedPaths, expectedPaths);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
+});
+
 test('buildFoundationRollup shell-quotes refresh commands for profile ids with spaces and apostrophes', () => {
   const rollup = buildFoundationRollup([
     {

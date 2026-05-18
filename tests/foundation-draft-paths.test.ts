@@ -132,6 +132,20 @@ test('buildFoundationDraftPaths backfills canonical targets when stale metadata 
   );
 });
 
+test('buildFoundationDraftPaths preserves profile-scoped custom foundation draft files when stale metadata is partial', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: 'profiles/jane-doe/memory/custom-foundation.json',
+      },
+    }),
+    [
+      'profiles/jane-doe/memory/custom-foundation.json',
+    ],
+  );
+});
+
 test('normalizeDraftPath rejects absolute and repo-escaping paths instead of misreporting them as repo-relative', () => {
   assert.equal(normalizeDraftPath('/tmp/foundation.json'), null);
   assert.equal(normalizeDraftPath('C:\\drafts\\voice\\README.md'), null);
@@ -150,6 +164,26 @@ test('buildFoundationDraftPaths ignores absolute and repo-escaping stale draft m
         soul: '../profiles/jane-doe/soul/README.md',
         voice: '\\\\server\\share\\voice\\README.md',
       },
+    }),
+    [
+      'profiles/jane-doe/memory/long-term/foundation.json',
+      'profiles/jane-doe/skills/README.md',
+      'profiles/jane-doe/soul/README.md',
+      'profiles/jane-doe/voice/README.md',
+    ],
+  );
+});
+
+test('buildFoundationDraftPaths ignores explicit stale draft metadata that points outside the target profile or outside canonical foundation draft targets', () => {
+  assert.deepEqual(
+    buildFoundationDraftPaths({
+      profileId: 'jane-doe',
+      draftFiles: {
+        memory: 'profiles/other-person/memory/long-term/foundation.json',
+        skills: 'profiles/jane-doe/imports/sample.txt',
+        soul: 'profiles/jane-doe/materials/2026-04-20.json',
+      },
+      missingDrafts: ['voice'],
     }),
     [
       'profiles/jane-doe/memory/long-term/foundation.json',
