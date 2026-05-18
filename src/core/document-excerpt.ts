@@ -19,6 +19,36 @@ function findFrontmatterClosingIndex(lines: string[]): number {
   return lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
 }
 
+function normalizeYamlDescriptionBlock(blockLines: string[], scalarStyle: 'folded' | 'literal'): string | null {
+  const normalizedLines = blockLines.map((line) => line.trim());
+  if (scalarStyle === 'literal') {
+    const literalDescription = normalizedLines.join('\n').trim();
+    return isNonEmptyString(literalDescription) ? literalDescription : null;
+  }
+
+  const paragraphs: string[] = [];
+  let currentParagraph: string[] = [];
+
+  for (const line of normalizedLines) {
+    if (line.length === 0) {
+      if (currentParagraph.length > 0) {
+        paragraphs.push(currentParagraph.join(' '));
+        currentParagraph = [];
+      }
+      continue;
+    }
+
+    currentParagraph.push(line);
+  }
+
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(' '));
+  }
+
+  const foldedDescription = paragraphs.join('\n\n').trim();
+  return isNonEmptyString(foldedDescription) ? foldedDescription : null;
+}
+
 export function normalizeDocument(document: unknown): string {
   if (typeof document !== 'string') {
     return '';
@@ -49,6 +79,7 @@ export function extractFrontmatterDescription(document: unknown): string | null 
 
     const rawValue = match[1].trim();
     if (/^[>|][0-9+-]*$/.test(rawValue)) {
+      const scalarStyle = rawValue.startsWith('|') ? 'literal' : 'folded';
       const blockLines: string[] = [];
       for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
         const nestedLine = frontmatterLines[nestedIndex];
@@ -59,8 +90,7 @@ export function extractFrontmatterDescription(document: unknown): string | null 
         blockLines.push(nestedLine.trim());
       }
 
-      const description = blockLines.join('\n').trim();
-      return isNonEmptyString(description) ? description : null;
+      return normalizeYamlDescriptionBlock(blockLines, scalarStyle);
     }
 
     const description = stripWrappingQuotes(rawValue);

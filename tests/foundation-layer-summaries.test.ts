@@ -85,6 +85,36 @@ test('foundation layer primitives normalize legacy short-term provenance consist
   ]);
 });
 
+test('foundation layer primitives collapse multiline frontmatter descriptions for soul and voice guidance', () => {
+  const soul = SoulProfile.fromDocument([
+    '---',
+    'description: >',
+    '  Stay faithful to the source',
+    '  without YAML leakage.',
+    '---',
+    '',
+    '# Soul',
+    '',
+    '## Core truths',
+    '- Keep the system inspectable.',
+  ].join('\n'));
+  const voice = VoiceProfile.fromDocument([
+    '\uFEFF---',
+    'description: >',
+    '  Warm and grounded',
+    '  without YAML leakage.',
+    '---',
+    '',
+    '# Voice',
+    '',
+    '## Signature moves',
+    '- Use crisp examples.',
+  ].join('\n'));
+
+  assert.equal(soul.summary().excerpt, 'Stay faithful to the source without YAML leakage.');
+  assert.equal(voice.summary().tone, 'Warm and grounded without YAML leakage.');
+});
+
 test('foundation layer primitives expose readiness-oriented summary metadata', () => {
   const soul = SoulProfile.fromDocument(`# Soul\n\nLead with fidelity.\n\n## Core truths\n\nKeep the system inspectable.\nPrefer small verified slices.\n\n## Boundaries\n\n- Do not bluff certainty.\n- Do not hide provenance.\n\n## Vibe\n\nGrounded and direct.\n\n## Continuity\n\nCarry durable lessons forward.\n`);
   const voice = new VoiceProfile({

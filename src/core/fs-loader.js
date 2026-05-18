@@ -98,6 +98,36 @@ function isFrontmatterBoundaryLine(line) {
   return /^(?:---|\.\.\.)\s*$/.test(line.trim());
 }
 
+function normalizeYamlDescriptionBlock(blockLines, scalarStyle) {
+  const normalizedLines = blockLines.map((line) => line.trim());
+  if (scalarStyle === 'literal') {
+    const literalDescription = normalizedLines.join('\n').trim();
+    return isNonEmptyString(literalDescription) ? literalDescription : null;
+  }
+
+  const paragraphs = [];
+  let currentParagraph = [];
+
+  for (const line of normalizedLines) {
+    if (line.length === 0) {
+      if (currentParagraph.length > 0) {
+        paragraphs.push(currentParagraph.join(' '));
+        currentParagraph = [];
+      }
+      continue;
+    }
+
+    currentParagraph.push(line);
+  }
+
+  if (currentParagraph.length > 0) {
+    paragraphs.push(currentParagraph.join(' '));
+  }
+
+  const foldedDescription = paragraphs.join('\n\n').trim();
+  return isNonEmptyString(foldedDescription) ? foldedDescription : null;
+}
+
 function extractFrontmatterDescription(document) {
   const normalizedDocument = normalizeDocument(document);
   if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
@@ -120,6 +150,7 @@ function extractFrontmatterDescription(document) {
 
     const rawValue = match[1].trim();
     if (/^[>|][0-9+-]*$/.test(rawValue)) {
+      const scalarStyle = rawValue.startsWith('|') ? 'literal' : 'folded';
       const blockLines = [];
       for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
         const nestedLine = frontmatterLines[nestedIndex];
@@ -130,7 +161,7 @@ function extractFrontmatterDescription(document) {
         blockLines.push(nestedLine.trim());
       }
 
-      const description = blockLines.join('\n').trim();
+      const description = normalizeYamlDescriptionBlock(blockLines, scalarStyle);
       if (isNonEmptyString(description)) {
         return description;
       }
