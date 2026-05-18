@@ -682,6 +682,39 @@ test('buildSummary loads work-loop objectives from USER.md when the current prod
   assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| keep Slack queued until Telegram is runtime-ready \| stage OpenAI before the rest of the provider set \| report progress in small verified increments/);
 });
 
+test('buildSummary dedupes the default progress objective when USER.md already includes it with different casing or punctuation', () => {
+  const rootDir = makeTempRepo();
+  seedReadyFoundationRepo(rootDir);
+  fs.writeFileSync(
+    path.join(rootDir, 'USER.md'),
+    [
+      '# USER.md - About Your Human',
+      '',
+      '## Current product direction',
+      '',
+      '1. keep the repo-core memory and skills docs synchronized',
+      '2. make imported intake backfills visible before delivery rollout',
+      '3. Report progress in small verified increments.',
+      '',
+      '## Notes',
+      '',
+      'Keep the wording operator-friendly.',
+      '',
+    ].join('\n'),
+  );
+
+  const summary = buildSummary(rootDir);
+
+  assert.deepEqual(summary.workLoop.objectives, [
+    'keep the repo-core memory and skills docs synchronized',
+    'make imported intake backfills visible before delivery rollout',
+    'Report progress in small verified increments.',
+  ]);
+  assert.equal(summary.workLoop.objectiveCount, 3);
+  assert.match(summary.promptPreview, /objectives: keep the repo-core memory and skills docs synchronized \| make imported intake backfills visible before delivery rollout \| Report progress in small verified increments\./);
+  assert.doesNotMatch(summary.promptPreview, /Report progress in small verified increments\. \| report progress in small verified increments/);
+});
+
 test('buildSummary uses USER.md current product direction to reprioritize delivery queues and work-loop paths', () => {
   const rootDir = makeTempRepo();
   seedReadyFoundationRepo(rootDir);

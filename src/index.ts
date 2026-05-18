@@ -257,6 +257,18 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
   return objectives;
 }
 
+function normalizeWorkLoopObjectiveForComparison(objective: string | null | undefined): string {
+  if (typeof objective !== 'string') {
+    return '';
+  }
+
+  return objective
+    .trim()
+    .replace(/[.!?]+$/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 function loadWorkLoopObjectives(rootDir: string): string[] {
   const userDocument = readFileIfPresent(path.join(rootDir, 'USER.md'));
   const configuredObjectives = extractWorkLoopObjectivesFromUserDocument(userDocument);
@@ -266,7 +278,8 @@ function loadWorkLoopObjectives(rootDir: string): string[] {
   }
 
   const progressObjective = DEFAULT_WORK_LOOP_OBJECTIVES[DEFAULT_WORK_LOOP_OBJECTIVES.length - 1];
-  return configuredObjectives.includes(progressObjective)
+  const normalizedProgressObjective = normalizeWorkLoopObjectiveForComparison(progressObjective);
+  return configuredObjectives.some((objective) => normalizeWorkLoopObjectiveForComparison(objective) === normalizedProgressObjective)
     ? configuredObjectives
     : [...configuredObjectives, progressObjective];
 }
