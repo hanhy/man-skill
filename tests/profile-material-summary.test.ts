@@ -684,16 +684,19 @@ test('PromptAssembler keeps latest material source paths visible in next-intake 
         'profiles/harry-han/imports/materials.template.json',
         './profiles/harry-han/imports/sample.txt',
         '.\\profiles\\harry-han//imports\\sample.txt',
+        'profiles/harry-han/imports/images/chat.png',
+        '.\\profiles\\harry-han//imports\\images\\chat.png',
         'profiles/harry-han/profile.json',
       ],
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/profile\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\/profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\images\\chat\.png/);
 });
 
 test('buildIngestionSummary exposes a per-profile foundation refresh bundle for imported stale profiles', () => {
