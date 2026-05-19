@@ -1799,6 +1799,34 @@ function buildCommandFamilyUsageHint(command: 'import' | 'update'): string | nul
   return ['Usage:', ...familyLines].join('\n');
 }
 
+function normalizeCommandFamilyHelpArgs(parsedArgs: ParsedArgs): ParsedArgs {
+  if (parsedArgs.command !== 'import' && parsedArgs.command !== 'update') {
+    return parsedArgs;
+  }
+
+  const options = { ...parsedArgs.options };
+  let subcommand = parsedArgs.subcommand;
+
+  if (subcommand === 'help') {
+    options.help = true;
+    subcommand = undefined;
+  }
+
+  if (typeof subcommand === 'string' && subcommand.startsWith('--')) {
+    const key = subcommand.slice(2);
+    if (!(key in options)) {
+      options[key] = true;
+    }
+    subcommand = undefined;
+  }
+
+  return {
+    command: parsedArgs.command,
+    subcommand,
+    options,
+  };
+}
+
 export function runImportCommand(rootDir: string, subcommand: string | undefined, options: ParsedOptions) {
   const ingestion = new MaterialIngestion(rootDir);
 
@@ -2521,7 +2549,7 @@ export function main(argv: string[] = process.argv.slice(2), rootDir: string = p
     subcommand = parsedArgs.subcommand;
     options = { ...parsedArgs.options };
 
-    ({ command, subcommand, options } = normalizeSummaryArgs(parsedArgs));
+    ({ command, subcommand, options } = normalizeCommandFamilyHelpArgs(normalizeSummaryArgs(parsedArgs)));
 
     if (command === '--help' || command === 'help') {
       console.log(formatCliUsage());

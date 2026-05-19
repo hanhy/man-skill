@@ -37,3 +37,20 @@ test('summary rejects unsupported positional tokens and options', () => {
   assert.match(extraOption.stderr, /Error: Unsupported summary option: --bogus/);
   assert.match(extraOption.stderr, /Usage: node src\/index\.js summary \[--json\]/);
 });
+
+test('import and update family help are first-class usage surfaces', () => {
+  const importHelp = runCli(['import', '--help']);
+  assert.equal(importHelp.status, 0, [importHelp.stdout, importHelp.stderr].filter(Boolean).join('\n'));
+  assert.match(importHelp.stdout, /^Usage:$/m);
+  assert.match(importHelp.stdout, /node src\/index\.js import sample \[--file <manifest\.json>]\s+Import the checked-in sample manifest and refresh drafts/);
+  assert.match(importHelp.stdout, /node src\/index\.js import intake --person <person-id> \[--refresh-foundation] Import a ready profile-local intake manifest/);
+  assert.doesNotMatch(importHelp.stdout, /^\s*\{/m, 'import --help should print usage, not JSON output');
+
+  const updateHelp = runCli(['update', '--help']);
+  assert.equal(updateHelp.status, 0, [updateHelp.stdout, updateHelp.stderr].filter(Boolean).join('\n'));
+  assert.match(updateHelp.stdout, /^Usage:$/m);
+  assert.match(updateHelp.stdout, /node src\/index\.js update profile --person <person-id> \[--display-name <name>] \[--summary <text>] \[--refresh-foundation]/);
+  assert.match(updateHelp.stdout, /node src\/index\.js update intake --person <person-id> \[--display-name <name>] \[--summary <text>] \[--refresh-foundation]/);
+  assert.match(updateHelp.stdout, /node src\/index\.js update intake --stale \[--refresh-foundation]\s+Complete intake scaffolds only for metadata-only profiles with missing or partial imports\/ assets/);
+  assert.doesNotMatch(updateHelp.stdout, /^\s*\{/m, 'update --help should print usage, not JSON output');
+});

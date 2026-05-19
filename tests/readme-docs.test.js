@@ -88,6 +88,8 @@ function formatDraftSourcesLine(draftSources = {}) {
 }
 
 test('README documents the default delivery foundation targets and repo manifests', () => {
+  assert.match(readme, /`node src\/index\.js --help` now prints a concise operator-facing usage guide/i);
+  assert.match(readme, /`node src\/index\.js import --help` and `node src\/index\.js update --help` expose the import\/update command families directly before picking a subcommand/i);
   assert.match(readme, /Delivery foundation/i);
   assert.match(readme, /Feishu, Telegram, WhatsApp, and Slack/);
   assert.match(readme, /OpenAI, Anthropic, Kimi, Minimax, GLM, and Qwen/);
