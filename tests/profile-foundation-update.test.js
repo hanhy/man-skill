@@ -509,7 +509,7 @@ test('CLI update foundation command writes derived profile drafts', () => {
   assert.equal(fs.existsSync(path.join(rootDir, result.voiceDraftPath)), true);
 });
 
-test('CLI --help explains the stale/imported intake replay defaults and refresh variants', () => {
+test('CLI --help explains the stale/imported intake replay defaults, metadata sync, and refresh variants', () => {
   const output = execFileSync('node', [cliEntrypoint, '--help'], {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -518,10 +518,46 @@ test('CLI --help explains the stale/imported intake replay defaults and refresh 
   assert.match(output, /import intake --stale \[--refresh-foundation\].*still need first imports/i);
   assert.match(output, /import intake --imported \[--refresh-foundation\].*already-imported profiles/i);
   assert.match(output, /import intake --all \[--refresh-foundation\].*including already-imported profiles/i);
+  assert.match(output, /update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\].*seed or sync target metadata before intake replays or draft refreshes/i);
   assert.match(output, /update intake --stale \[--refresh-foundation\].*metadata-only profiles with missing or partial imports\/ assets/i);
   assert.match(output, /update intake --imported \[--refresh-foundation\].*already-imported profiles missing imports\/ assets/i);
   assert.match(output, /update intake --all \[--refresh-foundation\].*every metadata-only profile/i);
   assert.doesNotMatch(output, /"foundation"\s*:/);
+});
+
+test('CLI update profile errors advertise the metadata sync usage surface with examples', () => {
+  const rootDir = makeTempRepo();
+
+  const cases = [
+    {
+      args: ['update', 'profile'],
+      expectedError: /Error: Missing required --person argument/,
+    },
+    {
+      args: ['update', 'profile', '--person', 'harry-han', '--all'],
+      expectedError: /Error: Unsupported option --all for update profile/,
+    },
+  ];
+
+  cases.forEach(({ args, expectedError }) => {
+    assert.throws(
+      () => execFileSync('node', [cliEntrypoint, ...args], {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }),
+      (error) => {
+        assert.equal(error.status, 1);
+        assert.match(error.stderr, expectedError);
+        assert.match(error.stderr, /Usage: node src\/index\.js update profile --person <person-id> \[--display-name <name>\] \[--summary <text>\] \[--refresh-foundation\]/);
+        assert.match(error.stderr, /Examples:/);
+        assert.match(error.stderr, /node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
+        assert.match(error.stderr, /node src\/index\.js update profile --person 'harry-han' --summary 'Direct operator with a bias for fast feedback loops\.' --refresh-foundation/);
+        assert.doesNotMatch(error.stderr, /at runUpdateCommand/);
+        return true;
+      },
+    );
+  });
 });
 
 test('CLI update intake --stale scaffolds only metadata-only profiles with incomplete intake landing zones', () => {

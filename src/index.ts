@@ -2403,7 +2403,7 @@ function buildCliUsageLines(): string[] {
     '  node src/index.js import message --person <person-id> --text <message> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import talk --person <person-id> --text <snippet> [--notes <text>] [--refresh-foundation]',
     '  node src/index.js import screenshot --person <person-id> --file <image.png> [--notes <text>] [--refresh-foundation]',
-    '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+    '  node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation] Seed or sync target metadata before intake replays or draft refreshes',
     '  node src/index.js update intake --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
     '  node src/index.js update intake --stale [--refresh-foundation]             Complete intake scaffolds only for metadata-only profiles with missing or partial imports/ assets',
     '  node src/index.js update intake --imported [--refresh-foundation]          Backfill intake scaffolds only for already-imported profiles missing imports/ assets',
@@ -2472,7 +2472,13 @@ function buildCommandUsageHint(command?: string, subcommand?: string): string | 
   }
 
   if (command === 'update' && subcommand === 'profile') {
-    return 'Usage: node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]';
+    return formatUsageHint(
+      'Usage: node src/index.js update profile --person <person-id> [--display-name <name>] [--summary <text>] [--refresh-foundation]',
+      [
+        "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum.'",
+        "node src/index.js update profile --person 'harry-han' --summary 'Direct operator with a bias for fast feedback loops.' --refresh-foundation",
+      ],
+    );
   }
 
   if (command === 'update' && subcommand === 'intake') {
