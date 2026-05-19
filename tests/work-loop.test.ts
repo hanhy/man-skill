@@ -3253,14 +3253,14 @@ test('buildSummary work loop prefers the profile-local intake shortcut for impor
   assert.match(summary.promptPreview, /recommended edit: profiles\/harry-han\/profile\.json/);
   assert.match(summary.promptPreview, /recommended manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(summary.promptPreview, /recommended manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /recommended inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /recommended inspect first: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable: Ingestion \[ready\] — 1 imported, 0 metadata-only, drafts 1 ready, 0 queued for refresh, 1 imported intake replay ready/);
   assert.match(summary.promptPreview, /runnable next action: replay imported intake for Harry Han \(harry-han\)/);
   assert.match(summary.promptPreview, /runnable command: node src\/index\.js import intake --person 'harry-han' --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable edit: profiles\/harry-han\/profile\.json/);
   assert.match(summary.promptPreview, /runnable manifest inspect: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
   assert.match(summary.promptPreview, /runnable manifest: node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /runnable inspect after editing: node src\/index\.js import intake --person 'harry-han'/);
+  assert.match(summary.promptPreview, /runnable inspect first: node src\/index\.js import intake --person 'harry-han'/);
   assert.match(summary.promptPreview, /runnable update profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?/);
   assert.match(summary.promptPreview, /runnable sync profile: node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
   assert.match(summary.promptPreview, /runnable paths: profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);

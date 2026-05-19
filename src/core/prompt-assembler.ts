@@ -2147,8 +2147,9 @@ function buildIngestionEntranceBlock(ingestion: IngestionSummary = null) {
   const recommendedManifestInspectSegment = recommendedManifestInspectCommand && recommendedManifestInspectCommand !== recommendedCommand
     ? `; manifest inspect ${recommendedManifestInspectCommand}`
     : '';
+  const recommendedInspectLabel = recommendedFollowUpCommand ? 'inspect after editing' : 'inspect first';
   const nextIntakeLine = typeof ingestion?.recommendedAction === 'string' && ingestion.recommendedAction.length > 0
-    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedCandidateSignalSummary ? `; evidence ${recommendedCandidateSignalSummary}` : ''}${recommendedDraftSourcesSummary ? `; draft sources ${recommendedDraftSourcesSummary}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; inspect after editing ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? `; paths ${filteredRecommendedPaths.join(', ')}` : ''}`
+    ? `- next intake: ${ingestion.recommendedAction}${recommendedCommand ? `; command ${recommendedCommand}` : ''}${recommendedLatestMaterialSegment}${recommendedCandidateSignalSummary ? `; evidence ${recommendedCandidateSignalSummary}` : ''}${recommendedDraftSourcesSummary ? `; draft sources ${recommendedDraftSourcesSummary}` : ''}${recommendedDraftGapSummary ? `; gaps ${recommendedDraftGapSummary}` : ''}${recommendedEditSegment}${recommendedRefreshIntakeCommand ? `; refresh intake ${recommendedRefreshIntakeCommand}` : ''}${recommendedUpdateProfileCommand ? `; update profile ${recommendedUpdateProfileCommand}` : ''}${recommendedUpdateProfileAndRefreshCommand ? `; sync profile ${recommendedUpdateProfileAndRefreshCommand}` : ''}${recommendedTemplateSummary ? `; starter templates ${recommendedTemplateSummary}` : ''}${recommendedTemplateRoot ? `; starter root ${recommendedTemplateRoot}` : ''}${recommendedTemplateDetailSummary ? `; starter details ${recommendedTemplateDetailSummary}` : ''}${recommendedManifestInspectSegment}${recommendedManifestImportSegment}${recommendedInspectCommand ? `; ${recommendedInspectLabel} ${recommendedInspectCommand}` : ''}${recommendedFollowUpCommand ? `; then run ${recommendedFollowUpCommand}` : ''}${recommendedFallbackCommand ? `; fallback ${recommendedFallbackCommand}` : ''}${filteredRecommendedPaths.length > 0 ? `; paths ${filteredRecommendedPaths.join(', ')}` : ''}`
     : null;
 
   return [
@@ -2932,6 +2933,10 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
   const actionableReadyPriorityInspectCommand = typeof actionableReadyPriority?.inspectCommand === 'string' && actionableReadyPriority.inspectCommand.length > 0
     ? actionableReadyPriority.inspectCommand
     : null;
+  const getInspectPromptLabel = (priority?: WorkLoopPriority | null, prefix = 'inspect'): string => {
+    const baseLabel = priority?.followUpCommand ? 'inspect after editing' : 'inspect first';
+    return prefix === 'inspect' ? baseLabel : `${prefix} ${baseLabel}`;
+  };
   const formatPriorityTemplateSummary = (priority?: WorkLoopPriority | null): string | null => {
     const templateTypes = Array.isArray(priority?.intakeManifestEntryTemplateTypes)
       ? priority.intakeManifestEntryTemplateTypes.filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -3097,7 +3102,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- recommended manifest: ${recommendedPriority.manifestImportCommand}`
       : null,
     showRecommendedPriorityDetails && recommendedPriorityInspectCommand
-      ? `- recommended inspect after editing: ${recommendedPriorityInspectCommand}`
+      ? `- ${getInspectPromptLabel(recommendedPriority, 'recommended')}: ${recommendedPriorityInspectCommand}`
       : null,
     showRecommendedPriorityDetails && recommendedPriority?.followUpCommand
       ? `- recommended then run: ${recommendedPriority.followUpCommand}`
@@ -3156,7 +3161,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- manifest: ${currentPriority.manifestImportCommand}`
       : null,
     currentPriorityInspectCommand
-      ? `- inspect after editing: ${currentPriorityInspectCommand}`
+      ? `- ${getInspectPromptLabel(currentPriority)}: ${currentPriorityInspectCommand}`
       : null,
     currentPriority?.followUpCommand
       ? `- then run: ${currentPriority.followUpCommand}`
@@ -3215,7 +3220,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- runnable manifest: ${runnablePriority.manifestImportCommand}`
       : null,
     showRunnablePriority && runnablePriorityInspectCommand
-      ? `- runnable inspect after editing: ${runnablePriorityInspectCommand}`
+      ? `- ${getInspectPromptLabel(runnablePriority, 'runnable')}: ${runnablePriorityInspectCommand}`
       : null,
     showRunnablePriority && runnablePriority?.followUpCommand
       ? `- runnable then run: ${runnablePriority.followUpCommand}`
@@ -3274,7 +3279,7 @@ function buildWorkLoopBlock(workLoop: WorkLoopSummary = null) {
       ? `- advisory manifest: ${actionableReadyPriority.manifestImportCommand}`
       : null,
     showActionableReadyPriority && actionableReadyPriorityInspectCommand
-      ? `- advisory inspect after editing: ${actionableReadyPriorityInspectCommand}`
+      ? `- ${getInspectPromptLabel(actionableReadyPriority, 'advisory')}: ${actionableReadyPriorityInspectCommand}`
       : null,
     showActionableReadyPriority && actionableReadyPriority?.followUpCommand
       ? `- advisory then run: ${actionableReadyPriority.followUpCommand}`
