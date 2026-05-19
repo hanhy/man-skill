@@ -277,6 +277,24 @@ function buildSkillsMaintenancePaths({
   ]));
 }
 
+function appendShadowPathsToMaintenancePaths(paths: string[], shadowPaths: string[] | null | undefined): string[] {
+  const normalizedPaths = Array.isArray(paths)
+    ? paths.filter((value): value is string => isNonEmptyString(value))
+    : [];
+  const normalizedShadowPaths = Array.isArray(shadowPaths)
+    ? shadowPaths.filter((value): value is string => isNonEmptyString(value))
+    : [];
+
+  if (normalizedShadowPaths.length === 0) {
+    return normalizedPaths;
+  }
+
+  return Array.from(new Set([
+    ...normalizedPaths,
+    ...normalizedShadowPaths,
+  ]));
+}
+
 function collectRecommendedActions({
   memoryHasRootDocument,
   memoryRootMissingSections,
@@ -550,11 +568,14 @@ function buildCoreFoundationMaintenance({
         rootMissingSections: memoryRootThinMissingSections,
         emptyBuckets: memory.emptyBuckets,
       }),
-      paths: buildMemoryMaintenancePaths({
-        hasRootDocument: memory.hasRootDocument,
-        rootMissingSections: memoryRootThinMissingSections,
-        emptyBuckets: memory.emptyBuckets,
-      }),
+      paths: appendShadowPathsToMaintenancePaths(
+        buildMemoryMaintenancePaths({
+          hasRootDocument: memory.hasRootDocument,
+          rootMissingSections: memoryRootThinMissingSections,
+          emptyBuckets: memory.emptyBuckets,
+        }),
+        memory.shadowPaths,
+      ),
       ...(memoryRootThinMissingSections.length > 0 ? { thinPaths: ['memory/README.md'] } : {}),
       ...(memoryRootThinMissingSections.length > 0 ? { rootThinMissingSections: memoryRootThinMissingSections } : {}),
       ...(memoryRootThinReadySections.length > 0 ? { rootThinReadySections: memoryRootThinReadySections } : {}),
@@ -576,13 +597,16 @@ function buildCoreFoundationMaintenance({
           : 'ready'),
       summary: summarizeSkillsFoundation(skills),
       action: skillsAction,
-      paths: buildSkillsMaintenancePaths({
-        hasRootDocument: skills.hasRootDocument,
-        rootMissingSections: rootThinMissingSections,
-        skillsCount: skills.count,
-        undocumentedSkillNames: missingSkillNames,
-        thinSkillNames,
-      }),
+      paths: appendShadowPathsToMaintenancePaths(
+        buildSkillsMaintenancePaths({
+          hasRootDocument: skills.hasRootDocument,
+          rootMissingSections: rootThinMissingSections,
+          skillsCount: skills.count,
+          undocumentedSkillNames: missingSkillNames,
+          thinSkillNames,
+        }),
+        skills.shadowPaths,
+      ),
       ...(missingSkillPaths.length > 0 ? { missingPaths: missingSkillPaths } : {}),
       ...(thinSkillPaths.length > 0 || thinRootPaths.length > 0 ? { thinPaths: [...thinRootPaths, ...thinSkillPaths] } : {}),
       ...(Object.keys(thinSkillMissingSectionsByPath).length > 0 ? { thinMissingSections: thinSkillMissingSectionsByPath } : {}),
@@ -605,7 +629,7 @@ function buildCoreFoundationMaintenance({
       status: !soul.present ? 'missing' : ((soul.lineCount === 0 || soul.missingSections.length > 0) ? 'thin' : 'ready'),
       summary: summarizeDocumentFoundation(soul),
       action: soulAction,
-      paths: ['SOUL.md'],
+      paths: appendShadowPathsToMaintenancePaths(['SOUL.md'], soul.shadowPaths),
       ...((soul.lineCount > 0 && (soul.readySections.length > 0 || soul.missingSections.length > 0))
         ? {
           rootThinReadySections: soul.readySections,
@@ -622,7 +646,7 @@ function buildCoreFoundationMaintenance({
       status: !voice.present ? 'missing' : ((voice.lineCount === 0 || voice.missingSections.length > 0) ? 'thin' : 'ready'),
       summary: summarizeDocumentFoundation(voice),
       action: voiceAction,
-      paths: ['voice/README.md'],
+      paths: appendShadowPathsToMaintenancePaths(['voice/README.md'], voice.shadowPaths),
       ...((voice.lineCount > 0 && (voice.readySections.length > 0 || voice.missingSections.length > 0))
         ? {
           rootThinReadySections: voice.readySections,

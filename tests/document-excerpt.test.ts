@@ -175,7 +175,7 @@ test('collectVisibleDocumentLines normalizes visible blockquoted setext headings
   assert.equal(findDocumentExcerpt(document), 'Keep the active contract visible.');
 });
 
-test('extractFrontmatterDescription prefers multiline description blocks before body scaffolds', () => {
+test('extractFrontmatterDescription folds multiline yaml descriptions before body scaffolds', () => {
   const document = [
     '---',
     'description: >-',
@@ -191,10 +191,73 @@ test('extractFrontmatterDescription prefers multiline description blocks before 
 
   assert.equal(
     extractFrontmatterDescription(document),
-    'Keep durable repo knowledge organized\nwithout leaking scaffold headings.',
+    'Keep durable repo knowledge organized without leaking scaffold headings.',
   );
   assert.equal(
     findDocumentExcerpt(document),
-    'Keep durable repo knowledge organized\nwithout leaking scaffold headings.',
+    'Keep durable repo knowledge organized without leaking scaffold headings.',
+  );
+});
+
+test('extractFrontmatterDescription tolerates leading blank lines before yaml frontmatter', () => {
+  const document = [
+    '',
+    '',
+    '---',
+    'description: >-',
+    '  Keep durable repo knowledge organized',
+    '  without leaking scaffold headings.',
+    'name: foundation-memory',
+    '---',
+    '',
+    '# Memory',
+    '',
+    '<!-- ## Hidden heading -->',
+  ].join('\n');
+
+  assert.equal(
+    extractFrontmatterDescription(document),
+    'Keep durable repo knowledge organized without leaking scaffold headings.',
+  );
+  assert.equal(
+    findDocumentExcerpt(document),
+    'Keep durable repo knowledge organized without leaking scaffold headings.',
+  );
+});
+
+test('findDocumentExcerpt does not treat yaml document-end markers as frontmatter openers after leading blank lines', () => {
+  const document = [
+    '',
+    '...',
+    'Intro should stay visible.',
+    '',
+    '---',
+    '',
+    'Next section should not replace the intro.',
+  ].join('\n');
+
+  assert.equal(extractFrontmatterDescription(document), null);
+  assert.equal(findDocumentExcerpt(document), 'Intro should stay visible.');
+});
+
+test('extractFrontmatterDescription preserves literal multiline yaml descriptions', () => {
+  const document = [
+    '---',
+    'description: |',
+    '  Keep durable repo knowledge organized',
+    '  without collapsing authored line breaks.',
+    'name: foundation-memory',
+    '---',
+    '',
+    '# Memory',
+  ].join('\n');
+
+  assert.equal(
+    extractFrontmatterDescription(document),
+    'Keep durable repo knowledge organized\nwithout collapsing authored line breaks.',
+  );
+  assert.equal(
+    findDocumentExcerpt(document),
+    'Keep durable repo knowledge organized\nwithout collapsing authored line breaks.',
   );
 });

@@ -23,3 +23,17 @@ test('summary help is a first-class usage surface', () => {
   assert.match(summaryHelp.stdout, /^Usage: node src\/index\.js summary \[--json\]$/m);
   assert.doesNotMatch(summaryHelp.stdout, /^\s*\{/m, 'summary --help should print usage, not JSON output');
 });
+
+test('summary rejects unsupported positional tokens and options', () => {
+  const extraToken = runCli(['summary', 'unexpected-token']);
+  assert.equal(extraToken.status, 1, 'summary with an unexpected positional token should fail');
+  assert.equal(extraToken.stdout, '');
+  assert.match(extraToken.stderr, /Error: Unsupported summary argument: unexpected-token/);
+  assert.match(extraToken.stderr, /Usage: node src\/index\.js summary \[--json\]/);
+
+  const extraOption = runCli(['summary', '--bogus']);
+  assert.equal(extraOption.status, 1, 'summary with an unsupported option should fail');
+  assert.equal(extraOption.stdout, '');
+  assert.match(extraOption.stderr, /Error: Unsupported summary option: --bogus/);
+  assert.match(extraOption.stderr, /Usage: node src\/index\.js summary \[--json\]/);
+});

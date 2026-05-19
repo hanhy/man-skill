@@ -253,6 +253,7 @@ test('buildProfileSnapshotSummaries keeps mixed fallback draft-source provenance
       },
       voice: {
         path: 'profiles/jane-doe/voice/README.md',
+        sourceCount: 1,
         materialTypes: { message: 1 },
         latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
       },
@@ -275,12 +276,17 @@ test('buildProfileSnapshotSummaries keeps mixed fallback draft-source provenance
       path: 'profiles/jane-doe/voice/README.md',
       generated: false,
       latestMaterialSourcePath: 'profiles/jane-doe/imports/voice-note.txt',
+      sourceCount: 1,
       materialTypes: { message: 1 },
     },
   });
   assert.match(
     snapshot.snapshot,
-    new RegExp(`draft sources: ${summarizeFoundationDraftSources(profile)?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+    /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/,
+  );
+  assert.equal(
+    summarizeFoundationDraftSources(profile),
+    'memory @ profiles/jane-doe/memory/long-term/foundation.json (1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
   );
 });
 
@@ -641,7 +647,7 @@ test('buildIngestionSummary preserves sample manifest source paths for legacy te
   assert.match(prompt, /sample text: alpha-ready -> node src\/index\.js import text --person alpha-ready --file 'samples\/alpha-ready\.txt' --refresh-foundation @ samples\/legacy-materials\.json/);
 });
 
-test('PromptAssembler avoids repeating the latest material source path in next-intake path hints', () => {
+test('PromptAssembler keeps latest material source paths visible in next-intake path hints without duplicating aliases', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
     voice: { style: 'direct' },
@@ -662,24 +668,35 @@ test('PromptAssembler avoids repeating the latest material source path in next-i
       importedInvalidIntakeManifestProfileCount: 0,
       invalidMetadataOnlyIntakeManifestProfileCount: 0,
       supportedImportTypes: ['text'],
-      recommendedAction: 'import source materials for Harry Han (harry-han)',
+      recommendedAction: 'replay imported intake for Harry Han (harry-han)',
       recommendedCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
       recommendedLatestMaterialAt: '2026-05-06T05:48:06.506Z',
       recommendedLatestMaterialId: '2026-05-06T05-48-06-506Z-text',
       recommendedLatestMaterialSourcePath: 'profiles/harry-han/imports/sample.txt',
+      recommendedInspectCommand: "node src/index.js import intake --person 'harry-han'",
+      recommendedManifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      recommendedManifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+      recommendedUpdateProfileCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.'",
+      recommendedUpdateProfileAndRefreshCommand: "node src/index.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops.' --refresh-foundation",
+      recommendedEditPath: 'profiles/harry-han/profile.json',
+      recommendedEditPaths: ['profiles/harry-han/profile.json'],
       recommendedPaths: [
         'profiles/harry-han/imports/materials.template.json',
         './profiles/harry-han/imports/sample.txt',
         '.\\profiles\\harry-han//imports\\sample.txt',
+        'profiles/harry-han/imports/images/chat.png',
+        '.\\profiles\\harry-han//imports\\images\\chat.png',
+        'profiles/harry-han/profile.json',
       ],
     } as any,
   }).buildPreview(4000);
 
-  assert.match(prompt, /next intake: import source materials for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt @ profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material 2026-05-06T05:48:06\.506Z \(2026-05-06T05-48-06-506Z-text\) @ profiles\/harry-han\/imports\/sample\.txt; edit profiles\/harry-han\/profile\.json; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.'; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum and fast feedback loops\.' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect first node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/profile\.json/);
   assert.doesNotMatch(prompt, /profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/imports\/sample\.txt/);
-  assert.doesNotMatch(prompt, /next intake:[^\n]*@ profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]* latest material [^\n]* @ [^;]+ @ /);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\/profiles\/harry-han\/imports\/sample\.txt/);
   assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\sample\.txt/);
+  assert.doesNotMatch(prompt, /next intake:[^\n]*\.\\profiles\\harry-han\/\/imports\\images\\chat\.png/);
 });
 
 test('buildIngestionSummary exposes a per-profile foundation refresh bundle for imported stale profiles', () => {
@@ -1134,7 +1151,7 @@ test('buildIngestionSummary normalizes recommended starter profile slices for JS
   assert.deepEqual(recommendedSlice.refreshReasons, []);
   assert.deepEqual(recommendedSlice.missingDrafts, []);
   assert.equal(recommendedSlice.candidateSignalSummary, 'memory 1 (text) | voice 1 (text) | soul 0 | skills 0');
-  assert.match(recommendedSlice.draftSourcesSummary ?? '', /memory 1 source \(text:1\), 1 entry, latest @ profiles\/harry-han\/imports\/sample\.txt/);
+  assert.match(recommendedSlice.draftSourcesSummary ?? '', /memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \(1 source \(text:1\), 1 entry, latest @ profiles\/harry-han\/imports\/sample\.txt\)/);
   assert.equal(recommendedSlice.draftGapSummary, null);
   assert.equal(recommendedSlice.editPath, 'profiles/harry-han/imports/materials.template.json');
   assert.deepEqual(recommendedSlice.editPaths, [
@@ -1753,9 +1770,9 @@ test('loadProfilesIndex summarizes material types and latest material timestamp 
     generated: true,
     path: 'profiles/harry-han/skills/README.md',
     generatedAt: profile.foundationDraftSummaries.voice.generatedAt,
-    latestMaterialAt: profile.latestMaterialAt,
-    latestMaterialId: profile.latestMaterialId,
-    latestMaterialSourcePath: 'chat.png',
+    latestMaterialAt: null,
+    latestMaterialId: null,
+    latestMaterialSourcePath: null,
     sourceCount: 0,
     materialTypes: {},
     highlights: [],
@@ -1826,7 +1843,7 @@ test('loadProfilesIndex keeps count-only source material headers as stale markdo
   assert.equal(profile.foundationDraftSummaries.voice.generated, true);
   assert.equal(profile.foundationDraftSummaries.voice.sourceCount, 1);
   assert.deepEqual(profile.foundationDraftSummaries.voice.materialTypes, {});
-  assert.match(summarizeFoundationDraftSources(profile) ?? '', /\bvoice 1 source\b/);
+  assert.match(summarizeFoundationDraftSources(profile) ?? '', /voice @ profiles\/harry-han\/voice\/README\.md \(1 source\)/);
 });
 
 test('loadProfilesIndex trims placeholder latest material source headers instead of surfacing them as file provenance', () => {
@@ -4337,6 +4354,9 @@ test('PromptAssembler keeps count-only starter template summaries visible across
       recommendedCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
       recommendedManifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
       recommendedRefreshIntakeCommand: "node src/index.js update intake --person 'harry-han' --display-name 'Harry Han'",
+      recommendedCandidateSignalSummary: 'memory 2 (message, text) | voice 1 (message) | soul 1 (text) | skills 0',
+      recommendedDraftSourcesSummary: 'memory @ profiles/harry-han/memory/long-term/foundation.json (2 sources (message:1, text:1), latest @ profiles/harry-han/imports/sample.txt)',
+      recommendedDraftGapSummary: 'skills missing | voice missing',
       recommendedIntakeManifestEntryTemplateTypes: [],
       recommendedIntakeManifestEntryTemplateCount: 2,
       recommendedIntakeManifestEntryTemplateDetails: [
@@ -4415,7 +4435,7 @@ test('PromptAssembler keeps count-only starter template summaries visible across
     },
   }).buildSystemPrompt();
 
-  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'; starter templates 2 total; starter details message Keep the note tight\. \| text sample\.txt/);
+  assert.match(prompt, /next intake: populate the imported intake starter manifest for Harry Han \(harry-han\); command node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; latest material 2026-04-24T12:00:00\.000Z \(2026-04-24T12-00-00-000Z-message\) @ profiles\/harry-han\/imports\/sample\.txt; evidence memory 2 \(message, text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 0; draft sources memory @ profiles\/harry-han\/memory\/long-term\/foundation\.json \(2 sources \(message:1, text:1\), latest @ profiles\/harry-han\/imports\/sample\.txt\)/);
   assert.doesNotMatch(prompt, /starter details .*message Keep the note tight\. \| message Keep the note tight\./);
   assert.doesNotMatch(prompt, /starter details .*text sample\.txt \| text sample\.txt/);
   assert.doesNotMatch(prompt, /next intake: .*; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'/);
@@ -4965,6 +4985,53 @@ test('PromptAssembler slash-normalizes recommended starter profile edit paths be
   assert.doesNotMatch(prompt, /\\materials\.template\.json/);
 });
 
+test('PromptAssembler slash-normalizes top-level recommended intake edit paths before rendering the ingestion entrance', () => {
+  const prompt = new PromptAssembler({
+    profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
+    voice: { style: 'direct' },
+    memory: { shortTermEntries: 0, longTermEntries: 0 },
+    skills: [],
+    channels: { channelCount: 0, channels: [] },
+    models: { providerCount: 0, providers: [] },
+    ingestion: {
+      profileCount: 1,
+      importedProfileCount: 1,
+      metadataOnlyProfileCount: 0,
+      readyProfileCount: 1,
+      refreshProfileCount: 0,
+      incompleteProfileCount: 0,
+      intakeReadyProfileCount: 0,
+      intakeStarterProfileCount: 0,
+      intakePartialProfileCount: 0,
+      intakeMissingProfileCount: 0,
+      importedIntakeReadyProfileCount: 1,
+      importedStarterIntakeProfileCount: 0,
+      importedIntakeBackfillProfileCount: 0,
+      importedInvalidIntakeManifestProfileCount: 0,
+      invalidMetadataOnlyIntakeManifestProfileCount: 0,
+      supportedImportTypes: ['message'],
+      recommendedAction: 'replay imported intake for Harry Han (harry-han)',
+      recommendedCommand: "node src/index.js import intake --person 'harry-han' --refresh-foundation",
+      recommendedLatestMaterialSourcePath: ' .\\profiles\\harry-han//imports\\images\\chat.png ',
+      recommendedEditPath: ' .\\profiles\\harry-han//profile.json ',
+      recommendedEditPaths: [
+        ' .\\profiles\\harry-han//imports\\materials.template.json ',
+        'profiles/harry-han/profile.json',
+        ' .\\profiles\\harry-han//profile.json ',
+      ],
+      recommendedPaths: [
+        ' .\\profiles\\harry-han//imports\\images\\chat.png ',
+        ' .\\profiles\\harry-han//imports\\sample.txt ',
+        'profiles/harry-han/profile.json ',
+      ],
+    },
+  }).buildPreview(4000);
+
+  assert.match(prompt, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material unknown timestamp @ profiles\/harry-han\/imports\/images\/chat\.png; edit profiles\/harry-han\/profile\.json; edit paths profiles\/harry-han\/profile\.json, profiles\/harry-han\/imports\/materials\.template\.json; paths profiles\/harry-han\/imports\/images\/chat\.png, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+  assert.doesNotMatch(prompt, /\\profiles\\harry-han/);
+  assert.doesNotMatch(prompt, /edit paths .*profiles\/harry-han\/profile\.json, profiles\/harry-han\/profile\.json/);
+});
+
 test('PromptAssembler falls back to readiness highlights for stale voice, soul, and skills snapshots', () => {
   const prompt = new PromptAssembler({
     profile: { name: 'ManSkill', soul: 'persona core', identity: {} },
@@ -5252,7 +5319,7 @@ test('buildProfileSnapshotSummaries exposes draft files, source provenance, gap 
   assert.match(snapshot.snapshot, /draft sections: skills 2\/2 ready \(what-lives-here, layout\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths \| voice 4\/4 ready \(tone, signature-moves, avoid, language-hints\); aliases voice-should-capture->signature-moves/);
   assert.match(
     snapshot.snapshot,
-    /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 2 sources \(message:1, talk:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/,
+    /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(2 sources \(message:1, talk:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/,
   );
   assert.match(snapshot.snapshot, /refresh paths: profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(snapshot.snapshot, /draft gaps: memory missing, 1 candidate \(Push the work loop forward\.\) \| soul 3\/4 ready \(core-truths, boundaries, vibe\), missing continuity; aliases core-values->core-truths/);
@@ -6178,7 +6245,7 @@ test('buildSummary exposes an ingestion entrance rollup with actionable commands
   assert.match(summary.promptPreview, /metadata-only intake scaffolds: 0 import-ready, 0 starter templates, 0 partial, 1 missing/);
   assert.match(summary.promptPreview, /imported intake: 0 ready, 2 starter templates, 0 backfills, 0 invalid manifests/);
   assert.match(summary.promptPreview, /imports: message, screenshot, talk, text/);
-  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person 'jane-doe'; latest material \d{4}-\d{2}-\d{2}T[^ ]+ \([^)]*\) @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
+  assert.match(summary.promptPreview, /next intake: refresh stale or incomplete target profiles; command node src\/index\.js update foundation --person 'jane-doe'; latest material \d{4}-\d{2}-\d{2}T[^ ]+ \([^)]*\)(?: @ [^;]+)?; evidence memory 1 \(talk\) \| voice 1 \(talk\) \| soul 1 \(talk\) \| skills 1 \(talk\); draft sources [^\n;]+; gaps memory missing, 1 candidate \(Tight loops beat big plans\.\) \| skills 1\/3 ready \(candidate-skills\), missing evidence\/gaps-to-validate \| soul 2\/4 ready \(core-truths, boundaries\), missing vibe\/continuity; aliases core-values->core-truths \| voice 1\/4 ready \(tone\), missing signature-moves\/avoid\/language-hints; paths profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md/);
   assert.match(summary.promptPreview, /bootstrap: node src\/index\.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"/);
   assert.match(summary.promptPreview, /helpers: .*scaffold-all node src\/index\.js update intake --all.*scaffold-stale node src\/index\.js update intake --stale.*scaffold-bundle node src\/index\.js update intake --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'.*import-imported node src\/index\.js import intake --imported.*import-imported\+refresh node src\/index\.js import intake --imported --refresh-foundation/);
   assert.match(summary.promptPreview, /helpers: .*update-bundle \(node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe'\) && \(node src\/index\.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet\.'\).*sync-bundle node src\/index\.js update profile --person 'jane-doe' --display-name 'Jane Doe' --refresh-foundation/);
@@ -6353,14 +6420,15 @@ test('buildSummary recommends populating imported starter intake manifests once 
     'profiles/harry-han/imports/sample.txt',
   ]);
   const expectedLatestMaterialSummary = `latest material ${harry.latestMaterialAt} (${harry.latestMaterialId}) @ ${harry.latestMaterialSourcePath}`;
-  assert.ok(
-    summary.promptPreview.includes(
-      `next intake: populate the imported intake starter manifest for Harry Han (harry-han); command node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'; ${expectedLatestMaterialSummary}; edit profiles/harry-han/imports/materials.template.json; edit paths profiles/harry-han/imports/materials.template.json, profiles/harry-han/imports/images/chat.png, profiles/harry-han/imports/sample.txt;`,
+  assert.match(
+    summary.promptPreview,
+    new RegExp(
+      `next intake: populate the imported intake starter manifest for Harry Han \\(harry-han\\); command node src/index\\.js import manifest --file 'profiles\\/harry-han\\/imports\\/materials\\.template\\.json'; ${expectedLatestMaterialSummary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}; evidence ${importedStarterSlice?.candidateSignalSummary?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') ?? '[^;]+'}; draft sources ${importedStarterSlice?.draftSourcesSummary?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') ?? '[^;]+'}; edit profiles\\/harry-han\\/imports\\/materials\\.template\\.json; edit paths profiles\\/harry-han\\/imports\\/materials\\.template\\.json, profiles\\/harry-han\\/imports\\/images\\/chat\\.png, profiles\\/harry-han\\/imports\\/sample\\.txt;`,
     ),
   );
   assert.match(
     summary.promptPreview,
-    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
+    /refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter templates message, screenshot, talk, text \(4 total\); starter root profiles\/harry-han\/imports; starter details message <paste a representative short message> \| screenshot images\/chat\.png \| talk <paste a transcript snippet> \| text sample\.txt; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; paths profiles\/harry-han\/imports, profiles\/harry-han\/imports\/images, profiles\/harry-han\/imports\/README\.md, profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt/,
   );
   assert.doesNotMatch(summary.promptPreview, /fallback node src\/index\.js import text --person harry-han --file 'profiles\/harry-han\/imports\/sample\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /helpers: .*starter-import-bundle/);
@@ -6653,6 +6721,93 @@ test('buildSummary uses the imported intake replay bundle after multiple importe
   assert.doesNotMatch(summary.promptPreview, /helpers: .*starter-import-bundle/);
 });
 
+test('buildSummary exposes imported intake replay slices and refresh-intake helpers after a profile becomes ready', () => {
+  const rootDir = makeTempRepo();
+
+  runUpdateCommand(rootDir, 'profile', {
+    person: 'harry-han',
+    'display-name': 'Harry Han',
+    summary: 'Direct operator with a bias for momentum.',
+  });
+  fs.mkdirSync(path.join(rootDir, 'samples'), { recursive: true });
+  fs.writeFileSync(path.join(rootDir, 'samples', 'harry-post.txt'), 'Ship the thin slice first.\n');
+  const ingestion = new MaterialIngestion(rootDir);
+  ingestion.importTextDocument({
+    personId: 'harry-han',
+    sourceFile: path.join(rootDir, 'samples', 'harry-post.txt'),
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'harry-han' });
+
+  const intakeManifestPath = path.join(rootDir, 'profiles', 'harry-han', 'imports', 'materials.template.json');
+  fs.writeFileSync(
+    intakeManifestPath,
+    `${JSON.stringify({
+      version: 1,
+      personId: 'harry-han',
+      entries: [
+        {
+          type: 'text',
+          file: 'sample.txt',
+          notes: 'Keep the loop tight.',
+        },
+      ],
+    }, null, 2)}\n`,
+  );
+
+  const summary = buildSummary(rootDir);
+  const harry = summary.ingestion.allProfileCommands.find((profile) => profile.personId === 'harry-han');
+
+  assert.ok(harry);
+  assert.equal(summary.ingestion.importedIntakeReadyProfileCount, 1);
+  assert.equal(summary.ingestion.importedStarterIntakeProfileCount, 0);
+  assert.equal(summary.ingestion.recommendedAction, 'replay imported intake for Harry Han (harry-han)');
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import intake --person 'harry-han' --refresh-foundation");
+  assert.match(
+    summary.ingestion.recommendedRefreshIntakeCommand ?? '',
+    /^node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?$/,
+  );
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/harry-han/profile.json');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, ['profiles/harry-han/profile.json']);
+  assert.equal(summary.ingestion.recommendedManifestInspectCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'");
+  assert.equal(summary.ingestion.recommendedManifestImportCommand, "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedInspectCommand, "node src/index.js import intake --person 'harry-han'");
+  assert.equal(summary.ingestion.recommendedFollowUpCommand, null);
+  assert.deepEqual(summary.ingestion.recommendedProfileSlices, [
+    {
+      personId: 'harry-han',
+      label: 'Harry Han (harry-han)',
+      latestMaterialAt: harry?.latestMaterialAt ?? null,
+      latestMaterialId: harry?.latestMaterialId ?? null,
+      latestMaterialSourcePath: harry?.latestMaterialSourcePath ?? null,
+      refreshReasons: harry?.refreshReasons ?? [],
+      missingDrafts: harry?.missingDrafts ?? [],
+      candidateSignalSummary: harry?.candidateSignalSummary ?? null,
+      draftSourcesSummary: harry?.draftSourcesSummary ?? null,
+      draftGapSummary: harry?.draftGapSummary ?? null,
+      fallbackCommand: harry?.starterImportCommand ?? null,
+      refreshIntakeCommand: harry?.updateIntakeCommand ?? null,
+      updateProfileCommand: harry?.updateProfileCommand ?? null,
+      updateProfileAndRefreshCommand: harry?.updateProfileAndRefreshCommand ?? null,
+      editPath: 'profiles/harry-han/profile.json',
+      editPaths: ['profiles/harry-han/profile.json'],
+      manifestInspectCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json'",
+      manifestImportCommand: "node src/index.js import manifest --file 'profiles/harry-han/imports/materials.template.json' --refresh-foundation",
+      intakeManifestEntryTemplateTypes: [],
+      intakeManifestEntryTemplateDetails: [],
+      intakeManifestEntryTemplateCount: 0,
+      intakeManifestEntryTemplateRoot: null,
+      inspectCommand: "node src/index.js import intake --person 'harry-han'",
+      followUpCommand: null,
+      paths: [
+        'profiles/harry-han/imports/materials.template.json',
+        'profiles/harry-han/imports/sample.txt',
+        'profiles/harry-han/profile.json',
+      ],
+    },
+  ]);
+  assert.match(summary.promptPreview, /next intake: replay imported intake for Harry Han \(harry-han\); command node src\/index\.js import intake --person 'harry-han' --refresh-foundation; latest material \d{4}-\d{2}-\d{2}T[^;]+; evidence memory 1 \(text\) \| voice 1 \(text\) \| soul 1 \(text\) \| skills 0; draft sources [^\n;]+; edit profiles\/harry-han\/profile\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect first node src\/index\.js import intake --person 'harry-han'; paths profiles\/harry-han\/imports\/materials\.template\.json, profiles\/harry-han\/imports\/sample\.txt, profiles\/harry-han\/profile\.json/);
+});
+
 test('buildSummary surfaces imported profiles that still need intake backfill after legacy imports', () => {
   const rootDir = makeTempRepo();
 
@@ -6809,7 +6964,7 @@ test('buildSummary keeps imported profiles with invalid intake manifests in the 
   assert.equal(harry?.intakeStatusSummary, 'invalid manifest — repair materials.template.json (invalid JSON)');
   assert.match(summary.promptPreview, /- invalid intake manifests: 1 imported profile queued/);
   assert.match(summary.promptPreview, /repair-imported-invalid-bundle node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han' --summary 'Direct operator with a bias for momentum\.'/);
-  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter root profiles\/harry-han\/imports; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation @ profiles\/harry-han\/imports\/materials\.template\.json/);
+  assert.match(summary.promptPreview, /next intake: repair the invalid intake manifest for imported profile Harry Han \(harry-han\) — invalid JSON; command node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; latest material \d{4}-\d{2}-\d{2}T[^;]+; evidence memory 1 \(message\) \| voice 1 \(message\) \| soul 0 \| skills 0; draft sources [^\n;]+; edit profiles\/harry-han\/imports\/materials\.template\.json; refresh intake node src\/index\.js update intake --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; update profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')?; sync profile node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation; starter root profiles\/harry-han\/imports; manifest inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json'; manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation; inspect after editing node src\/index\.js import intake --person 'harry-han'; then run node src\/index\.js import intake --person 'harry-han' --refresh-foundation; paths profiles\/harry-han\/imports\/materials\.template\.json/);
   assert.match(summary.promptPreview, /Harry Han \(harry-han\): 1 material \(message:1\), latest \d{4}-\d{2}-\d{2}T[^|]+, intake invalid manifest — repair materials\.template\.json \(invalid JSON\) \| manifest-inspect node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' \| manifest node src\/index\.js import manifest --file 'profiles\/harry-han\/imports\/materials\.template\.json' --refresh-foundation \| inspect-after-edit node src\/index\.js import intake --person 'harry-han' \| replay-after-edit node src\/index\.js import intake --person 'harry-han' --refresh-foundation \| refresh node src\/index\.js update foundation --person 'harry-han' \| update node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? \| sync node src\/index\.js update profile --person 'harry-han' --display-name 'Harry Han'(?: --summary '.*')? --refresh-foundation/);
 });
 
@@ -7092,6 +7247,16 @@ test('buildSummary uses matching sample screenshot imports in ingestion profile 
   const metadataOnlyCommand = summary.ingestion.metadataProfileCommands.find((profile) => profile.personId === 'metadata-only');
 
   assert.equal(summary.ingestion.sampleTextPath, null);
+  assert.equal(summary.ingestion.recommendedCommand, "node src/index.js import screenshot --person metadata-only --file 'samples/metadata-only-chat.png' --refresh-foundation");
+  assert.equal(summary.ingestion.recommendedUpdateProfileCommand, "node src/index.js update profile --person 'metadata-only' --display-name 'Metadata Only' --summary 'Profile scaffold without imported materials yet.'");
+  assert.equal(summary.ingestion.recommendedUpdateProfileAndRefreshCommand, null);
+  assert.equal(summary.ingestion.recommendedEditPath, 'profiles/metadata-only/profile.json');
+  assert.deepEqual(summary.ingestion.recommendedEditPaths, ['profiles/metadata-only/profile.json']);
+  assert.deepEqual(summary.ingestion.recommendedPaths, [
+    'samples/metadata-only-materials.json',
+    'samples/metadata-only-chat.png',
+    'profiles/metadata-only/profile.json',
+  ]);
   assert.deepEqual(summary.ingestion.sampleFileCommands, [
     {
       type: 'screenshot',
@@ -7503,6 +7668,7 @@ test('buildSummary keeps the ingestion entrance visible for empty repos', () => 
     recommendedLatestMaterialSourcePath: null,
     recommendedCandidateSignalSummary: null,
     recommendedDraftSourcesSummary: null,
+    recommendedDraftGapSummary: null,
     recommendedCommand: 'node src/index.js update intake --person <person-id> --display-name "<Display Name>" --summary "<Short summary>"',
     recommendedFallbackCommand: null,
     recommendedRefreshIntakeCommand: null,
@@ -7645,7 +7811,7 @@ test('buildSummary falls back to another valid sample manifest when the canonica
   assert.equal(summary.ingestion.sampleTextCommand, "node src/index.js import text --person starter-person --file 'samples/starter-post.txt' --refresh-foundation");
   assert.match(summary.promptPreview, /starter: node src\/index\.js import sample \[samples\/starter-materials\.json\] for Starter Person \(starter-person\)/);
   assert.match(summary.promptPreview, /sample manifest: 1 entry for Starter Person \(starter-person\) \(text:1\) -> node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation/);
-  assert.match(summary.promptPreview, /next intake: import the checked-in sample target profile for Starter Person \(starter-person\); command node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'samples\/starter-materials\.json' @ samples\/starter-materials\.json, samples\/starter-post\.txt/);
+  assert.match(summary.promptPreview, /next intake: import the checked-in sample target profile for Starter Person \(starter-person\); command node src\/index\.js import manifest --file 'samples\/starter-materials\.json' --refresh-foundation; manifest inspect node src\/index\.js import manifest --file 'samples\/starter-materials\.json'; paths samples\/starter-materials\.json, samples\/starter-post\.txt/);
   assert.match(summary.promptPreview, /sample text: starter-person -> node src\/index\.js import text --person starter-person --file 'samples\/starter-post\.txt' --refresh-foundation/);
   assert.doesNotMatch(summary.promptPreview, /sample manifest invalid: .*harry-materials\.json/);
 });
@@ -7950,7 +8116,7 @@ test('buildSummary treats sample manifests with missing referenced files as inva
   assert.equal(summary.ingestion.sampleTextCommand, null);
   assert.match(summary.ingestion.sampleManifestError, /Manifest entry 1 references a missing file: missing-post\.txt/);
   assert.match(summary.promptPreview, /sample manifest invalid: Manifest entry 1 references a missing file: missing-post\.txt @ samples\/harry-materials\.json/);
-  assert.match(summary.promptPreview, /next intake: fix the checked-in sample manifest for Harry Han \(harry-han\) — missing file: missing-post\.txt; manifest inspect node src\/index\.js import manifest --file 'samples\/harry-materials\.json' @ samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/missing-post\.txt/);
+  assert.match(summary.promptPreview, /next intake: fix the checked-in sample manifest for Harry Han \(harry-han\) — missing file: missing-post\.txt; manifest inspect node src\/index\.js import manifest --file 'samples\/harry-materials\.json'; paths samples\/harry-materials\.json, samples\/harry-post\.txt, samples\/missing-post\.txt/);
   assert.doesNotMatch(summary.promptPreview, /starter: node src\/index\.js import sample/);
 });
 

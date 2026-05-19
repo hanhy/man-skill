@@ -19,13 +19,21 @@ function normalizeProfileId(profileId: string | null | undefined): string | null
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function isAbsoluteOrUncPath(value: string): boolean {
+  return /^([a-zA-Z]:[\\/]|[\\/]{1,2})/.test(value);
+}
+
 export function normalizeDraftPath(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null;
   }
 
-  const segments = value
-    .trim()
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || isAbsoluteOrUncPath(trimmed)) {
+    return null;
+  }
+
+  const segments = trimmed
     .replaceAll('\\', '/')
     .replace(/^(?:\.\/)+/, '')
     .replace(/\/+/g, '/')
@@ -47,6 +55,10 @@ export function normalizeDraftPath(value: string | null | undefined): string | n
     accumulator.push(segment);
     return accumulator;
   }, []);
+
+  if (normalizedSegments[0] === '..') {
+    return null;
+  }
 
   const normalized = normalizedSegments.join('/');
   return normalized.length > 0 ? normalized : null;
@@ -71,6 +83,32 @@ function normalizeMissingDraftSet(missingDrafts: string[] | null | undefined): S
   );
 }
 
+function hasMeaningfulDraftFileValue(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isProfileFoundationDraftPath(profileId: string, draftPath: string | null): boolean {
+  if (!draftPath) {
+    return false;
+  }
+
+  const profileRoot = `profiles/${profileId}/`;
+  if (!draftPath.startsWith(profileRoot)) {
+    return false;
+  }
+
+  const relativePath = draftPath.slice(profileRoot.length);
+  return /^(memory|skills|soul|voice)\//.test(relativePath);
+}
+
+function isCanonicalFoundationDraftPath(canonicalPaths: Record<FoundationDraftKey, string>, draftPath: string | null): boolean {
+  if (!draftPath) {
+    return false;
+  }
+
+  return Object.values(canonicalPaths).includes(draftPath);
+}
+
 export function buildFoundationDraftPaths({
   profileId,
   draftFiles,
@@ -83,18 +121,33 @@ export function buildFoundationDraftPaths({
 
   const canonicalPaths = buildFoundationDraftPathMap(normalizedProfileId);
   const missingDraftSet = normalizeMissingDraftSet(missingDrafts);
+  const explicitPathKeys = new Set<FoundationDraftKey>();
   const orderedPaths = Array.from(new Set(
     FOUNDATION_DRAFT_KEYS
       .map((draftKey) => {
-        const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
-        if (explicitPath) {
+        const rawExplicitPath = draftFiles?.[draftKey];
+        const explicitPath = normalizeDraftPath(rawExplicitPath);
+        const canonicalPath = canonicalPaths[draftKey];
+        if (isProfileFoundationDraftPath(normalizedProfileId, explicitPath)) {
+          explicitPathKeys.add(draftKey);
           return explicitPath;
         }
 
-        return missingDraftSet.has(draftKey) ? canonicalPaths[draftKey] : null;
+        return missingDraftSet.has(draftKey) || hasMeaningfulDraftFileValue(rawExplicitPath)
+          ? canonicalPath
+          : null;
       })
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
   ));
+
+  const hasOnlyCanonicalExplicitPaths = Array.from(explicitPathKeys).every((draftKey) => {
+    const explicitPath = normalizeDraftPath(draftFiles?.[draftKey]);
+    return isCanonicalFoundationDraftPath(canonicalPaths, explicitPath);
+  });
+
+  if (missingDraftSet.size === 0 && hasOnlyCanonicalExplicitPaths && explicitPathKeys.size > 0 && explicitPathKeys.size < FOUNDATION_DRAFT_KEYS.length) {
+    return FOUNDATION_DRAFT_KEYS.map((draftKey) => canonicalPaths[draftKey]);
+  }
 
   return orderedPaths.length > 0
     ? orderedPaths

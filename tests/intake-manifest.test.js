@@ -240,6 +240,80 @@ test('inspectProfileIntakeManifest accepts UTF-8 BOM-prefixed profile-local mani
   assert.deepEqual(manifest.repairPaths, []);
 });
 
+test('inspectProfileIntakeManifest keeps the manifest path visible when the starter JSON is invalid', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'materials.template.json'), '{ invalid json\n');
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.match(manifest.error ?? '', /Unexpected token|Expected property name|JSON/i);
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
+test('inspectProfileIntakeManifest keeps the manifest path visible when the top-level JSON shape is invalid', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(path.join(importsDir, 'materials.template.json'), JSON.stringify('not-a-manifest', null, 2));
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.equal(manifest.error, 'Manifest must be an array or object');
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
+test('inspectProfileIntakeManifest keeps the manifest path visible when the entries field is missing', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({ personId: 'metadata-only' }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.equal(manifest.error, 'Manifest must contain a non-empty entries array');
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
+test('inspectProfileIntakeManifest keeps the manifest path visible when the entries array is empty without starter templates', () => {
+  const rootDir = makeTempRepo();
+  const importsDir = path.join(rootDir, 'profiles', 'metadata-only', 'imports');
+  fs.mkdirSync(importsDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(importsDir, 'materials.template.json'),
+    JSON.stringify({ personId: 'metadata-only', entries: [] }, null, 2),
+  );
+
+  const manifest = inspectProfileIntakeManifest({
+    rootDir,
+    starterManifestPath: 'profiles/metadata-only/imports/materials.template.json',
+    expectedPersonId: 'metadata-only',
+  });
+
+  assert.equal(manifest.status, 'invalid');
+  assert.equal(manifest.error, 'Manifest must contain a non-empty entries array');
+  assert.deepEqual(manifest.repairPaths, ['profiles/metadata-only/imports/materials.template.json']);
+});
+
 test('inspectProfileIntakeManifest rejects starter templates whose file paths escape the profile imports directory', () => {
   const rootDir = makeTempRepo();
   const profileDir = path.join(rootDir, 'profiles', 'metadata-only');

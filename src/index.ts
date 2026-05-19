@@ -257,6 +257,18 @@ function extractWorkLoopObjectivesFromUserDocument(document: string | null | und
   return objectives;
 }
 
+function normalizeWorkLoopObjectiveForComparison(objective: string | null | undefined): string {
+  if (typeof objective !== 'string') {
+    return '';
+  }
+
+  return objective
+    .trim()
+    .replace(/[.!?]+$/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 function loadWorkLoopObjectives(rootDir: string): string[] {
   const userDocument = readFileIfPresent(path.join(rootDir, 'USER.md'));
   const configuredObjectives = extractWorkLoopObjectivesFromUserDocument(userDocument);
@@ -266,7 +278,8 @@ function loadWorkLoopObjectives(rootDir: string): string[] {
   }
 
   const progressObjective = DEFAULT_WORK_LOOP_OBJECTIVES[DEFAULT_WORK_LOOP_OBJECTIVES.length - 1];
-  return configuredObjectives.includes(progressObjective)
+  const normalizedProgressObjective = normalizeWorkLoopObjectiveForComparison(progressObjective);
+  return configuredObjectives.some((objective) => normalizeWorkLoopObjectiveForComparison(objective) === normalizedProgressObjective)
     ? configuredObjectives
     : [...configuredObjectives, progressObjective];
 }
@@ -833,6 +846,54 @@ function buildFoundationRefreshLabel(
     : refreshLabel}${candidateSignalSummary ? `; evidence ${candidateSignalSummary}` : ''}`;
 }
 
+function collectReadyCoreFoundationHeadingAliases(coreFoundation: any): string[] {
+  const candidateAliases = [
+    ...(Array.isArray(coreFoundation?.memory?.headingAliases) ? coreFoundation.memory.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.skills?.headingAliases) ? coreFoundation.skills.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.soul?.headingAliases) ? coreFoundation.soul.headingAliases : []),
+    ...(Array.isArray(coreFoundation?.voice?.headingAliases) ? coreFoundation.voice.headingAliases : []),
+  ];
+
+  return Array.from(new Set(
+    candidateAliases
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
+function collectReadyCoreFoundationShadowPaths(coreFoundation: any): string[] {
+  const candidatePaths = [
+    ...(Array.isArray(coreFoundation?.memory?.shadowPaths) ? coreFoundation.memory.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.skills?.shadowPaths) ? coreFoundation.skills.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.soul?.shadowPaths) ? coreFoundation.soul.shadowPaths : []),
+    ...(Array.isArray(coreFoundation?.voice?.shadowPaths) ? coreFoundation.voice.shadowPaths : []),
+  ];
+
+  return Array.from(new Set(
+    candidatePaths
+      .map((value) => normalizeDraftPath(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
+function collectReadyCoreFoundationPaths(coreFoundation: any): string[] {
+  const candidatePaths = [
+    coreFoundation?.memory?.rootPath,
+    ...((Array.isArray(coreFoundation?.memory?.shadowPaths) ? coreFoundation.memory.shadowPaths : [])),
+    coreFoundation?.skills?.rootPath,
+    ...((Array.isArray(coreFoundation?.skills?.shadowPaths) ? coreFoundation.skills.shadowPaths : [])),
+    coreFoundation?.soul?.rootPath ?? coreFoundation?.soul?.path,
+    ...((Array.isArray(coreFoundation?.soul?.shadowPaths) ? coreFoundation.soul.shadowPaths : [])),
+    coreFoundation?.voice?.rootPath ?? coreFoundation?.voice?.path,
+    ...((Array.isArray(coreFoundation?.voice?.shadowPaths) ? coreFoundation.voice.shadowPaths : [])),
+  ];
+
+  return Array.from(new Set(
+    candidatePaths
+      .map((value) => normalizeDraftPath(value))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
 function buildFoundationPriority(foundation: any, coreFoundation: any, profiles: ProfileSummaryLike[] = []): WorkPriority {
   const maintenance = foundation?.maintenance ?? {};
   const coreMaintenance = coreFoundation?.maintenance ?? {};
@@ -1062,6 +1123,22 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     : ((coreShadowPathCount !== null && coreShadowPathSamplePaths.length > 0)
       ? Math.max(coreShadowPathCount - coreShadowPathSamplePaths.length, 0)
       : null);
+  const readyCorePaths = status === 'ready'
+    ? collectReadyCoreFoundationPaths(coreFoundation)
+    : [];
+  const readyCoreRootHeadingAliases = status === 'ready'
+    ? collectReadyCoreFoundationHeadingAliases(coreFoundation)
+    : [];
+  const readyCoreShadowPaths = status === 'ready'
+    ? collectReadyCoreFoundationShadowPaths(coreFoundation)
+    : [];
+  const readyCoreShadowPathSamplePaths = readyCoreShadowPaths.slice(0, 3);
+  const readyCoreShadowPathCount = readyCoreShadowPaths.length > 0 ? readyCoreShadowPaths.length : null;
+  const readyCoreShadowPathOverflowCount = readyCoreShadowPathCount !== null
+    ? Math.max(readyCoreShadowPathCount - readyCoreShadowPathSamplePaths.length, 0)
+    : null;
+  const readyCoreEditPaths: string[] = Array.from(new Set(readyCorePaths));
+  const readyCoreEditPath: string | null = readyCoreEditPaths[0] ?? null;
 
   const followUpCommand = status === 'queued' && hasQueuedCoreFoundation
     ? 'node src/index.js'
@@ -1084,17 +1161,28 @@ function buildFoundationPriority(foundation: any, coreFoundation: any, profiles:
     ...(hasQueuedCoreFoundation && coreRootThinReadySectionCount !== null ? { rootThinReadySectionCount: coreRootThinReadySectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootThinTotalSectionCount !== null ? { rootThinTotalSectionCount: coreRootThinTotalSectionCount } : {}),
     ...(hasQueuedCoreFoundation && coreRootHeadingAliases.length > 0 ? { rootHeadingAliases: coreRootHeadingAliases } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreRootHeadingAliases.length > 0 ? { rootHeadingAliases: readyCoreRootHeadingAliases } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPaths.length > 0 ? { shadowPaths: coreShadowPaths } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPaths.length > 0 ? { shadowPaths: readyCoreShadowPaths } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathCount !== null ? { shadowPathCount: coreShadowPathCount } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathCount !== null ? { shadowPathCount: readyCoreShadowPathCount } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: coreShadowPathSamplePaths } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathSamplePaths.length > 0 ? { shadowPathSamplePaths: readyCoreShadowPathSamplePaths } : {}),
     ...(hasQueuedCoreFoundation && coreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: coreShadowPathOverflowCount } : {}),
+    ...(status === 'ready' && !hasQueuedCoreFoundation && readyCoreShadowPathOverflowCount !== null ? { shadowPathOverflowCount: readyCoreShadowPathOverflowCount } : {}),
     candidateSignalSummary: profileCandidateSignalSummary,
     draftSourcesSummary: profileDraftSourcesSummary,
     draftGapSummary: profileDraftGapSummary,
-    editPath: hasQueuedCoreFoundation ? coreEditPath : profileEditPath,
-    editPaths: hasQueuedCoreFoundation ? coreEditPaths : profileEditPaths,
+    editPath: hasQueuedCoreFoundation
+      ? coreEditPath
+      : (status === 'ready' ? readyCoreEditPath : profileEditPath),
+    editPaths: hasQueuedCoreFoundation
+      ? coreEditPaths
+      : (status === 'ready' ? readyCoreEditPaths : profileEditPaths),
     followUpCommand,
-    paths: hasQueuedCoreFoundation ? corePaths : profilePaths,
+    paths: hasQueuedCoreFoundation
+      ? corePaths
+      : (status === 'ready' ? readyCorePaths : profilePaths),
   };
 }
 
@@ -2405,6 +2493,16 @@ function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
     subcommand = undefined;
   }
 
+  if (typeof subcommand === 'string' && subcommand.trim().length > 0) {
+    throw new Error(`Unsupported summary argument: ${subcommand}`);
+  }
+
+  const supportedSummaryOptions = ['json', 'help'];
+  const unsupportedOption = Object.keys(options).find((key) => !supportedSummaryOptions.includes(key));
+  if (unsupportedOption) {
+    throw new Error(`Unsupported summary option: --${unsupportedOption}`);
+  }
+
   return {
     command: parsedArgs.command,
     subcommand,
@@ -2413,20 +2511,29 @@ function normalizeSummaryArgs(parsedArgs: ParsedArgs): ParsedArgs {
 }
 
 export function main(argv: string[] = process.argv.slice(2), rootDir: string = process.cwd()): void {
-  const { command, subcommand, options } = normalizeSummaryArgs(parseArgs(argv));
-
-  if (command === '--help' || command === 'help') {
-    console.log(formatCliUsage());
-    return;
-  }
-
-  if (options.help) {
-    const usageHint = buildCommandUsageHint(command, subcommand);
-    console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
-    return;
-  }
+  let command: string | undefined;
+  let subcommand: string | undefined;
+  let options: ParsedOptions = {};
 
   try {
+    const parsedArgs = parseArgs(argv);
+    command = parsedArgs.command;
+    subcommand = parsedArgs.subcommand;
+    options = { ...parsedArgs.options };
+
+    ({ command, subcommand, options } = normalizeSummaryArgs(parsedArgs));
+
+    if (command === '--help' || command === 'help') {
+      console.log(formatCliUsage());
+      return;
+    }
+
+    if (options.help) {
+      const usageHint = buildCommandUsageHint(command, subcommand);
+      console.log(usageHint ? `${usageHint}\n` : formatCliUsage());
+      return;
+    }
+
     if (command === 'import') {
       const result = runImportCommand(rootDir, subcommand, options);
       console.log(JSON.stringify({ ok: true, ...result }, null, 2));

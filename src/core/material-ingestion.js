@@ -1337,7 +1337,12 @@ export class MaterialIngestion {
     if (intakeManifestState.status !== 'loaded') {
       const intakeManifestPath = profile.intake.starterManifestPath;
       const intakeManifestError = intakeManifestState.error || 'manifest validation failed';
-      throw new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
+      const repairPaths = Array.isArray(intakeManifestState.repairPaths) && intakeManifestState.repairPaths.length > 0
+        ? intakeManifestState.repairPaths
+        : [intakeManifestPath];
+      const error = new Error(`Profile intake manifest is not ready for import: ${normalizedPersonId} @ ${intakeManifestPath} — ${intakeManifestError}`);
+      Object.assign(error, { repairPaths });
+      throw error;
     }
 
     return this.importManifest({
@@ -1940,9 +1945,9 @@ export class MaterialIngestion {
     const voiceRecords = materialRecords.filter((record) => ['text', 'message', 'talk'].includes(record.type));
     const soulRecords = materialRecords.filter((record) => ['text', 'talk'].includes(record.type));
     const skillRecords = materialRecords.filter((record) => record.type === 'talk' && isNonEmptyString(record.notes));
-    const voiceLatestMaterialRecord = voiceRecords[0] ?? latestMaterialRecord;
-    const soulLatestMaterialRecord = soulRecords[0] ?? latestMaterialRecord;
-    const skillsLatestMaterialRecord = skillRecords[0] ?? latestMaterialRecord;
+    const voiceLatestMaterialRecord = voiceRecords[0] ?? null;
+    const soulLatestMaterialRecord = soulRecords[0] ?? null;
+    const skillsLatestMaterialRecord = skillRecords[0] ?? null;
     const voiceMaterialTypes = summarizeMaterialTypes(voiceRecords);
     const soulMaterialTypes = summarizeMaterialTypes(soulRecords);
     const skillsMaterialTypes = summarizeMaterialTypes(skillRecords);
@@ -2081,9 +2086,9 @@ export class MaterialIngestion {
     };
     const draftSources = {
       memory: makeDraftSource({ draftPath: memoryDraftPath, sourceRecords: materialRecords, fallbackLatestRecord: latestMaterialRecord, entryCount: memoryEntries.length }),
-      voice: makeDraftSource({ draftPath: voiceDraftPath, sourceRecords: voiceRecords, fallbackLatestRecord: latestMaterialRecord }),
-      soul: makeDraftSource({ draftPath: soulDraftPath, sourceRecords: soulRecords, fallbackLatestRecord: latestMaterialRecord }),
-      skills: makeDraftSource({ draftPath: skillsDraftPath, sourceRecords: skillRecords, fallbackLatestRecord: latestMaterialRecord }),
+      voice: makeDraftSource({ draftPath: voiceDraftPath, sourceRecords: voiceRecords, fallbackLatestRecord: voiceLatestMaterialRecord }),
+      soul: makeDraftSource({ draftPath: soulDraftPath, sourceRecords: soulRecords, fallbackLatestRecord: soulLatestMaterialRecord }),
+      skills: makeDraftSource({ draftPath: skillsDraftPath, sourceRecords: skillRecords, fallbackLatestRecord: skillsLatestMaterialRecord }),
     };
 
     return {

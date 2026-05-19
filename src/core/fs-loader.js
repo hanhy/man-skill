@@ -81,70 +81,19 @@ function listSkillDirectoriesIfExists(skillsRootDir, relativeDir = '') {
   return Array.from(new Set(skillNames)).sort();
 }
 
-function stripWrappingQuotes(value) {
-  if (!isNonEmptyString(value)) {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-    return trimmed.slice(1, -1).trim();
-  }
-
-  return trimmed;
-}
-
 function isFrontmatterBoundaryLine(line) {
   return /^(?:---|\.\.\.)\s*$/.test(line.trim());
 }
 
-function extractFrontmatterDescription(document) {
-  const normalizedDocument = normalizeDocument(document);
-  if (!isNonEmptyString(normalizedDocument) || !normalizedDocument.startsWith('---')) {
-    return null;
-  }
+function findFrontmatterOpeningIndex(lines) {
+  return lines.findIndex((line, index) => (
+    line.trim() === '---'
+    && lines.slice(0, index).every((candidate) => candidate.trim().length === 0)
+  ));
+}
 
-  const lines = normalizedDocument.split(/\r?\n/);
-  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
-  if (closingIndex < 0) {
-    return null;
-  }
-
-  const frontmatterLines = lines.slice(1, closingIndex + 1);
-  for (let index = 0; index < frontmatterLines.length; index += 1) {
-    const line = frontmatterLines[index];
-    const match = line.match(/^description\s*:\s*(.*)$/i);
-    if (!match) {
-      continue;
-    }
-
-    const rawValue = match[1].trim();
-    if (/^[>|][0-9+-]*$/.test(rawValue)) {
-      const blockLines = [];
-      for (let nestedIndex = index + 1; nestedIndex < frontmatterLines.length; nestedIndex += 1) {
-        const nestedLine = frontmatterLines[nestedIndex];
-        if (nestedLine.trim().length > 0 && !/^\s/.test(nestedLine)) {
-          break;
-        }
-
-        blockLines.push(nestedLine.trim());
-      }
-
-      const description = blockLines.join('\n').trim();
-      if (isNonEmptyString(description)) {
-        return description;
-      }
-
-      continue;
-    }
-
-    const description = stripWrappingQuotes(rawValue);
-    if (isNonEmptyString(description)) {
-      return description;
-    }
-  }
-
-  return null;
+function findFrontmatterClosingIndex(lines, openingIndex) {
+  return lines.slice(openingIndex + 1).findIndex((line) => isFrontmatterBoundaryLine(line));
 }
 
 function parseMarkdownHeading(line) {
@@ -265,12 +214,17 @@ function extractDocumentBodyLines(document) {
   }
 
   const lines = document.split(/\r?\n/);
-  if (!document.startsWith('---')) {
+  const openingIndex = findFrontmatterOpeningIndex(lines);
+  if (openingIndex < 0) {
     return lines;
   }
 
-  const closingIndex = lines.slice(1).findIndex((line) => isFrontmatterBoundaryLine(line));
-  return closingIndex >= 0 ? lines.slice(closingIndex + 2) : lines;
+  const closingIndex = findFrontmatterClosingIndex(lines, openingIndex);
+  if (closingIndex < 0) {
+    return lines;
+  }
+
+  return lines.slice(openingIndex + closingIndex + 2);
 }
 
 function extractVisibleDocumentBodyLines(document) {
@@ -289,7 +243,7 @@ function extractDocumentExcerpt(document, maxLength = 160) {
 function hasMeaningfulDocumentBody(document) {
   return extractVisibleDocumentBodyLines(document)
     .map((line) => normalizeAdmonitionLine(line.trim()))
-    .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---');
+    .some((line) => line.length > 0 && !line.startsWith('#') && line !== '---' && line !== '...');
 }
 
 const SKILL_SECTION_DEFINITIONS = [
@@ -602,9 +556,9 @@ function summarizeFoundationReadiness(materialRecords) {
   };
 }
 
-function summarizeMaterialRecordSet(materialRecords, fallbackLatestRecord = null) {
+function summarizeMaterialRecordSet(materialRecords) {
   const newestRecords = sortByNewest(materialRecords);
-  const latestRecord = newestRecords[0] ?? fallbackLatestRecord ?? null;
+  const latestRecord = newestRecords[0] ?? null;
   const materialTypes = summarizeMaterialTypes(materialRecords);
   return {
     latestMaterialAt: latestRecord?.createdAt ?? null,
@@ -637,9 +591,9 @@ function loadMaterialSummaries(materialsDir) {
     memoryEntries: buildMemoryDraftEntries(materialRecords),
     foundationReadiness: summarizeFoundationReadiness(materialRecords),
     draftExpectations: {
-      voice: summarizeMaterialRecordSet(voiceRecords, newestRecords[0] ?? null),
-      soul: summarizeMaterialRecordSet(soulRecords, newestRecords[0] ?? null),
-      skills: summarizeMaterialRecordSet(skillRecords, newestRecords[0] ?? null),
+      voice: summarizeMaterialRecordSet(voiceRecords),
+      soul: summarizeMaterialRecordSet(soulRecords),
+      skills: summarizeMaterialRecordSet(skillRecords),
     },
   };
 }
@@ -785,8 +739,11 @@ export function parseDraftMetadata(filePath) {
   const displayName = normalizeDraftHeaderValue(displayNameMatch?.[1]);
   const summary = normalizeDraftHeaderValue(summaryMatch?.[1]);
   const generatedAt = normalizeDraftHeaderValue(generatedAtMatch?.[1]);
-  const latestMaterialAt = normalizeDraftHeaderValue(latestMaterialMatch?.[1]);
-  const latestMaterialId = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialAt = normalizeDraftPlaceholderValue(latestMaterialMatch?.[1]);
+  const latestMaterialIdHeader = normalizeDraftHeaderValue(latestMaterialMatch?.[2]);
+  const latestMaterialId = latestMaterialIdHeader && latestMaterialIdHeader.toLowerCase() !== 'none'
+    ? latestMaterialIdHeader
+    : null;
   const latestMaterialSourceHeader = normalizeDraftPlaceholderValue(latestMaterialSourceMatch?.[1]);
   const latestMaterialSourcePath = latestMaterialSourceHeader
     ? normalizeDraftPath(latestMaterialSourceHeader)
@@ -816,8 +773,6 @@ export function parseDraftMetadata(filePath) {
       && isNonEmptyString(displayName)
       && isNonEmptyString(summary)
       && isNonEmptyString(generatedAt)
-      && isNonEmptyString(latestMaterialAt)
-      && isNonEmptyString(latestMaterialId)
     ),
   };
 }
@@ -1211,7 +1166,7 @@ function summarizeLegacyMemoryDraft(memoryDraft) {
     generatedAt: memoryDraft?.generatedAt ?? null,
     latestMaterialAt: memoryDraft?.latestMaterialAt ?? null,
     latestMaterialId: memoryDraft?.latestMaterialId ?? null,
-    latestMaterialSourcePath: memoryDraft?.latestMaterialSourcePath ?? null,
+    latestMaterialSourcePath: normalizeDraftPath(memoryDraft?.latestMaterialSourcePath) ?? null,
     sourceCount,
     materialTypes,
   };

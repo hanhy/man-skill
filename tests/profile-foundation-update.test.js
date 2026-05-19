@@ -263,13 +263,70 @@ test('refreshFoundationDrafts persists latest material source provenance into ge
   const sourcePathPattern = new RegExp(`Latest material source: ${expectedSourcePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
   assert.match(fs.readFileSync(voiceDraftPath, 'utf8'), sourcePathPattern);
   assert.match(fs.readFileSync(soulDraftPath, 'utf8'), sourcePathPattern);
-  assert.match(fs.readFileSync(skillsDraftPath, 'utf8'), sourcePathPattern);
+  assert.match(fs.readFileSync(skillsDraftPath, 'utf8'), /^Latest material source: Not set\.$/m);
 
   const [profile] = loader.loadProfilesIndex();
   assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, expectedSourcePath);
   assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, expectedSourcePath);
   assert.equal(profile.foundationDraftSummaries.soul.latestMaterialSourcePath, expectedSourcePath);
-  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialSourcePath, expectedSourcePath);
+  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialSourcePath, null);
+});
+
+test('refreshFoundationDrafts leaves latest-material provenance unset for zero-source markdown draft areas', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+  const loader = new FileSystemLoader(rootDir);
+
+  const screenshotPath = path.join(rootDir, 'chat.png');
+  fs.writeFileSync(screenshotPath, 'fake image bytes');
+
+  ingestion.importScreenshotSource({
+    personId: 'Screenshot Only',
+    sourceFile: screenshotPath,
+    notes: 'chat screenshot',
+  });
+
+  const result = ingestion.refreshFoundationDrafts({ personId: 'Screenshot Only' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'screenshot-only', 'memory', 'long-term', 'foundation.json');
+  const voiceDraftPath = path.join(rootDir, 'profiles', 'screenshot-only', 'voice', 'README.md');
+  const soulDraftPath = path.join(rootDir, 'profiles', 'screenshot-only', 'soul', 'README.md');
+  const skillsDraftPath = path.join(rootDir, 'profiles', 'screenshot-only', 'skills', 'README.md');
+
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  assert.equal(memoryDraft.latestMaterialSourcePath, 'chat.png');
+  assert.equal(memoryDraft.sourceCount, 1);
+  assert.deepEqual(memoryDraft.materialTypes, { screenshot: 1 });
+
+  for (const draftPath of [voiceDraftPath, soulDraftPath, skillsDraftPath]) {
+    const draft = fs.readFileSync(draftPath, 'utf8');
+    assert.match(draft, /^Latest material: Not set\. \(none\)$/m);
+    assert.match(draft, /^Latest material source: Not set\.$/m);
+    assert.match(draft, /^Source materials: 0 \(none\)$/m);
+  }
+
+  assert.equal(result.draftSources.memory.latestMaterialSourcePath, 'chat.png');
+  assert.equal(result.draftSources.voice.latestMaterialAt, null);
+  assert.equal(result.draftSources.voice.latestMaterialId, null);
+  assert.equal(result.draftSources.voice.latestMaterialSourcePath, null);
+  assert.equal(result.draftSources.soul.latestMaterialAt, null);
+  assert.equal(result.draftSources.soul.latestMaterialId, null);
+  assert.equal(result.draftSources.soul.latestMaterialSourcePath, null);
+  assert.equal(result.draftSources.skills.latestMaterialAt, null);
+  assert.equal(result.draftSources.skills.latestMaterialId, null);
+  assert.equal(result.draftSources.skills.latestMaterialSourcePath, null);
+
+  const [profile] = loader.loadProfilesIndex();
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, 'chat.png');
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialAt, null);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialId, null);
+  assert.equal(profile.foundationDraftSummaries.voice.latestMaterialSourcePath, null);
+  assert.equal(profile.foundationDraftSummaries.soul.latestMaterialAt, null);
+  assert.equal(profile.foundationDraftSummaries.soul.latestMaterialId, null);
+  assert.equal(profile.foundationDraftSummaries.soul.latestMaterialSourcePath, null);
+  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialAt, null);
+  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialId, null);
+  assert.equal(profile.foundationDraftSummaries.skills.latestMaterialSourcePath, null);
 });
 
 test('refreshFoundationDrafts rewrites a memory foundation draft when its stored personId drifts', () => {
@@ -2296,6 +2353,36 @@ test('refreshStaleFoundationDrafts ignores markdown draft latest material source
 
   const unrepairedVoiceDraft = fs.readFileSync(voiceDraftPath, 'utf8');
   assert.match(unrepairedVoiceDraft, /Latest material source: \.\\latest-source\.txt/);
+});
+
+test('loadProfilesIndex normalizes equivalent memory draft latest material source paths', () => {
+  const rootDir = makeTempRepo();
+  const ingestion = new MaterialIngestion(rootDir);
+
+  const sourceTextPath = path.join(rootDir, 'latest-source.txt');
+  fs.writeFileSync(sourceTextPath, 'Keep the operator loop inspectable.');
+
+  ingestion.importMessage({
+    personId: 'Harry Han',
+    text: 'Ship the thin slice first.',
+  });
+  ingestion.importTextDocument({
+    personId: 'Harry Han',
+    sourceFile: sourceTextPath,
+    notes: 'latest writing sample',
+  });
+  ingestion.refreshFoundationDrafts({ personId: 'Harry Han' });
+
+  const memoryDraftPath = path.join(rootDir, 'profiles', 'harry-han', 'memory', 'long-term', 'foundation.json');
+  const memoryDraft = JSON.parse(fs.readFileSync(memoryDraftPath, 'utf8'));
+  memoryDraft.latestMaterialSourcePath = '.\\latest-source.txt';
+  fs.writeFileSync(memoryDraftPath, JSON.stringify(memoryDraft, null, 2));
+
+  const loader = new FileSystemLoader(rootDir);
+  const [profile] = loader.loadProfilesIndex();
+
+  assert.equal(profile.foundationDraftStatus.needsRefresh, false);
+  assert.equal(profile.foundationDraftSummaries.memory.latestMaterialSourcePath, 'latest-source.txt');
 });
 
 test('refreshStaleFoundationDrafts refreshes profiles when markdown drafts lose the latest material source header even if the expected source path is not set', async () => {

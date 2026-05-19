@@ -279,6 +279,43 @@ function buildRecommendedStarterProfileSlice(profile: any) {
   };
 }
 
+function buildRecommendedImportedReadyProfileSlice(profile: any, rootDir: string | null) {
+  if (!profile || typeof profile !== 'object') {
+    return null;
+  }
+
+  const editPath = collectProfileMetadataEditPath(profile);
+  const editPaths = editPath ? [editPath] : [];
+
+  return {
+    personId: normalizeOptionalString(profile?.personId),
+    label: normalizeOptionalString(profile?.label),
+    latestMaterialAt: normalizeOptionalString(profile?.latestMaterialAt),
+    latestMaterialId: normalizeOptionalString(profile?.latestMaterialId),
+    latestMaterialSourcePath: normalizeDraftPath(profile?.latestMaterialSourcePath ?? null) ?? null,
+    refreshReasons: normalizeStringArray(profile?.refreshReasons),
+    missingDrafts: normalizeStringArray(profile?.missingDrafts),
+    candidateSignalSummary: normalizeOptionalString(profile?.candidateSignalSummary),
+    draftSourcesSummary: normalizeOptionalString(profile?.draftSourcesSummary),
+    draftGapSummary: normalizeOptionalString(profile?.draftGapSummary),
+    fallbackCommand: normalizeOptionalString(profile?.starterImportCommand),
+    refreshIntakeCommand: normalizeOptionalString(profile?.updateIntakeCommand),
+    updateProfileCommand: normalizeOptionalString(profile?.updateProfileCommand),
+    updateProfileAndRefreshCommand: normalizeOptionalString(profile?.updateProfileAndRefreshCommand),
+    editPath,
+    editPaths,
+    intakeManifestEntryTemplateRoot: null,
+    manifestInspectCommand: normalizeOptionalString(profile?.importManifestWithoutRefreshCommand),
+    manifestImportCommand: normalizeOptionalString(profile?.importManifestCommand),
+    intakeManifestEntryTemplateTypes: [],
+    intakeManifestEntryTemplateDetails: [],
+    intakeManifestEntryTemplateCount: 0,
+    inspectCommand: normalizeOptionalString(profile?.importIntakeWithoutRefreshCommand),
+    followUpCommand: null,
+    paths: mergeUniquePaths(collectReadyIntakeImportPaths(profile, rootDir), editPaths),
+  };
+}
+
 const FOUNDATION_DRAFT_KEYS = ['memory', 'skills', 'soul', 'voice'];
 
 function countGeneratedDrafts(profile) {
@@ -1078,6 +1115,31 @@ function collectStarterTemplateRoot(profile: any): string | null {
   return manifestDir && manifestDir !== '.' ? manifestDir : null;
 }
 
+function collectProfileMetadataEditPath(profile: any): string | null {
+  const profileId = normalizeOptionalString(profile?.personId ?? profile?.id);
+  if (!profileId) {
+    return null;
+  }
+
+  return `profiles/${profileId}/profile.json`;
+}
+
+function collectProfileMetadataEditPaths(profiles: any[]): string[] {
+  return Array.from(new Set(
+    (Array.isArray(profiles) ? profiles : [])
+      .map((profile) => collectProfileMetadataEditPath(profile))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
+  ));
+}
+
+function mergeUniquePaths(...pathGroups: Array<Array<string> | null | undefined>): string[] {
+  return Array.from(new Set(
+    pathGroups.flatMap((group) => Array.isArray(group)
+      ? group.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : []),
+  ));
+}
+
 function collectStarterTemplateEditPaths(profile: any): string[] {
   const manifestPath = normalizeDraftPath(profile?.intakeManifestPath ?? null) ?? null;
   const manifestDir = collectStarterTemplateRoot(profile);
@@ -1442,6 +1504,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
   let recommendedLatestMaterialSourcePath: string | null = null;
   let recommendedCandidateSignalSummary: string | null = null;
   let recommendedDraftSourcesSummary: string | null = null;
+  let recommendedDraftGapSummary: string | null = null;
   let recommendedCommand: string | null = null;
   let recommendedFallbackCommand: string | null = null;
   let recommendedRefreshIntakeCommand: string | null = null;
@@ -1493,6 +1556,36 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedDraftSourcesSummary = typeof profile?.draftSourcesSummary === 'string' && profile.draftSourcesSummary.length > 0
       ? profile.draftSourcesSummary
       : null;
+    recommendedDraftGapSummary = typeof profile?.draftGapSummary === 'string' && profile.draftGapSummary.length > 0
+      ? profile.draftGapSummary
+      : null;
+  };
+
+  const shouldExposeMetadataEditFollowUp = (profile: any, command: string | null) => {
+    if (!profile || typeof command !== 'string' || command.length === 0) {
+      return false;
+    }
+
+    if (profile?.importManifestCommand === command) {
+      return true;
+    }
+
+    if (typeof sampleText.command === 'string'
+      && sampleText.command.length > 0
+      && sampleText.personId === profile?.personId
+      && sampleText.command === command) {
+      return true;
+    }
+
+    if (sampleFileCommands.some((entry) => entry?.personId === profile?.personId && entry?.command === command)) {
+      return true;
+    }
+
+    if (sampleInlineCommands.some((entry) => entry?.personId === profile?.personId && entry?.command === command)) {
+      return true;
+    }
+
+    return false;
   };
 
   if (safeProfiles.length === 0) {
@@ -1670,11 +1763,11 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLabel = firstImportedReadyIntakeProfile?.label ?? firstImportedReadyIntakeProfile?.personId ?? null;
     recommendedAction = importedProfilesWithReadyIntake.length > 1
       ? (recommendedLabel
-        ? `import source materials for imported intake replays — starting with ${recommendedLabel}`
-        : 'import source materials for imported intake replays')
+        ? `replay imported intake manifests — starting with ${recommendedLabel}`
+        : 'replay imported intake manifests')
       : (recommendedLabel
-        ? `import source materials for ${recommendedLabel}`
-        : 'import source materials for imported intake replays');
+        ? `replay imported intake for ${recommendedLabel}`
+        : 'replay imported intake manifests');
     setRecommendedLatestMaterial(firstImportedReadyIntakeProfile);
     recommendedCommand = importedProfilesWithReadyIntake.length > 1
       ? (helperCommands.importIntakeImportedAndRefresh
@@ -1687,9 +1780,39 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ?? firstImportedReadyIntakeProfile?.importMaterialCommand
         ?? helperCommands.importIntakeImportedAndRefresh
         ?? null);
-    recommendedPaths = importedProfilesWithReadyIntake.length > 1
-      ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
-      : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir);
+    recommendedInspectCommand = importedProfilesWithReadyIntake.length > 1
+      ? (helperCommands.importIntakeImported
+        ?? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.importIntakeWithoutRefreshCommand ?? null))
+        ?? null)
+      : (firstImportedReadyIntakeProfile?.importIntakeWithoutRefreshCommand
+        ?? helperCommands.importIntakeImported
+        ?? null);
+    recommendedManifestInspectCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.importManifestWithoutRefreshCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.importManifestWithoutRefreshCommand ?? null);
+    recommendedManifestImportCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.importManifestCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.importManifestCommand ?? null);
+    recommendedRefreshIntakeCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateIntakeCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.updateIntakeCommand ?? null);
+    recommendedUpdateProfileCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.updateProfileCommand ?? null);
+    recommendedUpdateProfileAndRefreshCommand = importedProfilesWithReadyIntake.length > 1
+      ? buildCommandBundle(importedProfilesWithReadyIntake.map((profile) => profile?.updateProfileAndRefreshCommand ?? null))
+      : (firstImportedReadyIntakeProfile?.updateProfileAndRefreshCommand ?? null);
+    recommendedProfileSlices = importedProfilesWithReadyIntake
+      .map((profile) => buildRecommendedImportedReadyProfileSlice(profile, rootDir))
+      .filter((profile): profile is NonNullable<ReturnType<typeof buildRecommendedImportedReadyProfileSlice>> => Boolean(profile));
+    recommendedEditPaths = collectProfileMetadataEditPaths(importedProfilesWithReadyIntake);
+    recommendedEditPath = recommendedEditPaths[0] ?? null;
+    recommendedPaths = mergeUniquePaths(
+      importedProfilesWithReadyIntake.length > 1
+        ? importedProfilesWithReadyIntake.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
+        : collectReadyIntakeImportPaths(firstImportedReadyIntakeProfile, rootDir),
+      recommendedEditPaths,
+    );
   } else if (metadataOnlyProfileCount > 0) {
     if (metadataOnlyProfileNeedingScaffold) {
       recommendedProfileId = metadataOnlyProfileNeedingScaffold.personId ?? null;
@@ -1774,9 +1897,24 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
       recommendedCommand = readyIntakeProfiles.length > 1
         ? (helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? firstReadyIntakeProfile?.importIntakeCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? null)
         : (firstReadyIntakeProfile?.importMaterialCommand ?? firstReadyIntakeProfile?.importManifestCommand ?? firstReadyIntakeProfile?.importIntakeCommand ?? helperCommands.importIntakeBundle ?? helperCommands.importIntakeStale ?? helperCommands.importIntakeAll ?? null);
-      recommendedPaths = readyIntakeProfiles.length > 1
-        ? readyIntakeProfiles.flatMap((profile) => collectReadyIntakeImportPaths(profile, rootDir))
-        : collectReadyIntakeImportPaths(firstReadyIntakeProfile, rootDir);
+      const exposeReadyMetadataEditFollowUp = readyIntakeProfiles.length === 1
+        && shouldExposeMetadataEditFollowUp(firstReadyIntakeProfile, recommendedCommand);
+      recommendedUpdateProfileCommand = exposeReadyMetadataEditFollowUp
+        ? (firstReadyIntakeProfile?.updateProfileCommand ?? null)
+        : null;
+      recommendedUpdateProfileAndRefreshCommand = exposeReadyMetadataEditFollowUp
+        ? (firstReadyIntakeProfile?.updateProfileAndRefreshCommand ?? null)
+        : null;
+      recommendedEditPaths = exposeReadyMetadataEditFollowUp
+        ? collectProfileMetadataEditPaths([firstReadyIntakeProfile])
+        : [];
+      recommendedEditPath = recommendedEditPaths[0] ?? null;
+      recommendedPaths = exposeReadyMetadataEditFollowUp
+        ? mergeUniquePaths(
+          collectReadyIntakeImportPaths(firstReadyIntakeProfile, rootDir),
+          recommendedEditPaths,
+        )
+        : [];
     } else if (runnableImportCommand) {
       recommendedProfileId = metadataOnlyProfile?.personId ?? null;
       recommendedLabel = metadataOnlyProfile?.label ?? metadataOnlyProfile?.personId ?? null;
@@ -1784,9 +1922,22 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
         ? `import source materials for ${recommendedLabel}`
         : 'import source materials for metadata-only profiles';
       recommendedCommand = runnableImportCommand;
-      recommendedPaths = metadataOnlyProfile?.importManifestCommand === runnableImportCommand
-        ? collectReadyIntakeImportPaths(metadataOnlyProfile, rootDir)
-        : (() => {
+      const exposeRunnableMetadataEditFollowUp = shouldExposeMetadataEditFollowUp(metadataOnlyProfile, runnableImportCommand);
+      recommendedUpdateProfileCommand = exposeRunnableMetadataEditFollowUp
+        ? (metadataOnlyProfile?.updateProfileCommand ?? null)
+        : null;
+      recommendedUpdateProfileAndRefreshCommand = exposeRunnableMetadataEditFollowUp
+        ? (metadataOnlyProfile?.updateProfileAndRefreshCommand ?? null)
+        : null;
+      recommendedEditPaths = exposeRunnableMetadataEditFollowUp
+        ? collectProfileMetadataEditPaths(metadataOnlyProfile ? [metadataOnlyProfile] : [])
+        : [];
+      recommendedEditPath = recommendedEditPaths[0] ?? null;
+      recommendedPaths = exposeRunnableMetadataEditFollowUp
+        ? mergeUniquePaths(
+        metadataOnlyProfile?.importManifestCommand === runnableImportCommand
+          ? collectReadyIntakeImportPaths(metadataOnlyProfile, rootDir)
+          : (() => {
           const matchingSampleFile = sampleFileCommands.find((entry) =>
             entry?.personId === metadataOnlyProfile?.personId
             && entry?.command === runnableImportCommand
@@ -1823,7 +1974,10 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
           }
 
           return [];
-        })();
+        })(),
+        recommendedEditPaths,
+      )
+        : [];
     } else if (sampleManifestPresent && sampleManifest.status === 'loaded') {
       recommendedAction = 'import source materials for metadata-only profiles';
       recommendedCommand = helperCommands.sampleManifest ?? helperCommands.importManifest ?? null;
@@ -1920,6 +2074,7 @@ export function buildIngestionSummary(profiles: any[] = [], options: any = {}) {
     recommendedLatestMaterialSourcePath,
     recommendedCandidateSignalSummary,
     recommendedDraftSourcesSummary,
+    recommendedDraftGapSummary,
     recommendedCommand,
     recommendedFallbackCommand,
     recommendedRefreshIntakeCommand,

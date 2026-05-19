@@ -24,8 +24,18 @@ Use this skill when extending or validating the user-facing ingestion/update ent
    - `node src/index.js import intake --person <id>`
    - `node src/index.js import intake --person <id> --refresh-foundation`
 4. Preserve the inspect-first manifest flow before any draft regeneration. Starter-manifest helpers should keep both `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json'` and `node src/index.js import manifest --file 'profiles/<id>/imports/materials.template.json' --refresh-foundation` visible beside direct `import text|message|talk|screenshot` commands, and the plain inspect command should stay the first step before the refresh variant.
-5. Check metadata-edit follow-ups (`node src/index.js update profile --person <id> ...`, `node src/index.js update intake --person <id> ...`, refresh-sync reruns) stay attached to the same target profile and landing-zone paths.
-6. Keep rerun safety explicit in the skill and generated README: re-running `update intake` preserves starter entries, entry templates, and custom notes, while invalid `materials.template.json` is backed up to `materials.template.json.invalid-<timestamp>.bak` before the scaffold is rebuilt.
-7. Run focused ingestion/docs tests before the broader suite:
+5. Check metadata-edit follow-ups (`node src/index.js update profile --person <id> ...`, `node src/index.js update intake --person <id> ...`, refresh-sync reruns) stay attached to the same target profile and landing-zone paths. When an imported profile-local manifest is already runnable, keep that same ready lane carrying `importIntakeWithoutRefreshCommand` / `recommendedInspectCommand` for the plain inspection replay beside `importIntakeCommand` / `recommendedCommand` for the `--refresh-foundation` replay.
+6. For ready replay/import lanes, treat profile metadata edits as first-class operator follow-up too:
+   - expose `profiles/<id>/profile.json` as the `recommendedEditPath` / work-loop `editPath` for ready imported or ready metadata-only intake recommendations when the paired helper is `update profile --person <id> ...`
+   - keep `recommendedEditPaths` / work-loop `editPaths` narrowed to that metadata target when the ready lane is about replaying or importing materials rather than editing starter templates
+   - keep `paths` aligned with that choice instead of leaving `profile.json` out; if a ready recommendation now advertises metadata edits, include `profiles/<id>/profile.json` alongside manifest-backed material files so machine-readable path bundles do not contradict the edit target
+   - verify both imported-ready replay flows and metadata-only ready-import flows, because the same edit/path drift can appear in either branch
+7. When the best next step is still edit-first, keep the machine-readable helper bundle and prompt/work-loop aliases aligned too:
+   - `recommendedProfileSlices` should preserve which queued profile owns each manifest/edit path when more than one imported starter manifest is active
+   - `recommendedEditPaths` should keep manifest/file-backed placeholders like `images/chat.png` visible beside the primary edit path
+   - `recommendedIntakeManifestEntryTemplateRoot` should stay in sync with prompt lines like `starter root profiles/<id>/imports`
+   - `workLoop.actionableReadyPriority` and `workLoop.recommendedPriority` should mirror the same inspect-first follow-ups when the current blocker is elsewhere
+7. Keep rerun safety explicit in the skill and generated README: re-running `update intake` preserves starter entries, entry templates, and custom notes, while invalid `materials.template.json` is backed up to `materials.template.json.invalid-<timestamp>.bak` before the scaffold is rebuilt.
+8. Run focused ingestion/docs tests before the broader suite:
    - `node --import tsx --test tests/material-ingestion.test.js tests/profile-material-summary.test.ts tests/profile-foundation-update.test.js tests/readme-docs.test.js`
    - `node --import tsx --test tests/work-loop.test.ts`

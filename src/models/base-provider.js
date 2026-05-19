@@ -154,16 +154,20 @@ export function resolveOpenAICompatibleResponseMessage(response = {}) {
   }
 
   const outputItems = Array.isArray(response.output) ? response.output : [];
+  const outputTextItems = outputItems.filter((item) => item && typeof item === 'object' && (item.type === 'output_text' || item.type === 'text'));
   const outputMessage = outputItems.find((item) => item && typeof item === 'object' && item.type === 'message');
   if (outputMessage && typeof outputMessage === 'object') {
+    const outputMessageContent = extractProviderTextContent(outputMessage.content)
+      ? outputMessage.content
+      : outputTextItems;
+
     return {
       role: typeof outputMessage.role === 'string' && outputMessage.role.length > 0 ? outputMessage.role : 'assistant',
-      content: outputMessage.content,
+      content: outputMessageContent,
       tool_calls: outputMessage.tool_calls,
     };
   }
 
-  const outputTextItems = outputItems.filter((item) => item && typeof item === 'object' && (item.type === 'output_text' || item.type === 'text'));
   if (outputTextItems.length > 0) {
     return {
       role: 'assistant',

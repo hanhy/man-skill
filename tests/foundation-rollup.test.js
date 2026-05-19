@@ -315,7 +315,7 @@ test('buildFoundationRollup carries stale draft source provenance onto maintenan
     },
   ]);
 
-  const expectedDraftSourcesSummary = 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt';
+  const expectedDraftSourcesSummary = 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (2 sources (message:1, talk:1), latest @ profiles/jane-doe/imports/voice-note.txt)';
 
   assert.equal(rollup.maintenance.recommendedDraftSourcesSummary, expectedDraftSourcesSummary);
   assert.equal(rollup.maintenance.queuedProfiles[0]?.draftSourcesSummary, expectedDraftSourcesSummary);
@@ -736,6 +736,78 @@ test('buildFoundationRollup keeps maintenance refresh paths aligned with concret
   assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
 });
 
+test('buildFoundationRollup ignores foreign-profile and non-foundation draft metadata when deriving refresh paths', () => {
+  const rollup = buildFoundationRollup([
+    {
+      id: 'jane-doe',
+      materialCount: 1,
+      latestMaterialAt: '2026-04-24T10:00:00.000Z',
+      latestMaterialId: '2026-04-24T10-00-00-000Z-talk',
+      latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-24T10-00-00-000Z-talk.json',
+      foundationDraftStatus: {
+        needsRefresh: true,
+        complete: false,
+        missingDrafts: ['voice'],
+        refreshReasons: ['new materials'],
+      },
+      foundationDraftSummaries: {
+        memory: {
+          generated: true,
+          path: 'profiles/other-person/memory/long-term/foundation.json',
+          entryCount: 1,
+          latestSummaries: ['Stay profile-scoped.'],
+        },
+        skills: {
+          generated: true,
+          path: 'profiles/jane-doe/imports/sample.txt',
+          highlights: ['- ignore non-foundation imports'],
+          readySectionCount: 3,
+          totalSectionCount: 3,
+          readySections: ['candidate-skills', 'evidence', 'gaps-to-validate'],
+          missingSections: [],
+        },
+        soul: {
+          generated: true,
+          path: 'profiles/jane-doe/materials/2026-04-24T10-00-00-000Z-talk.json',
+          highlights: ['- ignore source materials'],
+          readySectionCount: 4,
+          totalSectionCount: 4,
+          readySections: ['core-truths', 'boundaries', 'vibe', 'continuity'],
+          missingSections: [],
+        },
+        voice: {
+          generated: false,
+          highlights: [],
+          readySectionCount: 1,
+          totalSectionCount: 4,
+          readySections: ['tone'],
+          missingSections: ['signature-moves', 'avoid', 'language-hints'],
+        },
+      },
+      foundationReadiness: {
+        memory: { candidateCount: 1, sampleSummaries: ['Stay profile-scoped.'] },
+        skills: { candidateCount: 1, sampleExcerpts: ['ignore non-foundation imports'] },
+        soul: { candidateCount: 1, sampleExcerpts: ['ignore source materials'] },
+        voice: { candidateCount: 1, sampleExcerpts: ['Keep the next step direct.'] },
+      },
+      profile: {
+        displayName: 'Jane Doe',
+        summary: 'Tight loops beat big plans.',
+      },
+    },
+  ]);
+
+  const expectedPaths = [
+    'profiles/jane-doe/memory/long-term/foundation.json',
+    'profiles/jane-doe/skills/README.md',
+    'profiles/jane-doe/soul/README.md',
+    'profiles/jane-doe/voice/README.md',
+  ];
+
+  assert.deepEqual(rollup.maintenance.recommendedPaths, expectedPaths);
+  assert.deepEqual(rollup.maintenance.queuedProfiles[0]?.paths, expectedPaths);
+});
+
 test('buildFoundationRollup shell-quotes refresh commands for profile ids with spaces and apostrophes', () => {
   const rollup = buildFoundationRollup([
     {
@@ -931,7 +1003,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       currentPriority: {
@@ -941,7 +1013,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       runnablePriority: {
@@ -951,7 +1023,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       actionableReadyPriority: {
@@ -961,7 +1033,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: '1 imported starter template still needs edits',
         nextAction: 'finish the starter manifest edits',
         command: null,
-        draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        draftSourcesSummary: 'voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
         editPath: 'profiles/jane-doe/imports/materials.template.json',
         paths: ['profiles/jane-doe/imports/materials.template.json'],
       },
@@ -972,7 +1044,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
         summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
         nextAction: 'refresh Jane Doe (jane-doe)',
         command: "node src/index.js update foundation --person 'jane-doe'",
-        draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+        draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
         paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
       },
       priorities: [
@@ -983,7 +1055,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
           summary: 'core 4/4 ready; profiles 1 queued for refresh, 1 incomplete',
           nextAction: 'refresh Jane Doe (jane-doe)',
           command: "node src/index.js update foundation --person 'jane-doe'",
-          draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt',
+          draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt)',
           paths: ['profiles/jane-doe/memory/long-term/foundation.json'],
         },
         {
@@ -993,7 +1065,7 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
           summary: '1 imported starter template still needs edits',
           nextAction: 'finish the starter manifest edits',
           command: null,
-          draftSourcesSummary: 'voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+          draftSourcesSummary: 'voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
           editPath: 'profiles/jane-doe/imports/materials.template.json',
           paths: ['profiles/jane-doe/imports/materials.template.json'],
         },
@@ -1001,9 +1073,9 @@ test('PromptAssembler work loop surfaces draft-source follow-up lines for curren
     },
   }).buildPreview(4000);
 
-  assert.match(preview, /draft sources: memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt/);
+  assert.match(preview, /draft sources: memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\)/);
   assert.doesNotMatch(preview, /runnable draft sources:/);
-  assert.match(preview, /advisory draft sources: voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /advisory draft sources: voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
 });
 
 test('PromptAssembler work loop trims and slash-normalizes latest-material fields before rendering current and advisory follow-ups', () => {
@@ -1270,7 +1342,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
         recommendedLatestMaterialAt: '2026-04-20T12:00:00.000Z',
         recommendedLatestMaterialId: '2026-04-20T12-00-00-000Z-text',
         recommendedLatestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
-        recommendedDraftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+        recommendedDraftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
         recommendedCandidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
         staleRefreshCommand: "node src/index.js update foundation --stale",
         helperCommands: { refreshStale: "node src/index.js update foundation --stale" },
@@ -1286,7 +1358,7 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
             latestMaterialId: '2026-04-20T12-00-00-000Z-text',
             latestMaterialSourcePath: 'profiles/jane-doe/materials/2026-04-20T12-00-00-000Z-text.json',
             candidateSignalSummary: 'memory 1 (text) | voice 1 (message) | soul 1 (text) | skills 1 (talk)',
-            draftSourcesSummary: 'memory 2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt | skills 1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt | soul 1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt | voice 1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt',
+            draftSourcesSummary: 'memory @ profiles/jane-doe/memory/long-term/foundation.json (2 sources (message:1, talk:1), 1 entry, latest @ profiles/jane-doe/imports/call-notes.txt) | skills @ profiles/jane-doe/skills/README.md (1 source (talk:1), latest @ profiles/jane-doe/imports/call-notes.txt) | soul @ profiles/jane-doe/soul/README.md (1 source (text:1), latest @ profiles/jane-doe/imports/call-notes.txt) | voice @ profiles/jane-doe/voice/README.md (1 source (message:1), latest @ profiles/jane-doe/imports/voice-note.txt)',
           },
         ],
       },
@@ -1298,8 +1370,8 @@ test('PromptAssembler foundation rollup keeps repo-stale counts visible across v
   assert.match(preview, /voice: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /soul: 1\/2 generated, 2 candidate profiles, 2 candidates, 1 repo-stale profile, highlights: \[talk\] Keep the feedback loop short\. \| Tight loops beat big plans\./);
   assert.match(preview, /skills: 1\/2 generated, 2 candidate profiles, 1 repo-stale profile, 2 candidates, highlights: execution heuristic \| feedback-loop heuristic/);
-  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
-  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory 2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| skills 1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| soul 1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt \| voice 1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt/);
+  assert.match(preview, /next refresh: refresh Jane Doe \(jane-doe\) — reasons missing drafts; evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\); command node src\/index\.js update foundation --person 'jane-doe' @ profiles\/jane-doe\/memory\/long-term\/foundation\.json, profiles\/jane-doe\/skills\/README\.md, profiles\/jane-doe\/soul\/README\.md, profiles\/jane-doe\/voice\/README\.md; latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json; draft sources memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
+  assert.match(preview, /Jane Doe \(jane-doe\): stale, 0\/4 drafts generated, missing memory\/skills\/soul\/voice, latest material 2026-04-20T12:00:00\.000Z \(2026-04-20T12-00-00-000Z-text\) @ profiles\/jane-doe\/materials\/2026-04-20T12-00-00-000Z-text\.json, evidence memory 1 \(text\) \| voice 1 \(message\) \| soul 1 \(text\) \| skills 1 \(talk\), draft sources memory @ profiles\/jane-doe\/memory\/long-term\/foundation\.json \(2 sources \(message:1, talk:1\), 1 entry, latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| skills @ profiles\/jane-doe\/skills\/README\.md \(1 source \(talk:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| soul @ profiles\/jane-doe\/soul\/README\.md \(1 source \(text:1\), latest @ profiles\/jane-doe\/imports\/call-notes\.txt\) \| voice @ profiles\/jane-doe\/voice\/README\.md \(1 source \(message:1\), latest @ profiles\/jane-doe\/imports\/voice-note\.txt\)/);
 });
 
 test('buildSummary exposes a repository foundation rollup and prompt preview mentions it', () => {
@@ -1831,6 +1903,69 @@ test('buildSummary prefers frontmatter descriptions for memory and skills root e
   assert.match(summary.promptPreview, /skills: 1 registered, 1 documented \(cron\); root: Keep shared operator procedures discoverable\. @ skills\/README\.md; root sections 2\/2 ready \(what-lives-here, layout\); docs: skills\/cron\/SKILL\.md; excerpts: cron: Keep scheduled follow-ups reliable\./);
   assert.doesNotMatch(summary.promptPreview, /root: description:/);
   assert.doesNotMatch(summary.promptPreview, /root: >/);
+});
+
+test('buildSummary tolerates leading blank lines before root frontmatter descriptions', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    ['', '---', 'description: >', '  Keep durable repo knowledge organized', '  without leaking raw YAML metadata.', '---', '', '# Memory', '', 'Buckets live below.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'SOUL.md'),
+    ['', '---', 'description: >', '  Build a faithful operator core', '  without leaking raw YAML metadata.', '---', '', '# Soul', '', '## Core truths', '- Build a faithful operator core.', '', '## Boundaries', '- Do not bluff certainty.', '', '## Vibe', '- Grounded and direct.', '', '## Continuity', '- Preserve clear priorities.'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Keep durable repo knowledge organized without leaking raw YAML metadata.');
+  assert.equal(summary.foundation.core.soul.rootExcerpt, 'Build a faithful operator core without leaking raw YAML metadata.');
+  assert.match(summary.promptPreview, /root: Keep durable repo knowledge organized without leaking raw YAML metadata\. @ memory\/README\.md/);
+  assert.match(summary.promptPreview, /root: Build a faithful operator core without leaking raw YAML metadata\. @ SOUL\.md/);
+  assert.doesNotMatch(summary.promptPreview, /root: description:/);
+  assert.doesNotMatch(summary.promptPreview, /root: >/);
+});
+
+test('buildSummary does not treat yaml document-end markers as root frontmatter openers after leading blank lines', () => {
+  const rootDir = makeTempRepo();
+
+  fs.mkdirSync(path.join(rootDir, 'skills', 'cron'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'long-term'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'memory', 'scratch'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
+  fs.writeFileSync(
+    path.join(rootDir, 'memory', 'README.md'),
+    ['', '...', 'Intro should stay visible.', '', '---', '', '## What belongs here', '- Daily notes stay visible.', '', '## Buckets', '- daily/: short-lived run notes and the canonical checked-in short-term bucket', '- long-term/: durable facts and conventions', '- scratch/: in-flight ideas to refine or promote'].join('\n'),
+  );
+  fs.writeFileSync(
+    path.join(rootDir, 'skills', 'cron', 'SKILL.md'),
+    ['---', 'name: cron', 'description: Keep scheduled follow-ups reliable.', '---', '', '# Cron', '', 'Use this skill when a schedule needs setup.'].join('\n'),
+  );
+  fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-18.md'), '# Daily note');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
+  fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
+  fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
+  fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
+
+  const summary = buildSummary(rootDir);
+
+  assert.equal(summary.foundation.core.memory.rootExcerpt, 'Intro should stay visible.');
+  assert.match(summary.promptPreview, /root: Intro should stay visible\. @ memory\/README\.md/);
 });
 
 test('buildSummary accepts BOM-prefixed frontmatter descriptions for root foundation docs', () => {
@@ -2585,7 +2720,7 @@ test('buildSummary surfaces soul and voice section context on thin document queu
   assert.match(summary.promptPreview, /voice \[thin\]: add missing sections to voice\/README\.md: signature-moves, avoid, language-hints @ voice\/README\.md; context sections 1\/4 ready \(tone\), missing signature-moves, avoid, language-hints; command /);
 });
 
-test('buildSummary surfaces root heading alias context on thin memory and skills queue items', () => {
+test('buildSummary surfaces root heading alias context and shadow repair paths on thin memory and skills queue items', () => {
   const rootDir = makeTempRepo();
 
   fs.mkdirSync(path.join(rootDir, 'memory', 'daily'), { recursive: true });
@@ -2594,10 +2729,12 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
   fs.mkdirSync(path.join(rootDir, 'voice'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'skills', 'delivery'), { recursive: true });
   fs.writeFileSync(path.join(rootDir, 'memory', 'README.md'), '# Memory\n\n## What lives here\n- Keep durable notes here.\n');
+  fs.writeFileSync(path.join(rootDir, 'MEMORY.md'), '# Shadow memory doc\n');
   fs.writeFileSync(path.join(rootDir, 'memory', 'daily', '2026-04-16.md'), '# Daily note');
   fs.writeFileSync(path.join(rootDir, 'memory', 'long-term', 'operator.json'), '{"fact":true}');
   fs.writeFileSync(path.join(rootDir, 'memory', 'scratch', 'draft.txt'), 'temp');
   fs.writeFileSync(path.join(rootDir, 'skills', 'README.md'), '# Skills\n\n## What belongs here\n- Keep reusable operator procedures here.\n');
+  fs.writeFileSync(path.join(rootDir, 'SKILLS.md'), '# Shadow skills doc\n');
   fs.writeFileSync(path.join(rootDir, 'skills', 'delivery', 'SKILL.md'), '# Delivery\n\n## What this skill is for\n- Deliver concise handoffs.\n\n## Suggested workflow\n- Run the smallest verified loop first.');
   fs.writeFileSync(path.join(rootDir, 'voice', 'README.md'), READY_VOICE_DOC);
   fs.writeFileSync(path.join(rootDir, 'SOUL.md'), READY_SOUL_DOC);
@@ -2610,17 +2747,18 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
       status: 'thin',
       summary: 'README yes, daily 1, long-term 1, scratch 1, root 1/2 sections ready (what-belongs-here), missing buckets, aliases what-lives-here->what-belongs-here',
       action: 'add missing sections to memory/README.md: buckets',
-      paths: ['memory/README.md'],
+      paths: ['memory/README.md', 'MEMORY.md'],
       thinPaths: ['memory/README.md'],
       rootThinMissingSections: ['buckets'],
       rootThinReadySections: ['what-belongs-here'],
       rootThinReadySectionCount: 1,
       rootThinTotalSectionCount: 2,
       rootHeadingAliases: ['what-lives-here->what-belongs-here'],
+      shadowPaths: ['MEMORY.md'],
       command: buildCoreFoundationCommand({
         area: 'memory',
         status: 'thin',
-        paths: ['memory/README.md'],
+        paths: ['memory/README.md', 'MEMORY.md'],
         thinPaths: ['memory/README.md'],
       }),
     },
@@ -2629,23 +2767,24 @@ test('buildSummary surfaces root heading alias context on thin memory and skills
       status: 'thin',
       summary: '1 registered, 1 documented, root 1/2 sections ready (what-lives-here), missing layout, aliases what-belongs-here->what-lives-here',
       action: 'add missing sections to skills/README.md: layout',
-      paths: ['skills/README.md'],
+      paths: ['skills/README.md', 'SKILLS.md'],
       thinPaths: ['skills/README.md'],
       rootThinMissingSections: ['layout'],
       rootThinReadySections: ['what-lives-here'],
       rootThinReadySectionCount: 1,
       rootThinTotalSectionCount: 2,
       rootHeadingAliases: ['what-belongs-here->what-lives-here'],
+      shadowPaths: ['SKILLS.md'],
       command: buildCoreFoundationCommand({
         area: 'skills',
         status: 'thin',
-        paths: ['skills/README.md'],
+        paths: ['skills/README.md', 'SKILLS.md'],
         thinPaths: ['skills/README.md'],
       }),
     },
   ]);
-  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets \| root aliases what-lives-here->what-belongs-here; command /);
-  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout \| root aliases what-belongs-here->what-lives-here; command /);
+  assert.match(summary.promptPreview, /memory \[thin\]: add missing sections to memory\/README\.md: buckets @ memory\/README\.md, MEMORY\.md; context root sections 1\/2 ready \(what-belongs-here\), missing buckets \| root aliases what-lives-here->what-belongs-here \| shadow docs MEMORY\.md; command /);
+  assert.match(summary.promptPreview, /skills \[thin\]: add missing sections to skills\/README\.md: layout @ skills\/README\.md, SKILLS\.md; context root sections 1\/2 ready \(what-lives-here\), missing layout \| root aliases what-belongs-here->what-lives-here \| shadow docs SKILLS\.md; command /);
 });
 
 test('buildSummary surfaces root heading alias context on thin soul and voice queue items', () => {
